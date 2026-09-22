@@ -908,6 +908,151 @@ async def run_foundation_tests():
         )
         results["T21_UI_GLOBAL_LOCK"] = t21_pass
 
+        # ----------------------------------------------------
+        # T22: FNB IDENTITY PERSISTENCE
+        # ----------------------------------------------------
+        print("\n--- [T22] FNB IDENTITY PERSISTENCE ---")
+        t22_set = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const res = await bp.setBusinessProfile('fnb');
+            const cur = bp.getBusinessProfile();
+            return {
+                resSuccess: res.success,
+                profileId: cur.profile_id,
+                name: cur.name
+            };
+        }""")
+        print(f"T22 Set Result: {t22_set}")
+        assert t22_set["profileId"] == 'fnb', f"Expected fnb, got {t22_set['profileId']}"
+        assert t22_set["name"] == 'Quán ăn / Cà phê', f"Expected 'Quán ăn / Cà phê', got {t22_set['name']}"
+
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        t22_reload = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            return {
+                profileId: cur.profile_id,
+                name: cur.name,
+                isNotRetail: cur.profile_id !== 'retail'
+            };
+        }""")
+        print(f"T22 Reload Result: {t22_reload}")
+        t22_pass = (
+            t22_set["profileId"] == "fnb" and
+            t22_set["name"] == "Quán ăn / Cà phê" and
+            t22_reload["profileId"] == "fnb" and
+            t22_reload["name"] == "Quán ăn / Cà phê" and
+            t22_reload["isNotRetail"] is True
+        )
+        results["T22_FNB_IDENTITY_PERSISTENCE"] = t22_pass
+
+        # ----------------------------------------------------
+        # T23: CONSULTING IDENTITY PERSISTENCE
+        # ----------------------------------------------------
+        print("\n--- [T23] CONSULTING IDENTITY PERSISTENCE ---")
+        t23_set = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const res = await bp.setBusinessProfile('consulting');
+            const cur = bp.getBusinessProfile();
+            return {
+                resSuccess: res.success,
+                profileId: cur.profile_id,
+                name: cur.name
+            };
+        }""")
+        print(f"T23 Set Result: {t23_set}")
+        assert t23_set["profileId"] == 'consulting', f"Expected consulting, got {t23_set['profileId']}"
+
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        t23_reload = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            return {
+                profileId: cur.profile_id,
+                name: cur.name,
+                isNotService: cur.profile_id !== 'service'
+            };
+        }""")
+        print(f"T23 Reload Result: {t23_reload}")
+        t23_pass = (
+            t23_set["profileId"] == "consulting" and
+            t23_reload["profileId"] == "consulting" and
+            t23_reload["name"] == "Chuyên gia / Tư vấn" and
+            t23_reload["isNotService"] is True
+        )
+        results["T23_CONSULTING_IDENTITY_PERSISTENCE"] = t23_pass
+
+        # ----------------------------------------------------
+        # T24: OTHER IDENTITY PERSISTENCE
+        # ----------------------------------------------------
+        print("\n--- [T24] OTHER IDENTITY PERSISTENCE ---")
+        t24_set = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const res = await bp.setBusinessProfile('other');
+            const cur = bp.getBusinessProfile();
+            return {
+                resSuccess: res.success,
+                profileId: cur.profile_id,
+                name: cur.name
+            };
+        }""")
+        print(f"T24 Set Result: {t24_set}")
+        assert t24_set["profileId"] == 'other', f"Expected other, got {t24_set['profileId']}"
+
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        t24_reload = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            return {
+                profileId: cur.profile_id,
+                name: cur.name,
+                isNotGeneral: cur.profile_id !== 'general'
+            };
+        }""")
+        print(f"T24 Reload Result: {t24_reload}")
+        t24_pass = (
+            t24_set["profileId"] == "other" and
+            t24_reload["profileId"] == "other" and
+            t24_reload["name"] == "Khác" and
+            t24_reload["isNotGeneral"] is True
+        )
+        results["T24_OTHER_IDENTITY_PERSISTENCE"] = t24_pass
+
+        # ----------------------------------------------------
+        # Sau test: Reset về general để giữ baseline
+        # ----------------------------------------------------
+        print("\n--- [CLEANUP] Reset back to general baseline ---")
+        cleanup_res = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            await bp.resetToDefaultProfile();
+            const cur = bp.getBusinessProfile();
+            return {
+                profileId: cur.profile_id,
+                name: cur.name
+            };
+        }""")
+        print(f"Cleanup Result: {cleanup_res}")
+        assert cleanup_res["profileId"] == "general", "Failed to restore general baseline!"
+
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+        baseline_check = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            return {
+                profileId: cur.profile_id,
+                name: cur.name
+            };
+        }""")
+        print(f"Baseline Confirmed after Reload: {baseline_check}")
+        assert baseline_check["profileId"] == "general", "Baseline profile not general after reload!"
+
         # Check console errors
         print(f"\nConsole Errors Count: {len(console_errors)}")
         if console_errors:
@@ -917,7 +1062,7 @@ async def run_foundation_tests():
         await browser.close()
 
     print("\n================================================================")
-    print("FINAL TEST RESULTS (T01 - T08 & INVARIANTS)")
+    print("FINAL TEST RESULTS (T01 - T24 & INVARIANTS)")
     print("================================================================")
     all_pass = True
     for k, v in results.items():
