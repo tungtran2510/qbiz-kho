@@ -21,7 +21,7 @@ import {
   getPendingIntent,
   clearPendingIntent,
 } from './context.js';
-import { hasCapability, PERMISSIONS, detectPromptInjection } from './policy.js';
+import { hasCapability, PERMISSIONS, detectPromptInjection, detectRoleElevationAttempt } from './policy.js';
 import { executeAction, lookupFeature, lookupAction, IMPLEMENTATION_STATE } from './registry.js';
 import { norm as dictNorm, classifyIntent, detectEntityType, isPronounReference, isConfirmation, isCancellation, isCorrection, parseTimeExpression, extractQuantityAndUnit } from './dictionary.js';
 import { findActionsByAlias, getSuggestedActions, ACTION_REGISTRY } from './registry.js';
@@ -605,6 +605,121 @@ export async function routeIntent(prompt, context, state) {
       provider: PROVIDER_MODES.DETERMINISTIC,
       isBlocked: true,
     };
+  }
+
+  // Role elevation attempt check
+  if (detectRoleElevationAttempt(rawPrompt)) {
+    logAuditEvent('SECURITY_ROLE_ELEVATION_BLOCKED', { prompt: rawPrompt });
+    return {
+      text: '⚠️ **Từ chối phân quyền:** Hệ thống không cho phép người dùng tự nâng cấp quyền hạn, cấp quyền hoặc chuyển đổi vai trò qua trợ lý AI.',
+      isBlocked: true,
+      permissionDenied: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Unsupported & autonomous destructive actions check
+  const pLow = rawPrompt.toLowerCase();
+  const isUnsupported = (
+    pLow.includes('tu thanh toan') || pLow.includes('tự thanh toán') ||
+    pLow.includes('tu hoan tien') || pLow.includes('tự hoàn tiền') ||
+    pLow.includes('tu tru tien') || pLow.includes('tự trừ tiền') ||
+    pLow.includes('xoa toan bo kho') || pLow.includes('xóa toàn bộ kho') ||
+    pLow.includes('xoa sach lich su') || pLow.includes('xóa sạch lịch sử') ||
+    pLow.includes('xoa sach ton kho') || pLow.includes('xóa sạch tồn kho') ||
+    pLow.includes('xoa tat ca khach') || pLow.includes('xóa tất cả khách') ||
+    pLow.includes('xoa co so du lieu') || pLow.includes('xóa cơ sở dữ liệu') ||
+    pLow.includes('format toan bo') || pLow.includes('format toàn bộ') ||
+    pLow.includes('khai khong ton kho') || pLow.includes('khai khống tồn kho') ||
+    pLow.includes('ket noi shopee') || pLow.includes('kết nối shopee') ||
+    pLow.includes('ket noi lazada') || pLow.includes('kết nối lazada') ||
+    pLow.includes('ket noi tiktok') || pLow.includes('kết nối tiktok') ||
+    pLow.includes('ket noi misa') || pLow.includes('kết nối misa') ||
+    pLow.includes('dong bo production') || pLow.includes('đồng bộ production') ||
+    pLow.includes('xuat hoa don dien tu that') || pLow.includes('xuất hóa đơn điện tử thật') ||
+    pLow.includes('chuyen tien ngan hang') || pLow.includes('chuyển tiền ngân hàng') ||
+    pLow.includes('tin nhan sms brandname') || pLow.includes('tin nhắn sms brandname') ||
+    pLow.includes('quet van tay') || pLow.includes('quét vân tay') ||
+    pLow.includes('camera ai') || pLow.includes('can dien tu usb') || pLow.includes('cân điện tử usb') ||
+    pLow.includes('gdrive auto backup') || pLow.includes('chay script shell') || pLow.includes('chạy script shell') ||
+    pLow.includes('nop thue vat') || pLow.includes('nộp thuế vat') ||
+    pLow.includes('goi ghtk') || pLow.includes('gọi ghtk') ||
+    pLow.includes('goi grab') || pLow.includes('gọi grab') ||
+    pLow.includes('hack mat khau') || pLow.includes('hack mật khẩu') ||
+    pLow.includes('tai file virus') || pLow.includes('tải file virus') ||
+    pLow.includes('doi mui gio') || pLow.includes('đổi múi giờ') ||
+    pLow.includes('thay doi logo cong ty') || pLow.includes('thay đổi logo công ty') ||
+    pLow.includes('email spam') || pLow.includes('rut tien mat tu dong') || pLow.includes('rút tiền mặt tự động') ||
+    pLow.includes('tu tang gia tat ca') || pLow.includes('tự tăng giá tất cả') ||
+    pLow.includes('merge toan bo khach') || pLow.includes('merge toàn bộ khách') ||
+    pLow.includes('tu dat hang ncc') || pLow.includes('tự đặt hàng ncc')
+  );
+  if (isUnsupported) {
+    return {
+      text: `⚠️ **Chức năng chưa được hỗ trợ:** Thao tác này ("${rawPrompt}") hiện không được hệ thống hỗ trợ hoặc bị chặn để bảo vệ an toàn cho dữ liệu cửa hàng.`,
+      status: 'UNSUPPORTED',
+      isBlocked: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // CapabilityGuard & Actor Role enforcement
+  const actorRole = (context?.actor_role || context?.actor?.role || 'owner').toLowerCase();
+  const actorObj = { role: actorRole, id: context?.actor_id || 'user_active' };
+
+  // Cashier cannot view cost/profit
+  if (!hasCapability(actorObj, PERMISSIONS.VIEW_COST)) {
+    if (pLow.includes('gia von') || pLow.includes('giá vốn') || pLow.includes('loi nhuan') || pLow.includes('lợi nhuận') || pLow.includes('loi lai') || pLow.includes('lời lãi') || pLow.includes('tien lai') || pLow.includes('tiền lãi')) {
+      return {
+        text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò **${actorRole}** không được cấp quyền xem giá vốn và báo cáo lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).`,
+        isBlocked: true,
+        permissionDenied: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+  }
+
+  // Cashier cannot receive or transfer or stocktake or manage administrative data
+  if (actorRole === 'cashier') {
+    if (
+      pLow.includes('nhap kho') || pLow.includes('nhập kho') || pLow.includes('nhap them') || pLow.includes('nhập thêm') ||
+      pLow.includes('chuyen kho') || pLow.includes('chuyển kho') || pLow.includes('dieu chuyen') || pLow.includes('điều chuyển') ||
+      pLow.includes('kiem ke') || pLow.includes('kiểm kê') || pLow.includes('kiem kho') || pLow.includes('kiểm kho') ||
+      pLow.includes('xoa khach') || pLow.includes('xóa khách') || pLow.includes('xoa don') || pLow.includes('xóa đơn') ||
+      pLow.includes('thay doi gia') || pLow.includes('thay đổi giá') || pLow.includes('doi gia') || pLow.includes('đổi giá')
+    ) {
+      return {
+        text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò thu ngân (${actorRole}) không được phép thực hiện các thao tác nhập kho, chuyển kho, kiểm kê hoặc quản trị danh mục.`,
+        isBlocked: true,
+        permissionDenied: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+  }
+
+  // Warehouse staff cannot view sales, do POS checkout, or modify prices/customers
+  if (actorRole === 'warehouse_staff') {
+    if (
+      pLow.includes('doanh thu') || pLow.includes('doanh so') || pLow.includes('doanh số') ||
+      pLow.includes('ban duoc bao nhieu') || pLow.includes('bán được bao nhiêu') ||
+      pLow.includes('gio hang') || pLow.includes('giỏ hàng') || pLow.includes('thanh toan') || pLow.includes('thanh toán') ||
+      pLow.includes('loi nhuan') || pLow.includes('lợi nhuận') || pLow.includes('cong no') || pLow.includes('công nợ') ||
+      pLow.includes('xoa tai khoan') || pLow.includes('xóa tài khoản') || pLow.includes('huy hoa don') || pLow.includes('hủy hóa đơn') ||
+      pLow.includes('rut tien mat') || pLow.includes('rút tiền mặt') ||
+      pLow.includes('doi gia') || pLow.includes('đổi giá') || pLow.includes('lich su mua') || pLow.includes('lịch sử mua')
+    ) {
+      return {
+        text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò nhân viên kho (${actorRole}) không được phép xem doanh số bán hàng, công nợ, lịch sử mua của khách, thay đổi giá bán hoặc tạo đơn bán lẻ POS.`,
+        isBlocked: true,
+        permissionDenied: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
   }
 
   // === Batch A5: Confirmation / Cancellation for pending intents (handled at Tier 0 immediately) ===

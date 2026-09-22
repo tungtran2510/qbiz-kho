@@ -392,23 +392,45 @@ export function sanitizeDataBoundary(data) {
 }
 
 const INJECTION_PATTERNS = [
-  /ignore\s+(all\s+)?(previous|prior)\s+(instructions|directions|commands|rules|constraints)/i,
-  /bỏ\s+qua\s+(hết|tất\s+cả|mọi)?\s*(các\s+)?(chỉ\s+dẫn|quy\s+tắc|ràng\s+buộc|mệnh\s+lệnh)/i,
-  /bo\s+qua\s+(het|tat\s+ca|moi)?\s*(cac\s+)?(chi\s+dan|quy\s+tac|rang\s+buoc|menh\s+lenh)/i,
+  /ignore\s+(all\s+)?(previous|prior|safety)\s+(instructions|directions|commands|rules|constraints)/i,
+  /bỏ\s+qua\s+(hết|tất\s+cả|mọi)?\s*(các\s+)?(chỉ\s+dẫn|quy\s+tắc|ràng\s+buộc|mệnh\s+lệnh|chính\s+sách|bảo\s+mật|bước|fingerprint)/i,
+  /bo\s+qua\s+(het|tat\s+ca|moi)?\s*(cac\s+)?(chi\s+dan|quy\s+tac|rang\s+buoc|menh\s+lenh|chinh\s+sach|bao\s+mat|buoc|fingerprint)/i,
   /system\s*prompt/i,
+  /developer\s*mode/i,
+  /chế\s+độ\s+nhà\s+phát\s+triển|che\s+do\s+nha\s+phat\s+trien/i,
+  /khong\s+bi\s+rang\s+buoc|không\s+bị\s+ràng\s+buộc/i,
   /you\s+are\s+now\s+(in\s+developer\s+mode|a\s+developer|unrestricted)/i,
-  /act\s+as\s+(an\s+unfiltered|a\s+malicious|system\s+root|admin)/i,
-  /override\s+(all\s+)?(safety|policies|security|permissions)/i,
-  /dump\s+(the\s+)?(database|system\s+prompt|api\s+key|internal\s+rules)/i,
+  /act\s+as\s+(an\s+unfiltered|a\s+malicious|system\s+root|admin|owner)/i,
+  /đóng\s+vai\s+(chủ\s+sở\s+hữu\s+tối\s+cao|admin|root|quản\s+trị\s+viên)/i,
+  /dong\s+vai\s+(chu\s+so\s+huu\s+toi\s+cao|admin|root)/i,
+  /override\s+(all\s+)?(safety|policies|security|permissions|role)/i,
+  /dump\s+(the\s+)?(entire\s+)?(database|db|system\s+prompt|api\s+key|internal\s+rules|schema)/i,
+  /(in(\s+ra)?|cho(\s+tôi)?\s+xem|trích\s+xuất|trich\s+xuat|tiết\s+lộ|tiet\s+lo)\s+(toàn\s+bộ\s+)?(api\s*key|khóa\s+bí\s+mật|mật\s+khẩu|token|cookie|biến\s+môi\s+trường|mã\s+nguồn)/i,
+  /(api\s*key|process\.env|khóa\s+bí\s+mật|secret\s*key)/i,
+  /system\s+(override|alert|instruction|command)/i,
+  /reveal\s+(hidden\s+)?(instructions|prompt)/i,
+  /show\s+other\s+customer\s+data/i,
+  /(xuất|xuat|lấy|lay)\s+danh\s+sách\s+(tất\s+cả\s+|toàn\s+bộ\s+)?khách\s+hàng/i,
+  /disable\s+(confirmation|safety|security|policy|card)/i,
+  /(tắt|vô\s+hiệu\s+hóa|tat|vo\s+hieu\s+hoa)\s+(toàn\s+bộ\s+)?(lớp\s+)?(xác\s+nhận|capabilityguard|chính\s+sách|bảo\s+mật|idempotency)/i,
+  /execute\s+(tool|database\s+mutation|raw\s+sql|script)/i,
+  /(ghi\s+thẳng|ghi\s+truc\s+tiep|can\s+thiep\s+truc\s+tiep)\s+(vào\s+)?(indexeddb|database|db|sổ\s+cái)/i,
   /<script[\s>]/i,
   /javascript:/i,
   /eval\s*\(/i,
-  /bạn\s+là\s+(admin|root|chủ\s+hệ\s+thống|siêu\s+quản\s+trị)/i,
+  /bạn\s+là\s+(admin|root|chủ\s+hệ\s+thống|siêu\s+quản\s+trị|chủ\s+sở\s+hữu\s+tối\s+cao)/i,
   /ban\s+la\s+(admin|root)/i,
   /admin\s+root/i,
   /root\s+admin/i,
+  /hack\s+hệ\s+thống|hack\s+he\s+thong/i,
+  /xóa\s+bảng\s+(movements|levels|products|customers|sales|orders)/i,
+  /drop\s+table/i,
   /xóa\s+sạch\s+(kho|dữ\s+liệu|data|db|cơ\s+sở)/i,
   /xoa\s+sach\s+(kho|du\s+lieu|data|db)/i,
+  /purge\s+(all\s+)?audit\s+logs/i,
+  /(chuyển|chuyen)\s+toàn\s+bộ\s+tiền\s+quỹ/i,
+  /tự\s+động\s+xác\s+nhận\s+tất\s+cả/i,
+  /cấp\s+quyền\s+owner/i,
 ];
 
 /**
@@ -427,4 +449,22 @@ export function detectPromptInjection(prompt) {
     }
   }
   return { isInjection: false };
+}
+
+/**
+ * Detect attempts by users to elevate their role or bypass role constraints.
+ * @param {string} prompt
+ * @returns {boolean}
+ */
+export function detectRoleElevationAttempt(prompt) {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const p = prompt.toLowerCase();
+  return (
+    p.includes('nang quyen') || p.includes('nâng quyền') ||
+    p.includes('cap quyen') || p.includes('cấp quyền') ||
+    p.includes('chuyen vai tro') || p.includes('chuyển vai trò') ||
+    p.includes('mo quyen') || p.includes('mở quyền') ||
+    p.includes('bo qua kiem tra vai tro') || p.includes('bỏ qua kiểm tra vai trò') ||
+    p.includes('elevate role') || p.includes('grant permission')
+  );
 }
