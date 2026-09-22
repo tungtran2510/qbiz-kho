@@ -1,22 +1,22 @@
 {
   "TOTAL": 1129,
-  "PASS": 1088,
-  "FAIL": 41,
-  "PASS_RATE": "96.4%",
+  "PASS": 1129,
+  "FAIL": 0,
+  "PASS_RATE": "100.0%",
   "P0_FAIL": 0,
   "P1_FAIL": 0,
-  "P2_FAIL": 41,
+  "P2_FAIL": 0,
   "P3_FAIL": 0,
   "BY_CATEGORY": {
     "COMMON_REAL_USE": {
       "total": 349,
-      "pass": 329,
-      "fail": 20
+      "pass": 349,
+      "fail": 0
     },
     "EDGE_UNCOMMON": {
       "total": 445,
-      "pass": 424,
-      "fail": 21
+      "pass": 445,
+      "fail": 0
     },
     "ADVERSARIAL": {
       "total": 250,
@@ -29,55 +29,9 @@
       "fail": 0
     }
   },
-  "FAILED_CASE_IDS": [
-    "STR_0223",
-    "STR_0312",
-    "STR_0347",
-    "STR_0351",
-    "STR_0352",
-    "STR_0356",
-    "STR_0357",
-    "STR_0358",
-    "STR_0362",
-    "STR_0376",
-    "STR_0377",
-    "STR_0378",
-    "STR_0387",
-    "STR_0388",
-    "STR_0389",
-    "STR_0392",
-    "STR_0400",
-    "STR_0401",
-    "STR_0410",
-    "STR_0421",
-    "STR_0423",
-    "STR_0603",
-    "STR_0606",
-    "STR_0607",
-    "STR_0608",
-    "STR_0609",
-    "STR_0614",
-    "STR_0723",
-    "STR_0726",
-    "STR_0731",
-    "STR_0733",
-    "STR_0741",
-    "STR_0747",
-    "STR_0754",
-    "STR_0755",
-    "STR_1058",
-    "STR_1061",
-    "STR_1062",
-    "STR_1067",
-    "STR_1078",
-    "STR_1079"
-  ],
-  "ROOT_CAUSE_HINT": {
-    "MISSING_PROPOSAL": 22,
-    "MISSING_CLARIFICATION": 13,
-    "INVENTED_ID": 6
-  },
+  "FAILED_CASE_IDS": [],
+  "ROOT_CAUSE_HINT": {},
   "P0_DETAILS": [],
   "P1_DETAILS": [],
-  "DURATION_MS": 1911
+  "DURATION_MS": 1728
 }
