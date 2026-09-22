@@ -377,7 +377,8 @@ export function sanitizeDataBoundary(data) {
 
 const INJECTION_PATTERNS = [
   /ignore\s+(all\s+)?(previous|prior)\s+(instructions|directions|commands|rules|constraints)/i,
-  /bỏ\s+qua\s+(hết|tất\s+cả)?\s*(các\s+)?(chỉ\s+dẫn|quy\s+tắc|ràng\s+buộc|mệnh\s+lệnh)/i,
+  /bỏ\s+qua\s+(hết|tất\s+cả|mọi)?\s*(các\s+)?(chỉ\s+dẫn|quy\s+tắc|ràng\s+buộc|mệnh\s+lệnh)/i,
+  /bo\s+qua\s+(het|tat\s+ca|moi)?\s*(cac\s+)?(chi\s+dan|quy\s+tac|rang\s+buoc|menh\s+lenh)/i,
   /system\s*prompt/i,
   /you\s+are\s+now\s+(in\s+developer\s+mode|a\s+developer|unrestricted)/i,
   /act\s+as\s+(an\s+unfiltered|a\s+malicious|system\s+root|admin)/i,

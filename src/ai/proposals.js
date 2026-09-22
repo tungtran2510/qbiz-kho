@@ -173,11 +173,16 @@ export function createProposal({
   const createdAt = new Date(now).toISOString();
   const expiresAt = new Date(now + ttlSeconds * 1000).toISOString();
 
+  const propId = uid();
   const proposal = {
-    id: uid(),
+    id: propId,
+    proposal_id: propId,
     request_id: requestId || null,
+    source_turn_id: requestId || null,
     skill_id: skillId || null,
+    domain: (intent && (intent.includes('transfer') || intent.includes('receipt') || intent.includes('stocktake') || intent.includes('stock'))) ? 'inventory' : 'sales',
     intent: intent || 'unknown',
+    status: status,
     risk_level: risk.riskLevel,
     actor_id: actor.id || 'user_active',
     actor_role: actor.role || 'owner',
@@ -185,7 +190,11 @@ export function createProposal({
     warehouse_id: parameters.warehouseId || parameters.fromWarehouseId || contextSnapshot?.warehouse_id || '',
     entities: entities,
     parameters: parameters,
+    params: parameters,
+    required_permissions: risk.requiredPermissions || (risk.riskLevel === 'HIGH_RISK_WRITE' ? ['ADMIN'] : (risk.riskLevel === 'WRITE' ? ['WRITE'] : ['READ'])),
     human_summary: humanSummary,
+    impact_summary: humanSummary,
+    suggested_next_action: risk.requiresConfirmation ? 'Chờ người dùng xác nhận' : 'Thực thi ngay',
     required_confirmation: risk.requiresConfirmation,
     validation_state: {
       isValid: true,
@@ -195,10 +204,10 @@ export function createProposal({
     context_snapshot: contextSnapshot,
     context_version: contextSnapshot?.context_version || 1,
     inventory_snapshot: inventorySnapshot,
+    execution_payload: parameters,
     isStale: false,
     created_at: createdAt,
     expires_at: expiresAt,
-    status: status,
     confirmation_fingerprint: null,
     confirmed_by: null,
     confirmed_at: null,
@@ -308,14 +317,22 @@ export function confirmProposal(proposal, currentState, actor = { id: 'owner_1',
   // Step 8: Stale Detection check before confirmation
   if (proposal.inventory_snapshot && currentState?.data) {
     let isStale = false;
+    let staleReason = '';
     const snap = proposal.inventory_snapshot;
     if (Array.isArray(snap.lines)) {
       const whId = snap.fromWarehouseId || proposal.parameters?.fromWarehouseId;
       for (const snapLine of snap.lines) {
         const curLevel = levelFor(currentState.data, snapLine.productId, whId);
         const curOnHand = Number(curLevel?.onHand || 0);
-        if (curOnHand !== Number(snapLine.onHand || 0)) {
+        const curAvailable = curLevel ? available(curLevel) : 0;
+        const reqQty = Number((proposal.parameters?.lines || []).find(l => l.productId === snapLine.productId)?.qty || 0);
+        if (curOnHand !== Number(snapLine.onHand || 0) || (reqQty > 0 && curAvailable < reqQty)) {
           isStale = true;
+          if (reqQty > 0 && curAvailable < reqQty) {
+            staleReason = `Số lượng khả dụng đã thay đổi: còn ${curAvailable}, yêu cầu ${reqQty}`;
+          } else {
+            staleReason = `Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất (tồn ban đầu: ${snapLine.onHand}, hiện tại: ${curOnHand}).`;
+          }
           break;
         }
       }
@@ -325,8 +342,15 @@ export function confirmProposal(proposal, currentState, actor = { id: 'owner_1',
       if (prodId && whId) {
         const curLevel = levelFor(currentState.data, prodId, whId);
         const curOnHand = Number(curLevel?.onHand || 0);
-        if (curOnHand !== Number(snap.onHand || 0)) {
+        const curAvailable = curLevel ? available(curLevel) : 0;
+        const reqQty = Number(proposal.parameters?.qty || 0);
+        if (curOnHand !== Number(snap.onHand || 0) || (reqQty > 0 && curAvailable < reqQty)) {
           isStale = true;
+          if (reqQty > 0 && curAvailable < reqQty) {
+            staleReason = `Số lượng khả dụng đã thay đổi: còn ${curAvailable}, yêu cầu ${reqQty}`;
+          } else {
+            staleReason = `Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất (tồn ban đầu: ${snap.onHand}, hiện tại: ${curOnHand}).`;
+          }
         }
       }
     }
@@ -341,7 +365,7 @@ export function confirmProposal(proposal, currentState, actor = { id: 'owner_1',
         success: false,
         isStale: true,
         proposal,
-        message: 'Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất.',
+        message: staleReason || 'Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất.',
       };
     }
   }

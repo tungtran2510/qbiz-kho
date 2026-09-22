@@ -943,9 +943,16 @@ export async function routeIntent(prompt, context, state) {
     return { ...res, skillId: 'check-stock', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
   }
 
-  // 8. Generic Product Search (Tìm sản phẩm X, Tra mã SKU X, hoặc gõ trực tiếp tên mặt hàng)
+  // 8. Shop Memory & Notes Query
+  if (p.includes('tri nho') || p.includes('ghi nho') || p.includes('luu y') || p.includes('ghi chu')) {
+    const res = await executeSkill('memory-retrieve', { query: rawPrompt }, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'memory-retrieve', tier: 0 });
+    return { ...res, skillId: 'memory-retrieve', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 9. Generic Product Search (Tìm sản phẩm X, Tra mã SKU X, hoặc gõ trực tiếp tên mặt hàng)
   let cleanQuery = null;
-  if (p.startsWith('tim ') || p.startsWith('tra ') || p.includes('san pham')) {
+  if (p.startsWith('tim ') || p.startsWith('tra ') || p.startsWith('san pham ') || (p.includes('san pham') && !p.includes('?') && !p.includes('khong'))) {
     cleanQuery = rawPrompt
       .replace(/^tìm\s+(sản phẩm\s+)?/i, '')
       .replace(/^tra\s+(mã\s+)?/i, '')
@@ -964,13 +971,6 @@ export async function routeIntent(prompt, context, state) {
     }
     logAuditEvent('SKILL_EXECUTED', { skillId: 'search-product', tier: 0 });
     return { ...res, skillId: 'search-product', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
-  }
-
-  // 9. Shop Memory Query
-  if (p.includes('tri nho') || p.includes('ghi nho') || p.includes('luu y')) {
-    const res = await executeSkill('memory-retrieve', { query: rawPrompt }, context, state);
-    logAuditEvent('SKILL_EXECUTED', { skillId: 'memory-retrieve', tier: 0 });
-    return { ...res, skillId: 'memory-retrieve', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
   }
 
   // ==========================================

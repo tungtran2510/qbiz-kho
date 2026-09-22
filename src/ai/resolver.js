@@ -55,8 +55,8 @@ function formatResult(candidates) {
   const top = candidates.slice(0, 5);
   
   const bestMatch = top.length > 0 && top[0].score >= 50 ? top[0] : null;
-  const isAmbiguous = bestMatch && top.length >= 2 && (top[0].score - top[1].score < AMBIGUITY_THRESHOLD);
-  const isExact = bestMatch && bestMatch.score >= SCORE.EXACT_NAME;
+  const isExact = Boolean(bestMatch && (bestMatch.score >= SCORE.EXACT_NAME || bestMatch.matchType === 'code'));
+  const isAmbiguous = Boolean(bestMatch && bestMatch.matchType !== 'code' && top.length >= 2 && (top[0].score - top[1].score < AMBIGUITY_THRESHOLD));
 
   return {
     candidates: top,
@@ -118,6 +118,7 @@ export function resolveProduct(query, products, context = {}) {
  */
 export function resolveCustomer(query, customers, context = {}) {
   const normQuery = norm(query);
+  const cleanQuery = normQuery.replace(/^(chi|anh|em|co|bac|chu|ong|ba|ban|khach|kh)\s+/i, '').trim() || normQuery;
   const candidates = [];
 
   for (const c of customers) {
@@ -131,11 +132,11 @@ export function resolveCustomer(query, customers, context = {}) {
     const taxId = norm(c.taxId || '');
     const name = norm(c.name || '');
 
-    if (normQuery && (phone === normQuery || code === normQuery || taxId === normQuery)) {
+    if (normQuery && (phone === normQuery || code === normQuery || taxId === normQuery || phone === cleanQuery || code === cleanQuery)) {
       score = SCORE.EXACT_CODE;
       matchType = 'code';
     } else {
-      const fScore = fuzzyScore(normQuery, name);
+      const fScore = Math.max(fuzzyScore(normQuery, name), fuzzyScore(cleanQuery, name));
       if (fScore === 100) {
         score = SCORE.EXACT_NAME;
         matchType = 'name';

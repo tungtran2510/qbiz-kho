@@ -78,6 +78,11 @@ const ROUTE_CHIPS = {
     'Lập phiếu chi',
     'Sổ quỹ',
   ],
+  returns: [
+    'Tạo phiếu đổi trả',
+    'Lịch sử đổi trả',
+    'Chính sách trả hàng',
+  ],
 };
 
 function esc(s) {
@@ -613,6 +618,7 @@ function getRouteLabel(route) {
     settings: 'Cài đặt',
     customers: 'Khách hàng',
     shifts: 'Ca bán hàng',
+    returns: 'Đổi trả hàng',
   };
   return labels[route] || route;
 }

@@ -162,9 +162,15 @@ export function buildContextEnvelope(appState = {}, overrides = {}) {
     ? appState.warehouse
     : (appState.saleDraft?.warehouseId || getLastResolvedWarehouse() || defaultWarehouse);
 
-  // Active modal or screen entity bindings
-  const boundProductId = overrides.current_product_id || appState.currentProductId || null;
-  const boundOrderId = overrides.current_order_id || appState.currentOrderId || null;
+  const currentRoute = appState.page || 'dashboard';
+  const currentScreen = currentRoute === 'sales' ? (appState.saleStep || 'browse') : currentRoute;
+
+  // Active modal or screen entity bindings (scoped to active route/modal)
+  const isProductScope = overrides.current_product_id || currentRoute === 'products' || (typeof document !== 'undefined' && document.getElementById('modalRoot')?.querySelector('.product-facts, .product-money'));
+  const isOrderScope = overrides.current_order_id || currentRoute === 'orders' || (typeof document !== 'undefined' && document.getElementById('modalRoot')?.querySelector('.order-detail'));
+
+  const boundProductId = overrides.current_product_id || (isProductScope ? (appState.currentProductId || null) : null);
+  const boundOrderId = overrides.current_order_id || (isOrderScope ? (appState.currentOrderId || null) : null);
   const boundSaleId = overrides.current_sale_id || appState.currentSaleId || null;
   const boundCustomerId = overrides.current_customer_id || appState.saleCustomer?.id || appState.currentCustomerId || null;
   const boundSupplierId = overrides.current_supplier_id || appState.currentSupplierId || null;
@@ -181,9 +187,6 @@ export function buildContextEnvelope(appState = {}, overrides = {}) {
     const ord = (d.orders || []).find(o => o.id === boundOrderId);
     if (ord) entityVersion = ord.version || ord.updated_at || 1;
   }
-
-  const currentRoute = appState.page || 'dashboard';
-  const currentScreen = currentRoute === 'sales' ? (appState.saleStep || 'browse') : currentRoute;
 
   // Active actor
   const actor = overrides.actor || currentActor;

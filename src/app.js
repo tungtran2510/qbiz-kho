@@ -94,6 +94,10 @@ function setTitle(title,eyebrow='QBiz Kho'){ $('#pageTitle').textContent=title; 
 function historyState(){return {qbiz:true,page:state.page,saleStep:state.saleStep}}
 function navigate(page,{replace=false,fromHistory=false}={}){
   const previous=state.page;
+  if(previous!==page){
+    if($('#modalRoot')) $('#modalRoot').innerHTML='';
+    state.currentProductId=null;state.currentOrderId=null;state.currentSaleId=null;
+  }
   state.page=page;
   if(page==='sales'&&(previous!=='sales'||state.saleStep==='success')){state.saleStep='browse';state.saleTrail=[];}
   if(!fromHistory){const method=replace?'replaceState':'pushState';history[method](historyState(),'');}
