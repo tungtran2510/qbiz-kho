@@ -77,6 +77,14 @@ const ICONS={
   ,'clock':'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
   ,'check-circle':'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
   ,'archive':'<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>'
+  ,'briefcase':'<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>'
+  ,'shopping-bag':'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>'
+  ,'coffee':'<path d="M10 2v2M14 2v2M17 8h1a4 4 0 1 1 0 8h-1M6 8h11v9a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4ZM6 2v2"/>'
+  ,'boxes':'<path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85M7 16.5l5-3M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3M17 16.5l4.74-2.85M17 16.5v5.17M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15M12 8l4.74-2.85M12 8v5.5"/>'
+  ,'sparkles':'<path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>'
+  ,'user-check':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>'
+  ,'layout-grid':'<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>'
+  ,'check':'<polyline points="20 6 9 17 4 12"/>'
 };
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
@@ -889,9 +897,11 @@ function renderHistory(){
 function renderSettings(){
   setTitle('Cài đặt','QBiz');
   const d=state.data;
+  const currentMode = businessProfileModule.getBusinessProfile?.() || {};
+  const currentModeName = currentMode.name || 'Cửa hàng chung';
   $('#content').innerHTML=`
   <section class="settings-center">
-    <section class="card section-card settings-section"><div class="section-head"><div><h2>Cửa hàng</h2><p>Thông tin và quy tắc vận hành.</p></div></div><div class="settings-list"><button data-action="business-profile"><span>${icon('store')}<b>Thông tin cửa hàng</b><small>Tên, liên hệ, địa chỉ lấy và hoàn hàng</small></span>${icon('chevron-right')}</button><button data-action="sale-preferences"><span>${icon('shopping-cart')}<b>Bán hàng & thanh toán</b><small>Kho và phương thức thanh toán mặc định</small></span>${icon('chevron-right')}</button><button data-action="warehouse-management"><span>${icon('arrow-left-right')}<b>Kho hàng</b><small>${d.warehouses.length} kho đang hoạt động</small></span>${icon('chevron-right')}</button></div></section>
+    <section class="card section-card settings-section"><div class="section-head"><div><h2>Cửa hàng</h2><p>Thông tin và quy tắc vận hành.</p></div></div><div class="settings-list"><button data-action="business-profile"><span>${icon('store')}<b>Thông tin cửa hàng</b><small>Tên, liên hệ, địa chỉ lấy và hoàn hàng</small></span>${icon('chevron-right')}</button><button data-action="business-mode-selector"><span>${icon('briefcase')}<b>Chế độ kinh doanh</b><small>${esc(currentModeName)}</small></span>${icon('chevron-right')}</button><button data-action="sale-preferences"><span>${icon('shopping-cart')}<b>Bán hàng & thanh toán</b><small>Kho và phương thức thanh toán mặc định</small></span>${icon('chevron-right')}</button><button data-action="warehouse-management"><span>${icon('arrow-left-right')}<b>Kho hàng</b><small>${d.warehouses.length} kho đang hoạt động</small></span>${icon('chevron-right')}</button></div></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Thiết lập</h2></div></div><div class="settings-list"><button data-page="prints"><span>${icon('printer')}<b>In & thiết bị</b><small>Máy in, mẫu in và nhật ký</small></span>${icon('chevron-right')}</button><button data-action="data-settings"><span>${icon('file-text')}<b>Dữ liệu</b><small>Nhập, xuất, sao lưu và khôi phục</small></span>${icon('chevron-right')}</button><button class="settings-muted" data-page="permissions"><span>${icon('user')}<b>Người dùng & phân quyền</b><small>Vai trò và quyền truy cập · sắp có</small></span>${icon('chevron-right')}</button></div></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Đồng bộ</h2><p>${CONFIG.SYNC_MODE==='api'?'Đang kết nối QBiz':'Dữ liệu đang lưu trên thiết bị này.'}</p></div></div><div class="surface-callout"><span class="surface-status ${CONFIG.SYNC_MODE==='api'?'working':'prepared'}">${CONFIG.SYNC_MODE==='api'?'Đang đồng bộ':'Chưa kết nối'}</span><p>${CONFIG.SYNC_MODE==='api'?'Theo dõi trạng thái đồng bộ tại đây.':'Chưa bật đồng bộ nhiều thiết bị.'}</p></div><button class="secondary-btn" data-action="sync-now">${CONFIG.SYNC_MODE==='api'?'Đồng bộ ngay':'Kiểm tra dữ liệu chờ'}</button></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Tiện ích nâng cao</h2><p>Bảng giá, khuyến mại, sổ quỹ, công nợ và mô-đun.</p></div></div><div class="settings-list"><button data-page="advanced"><span>${icon('settings-2')}<b>Tiện ích nâng cao</b><small>Bảng giá, khuyến mại, combo, tồn đầu, in tem, sổ quỹ, công nợ, nhật ký, tìm kiếm toàn cục</small></span>${icon('chevron-right')}</button></div></section>
@@ -917,6 +927,151 @@ async function openBusinessProfile(){
   urlInput.addEventListener('input',draw);
   $('#profileLogoFile',root).addEventListener('change',async e=>{const file=e.target.files?.[0];if(file?.type.startsWith('image/')){urlInput.value=await optimizeImage(file);draw();}});
 }
+
+function openBusinessModeModal(){
+  const currentProfile = businessProfileModule.getBusinessProfile() || {};
+  let selectedId = currentProfile.profile_id || 'general';
+  const options = businessProfileModule.BUSINESS_MODE_OPTIONS || [];
+  const capLabels = businessProfileModule.CAPABILITY_LABELS || {};
+
+  function renderModalBody(){
+    const activeOpt = options.find(o=>o.id===selectedId)||options[0]||{};
+    const targetPreset = businessProfileModule.PROFILE_PRESETS[selectedId] || businessProfileModule.PROFILE_PRESETS.general;
+    const caps = targetPreset?.capabilities || {};
+    const isCurrent = (selectedId === (currentProfile.profile_id || 'general'));
+
+    return `
+      <div class="business-mode-container">
+        <div class="mode-current-banner">
+          <div>
+            <span class="mode-badge-label">Đang sử dụng:</span>
+            <strong class="mode-badge-name">${esc(currentProfile.name || 'Cửa hàng chung')}</strong>
+          </div>
+          ${!isCurrent ? `<button type="button" class="ghost-btn btn-sm" id="btnRestoreCurrent">Chọn lại chế độ hiện tại</button>` : ''}
+        </div>
+
+        <div class="mode-section-title">Chọn loại hình kinh doanh</div>
+        <div class="mode-grid">
+          ${options.map(opt => `
+            <div class="mode-card ${opt.id === selectedId ? 'active' : ''}" data-mode-id="${opt.id}">
+              <div class="mode-card-header">
+                <span class="mode-card-icon">${icon(opt.icon || 'store')}</span>
+                <span class="mode-card-name">${esc(opt.name)}</span>
+                ${opt.id === (currentProfile.profile_id || 'general') ? '<span class="mode-pill-current">Đang dùng</span>' : ''}
+              </div>
+              <div class="mode-card-desc">${esc(opt.desc)}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="mode-preview-section">
+          <div class="mode-section-title">Cấu hình phù hợp với bạn</div>
+          <div class="mode-caps-grid">
+            ${Object.entries(capLabels).map(([key, label]) => {
+              const enabled = Boolean(caps[key]);
+              return `
+                <div class="mode-cap-item ${enabled ? 'enabled' : 'disabled'}">
+                  <span class="cap-indicator">${enabled ? '✓' : '○'}</span>
+                  <span class="cap-label">${esc(label)}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="mode-recommended-section">
+            <span class="mode-recommended-title">Đề xuất sử dụng:</span>
+            <ul class="mode-recommended-list">
+              ${(activeOpt.recommended_uses || []).map(use => `<li>${esc(use)}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+
+        <div class="mode-ui-placeholder-card">
+          <div class="mode-ui-placeholder-head">
+            <div>
+              <strong>Kiểu giao diện</strong>
+              <p>Tùy chỉnh cách QBiz hiển thị theo nhu cầu</p>
+            </div>
+            <span class="mode-badge-soon">Sắp có</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function updateView(root){
+    const bodyEl = $('.modal-body', root);
+    if(bodyEl) bodyEl.innerHTML = renderModalBody();
+    bindEvents(root);
+  }
+
+  function bindEvents(root){
+    const isCurrent = (selectedId === (currentProfile.profile_id || 'general'));
+    const submitBtn = $('#modalSubmitMode', root);
+    if(submitBtn){
+      submitBtn.disabled = isCurrent;
+      submitBtn.classList.toggle('disabled', isCurrent);
+    }
+
+    $$('.mode-card', root).forEach(card => {
+      card.onclick = () => {
+        const modeId = card.dataset.modeId;
+        if(modeId && modeId !== selectedId){
+          selectedId = modeId;
+          updateView(root);
+        }
+      };
+    });
+
+    const restoreBtn = $('#btnRestoreCurrent', root);
+    if(restoreBtn){
+      restoreBtn.onclick = () => {
+        selectedId = currentProfile.profile_id || 'general';
+        updateView(root);
+      };
+    }
+  }
+
+  openModal({
+    title: 'Chế độ kinh doanh',
+    sub: 'Tối ưu chức năng theo đúng loại hình kinh doanh của bạn.',
+    fullScreen: true,
+    hideSubmit: true,
+    footer: `
+      <button class="secondary-btn" data-close>Đóng</button>
+      <button class="primary-btn" id="modalSubmitMode">Áp dụng chế độ</button>
+    `,
+    body: renderModalBody()
+  });
+
+  const root = $('#modalRoot');
+  bindEvents(root);
+
+  $('#modalSubmitMode', root).onclick = async () => {
+    const isCurrent = (selectedId === (currentProfile.profile_id || 'general'));
+    if (isCurrent) return;
+
+    const targetOpt = options.find(o => o.id === selectedId) || { name: selectedId };
+    if (typeof window.confirm === 'function' && !window.confirm(`Bạn có chắc chắn muốn chuyển sang chế độ kinh doanh "${targetOpt.name}" không?`)) {
+      return;
+    }
+
+    try {
+      const res = await businessProfileModule.setBusinessProfile(selectedId);
+      if (res && res.success) {
+        state.businessProfile = businessProfileModule.getBusinessProfile();
+        root.innerHTML = '';
+        renderSettings();
+        toast(`Đã chuyển sang chế độ ${targetOpt.name}.`, 'ok');
+      } else {
+        toast('Không thể áp dụng chế độ này.', 'error');
+      }
+    } catch (err) {
+      toast(err.message || 'Lỗi khi lưu chế độ kinh doanh.', 'error');
+    }
+  };
+}
+
 async function openSalePreferences(){
   const prefs={default_warehouse_id:'',default_payment:'cash',...await settingValue(SALES_SETTING,{})};
   openModal({title:'Bán hàng',sub:'Mặc định cho thiết bị này.',body:`<div class="form-grid"><div class="field"><label>Kho bán mặc định</label><select id="salesWarehouse"><option value="">Chọn khi lập phiếu</option>${state.data.warehouses.map(w=>`<option value="${w.id}" ${prefs.default_warehouse_id===w.id?'selected':''}>${esc(w.name)}</option>`).join('')}</select></div><div class="field"><label>Thanh toán mặc định</label><select id="salesPayment"><option value="cash" ${prefs.default_payment==='cash'?'selected':''}>Tiền mặt</option><option value="transfer" ${prefs.default_payment==='transfer'?'selected':''}>Chuyển khoản</option><option value="qr" ${prefs.default_payment==='qr'?'selected':''}>QR</option></select></div></div>`,submitText:'Lưu cài đặt',onSubmit:r=>saveLocalSetting(SALES_SETTING,{default_warehouse_id:$('#salesWarehouse',r).value,default_payment:$('#salesPayment',r).value})});
@@ -2157,6 +2312,7 @@ document.addEventListener('click', async e=>{
   if(action==='customer-directory'){state.page='customers';return render();}
   if(action==='device-center') return openDeviceCenter();
   if(action==='business-profile') return openBusinessProfile();
+  if(action==='business-mode-selector') return openBusinessModeModal();
   if(action==='sale-preferences') return openSalePreferences();
   if(action==='connections-settings') return openConnectionSettings();
   if(action==='data-settings') return openDataSettings();
@@ -2261,7 +2417,7 @@ async function boot(){
   state.businessProfile = businessProfileModule.getBusinessProfile();
   history.replaceState(historyState(),'');render();
   initAiUI(state);
-  window.__qbiz_app__ = { state, navigate, openQuick, openProduct, openOrderDetail, openTransaction, refresh, closeModal: () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; updateContextAndChips(); }, ai: aiModule, businessProfile: businessProfileModule };
+  window.__qbiz_app__ = { state, navigate, render, openQuick, openProduct, openOrderDetail, openTransaction, refresh, closeModal: () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; updateContextAndChips(); }, ai: aiModule, businessProfile: businessProfileModule };
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
   const params=new URLSearchParams(location.search);
   const action=params.get('action');

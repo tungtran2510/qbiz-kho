@@ -42,6 +42,7 @@ async def run_foundation_tests():
 
         page.on("console", on_console)
         page.on("pageerror", lambda err: console_errors.append(f"[pageerror] {err}"))
+        page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept()))
 
         # ----------------------------------------------------
         # Prerequisite: Regression Harnesses
@@ -69,6 +70,19 @@ async def run_foundation_tests():
         print(f"\n--- Loading Main App from {BASE_URL} ---")
         await page.goto(BASE_URL)
         await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        initial_counts = await page.evaluate("""() => {
+            const state = window.__qbiz_app__.state;
+            return {
+                products: (state.data?.products || []).length,
+                warehouses: (state.data?.warehouses || []).length,
+                movements: (state.data?.movements || []).length,
+                orders: (state.data?.orders || []).length,
+                sales: (state.data?.sales || []).length,
+                customers: (state.data?.customers || []).length,
+                suppliers: (state.data?.suppliers || []).length,
+            };
+        }""")
 
         # ----------------------------------------------------
         # T01: DEFAULT Profile & App Behavior
@@ -575,6 +589,324 @@ async def run_foundation_tests():
         print(f"T11 Result: {t11_res}")
         t11_pass = t11_res["storeNotMutated"] and t11_res["isGeneral"] and t11_res["hasInv"]
         results["T11_LEGACY_COLLISION_SAFETY"] = t11_pass
+
+        # ----------------------------------------------------
+        # T12: Settings mở Chế độ kinh doanh
+        # ----------------------------------------------------
+        print("\n--- [T12] SETTINGS MỞ CHẾ ĐỘ KINH DOANH ---")
+        await page.evaluate("""() => {
+            window.__qbiz_app__.state.page = 'settings';
+            window.__qbiz_app__.render();
+        }""")
+        await page.wait_for_selector('[data-action="business-mode-selector"]')
+        await page.click('[data-action="business-mode-selector"]')
+        await page.wait_for_selector('.business-mode-container')
+
+        t12_check = await page.evaluate("""() => {
+            const container = document.querySelector('.business-mode-container');
+            const title = document.querySelector('.modal-head h3')?.textContent;
+            const cardCount = document.querySelectorAll('.mode-card').length;
+            return {
+                hasContainer: Boolean(container),
+                titleCorrect: title === 'Chế độ kinh doanh',
+                cardCount: cardCount
+            };
+        }""")
+        print(f"T12 Result: {t12_check}")
+        t12_pass = t12_check["hasContainer"] and t12_check["titleCorrect"] and t12_check["cardCount"] == 7
+        results["T12_SETTINGS_OPEN_MODE_SELECTOR"] = t12_pass
+
+        # ----------------------------------------------------
+        # T13: Current mode hiển thị đúng
+        # ----------------------------------------------------
+        print("\n--- [T13] CURRENT MODE HIỂN THỊ ĐÚNG ---")
+        t13_check = await page.evaluate("""() => {
+            const badgeName = document.querySelector('.mode-badge-name')?.textContent;
+            const activeCard = document.querySelector('.mode-card.active');
+            const activeId = activeCard?.dataset.modeId;
+            const currentPill = activeCard?.querySelector('.mode-pill-current')?.textContent;
+            return {
+                badgeName,
+                activeId,
+                currentPill
+            };
+        }""")
+        print(f"T13 Result: {t13_check}")
+        t13_pass = (
+            t13_check["badgeName"] in ["Cửa hàng chung", "general"] and
+            t13_check["activeId"] == "general" and
+            t13_check["currentPill"] == "Đang dùng"
+        )
+        results["T13_CURRENT_MODE_DISPLAY"] = t13_pass
+
+        # ----------------------------------------------------
+        # T14: Chọn profile khác nhưng chưa Apply: persistence chưa đổi
+        # ----------------------------------------------------
+        print("\n--- [T14] CHỌN PROFILE KHÁC NHƯNG CHƯA APPLY ---")
+        # Click card 'retail'
+        await page.click('.mode-card[data-mode-id="retail"]')
+        await page.wait_for_timeout(200)
+
+        t14_preview_check = await page.evaluate("""() => {
+            const retailCardActive = document.querySelector('.mode-card[data-mode-id="retail"]')?.classList.contains('active');
+            const submitBtnDisabled = document.querySelector('#modalSubmitMode')?.disabled;
+            return { retailCardActive, submitBtnDisabled };
+        }""")
+        print(f"T14 Preview Check: {t14_preview_check}")
+
+        # Close modal without applying
+        await page.click('.modal [data-close]')
+        await page.wait_for_selector('.business-mode-container', state='detached')
+
+        # Check persistence: must still be 'general'
+        t14_persist_check = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            const ls = localStorage.getItem('qbiz_business_mode_profile');
+            let lsObj = null;
+            try { lsObj = JSON.parse(ls); } catch (_) {}
+            return {
+                profileId: cur.profile_id,
+                lsId: lsObj?.profile_id
+            };
+        }""")
+        print(f"T14 Persistence Check: {t14_persist_check}")
+        t14_pass = (
+            t14_preview_check["retailCardActive"] and
+            t14_preview_check["submitBtnDisabled"] is False and
+            t14_persist_check["profileId"] == "general" and
+            t14_persist_check["lsId"] in ["general", None]
+        )
+        results["T14_SELECTION_WITHOUT_APPLY_SAFETY"] = t14_pass
+
+        # ----------------------------------------------------
+        # T15: Apply: profile đổi thật
+        # ----------------------------------------------------
+        print("\n--- [T15] APPLY: PROFILE ĐỔI THẬT ---")
+        # Re-open mode selector
+        await page.click('[data-action="business-mode-selector"]')
+        await page.wait_for_selector('.business-mode-container')
+
+        # Select 'retail'
+        await page.click('.mode-card[data-mode-id="retail"]')
+        await page.wait_for_timeout(200)
+
+        # Click Apply
+        await page.click('#modalSubmitMode')
+        await page.wait_for_selector('.business-mode-container', state='detached')
+
+        t15_res = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open('qbiz_kho_v1', 12);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            const tx = db.transaction('settings', 'readonly');
+            const req = tx.objectStore('settings').get('qbiz_business_mode_profile');
+            const modeRec = await new Promise(resolve => req.onsuccess = () => resolve(req.result));
+            return {
+                activeId: cur.profile_id,
+                activeName: cur.name,
+                hasRetail: bp.hasCapability('retail'),
+                idbModeId: modeRec?.value?.profile_id
+            };
+        }""")
+        print(f"T15 Result: {t15_res}")
+        t15_pass = (
+            t15_res["activeId"] == "retail" and
+            t15_res["activeName"] == "Bán lẻ" and
+            t15_res["hasRetail"] is True and
+            t15_res["idbModeId"] == "retail"
+        )
+        results["T15_APPLY_PERSISTENCE_SUCCESS"] = t15_pass
+
+        # ----------------------------------------------------
+        # T16: Reload: profile còn
+        # ----------------------------------------------------
+        print("\n--- [T16] RELOAD: PROFILE CÒN ---")
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        t16_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            return {
+                profileId: cur.profile_id,
+                name: cur.name,
+                hasRetail: bp.hasCapability('retail'),
+                hasService: bp.hasCapability('service')
+            };
+        }""")
+        print(f"T16 Result: {t16_res}")
+        t16_pass = (
+            t16_res["profileId"] == "retail" and
+            t16_res["name"] == "Bán lẻ" and
+            t16_res["hasRetail"] is True and
+            t16_res["hasService"] is False
+        )
+        results["T16_RELOAD_PERSISTENCE"] = t16_pass
+
+        # ----------------------------------------------------
+        # T17: Chọn lại DEFAULT: hoạt động
+        # ----------------------------------------------------
+        print("\n--- [T17] CHỌN LẠI DEFAULT: HOẠT ĐỘNG ---")
+        await page.evaluate("""() => {
+            window.__qbiz_app__.state.page = 'settings';
+            window.__qbiz_app__.render();
+        }""")
+        await page.wait_for_selector('[data-action="business-mode-selector"]')
+        await page.click('[data-action="business-mode-selector"]')
+        await page.wait_for_selector('.business-mode-container')
+
+        # Select 'general' (Cửa hàng chung)
+        await page.click('.mode-card[data-mode-id="general"]')
+        await page.wait_for_timeout(200)
+
+        # Apply
+        await page.click('#modalSubmitMode')
+        await page.wait_for_selector('.business-mode-container', state='detached')
+
+        t17_res = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open('qbiz_kho_v1', 12);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            const tx = db.transaction('settings', 'readonly');
+            const req = tx.objectStore('settings').get('qbiz_business_mode_profile');
+            const modeRec = await new Promise(resolve => req.onsuccess = () => resolve(req.result));
+            return {
+                activeId: cur.profile_id,
+                activeName: cur.name,
+                idbModeId: modeRec?.value?.profile_id
+            };
+        }""")
+        print(f"T17 Result: {t17_res}")
+        t17_pass = (
+            t17_res["activeId"] == "general" and
+            t17_res["activeName"] == "Cửa hàng chung" and
+            t17_res["idbModeId"] == "general"
+        )
+        results["T17_RESTORE_DEFAULT_MODE"] = t17_pass
+
+        # ----------------------------------------------------
+        # T18: Store information: business_profile vẫn nguyên
+        # ----------------------------------------------------
+        print("\n--- [T18] STORE INFORMATION: BUSINESS_PROFILE VẪN NGUYÊN ---")
+        t18_res = await page.evaluate("""async () => {
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open('qbiz_kho_v1', 12);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            const tx = db.transaction('settings', 'readonly');
+            const req = tx.objectStore('settings').get('business_profile');
+            const storeSetting = await new Promise(resolve => req.onsuccess = () => resolve(req.result));
+            const storeVal = storeSetting?.value || {};
+            return {
+                storeName: storeVal.store_name,
+                phone: storeVal.phone,
+                address: storeVal.address,
+                bankNumber: storeVal.bank_account_number
+            };
+        }""")
+        print(f"T18 Result: {t18_res}")
+        t18_pass = (
+            t18_res["storeName"] == "QBiz Test" and
+            t18_res["phone"] == "0900000000" and
+            t18_res["address"] == "Hanoi" and
+            t18_res["bankNumber"] == "123456"
+        )
+        results["T18_STORE_PROFILE_INTACT"] = t18_pass
+
+        # ----------------------------------------------------
+        # T19: Business Mode: chỉ qbiz_business_mode_profile thay đổi
+        # ----------------------------------------------------
+        print("\n--- [T19] BUSINESS MODE: CHỈ QBIZ_BUSINESS_MODE_PROFILE THAY ĐỔI ---")
+        t19_res = await page.evaluate("""async () => {
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open('qbiz_kho_v1', 12);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            const tx = db.transaction('settings', 'readonly');
+            const store = tx.objectStore('settings');
+            const reqKeys = store.getAllKeys();
+            const keys = await new Promise(resolve => reqKeys.onsuccess = () => resolve(reqKeys.result));
+            return {
+                keys,
+                hasStoreProfile: keys.includes('business_profile'),
+                hasModeProfile: keys.includes('qbiz_business_mode_profile')
+            };
+        }""")
+        print(f"T19 Result: {t19_res}")
+        t19_pass = t19_res["hasStoreProfile"] and t19_res["hasModeProfile"]
+        results["T19_KEY_ISOLATION"] = t19_pass
+
+        # ----------------------------------------------------
+        # T20: Business data: counts không đổi
+        # ----------------------------------------------------
+        print("\n--- [T20] BUSINESS DATA: COUNTS KHÔNG ĐỔI ---")
+        t20_res = await page.evaluate("""() => {
+            const state = window.__qbiz_app__.state;
+            return {
+                products: (state.data?.products || []).length,
+                warehouses: (state.data?.warehouses || []).length,
+                movements: (state.data?.movements || []).length,
+                orders: (state.data?.orders || []).length,
+                sales: (state.data?.sales || []).length,
+                customers: (state.data?.customers || []).length,
+                suppliers: (state.data?.suppliers || []).length,
+            };
+        }""")
+        print(f"T20 Counts: {t20_res}")
+        t20_pass = (
+            t20_res["products"] == initial_counts["products"] and
+            t20_res["warehouses"] == initial_counts["warehouses"] and
+            t20_res["movements"] == initial_counts["movements"] and
+            t20_res["orders"] == initial_counts["orders"] and
+            t20_res["sales"] == initial_counts["sales"] and
+            t20_res["customers"] == initial_counts["customers"] and
+            t20_res["suppliers"] == initial_counts["suppliers"]
+        )
+        results["T20_BUSINESS_DATA_INTACT"] = t20_pass
+
+        # ----------------------------------------------------
+        # T21: UI lock: bottom nav/sidebar/dashboard không thay đổi
+        # ----------------------------------------------------
+        print("\n--- [T21] UI LOCK: BOTTOM NAV / SIDEBAR / DASHBOARD KHÔNG ĐỔI ---")
+        await page.evaluate("""() => {
+            window.__qbiz_app__.state.page = 'dashboard';
+            window.__qbiz_app__.render();
+        }""")
+        for width in [390, 412, 1440]:
+            await page.set_viewport_size({"width": width, "height": 900})
+            await page.wait_for_timeout(300)
+            overflow = await page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth")
+            print(f"Post-switch Viewport {width}px overflow: {overflow}px")
+            assert overflow <= 0, f"Post-switch overflow {overflow}px detected at {width}px!"
+
+        t21_res = await page.evaluate("""() => {
+            const title = document.getElementById('pageTitle')?.textContent;
+            const mobileNavLabels = [...document.querySelectorAll('#mobileNav button span')].map(s => s.textContent.trim());
+            const hasSidebar = Boolean(document.querySelector('.sidebar'));
+            return {
+                title,
+                mobileNavLabels,
+                hasSidebar
+            };
+        }""")
+        print(f"T21 Result: {t21_res}")
+        t21_pass = (
+            t21_res["title"] == "Tổng quan" and
+            t21_res["mobileNavLabels"] == ['Tổng quan', 'Hàng hóa', 'Bán hàng', 'Kho', 'Thêm'] and
+            t21_res["hasSidebar"] is True
+        )
+        results["T21_UI_GLOBAL_LOCK"] = t21_pass
 
         # Check console errors
         print(f"\nConsole Errors Count: {len(console_errors)}")

@@ -1685,5 +1685,213 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   line-height: 1.4;
 }
 
+/* Business Mode Selector (Phase 2A) */
+.business-mode-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0 16px 0;
+}
+
+.mode-current-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 10px 14px;
+}
+
+.mode-badge-label {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  margin-right: 6px;
+}
+
+.mode-badge-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary, #0284c7);
+}
+
+.mode-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, #64748b);
+  margin-top: 4px;
+}
+
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: var(--bg-card, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.mode-card:hover {
+  border-color: var(--primary-light, #93c5fd);
+}
+
+.mode-card.active {
+  border-color: var(--primary, #0284c7);
+  background: var(--primary-subtle, #f0f9ff);
+  box-shadow: 0 0 0 1px var(--primary, #0284c7);
+}
+
+.mode-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mode-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--primary, #0284c7);
+}
+
+.mode-card-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-color, #0f172a);
+  flex: 1;
+}
+
+.mode-pill-current {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  background: var(--primary, #0284c7);
+  color: #ffffff;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.mode-card-desc {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.35;
+}
+
+.mode-preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-surface, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 14px;
+}
+
+.mode-caps-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mode-cap-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.mode-cap-item.enabled {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.mode-cap-item.disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+.cap-indicator {
+  font-weight: 700;
+}
+
+.mode-recommended-section {
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  padding-top: 10px;
+}
+
+.mode-recommended-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-color, #0f172a);
+}
+
+.mode-recommended-list {
+  margin: 6px 0 0 18px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mode-ui-placeholder-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px dashed var(--border-color, #cbd5e1);
+  border-radius: var(--radius-md, 8px);
+  padding: 12px 14px;
+}
+
+.mode-ui-placeholder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mode-ui-placeholder-head strong {
+  font-size: 13px;
+  color: var(--text-color, #0f172a);
+}
+
+.mode-ui-placeholder-head p {
+  margin: 2px 0 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+}
+
+.mode-badge-soon {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+
 
 

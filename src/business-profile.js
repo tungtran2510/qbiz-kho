@@ -69,7 +69,7 @@ export const PRESET_GENERAL = Object.freeze({
   schema_version: SCHEMA_VERSION,
   profile_id: 'general',
   profile_version: 1,
-  name: 'Chế độ tiêu chuẩn (Phổ thông)',
+  name: 'Cửa hàng chung',
   business_type: 'GENERAL',
   capabilities: {
     inventory: true,
@@ -152,7 +152,7 @@ export const PRESET_RETAIL = Object.freeze({
   schema_version: SCHEMA_VERSION,
   profile_id: 'retail',
   profile_version: 1,
-  name: 'Bán lẻ & Siêu thị mini',
+  name: 'Bán lẻ',
   business_type: 'RETAIL',
   capabilities: {
     inventory: true,
@@ -234,7 +234,7 @@ export const PRESET_WHOLESALE = Object.freeze({
   schema_version: SCHEMA_VERSION,
   profile_id: 'wholesale',
   profile_version: 1,
-  name: 'Bán buôn & Phân phối',
+  name: 'Bán sỉ',
   business_type: 'WHOLESALE',
   capabilities: {
     inventory: true,
@@ -316,7 +316,7 @@ export const PRESET_SERVICE = Object.freeze({
   schema_version: SCHEMA_VERSION,
   profile_id: 'service',
   profile_version: 1,
-  name: 'Dịch vụ / Spa / Salon / Tư vấn',
+  name: 'Dịch vụ',
   business_type: 'SERVICE',
   capabilities: {
     inventory: false,
@@ -392,6 +392,48 @@ export const PRESET_SERVICE = Object.freeze({
 });
 
 /**
+ * PRESET 5: FNB (Quán ăn / Cà phê) - Mapped to retail capabilities without fake capability
+ */
+export const PRESET_FNB = Object.freeze({
+  ...PRESET_RETAIL,
+  profile_id: 'fnb',
+  name: 'Quán ăn / Cà phê',
+  metadata: {
+    ...PRESET_RETAIL.metadata,
+    base_preset: 'retail',
+    description: 'Bán nhanh, món hàng, tồn kho',
+  },
+});
+
+/**
+ * PRESET 6: CONSULTING (Chuyên gia / Tư vấn) - Mapped to service capabilities without fake capability
+ */
+export const PRESET_CONSULTING = Object.freeze({
+  ...PRESET_SERVICE,
+  profile_id: 'consulting',
+  name: 'Chuyên gia / Tư vấn',
+  metadata: {
+    ...PRESET_SERVICE.metadata,
+    base_preset: 'service',
+    description: 'Dịch vụ, khách hàng, lịch hẹn',
+  },
+});
+
+/**
+ * PRESET 7: OTHER (Khác) - Mapped to general baseline
+ */
+export const PRESET_OTHER = Object.freeze({
+  ...PRESET_GENERAL,
+  profile_id: 'other',
+  name: 'Khác',
+  metadata: {
+    ...PRESET_GENERAL.metadata,
+    base_preset: 'general',
+    description: 'Cấu hình tiêu chuẩn linh hoạt',
+  },
+});
+
+/**
  * Registry of available built-in presets
  */
 export const PROFILE_PRESETS = Object.freeze({
@@ -399,6 +441,83 @@ export const PROFILE_PRESETS = Object.freeze({
   [PRESET_RETAIL.profile_id]: PRESET_RETAIL,
   [PRESET_WHOLESALE.profile_id]: PRESET_WHOLESALE,
   [PRESET_SERVICE.profile_id]: PRESET_SERVICE,
+  [PRESET_FNB.profile_id]: PRESET_FNB,
+  [PRESET_CONSULTING.profile_id]: PRESET_CONSULTING,
+  [PRESET_OTHER.profile_id]: PRESET_OTHER,
+});
+
+/**
+ * User-facing Business Mode Options for UI Selector
+ */
+export const BUSINESS_MODE_OPTIONS = Object.freeze([
+  {
+    id: 'general',
+    name: 'Cửa hàng chung',
+    desc: 'Bán hàng, quản lý kho, theo dõi tồn',
+    icon: 'store',
+    recommended_uses: ['Bán hàng tổng hợp', 'Quản lý kho hàng', 'Khách hàng'],
+  },
+  {
+    id: 'retail',
+    name: 'Bán lẻ',
+    desc: 'Thu ngân nhanh, quét mã, ca bán',
+    icon: 'shopping-bag',
+    recommended_uses: ['Bán quầy thu ngân', 'Quét mã vạch nhanh', 'Mở & đóng ca bán'],
+  },
+  {
+    id: 'fnb',
+    name: 'Quán ăn / Cà phê',
+    desc: 'Bán nhanh, món hàng, tồn kho',
+    icon: 'coffee',
+    recommended_uses: ['Bán nhanh tại quầy', 'Món hàng & thực đơn', 'Tồn kho nguyên vật liệu'],
+  },
+  {
+    id: 'wholesale',
+    name: 'Bán sỉ',
+    desc: 'Kho, khách hàng, bảng giá',
+    icon: 'boxes',
+    recommended_uses: ['Xuất buôn & phân phối', 'Bảng giá theo đại lý', 'Quản lý công nợ'],
+  },
+  {
+    id: 'service',
+    name: 'Dịch vụ',
+    desc: 'Dịch vụ, khách hàng, lịch hẹn',
+    icon: 'sparkles',
+    recommended_uses: ['Quản lý gói dịch vụ', 'Hồ sơ khách hàng', 'Lịch hẹn & liệu trình'],
+  },
+  {
+    id: 'consulting',
+    name: 'Chuyên gia / Tư vấn',
+    desc: 'Dịch vụ, khách hàng, lịch hẹn',
+    icon: 'user-check',
+    recommended_uses: ['Tư vấn chuyên gia', 'Hồ sơ hội viên', 'Đặt lịch làm việc'],
+  },
+  {
+    id: 'other',
+    name: 'Khác',
+    desc: 'Cấu hình tiêu chuẩn linh hoạt',
+    icon: 'layout-grid',
+    recommended_uses: ['Mô hình kinh doanh mở', 'Tùy chỉnh linh hoạt', 'Nghiệp vụ cơ bản'],
+  },
+]);
+
+/**
+ * Human-readable capability labels for preview
+ */
+export const CAPABILITY_LABELS = Object.freeze({
+  retail: 'Bán hàng (POS)',
+  inventory: 'Kho & tồn kho',
+  customer_management: 'Khách hàng',
+  supplier_management: 'Nhà cung cấp',
+  service: 'Gói dịch vụ',
+  appointment: 'Lịch hẹn',
+  wholesale: 'Bán sỉ / Đại lý',
+  barcode: 'Quét mã vạch',
+  price_lists: 'Bảng giá riêng',
+  multi_warehouse: 'Nhiều kho',
+  debt: 'Công nợ',
+  booking: 'Đặt lịch',
+  delivery: 'Giao hàng',
 });
 
 /**
