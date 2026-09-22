@@ -64,7 +64,67 @@ export function dictionaryRoute(rawPrompt, context, state) {
     }
   }
 
-  // 2. Try registry alias matching (most specific)
+  // 2. High-priority domain skills (takes precedence over generic dictionary)
+  if (p.includes('can chu y') || p.includes('tieu diem') || p.includes('cua hang hom nay the nao') || p.includes('cua hang the nao')) {
+    return { type: 'ACTION', action_id: 'daily_attention', action: ACTION_REGISTRY['daily_attention'], confidence: 95, source: 'domain_skill' };
+  }
+  if (p.includes('doanh thu') || p.includes('doanh so') || p.includes('ban bao nhieu') || p.includes('may don') || p.includes('bao nhieu don')) {
+    return { type: 'ACTION', action_id: 'sales_summary', action: ACTION_REGISTRY['sales_summary'], confidence: 95, source: 'domain_skill' };
+  }
+  if (p.includes('goi y nhap') || p.includes('can nhap gi') || p.includes('can nhap them')) {
+    return { type: 'ACTION', action_id: 'replenishment_suggestion', action: ACTION_REGISTRY['replenishment_suggestion'], confidence: 95, source: 'domain_skill' };
+  }
+  if (p.includes('kiem tra du lieu') || p.includes('suc khoe cua hang') || p.includes('kiem tra he thong') || p.includes('loi du lieu')) {
+    return { type: 'ACTION', action_id: 'shop_health_check', action: ACTION_REGISTRY['shop_health_check'], confidence: 95, source: 'domain_skill' };
+  }
+
+  // 3. Route-specific queries first
+  const currRoute = context?.current_route || context?.route || 'dashboard';
+  if (currRoute === 'sales' || context?.saleStep) {
+    if (p.startsWith('chon khach') || p.startsWith('khach ')) {
+      return { type: 'ACTION', action_id: 'select_customer', action: ACTION_REGISTRY['select_customer'], confidence: 95, source: 'customer_select' };
+    }
+    // "thêm 5" in sales -> fall through to sales cart handler
+    if (/^(?:them|cong|tang|nhap them)\s+\d+/i.test(p)) {
+      return null;
+    }
+  }
+
+  if (currRoute === 'orders') {
+    if (p.includes('don hang hom nay') || p.includes('don hom nay')) {
+      return { type: 'ACTION', action_id: 'open_orders', action: ACTION_REGISTRY['open_orders'], confidence: 95, source: 'orders_route' };
+    }
+    if (p.includes('lap don') || p.includes('tao don')) {
+      return { type: 'ACTION', action_id: 'new_order', action: ACTION_REGISTRY['new_order'], confidence: 95, source: 'orders_route' };
+    }
+  }
+
+  // 4. Product context binding & pronoun queries (ONLY with active product)
+  const activeProductId = context?.current_product_id;
+  if (activeProductId) {
+    if (p.includes('con bao nhieu') || p.includes('kiem ton') || p.includes('con khong') || p.includes('ton kho') || p === 'con bao nhieu') {
+      return { type: 'ACTION', action_id: 'check_stock', action: ACTION_REGISTRY['check_stock'], params: { productId: activeProductId }, confidence: 95, source: 'product_context' };
+    }
+    if (p.startsWith('nhap them') || p.includes('nhap them') || (p.startsWith('them') && isPronounReference(p))) {
+      const q = extractQuantityAndUnit(p);
+      return { type: 'ACTION', action_id: 'create_receipt_proposal', action: ACTION_REGISTRY['create_receipt_proposal'], params: { productId: activeProductId, qty: q?.quantity || 5 }, confidence: 95, source: 'product_context' };
+    }
+    if (p.includes('doi gia') || p.includes('thay gia') || p.includes('sua gia')) {
+      return { type: 'ACTION', action_id: 'new_product', action: ACTION_REGISTRY['new_product'], confidence: 85, source: 'product_context' };
+    }
+  }
+
+  // If on products list without an active product, let "thêm [số]" fall through to ambiguous clarification
+  if (currRoute === 'products' && !activeProductId && /^(?:them|cong|tang)\s+\d+/i.test(p)) {
+    return null;
+  }
+
+  // 5. Warehouse receipt proposal with warehouse or product mentioned ("thêm X cái ... vào kho ...")
+  if ((p.startsWith('nhap them') || p.startsWith('them')) && (p.includes('vao kho') || p.includes('kho'))) {
+    return { type: 'ACTION', action_id: 'create_receipt_proposal', action: ACTION_REGISTRY['create_receipt_proposal'], confidence: 95, source: 'receipt_pattern' };
+  }
+
+  // 6. Try registry alias matching (most specific)
   const aliasMatches = findActionsByAlias(p);
   if (aliasMatches.length > 0 && aliasMatches[0].matchScore >= 80) {
     const bestAction = aliasMatches[0].action;
@@ -77,7 +137,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
     };
   }
 
-  // 3. Classify intent + detect entity type
+  // 7. Classify intent + detect entity type
   const intent = classifyIntent(p);
   const entity = detectEntityType(p);
 
@@ -95,7 +155,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
     }
   }
 
-  // 4. If only intent detected but no entity, try to suggest (only if not an action with numbers/pronouns)
+  // 8. If only intent detected but no entity, try to suggest (only if not an action with numbers/pronouns)
   if (intent && intent.confidence >= 70 && !entity && !/\d+/.test(p) && !p.includes('nay')) {
     const route = context?.current_route || 'dashboard';
     const suggestions = getSuggestedActions(route);
@@ -157,9 +217,14 @@ export function mapIntentEntityToAction(intent, entityType, context) {
     'RESTORE_null': 'open_backup',
     // REPORT
     'REPORT_REPORT': 'open_reports',
-    'REPORT_SALE': 'open_reports',
+    'REPORT_SALE': 'sales_summary',
     'SUMMARIZE_REPORT': 'open_reports',
-    'SUMMARIZE_SALE': 'open_reports',
+    'SUMMARIZE_SALE': 'sales_summary',
+    'SUMMARIZE_null': 'daily_attention',
+    // ADD_QTY
+    'ADD_QTY_PRODUCT': 'create_receipt_proposal',
+    'ADD_QTY_WAREHOUSE': 'create_receipt_proposal',
+    'ADD_QTY_null': 'create_receipt_proposal',
     // PAY
     'PAY_SALE': null,
     // MOVE
@@ -182,8 +247,9 @@ export async function routeIntent(prompt, context, state) {
     // Handle structured results from dictionary layer
     if (dictResult.type === 'ACTION' && dictResult.action) {
       try {
-        const result = await dictResult.action.execute(dictResult.action.required_params ? {} : {}, state);
-        return { text: result?.message || dictResult.action.name, tier: 0, provider: 'dictionary' };
+        const result = await dictResult.action.execute(dictResult.params || {}, state, context);
+        const msg = result?.text || result?.message || dictResult.action.name;
+        return { text: msg, ...result, tier: 0, provider: 'dictionary' };
       } catch (e) {
         // Fall through to existing router on error
       }

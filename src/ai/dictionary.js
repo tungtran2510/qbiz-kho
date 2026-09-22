@@ -9,15 +9,16 @@ export function norm(str) {
   return str
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim()
     .replace(/\s+/g, ' ');
 }
 
 export const INTENT_TAXONOMY = {
-  OPEN: { id: 'OPEN', triggers: ['mo', 'vao', 'di toi', 'chuyen sang', 'mo giup', 'cho vao', 'dan toi', 'xem'] },
+  OPEN: { id: 'OPEN', triggers: ['mo', 'vao', 'di toi', 'chuyen sang', 'mo giup', 'cho vao', 'dan toi', 'xem', 'chon'] },
   CREATE: { id: 'CREATE', triggers: ['them', 'tao', 'tao moi', 'them moi', 'lap', 'khoi tao'] },
-  EDIT: { id: 'EDIT', triggers: ['sua', 'chinh', 'doi', 'thay', 'cap nhat', 'dieu chinh'] },
+  EDIT: { id: 'EDIT', triggers: ['sua', 'doi', 'thay', 'cap nhat', 'dieu chinh', 'chinh sua'] },
   DELETE: { id: 'DELETE', triggers: ['xoa', 'bo', 'loai', 'go', 'huy'] },
   SEARCH: { id: 'SEARCH', triggers: ['tim', 'tim kiem', 'tra', 'tra cuu', 'kiem', 'xem co'] },
   VIEW: { id: 'VIEW', triggers: ['xem', 'hien thi', 'cho xem', 'kiem tra'] },
@@ -33,7 +34,7 @@ export const INTENT_TAXONOMY = {
   SUMMARIZE: { id: 'SUMMARIZE', triggers: ['tom tat', 'tong ket', 'hom nay the nao'] },
   COMPARE: { id: 'COMPARE', triggers: ['so sanh', 'doi chieu', 'chenh lech'] },
   DIAGNOSE: { id: 'DIAGNOSE', triggers: ['kiem tra loi', 'vi sao', 'tai sao', 'co van de gi'] },
-  CONFIGURE: { id: 'CONFIGURE', triggers: ['cai', 'cai dat', 'cau hinh', 'thiet lap'] },
+  CONFIGURE: { id: 'CONFIGURE', triggers: ['cai dat', 'cau hinh', 'thiet lap'] },
   BACKUP: { id: 'BACKUP', triggers: ['sao luu', 'backup'] },
   RESTORE: { id: 'RESTORE', triggers: ['khoi phuc', 'phuc hoi', 'restore'] },
   CONFIRM: { id: 'CONFIRM', triggers: ['dong y', 'ok', 'oke', 'okey', 'u', 'uh', 'duoc', 'dung', 'chuan', 'lam di', 'tiep tuc', 'xac nhan', 'yes'] },
@@ -205,6 +206,9 @@ export function detectEntityType(normalizedText) {
   
   for (let [entityType, aliases] of Object.entries(ENTITY_ALIASES)) {
     for (let alias of aliases) {
+      if (alias === 'hang' && (normalizedText.includes('cua hang') || normalizedText.includes('don hang'))) {
+        continue;
+      }
       // Look for exact word match with regex boundaries
       let rx = new RegExp(`\\b${alias}\\b`, 'i');
       if (rx.test(normalizedText)) {

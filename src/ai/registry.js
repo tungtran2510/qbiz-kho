@@ -781,7 +781,7 @@ export const ACTION_REGISTRY = {
     required_capabilities: [PERMISSIONS.VIEW_SALES],
     execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['don hang', 'mo don hang', 'xem don', 'danh sach don'],
+    aliases: ['don hang', 'mo don hang', 'xem don', 'danh sach don', 'don hang hom nay', 'don hom nay'],
     example_phrases: ['mở đơn hàng', 'vào đơn hàng', 'xem đơn hàng'],
     contexts: ['dashboard', 'products', 'sales', 'settings'],
     async execute(params, state) {
@@ -1024,8 +1024,8 @@ export const ACTION_REGISTRY = {
     required_capabilities: [PERMISSIONS.VIEW_SALES, PERMISSIONS.MANAGE_ORDERS],
     execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['tao don', 'tao don hang', 'don hang moi', 'lap don'],
-    example_phrases: ['tạo đơn hàng', 'lập đơn mới', 'tạo đơn đặt hàng'],
+    aliases: ['tao don', 'tao don hang', 'don hang moi', 'lap don', 'lap don hang'],
+    example_phrases: ['tạo đơn hàng', 'lập đơn mới', 'tạo đơn đặt hàng', 'lập đơn hàng'],
     entity_types: ['ORDER'],
     contexts: ['orders', 'dashboard', 'products'],
     async execute(params, state) {
@@ -1035,6 +1035,113 @@ export const ACTION_REGISTRY = {
         return { success: true, message: 'Đã mở form tạo đơn đặt hàng mới.' };
       }
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  sales_summary: {
+    id: 'sales_summary', name: 'Tổng kết doanh thu', feature_id: null,
+    route: 'reports', screen: 'Reports',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['doanh thu', 'doanh thu hom nay', 'doanh so', 'doanh so hom nay', 'ban bao nhieu', 'hom nay ban bao nhieu', 'hom nay co may don', 'may don', 'bao nhieu don', 'tong ket ban hang'],
+    example_phrases: ['doanh thu hôm nay', 'hôm nay có mấy đơn', 'hôm nay bán bao nhiêu'],
+    contexts: ['dashboard', 'sales', 'reports'],
+    async execute(params, state) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('sales-summary', params || {}, {}, state);
+    },
+  },
+
+  daily_attention: {
+    id: 'daily_attention', name: 'Tiêu điểm hàng ngày', feature_id: null,
+    route: 'dashboard', screen: 'Dashboard',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['co gi can chu y', 'can chu y', 'tieu diem', 'tieu diem hom nay', 'cua hang the nao', 'cua hang hom nay the nao', 'tinh hinh cua hang', 'diem nong'],
+    example_phrases: ['có gì cần chú ý', 'cửa hàng hôm nay thế nào', 'tiêu điểm hôm nay'],
+    contexts: ['dashboard', 'sales', 'products'],
+    async execute(params, state) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('daily-attention', params || {}, {}, state);
+    },
+  },
+
+  replenishment_suggestion: {
+    id: 'replenishment_suggestion', name: 'Gợi ý nhập hàng', feature_id: 'WAREHOUSE_RECEIPT',
+    route: 'transfers', screen: 'Replenishment',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['goi y nhap hang', 'goi y nhap', 'can nhap gi', 'can nhap them gi', 'de xuat nhap hang'],
+    example_phrases: ['gợi ý nhập hàng', 'cần nhập thêm gì'],
+    contexts: ['products', 'transfers', 'dashboard'],
+    async execute(params, state) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('replenishment-suggestion', params || {}, {}, state);
+    },
+  },
+
+  shop_health_check: {
+    id: 'shop_health_check', name: 'Kiểm tra sức khỏe cửa hàng', feature_id: null,
+    route: 'settings', screen: 'ShopHealth',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['kiem tra du lieu', 'suc khoe cua hang', 'kiem tra he thong', 'loi du lieu', 'kiem tra sai sot', 'ra soat du lieu'],
+    example_phrases: ['kiểm tra dữ liệu', 'sức khỏe cửa hàng'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('shop-health-check', params || {}, {}, state);
+    },
+  },
+
+  check_stock: {
+    id: 'check_stock', name: 'Kiểm tra tồn kho', feature_id: 'PRODUCTS',
+    route: 'products', screen: 'ProductDetail',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['cai nay con bao nhieu', 'con bao nhieu', 'kiem tra ton', 'xem ton kho', 'con khong', 'con ton khong'],
+    example_phrases: ['cái này còn bao nhiêu', 'còn bao nhiêu', 'kiểm tra tồn'],
+    contexts: ['products', 'sales', 'transfers'],
+    async execute(params, state) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('check-stock', params || {}, {}, state);
+    },
+  },
+
+  create_receipt_proposal: {
+    id: 'create_receipt_proposal', name: 'Đề xuất nhập hàng', feature_id: 'WAREHOUSE_RECEIPT',
+    route: 'transfers', screen: 'ReceiptProposal',
+    required_capabilities: [PERMISSIONS.RECEIVE_STOCK],
+    execution_mode: EXECUTION_MODE.MUTATE, risk_level: 'WRITE',
+    confirmation_policy: 'PROPOSAL_REQUIRED', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['de xuat nhap kho', 'de xuat nhap hang', 'tao de xuat nhap kho', 'nhap hang vao kho'],
+    example_phrases: ['nhập thêm 5 cái này', 'nhập thêm 20 cái', 'thêm 5 cái Lavie vào kho chính'],
+    contexts: ['products', 'transfers'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('receipt-proposal', params || {}, context || {}, state);
+    },
+  },
+
+  select_customer: {
+    id: 'select_customer', name: 'Chọn khách hàng', feature_id: 'CUSTOMERS',
+    route: 'sales', screen: 'CustomerSelect',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['chon khach', 'chon khach lan', 'tim khach lan', 'chi dinh khach hang'],
+    example_phrases: ['chọn khách Lan', 'chọn khách'],
+    contexts: ['sales', 'orders'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.selectCustomer) {
+        return window.__qbiz_app__.selectCustomer(params?.query || 'Lan');
+      }
+      return { success: true, message: 'Đã tìm kiếm khách hàng.' };
     },
   },
 };

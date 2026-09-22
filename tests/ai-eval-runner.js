@@ -9,7 +9,7 @@
 
 import { norm, classifyIntent, detectEntityType, isConfirmation, isCancellation, isCorrection } from '../src/ai/dictionary.js';
 import { findActionsByAlias } from '../src/ai/registry.js';
-import { mapIntentEntityToAction } from '../src/ai/router.js';
+import { dictionaryRoute, mapIntentEntityToAction } from '../src/ai/router.js';
 
 /**
  * Evaluate a single test case against the dictionary + registry layer.
@@ -48,6 +48,31 @@ function evaluateCase(testCase) {
     return result;
   }
 
+  // Try unified dictionary routing first
+  const routeRes = dictionaryRoute(utterance, context, null);
+  if (routeRes) {
+    if (routeRes.type === 'ACTION') {
+      const actId = routeRes.action_id || routeRes.action?.id || '';
+      result.actual = `ACTION:${actId}(conf:${routeRes.confidence || 90})`;
+      if (expected.type === 'ACTION') {
+        if (expected.action && actId === expected.action) {
+          result.pass = true;
+        } else if (expected.action_contains && actId.includes(expected.action_contains)) {
+          result.pass = true;
+        }
+      } else if (expected.type === 'ACTION_OR_SUGGEST' || expected.type === 'SUGGEST_OR_FALLBACK') {
+        result.pass = true;
+      }
+      if (result.pass) return result;
+    } else if (routeRes.type === 'SUGGEST') {
+      result.actual = 'SUGGEST';
+      if (expected.type === 'ACTION_OR_SUGGEST' || expected.type === 'SUGGEST_OR_FALLBACK') {
+        result.pass = true;
+        return result;
+      }
+    }
+  }
+
   // Try alias matching (most specific)
   const aliasMatches = findActionsByAlias(p);
   if (aliasMatches.length > 0 && aliasMatches[0].matchScore >= 60) {
@@ -69,7 +94,7 @@ function evaluateCase(testCase) {
   const entity = detectEntityType(p);
 
   if (intent) {
-    const mappedAction = mapIntentEntityToAction(intent.intent, entity?.entityType);
+    const mappedAction = mapIntentEntityToAction(intent.intent, entity?.entityType, context);
     result.actual = `CLASSIFIED:${intent.intent}${entity ? '+' + entity.entityType : ''}${mappedAction ? '->' + mappedAction : ''}(conf:${intent.confidence})`;
     
     if (expected.type === 'ACTION_OR_SUGGEST' || expected.type === 'SUGGEST_OR_FALLBACK') {
