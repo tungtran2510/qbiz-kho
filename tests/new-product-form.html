@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>QBiz Kho — New Product Form Smoke v2</title>
+<style>body{font:13px/1.5 ui-monospace,Consolas,monospace;margin:16px;background:#0f1115;color:#e6e6e6}#out{white-space:pre-wrap}iframe{width:390px;height:780px;border:1px solid #333;background:#fff}</style>
+</head>
+<body>
+<iframe id="app" src="/"></iframe>
+<pre id="out">Đang chạy…</pre>
+<script type="module">
+const results=[];const check=(n,c,d)=>results.push({n,pass:!!c,d});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const frame=document.getElementById('app');
+const doc=()=>frame.contentDocument;
+const q=s=>doc().querySelector(s);
+const qa=s=>[...doc().querySelectorAll(s)];
+const wait=async(fn,ms=9000)=>{const t=Date.now();while(Date.now()-t<ms){try{if(fn())return true}catch{}await sleep(150)}return false};
+const clickEl=async el=>{if(!el)return false;el.click();await sleep(420);return true};
+const fill=(sel,v)=>{const el=q(sel);if(!el)return false;el.value=v;el.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true}));el.dispatchEvent(new frame.contentWindow.Event('change',{bubbles:true}));return true};
+const topOf=sel=>{const e=q(sel);return e?Math.round(e.getBoundingClientRect().top):-9999};
+
+await wait(()=>q('#mobileNav button'),15000);
+const db=await import('/src/db.js');
+await clickEl(qa('#mobileNav button').find(b=>b.dataset.page==='products'));
+await wait(()=>q('#content .goods-stats'),8000);
+
+// Sản phẩm: vào thẳng form sản phẩm, KHÔNG có "Loại mục"
+await clickEl(qa('#content [data-action="new-product"]')[0]);
+await wait(()=>q('#name'));
+check('SP: mở thẳng form, tiêu đề "Thêm sản phẩm"',(q('#modalRoot .modal-head h3')||{textContent:''}).textContent.trim()==='Thêm sản phẩm');
+check('SP: KHÔNG còn phần "Loại mục"',!q('#itemType'));
+check('SP: bấm khung ảnh để chọn (bỏ nút + Ảnh)',!!q('#editImagePreview')&&!!q('#editImages')&&getComputedStyle(q('#editImagePreview')).cursor==='pointer'&&!qa('.compact-upload').some(b=>b.textContent.includes('+ Ảnh')),{btns:qa('.compact-upload').map(b=>b.textContent.trim())});
+check('SP: chỉ còn nút Chụp ảnh kèm logo',qa('.compact-upload').length===1&&!!q('.compact-upload .ui-icon'),{n:qa('.compact-upload').length,capture:(q('#editImagesCam')||{getAttribute:()=>''}).getAttribute('capture')});
+check('SP: chip danh mục nhỏ gọn, không bo tròn lớn, không in đậm',(()=>{const c=q('#npCategories .np-chip');if(!c)return false;const s=getComputedStyle(c);return parseFloat(s.fontSize)<=12&&parseFloat(s.borderRadius)<=10&&Number(s.fontWeight)<=600;})(),{css:(()=>{const c=q('#npCategories .np-chip');if(!c)return null;const s=getComputedStyle(c);return{fs:s.fontSize,br:s.borderRadius,fw:s.fontWeight,gap:getComputedStyle(q('#npCategories')).gap}})()});
+check('SP: "(gần nhất)" không in đậm + nhãn giá có màu riêng',!!q('.np-lite')&&Number(getComputedStyle(q('.np-lite')).fontWeight)<=500&&qa('.np-money').length===2);
+check('SP: "thêm »" canh giữa, không in đậm',(()=>{const m=q('#npMoreCats');if(!m)return true;const s=getComputedStyle(m);return s.textAlign==='center'&&Number(s.fontWeight)<=500;})());
+
+// danh mục: chip ngoài, chọn nhiều, tối đa 2 dòng + "thêm »"
+const chips=qa('#npCategories .np-chip');
+check('SP: danh mục hiển thị dạng chip ngay trong form',chips.length>0,{chips:chips.length});
+if(chips.length){await clickEl(chips[0]);await clickEl(chips[1]||chips[0]);}
+check('SP: chọn được nhiều danh mục',qa('#npCategories .np-chip.active').length>=1,{active:qa('#npCategories .np-chip.active').length});
+const wrap=q('#npCategories');
+check('SP: chip danh mục giới hạn 2 dòng (có nút thêm » nếu tràn)',!!wrap&&(q('#npMoreCats')?true:false),{clamped:wrap?wrap.scrollHeight>wrap.clientHeight:null});
+if(q('#npMoreCats')&&!q('#npMoreCats').hidden){await clickEl(q('#npMoreCats'));check('SP: bấm "thêm »" mở rộng hết chip',!!wrap&&wrap.classList.contains('expanded'));}
+
+// giá bán | giá nhập cùng hàng; tồn | đơn vị cùng hàng
+check('SP: Giá bán + Giá nhập CÙNG 1 HÀNG',Math.abs(topOf('#productPrice')-topOf('#productCost'))<=2,{price:topOf('#productPrice'),cost:topOf('#productCost')});
+check('SP: Tồn hiện tại + Đơn vị tính CÙNG 1 HÀNG',Math.abs(topOf('#stockNow')-topOf('#unit'))<=2,{stock:topOf('#stockNow'),unit:topOf('#unit')});
+
+// biến thể
+// biến thể: nút phải KHÔNG bị footer che (lỗi cũ: nằm dưới sticky footer)
+const mod=doc().querySelector('#modalRoot .modal');
+if(mod)mod.scrollTop=mod.scrollHeight;
+await sleep(600);
+const abtn=q('#npVariantAdd'), footEl=q('.modal-foot');
+check('SP: nút "Thêm biến thể" không bị footer che',!!abtn&&!!footEl&&abtn.getBoundingClientRect().bottom<=footEl.getBoundingClientRect().top+1,{btnBottom:abtn?Math.round(abtn.getBoundingClientRect().bottom):null,footTop:footEl?Math.round(footEl.getBoundingClientRect().top):null});
+check('SP: có khu vực Biến thể',!!q('#npVariantName')&&!!q('#npVariantValues')&&!!q('#npVariantAdd'));
+fill('#npVariantName','Size');fill('#npVariantValues','S, M, L');
+await clickEl(q('#npVariantAdd'));
+fill('#npVariantName','Màu');fill('#npVariantValues','Đen, Trắng');
+await clickEl(q('#npVariantAdd'));
+check('SP: thêm được 2 nhóm biến thể (chip)',qa('#npVariants .np-chip').length===2,{chips:qa('#npVariants .np-chip').map(c=>c.textContent.trim())});
+check('SP: form biến thể nhập chuẩn (Tên + Giá trị)',(q('#npVariantName').value==='')&&(q('#npVariantValues').value===''),{name:q('#npVariantName').value,values:q('#npVariantValues').value});
+await clickEl(qa('#npVariants .np-chip')[1]);
+check('SP: xoá được biến thể',qa('#npVariants .np-chip').length===1,{left:qa('#npVariants .np-chip').map(c=>c.textContent.trim())});
+
+// độ dài form
+const mb=q('.modal-body');const vh=doc().documentElement.clientHeight;
+check('SP: form gọn ≤1.5 màn hình',mb&&mb.scrollHeight/vh<=1.5,{screens:mb?Math.round(mb.scrollHeight/vh*100)/100:null});
+
+// tạo sản phẩm: bỏ trống SKU/barcode, có tồn + đơn vị + danh mục + biến thể
+const TAG='NP'+Math.random().toString(36).slice(2,6).toUpperCase();
+const catId=(qa('#npCategories .np-chip')[0]||{dataset:{}}).dataset.catId||'';
+fill('#name','SP v2 '+TAG);fill('#productPrice','888000');fill('#productCost','444000');fill('#stockNow','3');fill('#unit','Hộp');
+check('SP: nút chính = Lưu sản phẩm',(q('#modalSubmit')||{textContent:''}).textContent.trim()==='Lưu sản phẩm');
+check('SP: có nút Lưu & thêm tiếp',!!q('#modalSaveNext'));
+await clickEl(q('#modalSubmit'));await sleep(1700);
+const created=(await db.getAll('products')).find(p=>p.name==='SP v2 '+TAG);
+check('SP: tạo được khi bỏ trống SKU/Barcode',!!created);
+check('SP: SKU tự tạo',!!created&&/^SP[A-Z0-9]+$/.test(created.sku),{sku:created&&created.sku});
+check('SP: Barcode tự tạo (EAN nội bộ 200…)',!!created&&/^200\d{10}$/.test(String(created.barcode)),{barcode:created&&created.barcode});
+check('SP: lưu nhiều danh mục (categoryIds)',!!created&&Array.isArray(created.categoryIds)&&created.categoryIds.length>=1&&created.categoryIds.includes(catId),{ids:created&&created.categoryIds});
+check('SP: lưu biến thể (name + values)',!!created&&Array.isArray(created.variants)&&created.variants.length===1&&created.variants[0].name==='Size'&&created.variants[0].values.join(',')==='S,M,L',{variants:created&&created.variants});
+check('SP: lưu đơn vị + tồn đầu + giá nhập',!!created&&created.unit==='Hộp'&&Number(created.purchase_price)===444000,{unit:created&&created.unit});
+const lv=created?(await db.getAll('levels')).find(l=>l.productId===created.id&&Number(l.onHand)>0):null;
+check('SP: Tồn hiện tại ghi thành tồn đầu',!!lv&&Number(lv.onHand)===3,{onHand:lv&&lv.onHand});
+
+// lọc theo danh mục vừa gán → sản phẩm phải hiện (categoryMatches hỗ trợ nhiều danh mục)
+await clickEl(qa('#content [data-category-picker]')[0]);
+await wait(()=>q('[data-category-select]'));
+const catBtn=qa('[data-category-select]').find(b=>b.dataset.categorySelect===catId);
+if(catBtn){await clickEl(catBtn);await sleep(300);const ap=qa('#modalRoot button').find(b=>/chọn|áp|đồng ý/i.test(b.textContent)&&b.closest('.modal-foot'));if(ap)await clickEl(ap);await sleep(900);
+  const found=qa('#content [data-product]').map(e=>e.textContent).some(t=>t.includes('SP v2 '+TAG));
+  check('SP: lọc theo danh mục nhiều-chọn thấy sản phẩm',found);
+}else{check('SP: lọc theo danh mục nhiều-chọn thấy sản phẩm',false,{note:'không tìm thấy chip danh mục'});}
+
+// Dịch vụ: vào thẳng form dịch vụ
+await clickEl(qa('#content [data-product-type]').find(b=>b.dataset.productType==='SERVICE'));
+await sleep(900);
+await clickEl(qa('#content [data-action="new-product"]')[0]);
+await wait(()=>q('#name'));
+check('DV: vào thẳng form dịch vụ (tiêu đề Thêm dịch vụ)',(q('#modalRoot .modal-head h3')||{textContent:''}).textContent.trim()==='Thêm dịch vụ');
+check('DV: KHÔNG có phần Loại mục',!q('#itemType'));
+check('DV: giữ trường cũ Giá/Danh mục/Thời lượng/Đặt lịch',!!q('#price')&&!!q('#categoryId')&&!!q('#duration')&&!!q('#booking'));
+check('DV: vẫn có upload ảnh lớn (tạm chưa làm)',!!q('.image-picker'),{ok:!!q('.image-picker')});
+check('DV: không có chip danh mục nhiều-chọn',!q('#npCategories'));
+if(q('[data-close]'))await clickEl(q('[data-close]'));
+
+const ov=doc().documentElement;
+const summary={VIEWPORT:`${ov.clientWidth}x${ov.clientHeight}`,OVERFLOW:Math.max(0,ov.scrollWidth-ov.clientWidth),PASS_COUNT:results.filter(r=>r.pass).length,FAIL_COUNT:results.filter(r=>!r.pass).length,failures:results.filter(r=>!r.pass)};
+document.getElementById('out').innerHTML=`<b>SUMMARY</b>\n${JSON.stringify(summary,null,2)}\n\n`+results.map(r=>`${r.pass?'PASS':'FAIL'}  ${r.n}${r.pass?'':'  -> '+JSON.stringify(r.d)}`).join('\n')+`\n\nDONE:${summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'}`;
+globalThis.__NP2_SUMMARY__=summary;
+console.log('NP2_SUMMARY '+JSON.stringify(summary));
+console.log('DONE:'+(summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'));
+</script>
+</body>
+</html>

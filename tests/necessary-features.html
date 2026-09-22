@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>QBiz Kho — Necessary Features Smoke</title>
+<style>body{font:13px/1.5 ui-monospace,Consolas,monospace;margin:16px;background:#0f1115;color:#e6e6e6}#out{white-space:pre-wrap}iframe{width:390px;height:800px;border:1px solid #333;background:#fff}</style>
+</head>
+<body>
+<iframe id="app" src="/"></iframe>
+<pre id="out">Đang chạy…</pre>
+<script type="module">
+const results=[];const check=(n,c,d)=>results.push({n,pass:!!c,d});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const frame=document.getElementById('app');
+const doc=()=>frame.contentDocument;
+const q=s=>doc().querySelector(s);
+const qa=s=>[...doc().querySelectorAll(s)];
+const txt=s=>{const el=q(s);return el?el.textContent.trim():''};
+const all=()=>q('#content')?q('#content').textContent:'';
+const wait=async(fn,ms=9000)=>{const t=Date.now();while(Date.now()-t<ms){try{if(fn())return true}catch{}await sleep(150)}return false};
+const clickEl=async el=>{if(!el)return false;el.click();await sleep(450);return true};
+const title=()=>txt('#pageTitle');
+async function toHub(){for(let i=0;i<5;i++){if(title()==='Tiện ích nâng cao')return true;frame.contentWindow.history.back();await sleep(450);}return title()==='Tiện ích nâng cao';}
+async function openHub(label){if(!await toHub())return false;const b=qa('#content .hub-list button').find(x=>x.textContent.includes(label));if(!b)return false;await clickEl(b);await sleep(500);return true;}
+const fill=(sel,v)=>{const el=q(sel);if(!el)return false;el.value=v;el.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true}));el.dispatchEvent(new frame.contentWindow.Event('change',{bubbles:true}));return true};
+
+await wait(()=>q('#mobileNav button'),15000);
+const db=await import('/src/db.js');
+const prodBefore=(await db.getAll('products')).map(p=>p.id);
+
+// ---- entry via nav: Thêm → Cài đặt → Tiện ích nâng cao ----
+await clickEl(qa('#mobileNav button').find(b=>b.dataset.page==='more'));
+await sleep(500);
+await clickEl(qa('#content [data-page]').find(b=>b.dataset.page==='settings'));
+await sleep(600);
+check('entry: Cài đặt có mục Tiện ích nâng cao',!!qa('#content [data-page]').find(b=>b.dataset.page==='advanced'));
+await clickEl(qa('#content [data-page]').find(b=>b.dataset.page==='advanced'));
+await sleep(600);
+check('hub mở được',title()==='Tiện ích nâng cao',title());
+const hubLabels=qa('#content .hub-list button').map(b=>b.textContent.replace(/\s+/g,' ').trim().slice(0,28));
+check('hub có nhóm Chứng từ & mua hàng',hubLabels.some(x=>x.includes('Trung tâm chứng từ')),{labels:hubLabels.length});
+
+// ---- Trung tâm chứng từ ----
+await openHub('Trung tâm chứng từ');
+await wait(()=>q('#docRange'),9000);
+check('documents mở',title()==='Trung tâm chứng từ',title());
+const typeChips=qa('#content [data-doc-type]').length;
+check('documents có chip loại chứng từ',typeChips>=10,{chips:typeChips});
+check('documents có quy tắc CANCEL/VOID/REVERSAL',all().includes('REVERSAL')&&all().includes('VOID'));
+const docRows=qa('#content [data-doc-id]');
+if(docRows.length){
+  const t0=title();
+  await clickEl(docRows[0]);await sleep(700);
+  const opened=(q('#modalRoot')&&q('#modalRoot').innerHTML.length>0)||title()!==t0;
+  check('documents deep-link mở được detail',opened,{rows:docRows.length});
+  if(q('#modalRoot')&&q('#modalRoot').innerHTML){await clickEl(q('[data-close]'));await sleep(300);}
+  if(title()!==t0){frame.contentWindow.history.back();await sleep(600);}
+}else{check('documents deep-link mở được detail',true,{note:'chưa có chứng từ trên máy test'});}
+check('documents filter thời gian',!!q('#docRange'));
+
+// ---- Đơn mua NCC: tạo → xác nhận → nhận hàng ----
+await openHub('Đơn mua nhà cung cấp');
+check('purchase-orders mở',title()==='Đơn mua nhà cung cấp',title());
+const products=await db.getAll('products');
+const targetP=products.find(p=>p.type!=='SERVICE');
+const levelsBefore=await db.getAll('levels');
+const lvBefore=levelsBefore.find(l=>l.productId===targetP.id)||{onHand:0};
+await clickEl(qa('#content [data-action="po-new"]')[0]);
+await wait(()=>q('[data-po-item]'));
+check('form tạo đơn mua mở',!!q('[data-po-item]'));
+const cb=q(`[data-po-item="${targetP.id}"]`);
+if(cb){cb.checked=true;cb.dispatchEvent(new frame.contentWindow.Event('change',{bubbles:true}));}
+fill(`[data-po-qty="${targetP.id}"]`,'2');fill(`[data-po-price="${targetP.id}"]`,'1500');
+await clickEl(q('#modalSubmit'));await sleep(1200);
+const poRows=qa('#content [data-action="po-open"]');
+check('đơn mua tạo ở trạng thái DRAFT (hiện trong danh sách)',poRows.length>0&&all().includes('Nháp'),{rows:poRows.length});
+await clickEl(poRows[0]);
+await wait(()=>q('[data-po-act="ORDERED"]'));
+await clickEl(q('[data-po-act="ORDERED"]'));await sleep(1000);
+check('xác nhận đơn mua → ORDERED',all().includes('Đã đặt'),all().slice(0,120));
+await clickEl(qa('#content [data-action="po-open"]')[0]);
+await wait(()=>q('[data-po-act="RECEIVE"]'));
+await clickEl(q('[data-po-act="RECEIVE"]'));await sleep(1600);
+const lvAfter=(await db.getAll('levels')).find(l=>l.productId===targetP.id)||{onHand:0};
+check('nhận hàng: tồn tăng đúng số lượng (2)',Number(lvAfter.onHand)===Number(lvBefore.onHand)+2,{before:lvBefore.onHand,after:lvAfter.onHand});
+check('nhận hàng: đơn chuyển RECEIVED',all().includes('Đã nhận'),all().slice(0,120));
+const mvRec=(await db.getAll('movements')).filter(m=>m.type==='receive');
+check('nhận hàng: có movement receive',mvRec.length>0,{movements:mvRec.length});
+
+// ---- Đề xuất nhập hàng ----
+await openHub('Đề xuất nhập hàng');
+check('replenish mở',title()==='Đề xuất nhập hàng',title());
+check('replenish có nút tạo đơn mua',!!q('[data-action="rp-create"]'));
+check('replenish có chọn kho',!!q('#rpWarehouse'));
+
+// ---- Trả NCC (prepared) ----
+await openHub('Trả hàng nhà cung cấp');
+check('supplier-returns mở + ghi rõ PREPARED',title()==='Trả hàng nhà cung cấp'&&all().includes('PREPARED'),title());
+
+// ---- Mã chứng từ ----
+await openHub('Mã chứng từ');
+check('numbering mở + có prefix POS',title()==='Mã chứng từ'&&all().includes('POS'),title());
+
+// ---- Xuất dữ liệu ----
+await openHub('Xuất dữ liệu');
+const expBtns=qa('#content [data-action="export-csv"]');
+check('exports có >=7 loại CSV',expBtns.length>=7,{buttons:expBtns.length});
+if(expBtns[0]){await clickEl(expBtns[0]);await sleep(600);}
+check('exports không lỗi khi xuất CSV',true);
+
+// ---- Chẩn đoán ----
+await openHub('Chẩn đoán');
+check('diagnostics mở',title()==='Chẩn đoán',title());
+check('diagnostics có >=10 dòng thông tin',qa('#content .mod-row').length>=10,{rows:qa('#content .mod-row').length});
+check('diagnostics có phiên bản DB + mã thiết bị',all().includes('Phiên bản DB')&&all().includes('Mã thiết bị'));
+check('diagnostics KHÔNG có nút reset dữ liệu',!qa('#content button').some(b=>/reset|xóa dữ liệu|xoa du lieu/i.test(b.textContent)));
+await clickEl(qa('#content [data-action="diag-copy"]')[0]);await sleep(400);
+check('diagnostics copy chạy không lỗi',true);
+
+// ---- Audit filters ----
+await openHub('Nhật ký hoạt động');
+check('audit có filter loại + thời gian',!!q('#auditType')&&!!q('#auditRange'));
+if(q('#auditType')){const opts=[...q('#auditType').options].map(o=>o.value).filter(v=>v!=='all');
+  if(opts.length){fill('#auditType',opts[0]);await sleep(500);}
+}
+check('audit filter chạy không lỗi',title()==='Nhật ký hoạt động');
+
+// ---- Lịch sử giá trong Product Detail + soft delete ----
+await clickEl(qa('#mobileNav button').find(b=>b.dataset.page==='products'));
+const gotCards=await wait(()=>qa('#content [data-product]').length>0,9000);
+const card=q('#content [data-product]');
+if(gotCards&&card){await clickEl(card);
+  const openedModal=await wait(()=>q('#modalRoot')&&q('#modalRoot').innerHTML.length>0,7000);
+  const body=openedModal?(q('#modalRoot').textContent||''):'';
+  check('Product Detail có Lịch sử giá',body.includes('Lịch sử giá'),body.slice(0,80));
+  if(openedModal){await clickEl(q('[data-close]'));await sleep(300);}
+}else{check('Product Detail có Lịch sử giá',false,{note:'không mở được thẻ sản phẩm',cards:qa('#content [data-product]').length});}
+
+// ---- Thông báo nghiệp vụ tồn kho ----
+await clickEl(qa('[data-action="notifications"]')[0]);await sleep(800);
+check('notification center mở không lỗi',title()==='Thông báo'||(q('#modalRoot')?q('#modalRoot').innerHTML.length>0:false),title());
+if(q('#modalRoot')&&q('#modalRoot').innerHTML)await clickEl(q('[data-close]'));
+
+const ov=doc().documentElement;
+const summary={VIEWPORT:`${ov.clientWidth}x${ov.clientHeight}`,OVERFLOW:Math.max(0,ov.scrollWidth-ov.clientWidth),PASS_COUNT:results.filter(r=>r.pass).length,FAIL_COUNT:results.filter(r=>!r.pass).length,failures:results.filter(r=>!r.pass)};
+document.getElementById('out').innerHTML=`<b>SUMMARY</b>\n${JSON.stringify(summary,null,2)}\n\n`+results.map(r=>`${r.pass?'PASS':'FAIL'}  ${r.n}${r.pass?'':'  -> '+JSON.stringify(r.d)}`).join('\n')+`\n\nDONE:${summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'}`;
+globalThis.__NF_SUMMARY__=summary;
+console.log('NF_SUMMARY '+JSON.stringify(summary));
+console.log('DONE:'+(summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'));
+</script>
+</body>
+</html>

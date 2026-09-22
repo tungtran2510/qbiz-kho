@@ -1,0 +1,3099 @@
+{
+  "samsung": {
+    "dashboard": {
+      "vw": 412,
+      "vh": 915,
+      "scrollWidth": 412,
+      "scrollHeight": 2914,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Nhập hàng",
+          "w": 362,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 177,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 177,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 153,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 153,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 153,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Nhập hàng",
+          "w": 179,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất hàng",
+          "w": 179,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Chuyển kho",
+          "w": 179,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kiểm kho",
+          "w": 179,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 35,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 35,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 830,
+        "bottom": 905,
+        "height": 75
+      },
+      "contentBottom": 2914,
+      "text": "QBIZ\nTổng quan\nCần xử lý\n+ Nhập hàng\nQuét mã\nSản phẩm\nMỤC ĐANG QUẢN LÝ\n15\nTổng sản phẩm và dịch vụ\nXem\nCÓ THỂ BÁN\n108\nSau khi trừ hàng giữ và hỏng\nSẮP HẾT\n8\nCần nhập hoặc điều chuyển\nXem\nCHUYỂN KHO\n0\nPhiếu đang chờ kho nhận\nXem\nThao tác nhanh\nNhập hàng\nXuất hàng\nChuyển kho\nKiểm kho\nHoạt động gần đây\nXem\nChưa có hoạt động\nThao tác kho sẽ hiện ở đây.\nCần xử lý ngay\nXem\nGối lưng sáng chế F1\n\nGối lưng · cái · DL-F1\n\nHết hàng\nGiá chưa cập nhật\nGối lưng F1 hỗ trợ vùng thắt lưng khi ngồi lâu.\n0\nTồn thực\n0\nCó thể bán\n8\nNgưỡng\nGối lưng sáng chế F3/C\n\nGối lưng · cái · DL-F3\n\nHết hàng\n3.737.000 ₫\nGối lưng F3/C ôm sát vùng lưng, giúp tư thế ngồi ổn định hơn.\n0\nTồn thực\n0\nCó thể bán\n8\nNgưỡng\nGối cổ sáng "
+    },
+    "sales": {
+      "vw": 412,
+      "vh": 915,
+      "scrollWidth": 412,
+      "scrollHeight": 2375,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét",
+          "w": 71,
+          "h": 67,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Tìm tên, SKU hoặc barcode...",
+          "w": 366,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 135\nDL-135 · chiếc\n53.762.0",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 150\nDL-150 · chiếc\n53.762.0",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 90D\nDL-90D · chiếc\n34.937.0",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 90T\nDL-90T · chiếc\nChưa có ",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 95\nDL-95 · chiếc\n39.249.000",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng sáng chế F1\nDL-F1 · cái\nChưa có",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng sáng chế F3/C\nDL-F3 · cái\n3.737",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F4/09\nDL-F4 · cái\n7.624.",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F5/S\nDL-F5 · cái\n4.312.0",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F6\nDL-F6 · cái\n7.049.000",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng DoctorLoan\nDL-LUMBAR · cái\nChưa",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đệm thiền DoctorLoan\nDL-MEDITATION · cái",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 - chân cao\nN85-NAVY-H · chiếc\n2.",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 - chân thấp\nN85-NAVY-L · chiếc\n2",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 màu hồng - chân cao\nN85-PINK-H ·",
+          "w": 366,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Kho Trung tâm\nKho Hà Đông",
+          "w": 366,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "",
+          "w": 366,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Ghi chú cho phiếu bán...",
+          "w": 366,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Tiền mặt\nChuyển khoản\nQR",
+          "w": 366,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thanh toán · 0 ₫",
+          "w": 366,
+          "h": 48,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 830,
+        "bottom": 905,
+        "height": 75
+      },
+      "contentBottom": 2375,
+      "text": "QBIZ\nBán hàng\nChọn sản phẩm hoặc dịch vụ\nQuét\nGhế sáng chế 135\nDL-135 · chiếc\n53.762.000 ₫\nGhế sáng chế 150\nDL-150 · chiếc\n53.762.000 ₫\nGhế sáng chế 90D\nDL-90D · chiếc\n34.937.000 ₫\nGhế sáng chế 90T\nDL-90T · chiếc\nChưa có giá\nGhế sáng chế 95\nDL-95 · chiếc\n39.249.000 ₫\nGối lưng sáng chế F1\nDL-F1 · cái\nChưa có giá\nGối lưng sáng chế F3/C\nDL-F3 · cái\n3.737.000 ₫\nGối cổ sáng chế F4/09\nDL-F4 · cái\n7.624.000 ₫\nGối cổ sáng chế F5/S\nDL-F5 · cái\n4.312.000 ₫\nGối cổ sáng chế F6\nDL-F6 · cái\n7.049.000 ₫\nGối lưng DoctorLoan\nDL-LUMBAR · cái\nChưa có giá\nĐệm thiền DoctorLoan\nDL-MEDITATION · cái\n6.000.000 ₫\nGhế N85 - chân cao\nN85-NAVY-H · chiếc\n2.300.000 ₫\nGhế N85 - chân thấp\nN85-NAVY-L · chiếc\n2.127.000 ₫\nGhế "
+    },
+    "products": {
+      "vw": 412,
+      "vh": 915,
+      "scrollWidth": 412,
+      "scrollHeight": 2880,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Danh sách",
+          "w": 180,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thẻ ảnh",
+          "w": 180,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 180,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 366,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Tìm theo tên, SKU hoặc barcode...",
+          "w": 366,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Tất cả kho\nKho Trung tâm\nKho Hà Đông",
+          "w": 366,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 830,
+        "bottom": 905,
+        "height": 75
+      },
+      "contentBottom": 2880,
+      "text": "QBIZ\nSản phẩm\nSản phẩm & Dịch vụ\n\n15 mục · 0 dịch vụ · 8 sản phẩm đang cần chú ý\n\nDanh sách\nThẻ ảnh\nQuét mã\nThêm\nTất cả kho\nKho Trung tâm\nKho Hà Đông\nGhế sáng chế 135\nGhế · chiếc · DL-135\n13\n13\nCòn hàng\nXem\nGhế sáng chế 150\nGhế · chiếc · DL-150\n3\n2\nCòn hàng\nXem\nGhế sáng chế 90D\nGhế · chiếc · DL-90D\n36\n36\nCòn hàng\nXem\nGhế sáng chế 90T\nGhế · chiếc · DL-90T\n16\n15\nCòn hàng\nXem\nGhế sáng chế 95\nGhế · chiếc · DL-95\n6\n4\nCòn hàng\nXem\nGối lưng sáng chế F1\nGối lưng · cái · DL-F1\n0\n0\nHết hàng\nXem\nGối lưng sáng chế F3/C\nGối lưng · cái · DL-F3\n0\n0\nHết hàng\nXem\nGối cổ sáng chế F4/09\nGối cổ · cái · DL-F4\n0\n0\nHết hàng\nXem\nGối cổ sáng chế F5/S\nGối cổ · cái · DL-F5\n0\n0\nHết hàng\nXem\nGối cổ sáng chế F6\nGối cổ · "
+    },
+    "transfers": {
+      "vw": 412,
+      "vh": 915,
+      "scrollWidth": 412,
+      "scrollHeight": 915,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Nhập",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Chuyển",
+          "w": 90,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kiểm",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Lịch sử kho",
+          "w": 89,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 830,
+        "bottom": 905,
+        "height": 75
+      },
+      "contentBottom": 478,
+      "text": "QBIZ\nKho\nKho\nNhập\nXuất\nChuyển\nKiểm\nLịch sử kho\nChưa có phiếu chuyển\nKhi có điều chuyển giữa hai kho, chúng sẽ hiện ở đây.\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "more": {
+      "vw": 412,
+      "vh": 915,
+      "scrollWidth": 412,
+      "scrollHeight": 915,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đơn hàng",
+          "w": 366,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài đặt",
+          "w": 366,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 830,
+        "bottom": 905,
+        "height": 75
+      },
+      "contentBottom": 330,
+      "text": "QBIZ\nThêm\nCông cụ\nĐơn hàng\nCài đặt\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "settings": {
+      "vw": 412,
+      "vh": 915,
+      "scrollWidth": 412,
+      "scrollHeight": 915,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thêm kho",
+          "w": 125,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sao lưu dữ liệu",
+          "w": 148,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất CSV",
+          "w": 103,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thử đồng bộ",
+          "w": 132,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Khôi phục demo",
+          "w": 157,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 830,
+        "bottom": 905,
+        "height": 75
+      },
+      "contentBottom": 650,
+      "text": "QBIZ\nCài đặt\nKho hàng\n\n2 kho đang hoạt động\n\n+ Thêm kho\nKho Trung tâm\n37 tồn thực\nĐang dùng\nKho Hà Đông\n78 tồn thực\nĐang dùng\nDữ liệu\nSao lưu dữ liệu\nXuất CSV\nNhập CSV\nNhập backup\nThử đồng bộ\nKhôi phục demo\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "orders": {
+      "vw": 412,
+      "vh": 915,
+      "scrollWidth": 412,
+      "scrollHeight": 915,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đơn mới",
+          "w": 99,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 68,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 830,
+        "bottom": 905,
+        "height": 75
+      },
+      "contentBottom": 316,
+      "text": "QBIZ\nĐơn hàng\nCần xử lý 0\nĐơn mới\nChưa có đơn hàng\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "_console": []
+  },
+  "iphone": {
+    "dashboard": {
+      "vw": 390,
+      "vh": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2914,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Nhập hàng",
+          "w": 340,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 166,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 166,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 142,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 142,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 142,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Nhập hàng",
+          "w": 168,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất hàng",
+          "w": 168,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Chuyển kho",
+          "w": 168,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kiểm kho",
+          "w": 168,
+          "h": 83,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 35,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 35,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 759,
+        "bottom": 834,
+        "height": 75
+      },
+      "contentBottom": 2914,
+      "text": "QBIZ\nTổng quan\nCần xử lý\n+ Nhập hàng\nQuét mã\nSản phẩm\nMỤC ĐANG QUẢN LÝ\n15\nTổng sản phẩm và dịch vụ\nXem\nCÓ THỂ BÁN\n108\nSau khi trừ hàng giữ và hỏng\nSẮP HẾT\n8\nCần nhập hoặc điều chuyển\nXem\nCHUYỂN KHO\n0\nPhiếu đang chờ kho nhận\nXem\nThao tác nhanh\nNhập hàng\nXuất hàng\nChuyển kho\nKiểm kho\nHoạt động gần đây\nXem\nChưa có hoạt động\nThao tác kho sẽ hiện ở đây.\nCần xử lý ngay\nXem\nGối lưng sáng chế F1\n\nGối lưng · cái · DL-F1\n\nHết hàng\nGiá chưa cập nhật\nGối lưng F1 hỗ trợ vùng thắt lưng khi ngồi lâu.\n0\nTồn thực\n0\nCó thể bán\n8\nNgưỡng\nGối lưng sáng chế F3/C\n\nGối lưng · cái · DL-F3\n\nHết hàng\n3.737.000 ₫\nGối lưng F3/C ôm sát vùng lưng, giúp tư thế ngồi ổn định hơn.\n0\nTồn thực\n0\nCó thể bán\n8\nNgưỡng\nGối cổ sáng "
+    },
+    "sales": {
+      "vw": 390,
+      "vh": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2375,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét",
+          "w": 71,
+          "h": 67,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Tìm tên, SKU hoặc barcode...",
+          "w": 344,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 135\nDL-135 · chiếc\n53.762.0",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 150\nDL-150 · chiếc\n53.762.0",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 90D\nDL-90D · chiếc\n34.937.0",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 90T\nDL-90T · chiếc\nChưa có ",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 95\nDL-95 · chiếc\n39.249.000",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng sáng chế F1\nDL-F1 · cái\nChưa có",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng sáng chế F3/C\nDL-F3 · cái\n3.737",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F4/09\nDL-F4 · cái\n7.624.",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F5/S\nDL-F5 · cái\n4.312.0",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F6\nDL-F6 · cái\n7.049.000",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng DoctorLoan\nDL-LUMBAR · cái\nChưa",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đệm thiền DoctorLoan\nDL-MEDITATION · cái",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 - chân cao\nN85-NAVY-H · chiếc\n2.",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 - chân thấp\nN85-NAVY-L · chiếc\n2",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 màu hồng - chân cao\nN85-PINK-H ·",
+          "w": 344,
+          "h": 84,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Kho Trung tâm\nKho Hà Đông",
+          "w": 344,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "",
+          "w": 344,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Ghi chú cho phiếu bán...",
+          "w": 344,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Tiền mặt\nChuyển khoản\nQR",
+          "w": 344,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thanh toán · 0 ₫",
+          "w": 344,
+          "h": 48,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 759,
+        "bottom": 834,
+        "height": 75
+      },
+      "contentBottom": 2375,
+      "text": "QBIZ\nBán hàng\nChọn sản phẩm hoặc dịch vụ\nQuét\nGhế sáng chế 135\nDL-135 · chiếc\n53.762.000 ₫\nGhế sáng chế 150\nDL-150 · chiếc\n53.762.000 ₫\nGhế sáng chế 90D\nDL-90D · chiếc\n34.937.000 ₫\nGhế sáng chế 90T\nDL-90T · chiếc\nChưa có giá\nGhế sáng chế 95\nDL-95 · chiếc\n39.249.000 ₫\nGối lưng sáng chế F1\nDL-F1 · cái\nChưa có giá\nGối lưng sáng chế F3/C\nDL-F3 · cái\n3.737.000 ₫\nGối cổ sáng chế F4/09\nDL-F4 · cái\n7.624.000 ₫\nGối cổ sáng chế F5/S\nDL-F5 · cái\n4.312.000 ₫\nGối cổ sáng chế F6\nDL-F6 · cái\n7.049.000 ₫\nGối lưng DoctorLoan\nDL-LUMBAR · cái\nChưa có giá\nĐệm thiền DoctorLoan\nDL-MEDITATION · cái\n6.000.000 ₫\nGhế N85 - chân cao\nN85-NAVY-H · chiếc\n2.300.000 ₫\nGhế N85 - chân thấp\nN85-NAVY-L · chiếc\n2.127.000 ₫\nGhế "
+    },
+    "products": {
+      "vw": 390,
+      "vh": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 2880,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Danh sách",
+          "w": 169,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thẻ ảnh",
+          "w": 169,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 169,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 344,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Tìm theo tên, SKU hoặc barcode...",
+          "w": 344,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Tất cả kho\nKho Trung tâm\nKho Hà Đông",
+          "w": 344,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 60,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 759,
+        "bottom": 834,
+        "height": 75
+      },
+      "contentBottom": 2880,
+      "text": "QBIZ\nSản phẩm\nSản phẩm & Dịch vụ\n\n15 mục · 0 dịch vụ · 8 sản phẩm đang cần chú ý\n\nDanh sách\nThẻ ảnh\nQuét mã\nThêm\nTất cả kho\nKho Trung tâm\nKho Hà Đông\nGhế sáng chế 135\nGhế · chiếc · DL-135\n13\n13\nCòn hàng\nXem\nGhế sáng chế 150\nGhế · chiếc · DL-150\n3\n2\nCòn hàng\nXem\nGhế sáng chế 90D\nGhế · chiếc · DL-90D\n36\n36\nCòn hàng\nXem\nGhế sáng chế 90T\nGhế · chiếc · DL-90T\n16\n15\nCòn hàng\nXem\nGhế sáng chế 95\nGhế · chiếc · DL-95\n6\n4\nCòn hàng\nXem\nGối lưng sáng chế F1\nGối lưng · cái · DL-F1\n0\n0\nHết hàng\nXem\nGối lưng sáng chế F3/C\nGối lưng · cái · DL-F3\n0\n0\nHết hàng\nXem\nGối cổ sáng chế F4/09\nGối cổ · cái · DL-F4\n0\n0\nHết hàng\nXem\nGối cổ sáng chế F5/S\nGối cổ · cái · DL-F5\n0\n0\nHết hàng\nXem\nGối cổ sáng chế F6\nGối cổ · "
+    },
+    "transfers": {
+      "vw": 390,
+      "vh": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Nhập",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Chuyển",
+          "w": 90,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kiểm",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Lịch sử kho",
+          "w": 89,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 759,
+        "bottom": 834,
+        "height": 75
+      },
+      "contentBottom": 481,
+      "text": "QBIZ\nKho\nKho\nNhập\nXuất\nChuyển\nKiểm\nLịch sử kho\nChưa có phiếu chuyển\nKhi có điều chuyển giữa hai kho, chúng sẽ hiện ở đây.\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "more": {
+      "vw": 390,
+      "vh": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đơn hàng",
+          "w": 344,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài đặt",
+          "w": 344,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 759,
+        "bottom": 834,
+        "height": 75
+      },
+      "contentBottom": 330,
+      "text": "QBIZ\nThêm\nCông cụ\nĐơn hàng\nCài đặt\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "settings": {
+      "vw": 390,
+      "vh": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thêm kho",
+          "w": 125,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sao lưu dữ liệu",
+          "w": 148,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất CSV",
+          "w": 103,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thử đồng bộ",
+          "w": 132,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Khôi phục demo",
+          "w": 157,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 759,
+        "bottom": 834,
+        "height": 75
+      },
+      "contentBottom": 650,
+      "text": "QBIZ\nCài đặt\nKho hàng\n\n2 kho đang hoạt động\n\n+ Thêm kho\nKho Trung tâm\n37 tồn thực\nĐang dùng\nKho Hà Đông\n78 tồn thực\nĐang dùng\nDữ liệu\nSao lưu dữ liệu\nXuất CSV\nNhập CSV\nNhập backup\nThử đồng bộ\nKhôi phục demo\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "orders": {
+      "vw": 390,
+      "vh": 844,
+      "scrollWidth": 390,
+      "scrollHeight": 844,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 44,
+          "h": 46,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đơn mới",
+          "w": 99,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 63,
+          "h": 53,
+          "fs": 10,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 759,
+        "bottom": 834,
+        "height": 75
+      },
+      "contentBottom": 316,
+      "text": "QBIZ\nĐơn hàng\nCần xử lý 0\nĐơn mới\nChưa có đơn hàng\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm"
+    },
+    "_console": []
+  },
+  "pc": {
+    "dashboard": {
+      "vw": 1440,
+      "vh": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1301,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài ứng dụng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 46,
+          "h": 44,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thao tác kho",
+          "w": 147,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Nhập hàng",
+          "w": 133,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 126,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 109,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 189,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 189,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 189,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Nhập hàng\nTăng tồn thực tế",
+          "w": 125,
+          "h": 122,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất hàng\nBán / sử dụng",
+          "w": 125,
+          "h": 122,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Chuyển kho\nĐi và chờ nhận",
+          "w": 125,
+          "h": 122,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kiểm kho\nChốt số thực tế",
+          "w": 125,
+          "h": 122,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 35,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 35,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 0,
+        "bottom": 0,
+        "height": 0
+      },
+      "contentBottom": 1301,
+      "text": "Q\nQBiz Kho\nQuản lý tồn kho\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm\nThiết bị này\nCài ứng dụng\nQBIZ\nTổng quan\n+ Thao tác kho\nCần xử lý\n+ Nhập hàng\nQuét mã\nSản phẩm\nMỤC ĐANG QUẢN LÝ\n15\nTổng sản phẩm và dịch vụ\nXem\nCÓ THỂ BÁN\n108\nSau khi trừ hàng giữ và hỏng\nSẮP HẾT\n8\nCần nhập hoặc điều chuyển\nXem\nCHUYỂN KHO\n0\nPhiếu đang chờ kho nhận\nXem\nThao tác nhanh\nNhập hàng\nTăng tồn thực tế\nXuất hàng\nBán / sử dụng\nChuyển kho\nĐi và chờ nhận\nKiểm kho\nChốt số thực tế\nHoạt động gần đây\nXem\nChưa có hoạt động\nThao tác kho sẽ hiện ở đây.\nCần xử lý ngay\nXem\nGối lưng sáng chế F1\n\nGối lưng · cái · DL-F1\n\nHết hàng\nGiá chưa cập nhật\nGối lưng F1 hỗ trợ vùng thắt lưng khi ngồi lâu.\n0\nTồn thực\n0\nCó thể bán\n8\nNgưỡng\nGối lưng "
+    },
+    "sales": {
+      "vw": 1440,
+      "vh": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1499,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài ứng dụng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 46,
+          "h": 44,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thao tác kho",
+          "w": 147,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét",
+          "w": 71,
+          "h": 67,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Tìm tên, SKU hoặc barcode...",
+          "w": 592,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 135\nDL-135 · chiếc\n53.762.0",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 150\nDL-150 · chiếc\n53.762.0",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 90D\nDL-90D · chiếc\n34.937.0",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 90T\nDL-90T · chiếc\nChưa có ",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế sáng chế 95\nDL-95 · chiếc\n39.249.000",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng sáng chế F1\nDL-F1 · cái\nChưa có",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng sáng chế F3/C\nDL-F3 · cái\n3.737",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F4/09\nDL-F4 · cái\n7.624.",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F5/S\nDL-F5 · cái\n4.312.0",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối cổ sáng chế F6\nDL-F6 · cái\n7.049.000",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Gối lưng DoctorLoan\nDL-LUMBAR · cái\nChưa",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đệm thiền DoctorLoan\nDL-MEDITATION · cái",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 - chân cao\nN85-NAVY-H · chiếc\n2.",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 - chân thấp\nN85-NAVY-L · chiếc\n2",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Ghế N85 màu hồng - chân cao\nN85-PINK-H ·",
+          "w": 592,
+          "h": 60,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Kho Trung tâm\nKho Hà Đông",
+          "w": 428,
+          "h": 44,
+          "fs": 12,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "",
+          "w": 428,
+          "h": 44,
+          "fs": 12,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Ghi chú cho phiếu bán...",
+          "w": 428,
+          "h": 44,
+          "fs": 12,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Tiền mặt\nChuyển khoản\nQR",
+          "w": 428,
+          "h": 44,
+          "fs": 12,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thanh toán · 0 ₫",
+          "w": 428,
+          "h": 52,
+          "fs": 16,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 0,
+        "bottom": 0,
+        "height": 0
+      },
+      "contentBottom": 1499,
+      "text": "Q\nQBiz Kho\nQuản lý tồn kho\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm\nThiết bị này\nCài ứng dụng\nQBIZ\nBán hàng\n+ Thao tác kho\nChọn sản phẩm hoặc dịch vụ\nQuét\nGhế sáng chế 135\nDL-135 · chiếc\n53.762.000 ₫\nGhế sáng chế 150\nDL-150 · chiếc\n53.762.000 ₫\nGhế sáng chế 90D\nDL-90D · chiếc\n34.937.000 ₫\nGhế sáng chế 90T\nDL-90T · chiếc\nChưa có giá\nGhế sáng chế 95\nDL-95 · chiếc\n39.249.000 ₫\nGối lưng sáng chế F1\nDL-F1 · cái\nChưa có giá\nGối lưng sáng chế F3/C\nDL-F3 · cái\n3.737.000 ₫\nGối cổ sáng chế F4/09\nDL-F4 · cái\n7.624.000 ₫\nGối cổ sáng chế F5/S\nDL-F5 · cái\n4.312.000 ₫\nGối cổ sáng chế F6\nDL-F6 · cái\n7.049.000 ₫\nGối lưng DoctorLoan\nDL-LUMBAR · cái\nChưa có giá\nĐệm thiền DoctorLoan\nDL-MEDITATION · cái\n6.000.000 ₫\n"
+    },
+    "products": {
+      "vw": 1440,
+      "vh": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 1591,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài ứng dụng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 46,
+          "h": 44,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thao tác kho",
+          "w": 147,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Danh sách",
+          "w": 103,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thẻ ảnh",
+          "w": 86,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 98,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 76,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "INPUT",
+          "txt": "Tìm theo tên, SKU hoặc barcode...",
+          "w": 888,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "SELECT",
+          "txt": "Tất cả kho\nKho Trung tâm\nKho Hà Đông",
+          "w": 180,
+          "h": 51,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xem",
+          "w": 84,
+          "h": 44,
+          "fs": 16,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 0,
+        "bottom": 0,
+        "height": 0
+      },
+      "contentBottom": 1591,
+      "text": "Q\nQBiz Kho\nQuản lý tồn kho\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm\nThiết bị này\nCài ứng dụng\nQBIZ\nSản phẩm\n+ Thao tác kho\nSản phẩm & Dịch vụ\n\n15 mục · 0 dịch vụ · 8 sản phẩm đang cần chú ý\n\nDanh sách\nThẻ ảnh\nQuét mã\nThêm\nTất cả kho\nKho Trung tâm\nKho Hà Đông\nSẢN PHẨM\nTỒN THỰC\nCÓ THỂ BÁN\nTRẠNG THÁI\nGhế sáng chế 135\nGhế · chiếc · DL-135\n13\n13\nCòn hàng\nXem\nGhế sáng chế 150\nGhế · chiếc · DL-150\n3\n2\nCòn hàng\nXem\nGhế sáng chế 90D\nGhế · chiếc · DL-90D\n36\n36\nCòn hàng\nXem\nGhế sáng chế 90T\nGhế · chiếc · DL-90T\n16\n15\nCòn hàng\nXem\nGhế sáng chế 95\nGhế · chiếc · DL-95\n6\n4\nCòn hàng\nXem\nGối lưng sáng chế F1\nGối lưng · cái · DL-F1\n0\n0\nHết hàng\nXem\nGối lưng sáng chế F3/C\nGối lưng · cái · DL-F3\n0\n0\nHết hàng\nXem\nGố"
+    },
+    "transfers": {
+      "vw": 1440,
+      "vh": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài ứng dụng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 46,
+          "h": 44,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thao tác kho",
+          "w": 147,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Nhập",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Chuyển",
+          "w": 90,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kiểm",
+          "w": 82,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Lịch sử kho",
+          "w": 89,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 0,
+        "bottom": 0,
+        "height": 0
+      },
+      "contentBottom": 443,
+      "text": "Q\nQBiz Kho\nQuản lý tồn kho\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm\nThiết bị này\nCài ứng dụng\nQBIZ\nKho\n+ Thao tác kho\nKho\nNhập\nXuất\nChuyển\nKiểm\nLịch sử kho\nChưa có phiếu chuyển\nKhi có điều chuyển giữa hai kho, chúng sẽ hiện ở đây."
+    },
+    "more": {
+      "vw": 1440,
+      "vh": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài ứng dụng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 46,
+          "h": 44,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thao tác kho",
+          "w": 147,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đơn hàng",
+          "w": 535,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài đặt",
+          "w": 535,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 0,
+        "bottom": 0,
+        "height": 0
+      },
+      "contentBottom": 305,
+      "text": "Q\nQBiz Kho\nQuản lý tồn kho\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm\nThiết bị này\nCài ứng dụng\nQBIZ\nThêm\n+ Thao tác kho\nCông cụ\nĐơn hàng\nCài đặt"
+    },
+    "settings": {
+      "vw": 1440,
+      "vh": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài ứng dụng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 46,
+          "h": 44,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thao tác kho",
+          "w": 147,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thêm kho",
+          "w": 125,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sao lưu dữ liệu",
+          "w": 148,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Xuất CSV",
+          "w": 103,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thử đồng bộ",
+          "w": 132,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Khôi phục demo",
+          "w": 157,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 0,
+        "bottom": 0,
+        "height": 0
+      },
+      "contentBottom": 423,
+      "text": "Q\nQBiz Kho\nQuản lý tồn kho\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm\nThiết bị này\nCài ứng dụng\nQBIZ\nCài đặt\n+ Thao tác kho\nKho hàng\n\n2 kho đang hoạt động\n\n+ Thêm kho\nKho Trung tâm\n37 tồn thực\nĐang dùng\nKho Hà Đông\n78 tồn thực\nĐang dùng\nDữ liệu\nSao lưu dữ liệu\nXuất CSV\nNhập CSV\nNhập backup\nThử đồng bộ\nKhôi phục demo"
+    },
+    "orders": {
+      "vw": 1440,
+      "vh": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "over": [],
+      "targets": [
+        {
+          "tag": "BUTTON",
+          "txt": "Tổng quan",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Bán hàng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Sản phẩm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Kho",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Thêm",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Cài ứng dụng",
+          "w": 237,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Quét mã",
+          "w": 46,
+          "h": 44,
+          "fs": 19,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "+ Thao tác kho",
+          "w": 147,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        },
+        {
+          "tag": "BUTTON",
+          "txt": "Đơn mới",
+          "w": 99,
+          "h": 47,
+          "fs": 16,
+          "vis": true
+        }
+      ],
+      "bottom": {
+        "top": 0,
+        "bottom": 0,
+        "height": 0
+      },
+      "contentBottom": 346,
+      "text": "Q\nQBiz Kho\nQuản lý tồn kho\nTổng quan\nBán hàng\nSản phẩm\nKho\nThêm\nThiết bị này\nCài ứng dụng\nQBIZ\nĐơn hàng\n+ Thao tác kho\nCần xử lý 0\nĐơn mới\nChưa có đơn hàng"
+    },
+    "_console": []
+  }
+}

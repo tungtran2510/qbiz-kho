@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#102a56" />
+  <meta name="description" content="QBiz Kho - quáº£n lÃ½ tá»“n kho tá»‘i giáº£n cho Web, Android vÃ  iPhone." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="QBiz Kho" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css?v=ai-foundation-batch1" />
+  <title>QBiz Kho</title>
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar" aria-label="Điều hướng chính">
+      <div class="brand">
+        <div class="brand-mark">Q</div>
+        <div><strong>QBiz Kho</strong><span>Quản lý tồn kho</span></div>
+      </div>
+      <nav id="desktopNav" class="nav-list"></nav>
+      <div class="sidebar-foot">
+        <div class="sync-pill" id="desktopSyncPill"><span class="dot"></span><span>Thiết bị này</span></div>
+        <button class="ghost-btn full" data-action="install-app">Cài ứng dụng</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow" id="pageEyebrow">QBiz</div>
+          <h1 id="pageTitle">Tổng quan</h1>
+        </div>
+        <div class="top-actions" id="topActions"></div>
+      </header>
+
+      <section id="content" class="content"></section>
+    </main>
+
+    <nav id="mobileNav" class="mobile-nav" aria-label="Điều hướng mobile"></nav>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="toastRoot" class="toast-root"></div>
+
+  <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+  <script type="module" src="./src/app.js?v=ai-foundation-batch1"></script>
+</body>
+</html>

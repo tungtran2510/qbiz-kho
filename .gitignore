@@ -1,0 +1,23 @@
+# Dependencies & Build
+node_modules/
+dist/
+build/
+.cache/
+tmp/
+temp/
+
+# Logs & Runtime
+*.log
+
+# OS & Cloud Sync metadata
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Test runners & Test-generated artifacts
+.playwright-cli/
+__pycache__/
+*.pyc
+error.txt
+output.txt
+x)

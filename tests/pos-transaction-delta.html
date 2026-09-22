@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><title>POS transaction delta</title><pre id="out">RUNNING</pre>
+<script type="module">
+globalThis.__QBIZ_TEST_DB_NAME='qbiz_pos_transaction_delta_v1';
+const db=await import('../src/db.js');
+const engine=await import('../src/engine.js');
+const checks=[];const check=(name,ok,detail='')=>checks.push({name,ok:Boolean(ok),detail});
+await db.clearAll();
+const wid='w-test',p1='p-merge',p2='p-limit';
+await db.putMany('warehouses',[{id:wid,name:'Kho test',active:true}]);
+await db.putMany('products',[{id:p1,name:'Sản phẩm gộp',sku:'MERGE',type:'PRODUCT',price:100000,trackInventory:true,active:true},{id:p2,name:'Sản phẩm tồn 1',sku:'LIMIT',type:'PRODUCT',price:50000,trackInventory:true,active:true}]);
+await db.putMany('levels',[{id:`${p1}:${wid}`,productId:p1,warehouseId:wid,onHand:5,reserved:0,damaged:0,version:1},{id:`${p2}:${wid}`,productId:p2,warehouseId:wid,onHand:1,reserved:0,damaged:0,version:1}]);
+const op='op-pos-merge',saleId='sale-pos-merge';
+const sale=await engine.createSale({saleId,operationId:op,warehouseId:wid,paymentMethod:'cash',items:[{itemId:p1,quantity:1,unitPrice:100000,discount:0},{itemId:p1,quantity:2,unitPrice:100000,discount:0}]});
+const retry=await engine.createSale({saleId,operationId:op,warehouseId:wid,paymentMethod:'cash',items:[{itemId:p1,quantity:3,unitPrice:100000,discount:0}]});
+const movements=(await db.getAll('movements')).filter(x=>x.reference_id===saleId);
+const level=await db.getOne('levels',`${p1}:${wid}`);
+check('duplicate lines merge to one sale item',sale.items.length===1&&sale.items[0].quantity===3,JSON.stringify(sale.items));
+check('total from merged item',sale.grand_total===300000,sale.grand_total);
+check('one inventory movement',movements.length===1&&movements[0].qty===-3,JSON.stringify(movements));
+check('inventory deducted once',level.onHand===2,level.onHand);
+check('retry idempotent',retry.id===sale.id&&(await db.getAll('sales')).length===1,retry.id);
+let blocked=false;try{await engine.createSale({saleId:'sale-overstock',operationId:'op-overstock',warehouseId:wid,paymentMethod:'cash',items:[{itemId:p2,quantity:2,unitPrice:50000,discount:0}]})}catch(e){blocked=/Không đủ tồn/.test(e.message)}
+const limitLevel=await db.getOne('levels',`${p2}:${wid}`);
+check('overstock blocked in mutation',blocked,blocked);
+check('overstock leaves stock unchanged',limitLevel.onHand===1,limitLevel.onHand);
+const pass=checks.every(x=>x.ok);document.querySelector('#out').textContent=JSON.stringify({pass,checks},null,2);document.body.dataset.result=pass?'PASS':'FAIL';
+</script>

@@ -1,0 +1,38 @@
+QBIZ FEATURE SURFACE COMPLETION — TEST RESULTS
+Timestamp: 2026-09-21 17:48 +07:00
+Runtime: http://127.0.0.1:4180
+DB: qbiz_kho_v1 v9
+
+SYNTAX
+- node --check src/app.js: PASS
+- node --check src/engine.js: PASS
+- node --check src/db.js: PASS
+- node --check src/sync.js: PASS
+
+RUNTIME
+- HTTP GET /: 200
+- Console: 0 errors, 0 warnings
+
+RESPONSIVE SURFACE CHECK
+- 390px: PASS; 14 feature surfaces opened; horizontal overflow 0
+- 412px: PASS; 14 feature surfaces opened; horizontal overflow 0
+- 1440px: PASS; 14 feature surfaces opened; horizontal overflow 0
+- Pages checked: More, Settings, Print, Reports, Import, Backup, Return/Exchange,
+  Shift, Notifications, Shipping, Channels, Permissions, Scanner, Suppliers.
+
+INTERACTION CHECKS
+- More hub links open their intended surfaces.
+- Import flow advances from Source to Upload.
+- Report tabs and warehouse filter respond.
+- Business profile input accepts text.
+- Unsupported permission creation remains disabled and labeled.
+- Product detail advanced section is collapsed by default.
+- Supplier prepared form exposes fields but Save remains disabled.
+- Print test creates one print job.
+- Reprint creates one additional print job and opens browser print.
+- Reprint safety: sales count unchanged (0 -> 0), movements unchanged (30 -> 30).
+
+REGRESSION
+- Dashboard was not edited in this round.
+- src/config.js, src/db.js, src/engine.js, src/sync.js were not edited.
+- No SYNC-01 or production integration was started.

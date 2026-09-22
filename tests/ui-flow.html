@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>QBiz Kho — UI Flow Harness (T05, T06)</title>
+<style>body{font:13px/1.5 ui-monospace,Consolas,monospace;margin:16px;background:#0f1115;color:#e6e6e6}#out{white-space:pre-wrap}iframe{width:390px;height:780px;border:1px solid #333;background:#fff}</style>
+</head>
+<body>
+<iframe id="app" src="/"></iframe>
+<pre id="out">Đang chạy…</pre>
+<script type="module">
+const results = [];
+const check = (n, c, d) => results.push({ n, pass: !!c, d });
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const frame = document.getElementById('app');
+const doc = () => frame.contentDocument;
+const q = s => doc().querySelector(s);
+const qa = s => [...doc().querySelectorAll(s)];
+const waitFor = async (fn, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { try { if (fn()) return true; } catch {} await sleep(150); } return false; };
+const click = async s => { const el = q(s); if (!el) return false; el.click(); await sleep(400); return true; };
+const setVal = (s, v) => { const el = q(s); if (!el) return false; el.value = v; el.dispatchEvent(new frame.contentWindow.Event('input', { bubbles: true })); return true; };
+const step = () => doc().body.dataset.saleStep || '(none)';
+
+await waitFor(() => q('#mobileNav button'), 12000);
+check('app booted (no crash)', !!q('#mobileNav button') && doc().body.children.length > 0);
+
+// ── T06 — Back stack: browse → cart → checkout → back → cart → back → browse ──
+await click('#mobileNav button[data-page="sales"]');
+check('T06 POS loaded', await waitFor(() => q('[data-sale-add]')), step());
+await click('[data-sale-add]');
+check('T06 item added to cart', q('[data-sale-step="cart"]') || q('.sale-mobile-bar'), step());
+await click('[data-sale-step="cart"]');
+check('T06 forward browse → cart', step() === 'cart', step());
+await click('[data-sale-step="checkout"]');
+check('T06 forward cart → checkout', step() === 'checkout', step());
+const payAtCheckout = !!q('[data-sale-pay]');
+await click('[data-sale-back]');
+check('T06 back checkout → cart', step() === 'cart', step());
+await click('[data-sale-back]');
+check('T06 back cart → browse', step() === 'browse', step());
+check('T06 pay button present at checkout', payAtCheckout);
+check('POS: giá bán KHÔNG có ký hiệu ₫', qa('.pos-product b').length>0 && !qa('.pos-product b').some(e=>e.textContent.includes('₫')), { prices: qa('.pos-product b').slice(0,3).map(e=>e.textContent.trim()) });
+
+// ── T05 — Customer: add → reload → select in POS → sale → history once ────────
+const RUN = Math.random().toString(36).slice(2, 6);
+const NAME = 'Khách UI T05 ' + RUN, PHONE = '091' + String(Math.floor(Math.random() * 9000000) + 1000000);
+await click('#mobileNav button[data-page="more"]');
+await click('#content [data-page="customers"]');
+check('T05 customer directory opened', await waitFor(() => q('[data-action="new-customer"]')));
+await click('[data-action="new-customer"]');
+check('T05 add-customer modal opened', await waitFor(() => q('#customerName')));
+setVal('#customerName', NAME); setVal('#customerPhone', PHONE);
+await click('#modalSubmit');
+await sleep(700);
+
+frame.contentWindow.location.reload();
+check('T05 app reloaded', await waitFor(() => q('#mobileNav button'), 12000));
+await sleep(1200);
+
+const db = await import('/src/db.js');
+const customers = await db.getAll('customers');
+const cust = customers.find(c => c.name === NAME);
+check('T05 customer persisted after reload', !!cust, { phone: cust?.phone, total: customers.length });
+
+const label = `${NAME} · ${PHONE}`;
+const salesBefore = (await db.getAll('sales')).filter(s => s.customer_label === label).length;
+
+await click('#mobileNav button[data-page="sales"]');
+check('T05 POS ready after reload', await waitFor(() => q('[data-sale-add]'), 8000), { content: (q('#content') ? q('#content').textContent : '').trim().slice(0, 90) });
+await click('[data-sale-add]');
+await click('[data-sale-step="cart"]');
+const cartReady = await waitFor(() => q('[data-action="customer-picker"]'), 8000);
+check('T05 customer chip available in cart step', cartReady, { step: step(), content: (q('#content') ? q('#content').textContent : '').trim().slice(0, 90) });
+await click('[data-action="customer-picker"]');
+const pickerOpen = await waitFor(() => q('#customerResults'), 8000);
+check('T05 picker modal open', pickerOpen, { modal: (q('#modalRoot') ? q('#modalRoot').textContent : '').trim().slice(0, 90) });
+await waitFor(() => qa('#customerResults [data-customer-id]').length > 0, 8000);
+const rows = qa('#customerResults [data-customer-id]');
+const row = rows.find(b => b.textContent.includes(NAME));
+check('T05 picker lists the customer', rows.length > 0 && !!row, { rows: rows.length, labels: rows.map(b => b.textContent.trim().slice(0, 24)) });
+if (row) { row.click(); await sleep(700); }
+check('T05 customer selected in POS', (q('[data-action="customer-picker"]') ? q('[data-action="customer-picker"]').textContent : '').includes(NAME), (q('[data-action="customer-picker"]') ? q('[data-action="customer-picker"]').textContent : '').trim());
+
+await click('[data-sale-step="checkout"]');
+await click('[data-sale-pay]');
+await waitFor(() => step() === 'success', 8000);
+check('T05 sale committed', step() === 'success', step());
+await sleep(500);
+
+const sales = (await db.getAll('sales')).filter(s => s.customer_label === label);
+check('T05 customer history counted exactly once', sales.length - salesBefore === 1, { before: salesBefore, after: sales.length, codes: sales.map(s => s.code) });
+const mv = await db.getAll('movements');
+const saleMv = mv.filter(m => sales[0] && m.reference_id === sales[0].id && m.type === 'sale');
+check('T05 sale produced exactly 1 inventory movement per line', saleMv.length === (sales[0]?.items || []).filter(i => i.type === 'PRODUCT').length, { movements: saleMv.length, lines: (sales[0]?.items || []).length });
+
+const ov = doc().documentElement;
+const scrollW = ov.scrollWidth, clientW = doc().documentElement.clientWidth;
+const summary = { VIEWPORT: `${ov.clientWidth}x${ov.clientHeight}`, SCROLLWIDTH: scrollW, OVERFLOW: Math.max(0, scrollW - clientW), PASS_COUNT: results.filter(r => r.pass).length, FAIL_COUNT: results.filter(r => !r.pass).length, failures: results.filter(r => !r.pass) };
+document.getElementById('out').innerHTML = `<b>SUMMARY</b>\n${JSON.stringify(summary, null, 2)}\n\n` + results.map(r => `${r.pass ? 'PASS' : 'FAIL'}  ${r.n}${r.pass ? '' : '  -> ' + JSON.stringify(r.d)}`).join('\n') + `\n\nDONE:${summary.FAIL_COUNT === 0 ? 'ALL_PASS' : 'HAS_FAILURE'}`;
+globalThis.__UI_SUMMARY__ = summary;
+console.log('UI_SUMMARY ' + JSON.stringify(summary));
+console.log('DONE:' + (summary.FAIL_COUNT === 0 ? 'ALL_PASS' : 'HAS_FAILURE'));
+</script>
+</body>
+</html>

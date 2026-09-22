@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>QBiz Kho — Goods Tools Smoke</title>
+<style>body{font:13px/1.5 ui-monospace,Consolas,monospace;margin:16px;background:#0f1115;color:#e6e6e6}#out{white-space:pre-wrap}iframe{width:390px;height:800px;border:1px solid #333;background:#fff}</style>
+</head>
+<body>
+<iframe id="app" src="/"></iframe>
+<pre id="out">Đang chạy…</pre>
+<script type="module">
+const results=[];const check=(n,c,d)=>results.push({n,pass:!!c,d});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const frame=document.getElementById('app');
+const doc=()=>frame.contentDocument;
+const q=s=>doc().querySelector(s);
+const qa=s=>[...doc().querySelectorAll(s)];
+const all=()=>q('#content')?q('#content').textContent:'';
+const wait=async(fn,ms=9000)=>{const t=Date.now();while(Date.now()-t<ms){try{if(fn())return true}catch{}await sleep(150)}return false};
+const clickEl=async el=>{if(!el)return false;el.click();await sleep(450);return true};
+const fill=(sel,v)=>{const el=q(sel);if(!el)return false;el.value=v;el.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true}));el.dispatchEvent(new frame.contentWindow.Event('change',{bubbles:true}));return true};
+const nameOf=el=>{if(!el)return '';const t=el.querySelector('h3,.p-name,.pc-head h3');return (t?t.textContent:el.textContent).replace(/\s+/g,' ').trim().slice(0,40)};
+const first=()=>nameOf(q('#content [data-product]'));
+const count=()=>qa('#content [data-product]').length;
+const priceOf=el=>{if(!el)return null;const pr=el.querySelector('.row-price,.pc-info span');const src=(pr?pr.textContent:el.textContent).replace(/\./g,'');const m=src.match(/(\d{4,})/);return m?Number(m[1]):null};
+
+await wait(()=>q('#mobileNav button'),15000);
+const db=await import('/src/db.js');
+
+// vào Hàng hóa
+await clickEl(qa('#mobileNav button').find(b=>b.dataset.page==='products'));
+await wait(()=>q('#content [data-product]'),10000);
+check('Hàng hóa mở, có danh sách',count()>0,{rows:count()});
+
+// ---- 1&2: sort mới/cũ nhất, giá thấp trước ----
+const sortOpts=q('#productSort')?[...q('#productSort').options].map(o=>o.value):[];
+check('sort có Mới nhất/Cũ nhất/Giá thấp trước',['newest','oldest','priceAsc','default','name','price'].every(v=>sortOpts.includes(v)),{sortOpts});
+
+const SUP='T'+Math.random().toString(36).slice(2,7).toUpperCase();
+await clickEl(qa('#content [data-action="new-product"]')[0]);
+await wait(()=>q('#name'));
+fill('#name','SP smoke '+SUP);fill('#sku','SKU-'+SUP);fill('#productPrice','1234000');
+await clickEl(q('#modalSubmit'));await sleep(1500);
+check('tạo sản phẩm mới để test sort',(await db.getAll('products')).some(p=>p.sku==='SKU-'+SUP));
+
+fill('#productSort','newest');await sleep(700);
+const firstNewest=first();
+check('sort Mới nhất: sản phẩm vừa tạo đứng đầu',firstNewest.includes(SUP),{first:firstNewest});
+fill('#productSort','oldest');await sleep(700);
+const firstOldest=first();
+check('sort Cũ nhất: sản phẩm vừa tạo KHÔNG đứng đầu',!firstOldest.includes(SUP),{first:firstOldest});
+
+fill('#productSort','price');await sleep(700);
+const firstPriceDesc=priceOf(q('#content [data-product]'));
+fill('#productSort','priceAsc');await sleep(700);
+const firstPriceAsc=priceOf(q('#content [data-product]'));
+check('sort Giá thấp trước đổi thứ tự so với Giá cao trước',firstPriceAsc!==firstPriceDesc,{desc:firstPriceDesc,asc:firstPriceAsc});
+const prices=qa('#content [data-product]').map(priceOf).filter(v=>v!=null);
+check('Giá thấp trước: dãy giá không giảm',prices.every((v,i)=>i===0||prices[i-1]<=v),prices.slice(0,5));
+fill('#productSort','default');await sleep(500);
+
+// ---- header 3 dòng + nút Thêm sản phẩm + ----
+check('header: dòng chính "N sản phẩm" to nhất',qa('#content .goods-stat-main').length===1&&qa('#content .goods-stat-main')[0].textContent.includes('sản phẩm'),{main:(qa('#content .goods-stat-main')[0]||{textContent:''}).textContent.trim()});
+check('header: có dòng phụ Tồn kho',qa('#content .goods-stat-sub').length>=1&&all().includes('Tồn kho'),{subs:qa('#content .goods-stat-sub').map(x=>x.textContent.trim())});
+check('header: nút "+" đổi thành "Thêm sản phẩm +"',(q('#content [data-action="new-product"]')||{textContent:''}).textContent.replace(/\s+/g,' ').trim().includes('Thêm sản phẩm +'),{btn:(q('#content [data-action="new-product"]')||{textContent:''}).textContent.trim()});
+const segEl=q('#content .goods-segments'), segBtnEl=q('#content .goods-segments button'), searchEl=q('#content .goods-search input');
+check('segments: bớt bo tròn (≤10px, nút ≤8px)',!!segEl&&parseFloat(getComputedStyle(segEl).borderRadius)<=10&&parseFloat(getComputedStyle(segBtnEl).borderRadius)<=8,{seg:getComputedStyle(segEl).borderRadius,btn:getComputedStyle(segBtnEl).borderRadius});
+check('segments: cách khung tìm kiếm ≥14px',!!segEl&&!!searchEl&&(searchEl.getBoundingClientRect().top-segEl.getBoundingClientRect().bottom)>=14,{gap:Math.round(searchEl.getBoundingClientRect().top-segEl.getBoundingClientRect().bottom)});
+
+// ---- 3&4: lọc trạng thái + tồn (dạng nút bấm) ----
+const pick=(g,v)=>{const b=qa(`[data-pick-group="${g}"]`).find(x=>x.dataset.pickValue===v);if(b){b.click();return true}return false};
+await clickEl(qa('#content [data-product-filter]')[0]);
+check('modal Lọc dùng nút bấm + Tồn kho lên đầu',await wait(()=>q('[data-pick-group="stock"]'))&&(qa('#modalRoot .mod-label')[0]||{textContent:''}).textContent.includes('Tồn kho'),{first:(qa('#modalRoot .mod-label')[0]||{textContent:''}).textContent.trim()});
+await sleep(200);
+pick('status','inactive');pick('stock','all');await sleep(200);
+check('chip lọc bấm được (đổi active ngay)',!!qa('[data-pick-group="status"].active').find(x=>x.dataset.pickValue==='inactive'));
+await clickEl(q('#modalSubmit'));await sleep(900);
+check('lọc Ngừng bán: không lẫn hàng đang bán',count()===0||qa('#content .p-row:not(.is-service)').length===0,{rows:count()});
+await clickEl(qa('#content [data-product-filter]')[0]);
+await wait(()=>q('[data-pick-group="status"]'));
+pick('status','active');pick('stock','all');
+await clickEl(q('#modalSubmit'));await sleep(900);
+const activeCount=count();
+check('lọc Đang bán: có hàng',activeCount>0,{rows:activeCount});
+await clickEl(qa('#content [data-product-filter]')[0]);
+await wait(()=>q('[data-pick-group="stock"]'));
+pick('stock','out');pick('status','all');
+await clickEl(q('#modalSubmit'));await sleep(900);
+check('lọc Hết hàng chạy được (không lỗi)',(q('#pageTitle')||{}).textContent.trim()==='Hàng hóa'&&count()<=activeCount,{rows:count(),active:activeCount});
+await clickEl(qa('#content [data-product-filter]')[0]);
+await wait(()=>q('[data-pick-group="stock"]'));
+pick('stock','all');
+await clickEl(q('#modalSubmit'));await sleep(800);
+
+// ---- 5 + BUG: chọn hàng loạt trên lưới ----
+await clickEl(qa('#content [data-display-settings]')[0]);
+check('modal Hiển thị mở',await wait(()=>q('input[name="goodsView"]')));
+const r3=qa('input[name="goodsView"]').find(i=>i.value==='grid2');
+if(r3){r3.checked=true;r3.dispatchEvent(new frame.contentWindow.Event('change',{bubbles:true}));}
+else check('có radio Lưới 2',false);
+await clickEl(q('#modalSubmit'));await sleep(1000);
+check('chuyển sang Lưới 2',!!q('#content .product-grid.grid2'),{grid:!!q('#content .product-grid')});
+
+await clickEl(qa('#content [data-toggle-select]')[0]);
+await sleep(700);
+check('BUG: ở lưới có nút tích chọn (.card-select)',qa('#content .card-select').length>0,{cardSelect:qa('#content .card-select').length});
+await clickEl(qa('#content .card-select')[0]);await sleep(500);
+check('BUG: tích trên lưới -> thẻ được chọn',qa('#content .product-card.selected').length===1&&all().includes('1 đã chọn'),{selected:qa('#content .product-card.selected').length});
+await clickEl(qa('#content .product-card')[1]);await sleep(500);
+check('bấm thân thẻ ở chế độ chọn -> tích/bỏ tích',qa('#content .product-card.selected').length===2||qa('#content .product-card.selected').length===0,{selected:qa('#content .product-card.selected').length});
+check('có nút Bỏ chọn',!!q('[data-select-clear]'));
+await clickEl(q('[data-select-clear]'));await sleep(500);
+check('Bỏ chọn -> về 0',qa('#content .product-card.selected').length===0&&all().includes('0 đã chọn'));
+await clickEl(qa('#content [data-select-all]')[0]);await sleep(600);
+const afterAll=qa('#content .product-card.selected').length;
+check('Chọn tất cả: chọn hết theo bộ lọc',afterAll===count(),{selected:afterAll,rows:count()});
+await clickEl(q('[data-select-clear]'));await sleep(400);
+await clickEl(qa('#content [data-toggle-select]')[0]);await sleep(500);
+
+// ---- bug báo cáo: radio trong modal Hiển thị ----
+await clickEl(qa('#content [data-display-settings]')[0]);
+await wait(()=>q('input[name="goodsView"]'));
+const label3=qa('input[name="goodsView"]').find(i=>i.value==='grid3');
+let radioOk=false;
+if(label3){const lab=label3.closest('label')||label3;lab.click();await sleep(250);radioOk=label3.checked||qa('input[name="goodsView"]').find(i=>i.value==='grid3').checked;}
+check('Hiển thị: tích được radio Lưới 3',radioOk);
+await clickEl(q('#modalSubmit'));await sleep(900);
+check('áp dụng Lưới 3 thành công',!!q('#content .product-grid.grid3'),{grid:!!q('#content .product-grid')});
+
+const ov=doc().documentElement;
+const summary={VIEWPORT:`${ov.clientWidth}x${ov.clientHeight}`,OVERFLOW:Math.max(0,ov.scrollWidth-ov.clientWidth),PASS_COUNT:results.filter(r=>r.pass).length,FAIL_COUNT:results.filter(r=>!r.pass).length,failures:results.filter(r=>!r.pass)};
+document.getElementById('out').innerHTML=`<b>SUMMARY</b>\n${JSON.stringify(summary,null,2)}\n\n`+results.map(r=>`${r.pass?'PASS':'FAIL'}  ${r.n}${r.pass?'':'  -> '+JSON.stringify(r.d)}`).join('\n')+`\n\nDONE:${summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'}`;
+globalThis.__GT_SUMMARY__=summary;
+console.log('GT_SUMMARY '+JSON.stringify(summary));
+console.log('DONE:'+(summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'));
+</script>
+</body>
+</html>

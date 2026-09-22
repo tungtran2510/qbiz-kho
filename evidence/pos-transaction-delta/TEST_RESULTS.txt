@@ -1,0 +1,21 @@
+ROUND: POS TRANSACTION DELTA — 2026-09-21
+RUNTIME: http://127.0.0.1:4180 = 200
+REMOTE: https://hon-skip-decorative-guestbook.trycloudflare.com/ = 200
+SYNTAX: app.js, engine.js, db.js, config.js, sync.js = PASS
+P0 HARNESS: tests/pos-transaction-delta.html = 7/7 PASS
+DUPLICATE: 2 input lines -> 1 sale item qty 3; grand_total 300000
+MOVEMENT: exactly 1 movement qty -3; stock 5 -> 2
+IDEMPOTENCY: retry -> 1 sale
+OVERSTOCK: mutation rejected; stock stayed 1
+UI STOCK GUARD: stock 1 stayed qty 1; toast shown
+UI DUPLICATE: same product added twice -> 1 cart row qty 2; total 107524000
+PAYMENT: cash fields visible for cash; hidden for transfer and QR
+FLOW NAV: bottom nav hidden in cart and checkout
+SETTINGS DATA: Settings > Data > Import opened existing Import route
+390: PASS, overflow 0
+412: PASS, overflow 0
+1440: PASS, overflow 0
+CONSOLE: 0 errors, 0 warnings on final run
+DB_VERSION: 11 unchanged
+SCHEMA_CHANGE: NO
+SYNC-01: NOT STARTED

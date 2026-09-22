@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>QBiz Kho — Feature Surfaces Smoke</title>
+<style>body{font:13px/1.5 ui-monospace,Consolas,monospace;margin:16px;background:#0f1115;color:#e6e6e6}#out{white-space:pre-wrap}iframe{width:390px;height:800px;border:1px solid #333;background:#fff}</style>
+</head>
+<body>
+<iframe id="app" src="/"></iframe>
+<pre id="out">Đang chạy…</pre>
+<script type="module">
+const results=[];const check=(n,c,d)=>results.push({n,pass:!!c,d});
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const frame=document.getElementById('app');
+const doc=()=>frame.contentDocument;
+const q=s=>doc().querySelector(s);
+const qa=s=>[...doc().querySelectorAll(s)];
+const txt=s=>{const el=q(s);return el?el.textContent.trim():''};
+const wait=async(fn,ms=8000)=>{const t=Date.now();while(Date.now()-t<ms){try{if(fn())return true}catch{}await sleep(140)}return false};
+const clickEl=async el=>{if(!el)return false;el.click();await sleep(420);return true};
+const title=()=>txt('#pageTitle');
+const hub=()=>qa('#content .hub-list button');
+async function toHub(){for(let i=0;i<4;i++){if(title()==='Tiện ích nâng cao')return true;frame.contentWindow.history.back();await sleep(500);}return title()==='Tiện ích nâng cao';}
+async function openHub(label){if(!await toHub())return false;const b=hub().find(x=>x.textContent.includes(label));if(!b)return false;await clickEl(b);await sleep(500);return true;}
+const fill=(sel,v)=>{const el=q(sel);if(!el)return false;el.value=v;el.dispatchEvent(new frame.contentWindow.Event('input',{bubbles:true}));return true};
+const submitModal=async()=>{await clickEl(q('#modalSubmit'));await sleep(900);};
+
+await wait(()=>q('#mobileNav button'),15000);
+check('app booted',!!q('#mobileNav button'));
+
+// entry from Settings
+await clickEl(qa('#mobileNav button').find(b=>b.dataset.page==='more'));
+await sleep(600);
+const settingsEntry=qa('#content [data-page]').find(b=>b.dataset.page==='settings');
+await clickEl(settingsEntry);await sleep(700);
+check('Settings reachable',title()==='Cài đặt',title());
+const advEntry=qa('#content [data-page]').find(b=>b.dataset.page==='advanced');
+check('Settings has "Tiện ích nâng cao" entry',!!advEntry);
+await clickEl(advEntry);await sleep(600);
+check('Advanced hub opens',title()==='Tiện ích nâng cao',title());
+
+const PAGES=[['Bảng giá & giá sỉ','Bảng giá & giá sỉ'],['Khuyến mại','Khuyến mại'],['Combo / bộ sản phẩm','Combo / bộ sản phẩm'],['Đơn vị quy đổi','Đơn vị quy đổi'],['Tồn đầu kỳ','Tồn đầu kỳ'],['In tem & barcode','In tem & barcode'],['Sổ quỹ thu chi','Sổ quỹ thu chi'],['Công nợ','Công nợ'],['Tìm kiếm toàn cục','Tìm kiếm toàn cục'],['Nhật ký hoạt động','Nhật ký hoạt động'],['Mô-đun tính năng','Mô-đun tính năng'],['Hướng dẫn bắt đầu','Hướng dẫn bắt đầu'],['Mô-đun tùy chọn','Mô-đun tùy chọn']];
+for(const [label,expect] of PAGES){
+  const ok=await openHub(label);
+  const body=q('#content')?q('#content').textContent.trim():'';
+  check(`screen ${expect}`,ok&&title()===expect&&body.length>40,{title:title(),len:body.length});
+}
+
+// --- interactions ---
+const db=await import('/src/db.js');
+
+// prices
+await openHub('Bảng giá & giá sỉ');
+await clickEl(qa('#content [data-action="price-new"]')[0]);
+await wait(()=>q('#plName'));
+fill('#plName','Giá sỉ smoke T');fill('#plDiscount','12');
+await submitModal();
+check('price list created & listed',qa('#content .mod-row').some(r=>r.textContent.includes('Giá sỉ smoke T')),qa('#content .mod-row').length);
+
+// promotions
+await openHub('Khuyến mại');
+await clickEl(qa('#content [data-action="promo-new"]')[0]);
+await wait(()=>q('#prName'));
+fill('#prName','KM smoke T');fill('#prValue','8');
+await submitModal();
+check('promotion created & listed',qa('#content .mod-row').some(r=>r.textContent.includes('KM smoke T')));
+await clickEl(qa('#content [data-action="promo-toggle"]')[0]);
+check('promotion toggle works',qa('#content [data-action="promo-toggle"]')[0].textContent.length>0);
+
+// units
+await openHub('Đơn vị quy đổi');
+await clickEl(qa('#content [data-action="unit-new"]')[0]);
+await wait(()=>q('#unName'));
+fill('#unName','Thùng');fill('#unFactor','12');
+await submitModal();
+check('unit conversion saved',qa('#content .mod-row').some(r=>r.textContent.includes('Thùng')));
+
+// cash
+await openHub('Sổ quỹ thu chi');
+await clickEl(qa('#content [data-action="cash-in"]')[0]);
+await wait(()=>q('#csAmount'));
+fill('#csAmount','250000');fill('#csNote','Thu smoke T');
+await submitModal();
+check('cash entry saved & listed',qa('#content .mod-row').some(r=>r.textContent.includes('Thu smoke T')));
+
+// debts
+await openHub('Công nợ');
+await clickEl(qa('#content [data-action="debt-new"]')[0]);
+await wait(()=>q('#dbParty'));
+fill('#dbParty','NCC smoke T');fill('#dbAmount','1000000');
+await submitModal();
+check('debt entry saved & listed',qa('#content .mod-row').some(r=>r.textContent.includes('NCC smoke T')));
+
+// opening stock — verify via DB
+await openHub('Tồn đầu kỳ');
+const levels=(await db.getAll('levels'));
+const target=levels[0];
+const products=await db.getAll('products');
+const p=products.find(x=>x.id===target.productId);
+await clickEl(qa('#content [data-action="opening-set"]')[0]);
+await wait(()=>q('#opQty'));
+fill('#opWarehouse',target.warehouseId);fill('#opProduct',target.productId);fill('#opQty',String(Number(target.onHand)+7));
+const mvBefore=(await db.getAll('movements')).length;
+await submitModal();
+const lvAfter=await db.getOne('levels',target.id);
+const mvAfter=await db.getAll('movements');
+check('opening stock updated onHand (+7)',Number(lvAfter.onHand)===Number(target.onHand)+7,{before:target.onHand,after:lvAfter.onHand});
+check('opening stock wrote an OPENING movement',mvAfter.length===mvBefore+1&&mvAfter.filter(m=>m.type==='OPENING').length>0,{movements:mvAfter.length,openings:mvAfter.filter(m=>m.type==='OPENING').length});
+const ledger=mvAfter.filter(m=>m.productId===target.productId&&m.warehouseId===target.warehouseId&&!['reserve','release','damage'].includes(m.type)).reduce((n,m)=>n+Number(m.qty||0),0);
+check('ledger reconciles with onHand after opening',ledger===Number(lvAfter.onHand),{ledger,onHand:lvAfter.onHand});
+
+// audit
+await openHub('Nhật ký hoạt động');
+const auditRows=qa('#content .mod-row').length;
+check('audit log shows device operations',auditRows>0,{rows:auditRows});
+
+// global search
+await openHub('Tìm kiếm toàn cục');
+fill('#globalQuery','a');await sleep(500);
+const searchRows=qa('#content .mod-row').length;
+check('global search returns results',searchRows>0,{rows:searchRows});
+
+// modules flag toggle
+await openHub('Mô-đun tính năng');
+const flagBtn=qa('#content [data-action="flag-toggle"]')[0];
+const flagBefore=flagBtn?flagBtn.textContent.trim():'';
+await clickEl(flagBtn);
+const flagAfter=(qa('#content [data-action="flag-toggle"]')[0]||{}).textContent?.trim();
+check('feature module toggle persists label',flagBefore&&flagAfter&&flagBefore!==flagAfter,{flagBefore,flagAfter});
+
+// onboarding derived
+await openHub('Hướng dẫn bắt đầu');
+check('onboarding shows derived progress',txt('#content .mod-summary').includes('/8'),txt('#content .mod-summary').slice(0,40));
+
+// labels selection
+await openHub('In tem & barcode');
+const cb=qa('#content [data-label-item]')[0];
+if(cb){cb.checked=true;cb.dispatchEvent(new frame.contentWindow.Event('change',{bubbles:true}));await sleep(300);}
+check('label product selectable',q('#content')?q('#content').textContent.includes('Chọn sản phẩm (1)'):false,'select count');
+
+// back navigation from a child page
+await openHub('Sổ quỹ thu chi');
+frame.contentWindow.history.back();await sleep(700);
+check('Back from child returns to hub',title()==='Tiện ích nâng cao',title());
+
+const ov=doc().documentElement;
+const summary={VIEWPORT:`${ov.clientWidth}x${ov.clientHeight}`,OVERFLOW:Math.max(0,ov.scrollWidth-ov.clientWidth),PASS_COUNT:results.filter(r=>r.pass).length,FAIL_COUNT:results.filter(r=>!r.pass).length,failures:results.filter(r=>!r.pass)};
+document.getElementById('out').innerHTML=`<b>SUMMARY</b>\n${JSON.stringify(summary,null,2)}\n\n`+results.map(r=>`${r.pass?'PASS':'FAIL'}  ${r.n}${r.pass?'':'  -> '+JSON.stringify(r.d)}`).join('\n')+`\n\nDONE:${summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'}`;
+globalThis.__FS_SUMMARY__=summary;
+console.log('FS_SUMMARY '+JSON.stringify(summary));
+console.log('DONE:'+(summary.FAIL_COUNT===0?'ALL_PASS':'HAS_FAILURE'));
+</script>
+</body>
+</html>

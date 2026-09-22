@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>QBiz Kho — Data Integrity Harness (T01–T04)</title>
+<style>body{font:13px/1.5 ui-monospace,Consolas,monospace;margin:16px;background:#0f1115;color:#e6e6e6}#out{white-space:pre-wrap}.pass{color:#5ddb8f}.fail{color:#ff6b6b}b{color:#ffd479}</style>
+</head>
+<body>
+<pre id="out">Đang chạy…</pre>
+<script type="module">
+// Isolated database: never touches production DB (qbiz_kho_v1).
+globalThis.__QBIZ_TEST_DB_NAME = 'qbiz_kho_it_' + Math.random().toString(36).slice(2, 10);
+const db  = await import('../src/db.js');
+const eng = await import('../src/engine.js');
+
+const results = [];
+const check = (name, cond, detail) => { results.push({ name, pass: !!cond, detail }); };
+const near = (a, b) => Number(a) === Number(b);
+const T = (t) => `2026-09-21T0${t}:00:00.000Z`;
+
+// Sum of every movement that changes onHand (opens + receipts - issues - sales +- count/transfer).
+const ledgerSum = (movements) => {
+  const sums = new Map();
+  for (const m of movements) {
+    if (['reserve', 'release', 'damage'].includes(m.type)) continue;
+    const k = `${m.productId}:${m.warehouseId}`;
+    sums.set(k, (sums.get(k) || 0) + Number(m.qty || 0));
+  }
+  return sums;
+};
+const reconcile = async () => {
+  const [levels, movements] = await Promise.all([db.getAll('levels'), db.getAll('movements')]);
+  const sums = ledgerSum(movements);
+  const rows = levels.map(l => ({ key: l.id, onHand: Number(l.onHand || 0), ledger: sums.get(`${l.productId}:${l.warehouseId}`) || 0 }));
+  const mismatch = rows.filter(r => r.onHand !== r.ledger);
+  const noMovement = levels.filter(l => !movements.some(m => m.productId === l.productId && m.warehouseId === l.warehouseId));
+  return { count: levels.length, rows, mismatch, noMovement };
+};
+const seedLevel = (pid, wh, qty, extra = {}) =>
+  db.put('levels', { id: `${pid}:${wh}`, productId: pid, warehouseId: wh, onHand: qty, reserved: 0, damaged: 0, updatedAt: T(1), ...extra });
+const seedProduct = (id, name, price) =>
+  db.put('products', { id, name, type: 'PRODUCT', price, trackInventory: true, active: true });
+
+// ── T01 — OPENING migration (legacy stock with no ledger source) ───────────────
+await seedLevel('hA', 'whA', 25);
+const created1 = await eng.ensureOpeningMovements();
+let openings = (await db.getAll('movements')).filter(m => m.type === 'OPENING' && m.productId === 'hA');
+const level1 = await db.getOne('levels', 'hA:whA');
+const created2 = await eng.ensureOpeningMovements();
+openings = (await db.getAll('movements')).filter(m => m.type === 'OPENING' && m.productId === 'hA');
+const outbox1 = (await db.getAll('outbox')).filter(o => o.operation_id === openings[0]?.operation_id);
+check('T01 creates exactly 1 OPENING (1st run)', created1.length === 1 && openings.length === 1, { created: created1, openings: openings.length });
+check('T01 OPENING qty == onHand', near(openings[0]?.qty, 25), openings[0]?.qty);
+check('T01 onHand unchanged (25)', level1.onHand === 25, level1.onHand);
+check('T01 idempotent — 2nd run creates nothing', created2.length === 0 && openings.length === 1, { created2, openings: openings.length });
+check('T01 no DUPLICATE_OPENING globally', (await db.getAll('movements')).filter(m => m.type === 'OPENING').length === 1);
+check('T01 contract fields (operation_id/event_id/source/version/after)',
+  !!openings[0]?.operation_id && !!openings[0]?.event_id && !!openings[0]?.source && Number(openings[0]?.version) >= 1 && near(openings[0]?.after?.onHand, 25),
+  { operation_id: openings[0]?.operation_id, event_id: openings[0]?.event_id, source: openings[0]?.source, version: openings[0]?.version, after: openings[0]?.after });
+check('T01 exactly 1 outbox record for the opening', outbox1.length === 1, outbox1.length);
+check('T01 OPENING does not mutate level version', Number(level1.version || 0) === 0, level1.version);
+
+// ── T02 — Ledger reconciliation (fixture) ─────────────────────────────────────
+let r = await reconcile();
+check('T02 fixture MISMATCH = 0', r.mismatch.length === 0, r.mismatch);
+check('T02 fixture LEVEL_WITHOUT_MOVEMENT = 0', r.noMovement.length === 0, r.noMovement.map(l => l.id));
+
+// T02b — legacy level whose ledger is NEGATIVE (real observed case p_135:wh_center: level 2, ledger -2)
+await seedLevel('hB', 'whA', 2);
+await db.put('movements', { id: 'legacy-issue-hB', type: 'issue', productId: 'hB', warehouseId: 'whA', qty: -2, reason: 'Xuất cũ', operation_id: 'legacy-hB', event_id: 'legacy-hB-ev', source: 'qbiz-kho-local', version: 1, createdAt: T(2), after: { onHand: 0, reserved: 0, damaged: 0 } });
+await eng.ensureOpeningMovements();
+const opB = (await db.getAll('movements')).filter(m => m.type === 'OPENING' && m.productId === 'hB');
+const rB = await reconcile();
+check('T02b mismatch case repaired (MISMATCH = 0)', rB.mismatch.length === 0, rB.mismatch);
+check('T02b OPENING = onHand - ledgerSum (2 - (-2) = 4)', near(opB[0]?.qty, 4), opB[0]?.qty);
+check('T02b onHand unchanged after repair (2)', (await db.getOne('levels', 'hB:whA')).onHand === 2);
+
+// ── T03 — Checkout idempotency (2+ lines, double submit) ──────────────────────
+await seedProduct('pB', 'SP B', 100000); await seedProduct('pC', 'SP C', 200000);
+await seedLevel('pB', 'whA', 10); await seedLevel('pC', 'whA', 5);
+await eng.ensureOpeningMovements();
+const saleLines = [{ itemId: 'pB', quantity: 2, unitPrice: 100000 }, { itemId: 'pC', quantity: 1, unitPrice: 200000 }];
+const opT03 = 'op-t03-fixed';
+const sale1 = await eng.createSale({ items: saleLines, warehouseId: 'whA', operationId: opT03 });
+const sale2 = await eng.createSale({ items: saleLines, warehouseId: 'whA', operationId: opT03 });
+const sales = await db.getAll('sales');
+const mvT03 = (await db.getAll('movements')).filter(m => m.operation_id === opT03);
+const lvB = await db.getOne('levels', 'pB:whA');
+check('T03 exactly 1 sale after double submit', sales.length === 1, { sales: sales.length, codes: sales.map(s => s.code) });
+check('T03 retry returns the same sale (no error)', sale1?.id === sale2?.id, { sale1: sale1?.id, sale2: sale2?.id });
+check('T03 exactly 2 movements (1 per product, applied once)', mvT03.length === 2, mvT03.length);
+check('T03 stock deducted once (10 - 2 = 8)', lvB.onHand === 8, lvB.onHand);
+check('T03 totals & payment consistent', near(sale1.grand_total, Number(sale1.subtotal) - Number(sale1.discount_total) + Number(sale1.tax_total)) && near(sale1.payments[0].amount, sale1.grand_total) && sale1.payment_status === 'PAID', { subtotal: sale1.subtotal, grand_total: sale1.grand_total, paid: sale1.payments[0].amount, status: sale1.payment_status });
+r = await reconcile();
+check('T03 reconcile after sale MISMATCH = 0', r.mismatch.length === 0, r.mismatch.filter(x => ['pB', 'pC'].some(p => x.key.startsWith(p))));
+
+// ── T04 — Receipt multi-line (>=3 lines, double submit) ───────────────────────
+await seedProduct('pD', 'SP D', 300000); await seedLevel('pD', 'whA', 4);
+await eng.ensureOpeningMovements();
+const before = {};
+for (const p of ['pB', 'pC', 'pD']) before[p] = (await db.getOne('levels', `${p}:whA`)).onHand;
+const batch = { kind: 'receive', warehouseId: 'whA', operationId: 'op-t04-fixed', reference: 'PN-T04', lines: [{ productId: 'pB', qty: 3 }, { productId: 'pC', qty: 2 }, { productId: 'pD', qty: 5 }] };
+const doc1 = await eng.applyWarehouseBatch(batch);
+const doc2 = await eng.applyWarehouseBatch(batch);
+const after = {};
+for (const p of ['pB', 'pC', 'pD']) after[p] = (await db.getOne('levels', `${p}:whA`)).onHand;
+const mvT04 = (await db.getAll('movements')).filter(m => m.operation_id === 'op-t04-fixed');
+check('T04 receipt applied once per line (+3/+2/+5)', after.pB - before.pB === 3 && after.pC - before.pC === 2 && after.pD - before.pD === 5, { before, after });
+check('T04 retry returns same document', doc1?.id === doc2?.id, { d1: doc1?.id, d2: doc2?.id });
+check('T04 exactly 3 movements (no duplicates)', mvT04.length === 3, mvT04.length);
+check('T04 each line increased exactly once on retry', after.pB === before.pB + 3 && after.pC === before.pC + 2 && after.pD === before.pD + 5, { before, after });
+const allMvIds = (await db.getAll('movements')).map(m => m.id);
+check('T04 no duplicate movement ids', allMvIds.length === new Set(allMvIds).size, allMvIds.length - new Set(allMvIds).size);
+r = await reconcile();
+check('T04 reconcile after receipt MISMATCH = 0', r.mismatch.length === 0, r.mismatch);
+check('T04 LEVEL_WITHOUT_MOVEMENT = 0', r.noMovement.length === 0, r.noMovement.map(l => l.id));
+
+// ── T05 — Customer → sale → history counted once (retry-safe) ────────────────
+await db.put('customers', { id: 'cT05', customer_id: 'cT05', name: 'Khách T05', phone: '0900000001', phone_normalized: '0900000001', active: true });
+const cLabel = 'Khách T05 · 0900000001';
+const buy = { items: [{ itemId: 'pB', quantity: 1, unitPrice: 100000 }], warehouseId: 'whA', customerLabel: cLabel, operationId: 'op-t05-fixed' };
+await eng.createSale(buy);
+await eng.createSale(buy);
+const history = (await db.getAll('sales')).filter(s => s.customer_label === cLabel);
+check('T05 customer persisted', (await db.getOne('customers', 'cT05'))?.name === 'Khách T05');
+check('T05 customer history counted exactly once after retry', history.length === 1, history.map(s => s.code));
+check('T05 sale keeps the customer label for history', history[0]?.customer_label === cLabel, history[0]?.customer_label);
+r = await reconcile();
+check('T05 reconcile after customer sale MISMATCH = 0', r.mismatch.length === 0, r.mismatch);
+
+// ── Overall ───────────────────────────────────────────────────────────────────
+const openingsAll = (await db.getAll('movements')).filter(m => m.type === 'OPENING');
+const dupIds = openingsAll.map(m => m.id).filter((id, i, a) => a.indexOf(id) !== i);
+const final = await reconcile();
+const summary = {
+  db: globalThis.__QBIZ_TEST_DB_NAME,
+  LEVEL_COUNT: final.count,
+  RECONCILED: final.rows.length - final.mismatch.length,
+  MISMATCH: final.mismatch.length,
+  LEVEL_WITHOUT_MOVEMENT: final.noMovement.length,
+  DUPLICATE_OPENING: dupIds.length,
+  OPENING_TOTAL: openingsAll.length,
+  PASS_COUNT: results.filter(x => x.pass).length,
+  FAIL_COUNT: results.filter(x => !x.pass).length,
+  failures: results.filter(x => !x.pass),
+};
+const text = results.map(x => `${x.pass ? 'PASS' : 'FAIL'}  ${x.name}${x.pass ? '' : '  -> ' + JSON.stringify(x.detail)}`).join('\n');
+document.getElementById('out').innerHTML =
+  `<b>SUMMARY</b>\n${JSON.stringify(summary, null, 2)}\n\n<b>CHECKS</b>\n${text}\n\nDONE:${summary.FAIL_COUNT === 0 ? 'ALL_PASS' : 'HAS_FAILURE'}`;
+globalThis.__HARNESS_SUMMARY__ = summary;
+console.log('HARNESS_SUMMARY ' + JSON.stringify(summary));
+console.log('DONE:' + (summary.FAIL_COUNT === 0 ? 'ALL_PASS' : 'HAS_FAILURE'));
+</script>
+</body>
+</html>

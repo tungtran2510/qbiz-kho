@@ -1,0 +1,32 @@
+QBIZ IA + GOODS DETAIL DELTA
+Timestamp: 2026-09-21 21:18 +07:00
+Runtime: http://127.0.0.1:4180
+
+SCOPE
+- More / Settings information architecture
+- Compact Goods toolbar
+- Product detail hierarchy
+- Product edit/create purchase_price surface
+
+CHECKS
+- node --check src/app.js: PASS
+- node --check src/engine.js: PASS
+- 390px: PASS, horizontal overflow 0
+- 412px: PASS, horizontal overflow 0
+- 1440px: PASS, horizontal overflow 0
+- Console: 0 errors, 0 warnings after reload
+- Cost input: present, editable, 16px font
+- Test value was closed without Save; no product data was changed by the test
+
+FOLLOW-UP — TOOLBAR / GRID 3 / DETAIL
+- Restored Category / Filter / Sort / Select toolbar; removed overflow ellipsis.
+- Grid 3 at 390px: 15 cards, page overflow 0, maximum card overflow 0.
+- Grid 3 at 412px: 15 cards, page overflow 0, maximum card overflow 0.
+- Product status moved below title/SKU in detail header.
+- Removed Gross margin and duplicate status tiles from Product Detail.
+- Console: 0 errors, 0 warnings.
+
+REGRESSION
+- Dashboard not edited
+- engine/db/config/sync not edited
+- Existing product image/category/ledger behavior preserved
