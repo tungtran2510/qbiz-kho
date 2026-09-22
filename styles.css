@@ -1892,6 +1892,32 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   white-space: nowrap;
 }
 
+.mode-priorities-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+}
 
+.mode-priority-list {
+  margin: 8px 0 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
+.mode-priority-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-color, #0f172a);
+}
 
+.priority-bullet {
+  color: var(--primary, #2563eb);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+}

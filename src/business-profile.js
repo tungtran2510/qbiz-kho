@@ -382,7 +382,7 @@ export const PRESET_SERVICE = Object.freeze({
     preferred_content_emphasis: 'title_primary',
     image_importance: 'medium',
     data_density: 'medium',
-    dashboard_emphasis: 'appointments_first',
+    dashboard_emphasis: 'service_first',
   },
   metadata: {
     is_preset: true,
@@ -398,6 +398,39 @@ export const PRESET_FNB = Object.freeze({
   ...PRESET_RETAIL,
   profile_id: 'fnb',
   name: 'Quán ăn / Cà phê',
+  terminology: {
+    ...PRESET_RETAIL.terminology,
+    PRODUCT: { singular: 'Món', plural: 'Danh sách món', label: 'Món / Sản phẩm', action_create: 'Thêm món' },
+    SALE: { singular: 'Bán hàng', plural: 'Phiếu gọi món', label: 'Bán hàng nhanh', action_create: 'Gọi món' },
+    ORDER: { singular: 'Đơn món', plural: 'Đơn gọi món', label: 'Đơn món', action_create: 'Tạo đơn' },
+    WAREHOUSE: { singular: 'Kho nguyên liệu', plural: 'Kho nguyên liệu', label: 'Kho', action_create: 'Thêm kho' },
+  },
+  navigation_preferences: {
+    menu_priority: ['sales', 'orders', 'products', 'dashboard', 'more'],
+    preferred_home_actions: ['sales', 'orders', 'products', 'transactions', 'receive'],
+    module_priority: ['sales', 'orders', 'products', 'dashboard', 'transfers', 'shifts', 'reports', 'settings', 'customers', 'suppliers'],
+    frequently_used_modules: ['sales', 'orders', 'products'],
+    hidden_by_default_candidates: [],
+  },
+  workflow_preferences: {
+    sale_mode: 'fast_pos',
+    stock_tracking: 'optional',
+    service_mode: 'standalone',
+    booking_mode: 'disabled',
+    invoice_mode: 'standard_receipt',
+    customer_required: false,
+    supplier_usage: 'minimal',
+    delivery_usage: 'none',
+    warehouse_mode: 'single',
+  },
+  visual_preferences: {
+    density: 'comfortable',
+    card_view: 'grid',
+    preferred_content_emphasis: 'image_primary',
+    image_importance: 'high',
+    data_density: 'medium',
+    dashboard_emphasis: 'sales_first',
+  },
   metadata: {
     ...PRESET_RETAIL.metadata,
     base_preset: 'retail',
@@ -412,6 +445,41 @@ export const PRESET_CONSULTING = Object.freeze({
   ...PRESET_SERVICE,
   profile_id: 'consulting',
   name: 'Chuyên gia / Tư vấn',
+  terminology: {
+    ...PRESET_SERVICE.terminology,
+    PRODUCT: { singular: 'Gói tư vấn', plural: 'Gói tư vấn', label: 'Gói tư vấn', action_create: 'Thêm gói tư vấn' },
+    SERVICE: { singular: 'Dịch vụ tư vấn', plural: 'Dịch vụ', label: 'Dịch vụ', action_create: 'Thêm dịch vụ' },
+    CUSTOMER: { singular: 'Khách tư vấn', plural: 'Khách hàng / Đối tác', label: 'Khách hàng', action_create: 'Thêm hồ sơ' },
+    ORDER: { singular: 'Hợp đồng / Đơn', plural: 'Hợp đồng / Đơn', label: 'Hợp đồng', action_create: 'Tạo hợp đồng' },
+    SALE: { singular: 'Thu phí tư vấn', plural: 'Biên lai', label: 'Thanh toán', action_create: 'Thu phí' },
+    WAREHOUSE: { singular: 'Kho tài liệu', plural: 'Kho tài liệu', label: 'Kho', action_create: 'Thêm kho' },
+  },
+  navigation_preferences: {
+    menu_priority: ['products', 'customers', 'sales', 'dashboard', 'more'],
+    preferred_home_actions: ['services', 'customers', 'sales', 'orders', 'transactions'],
+    module_priority: ['products', 'customers', 'sales', 'orders', 'dashboard', 'reports', 'settings', 'shifts', 'transfers', 'suppliers'],
+    frequently_used_modules: ['products', 'customers', 'sales'],
+    hidden_by_default_candidates: ['transfers', 'suppliers'],
+  },
+  workflow_preferences: {
+    sale_mode: 'service_ticket',
+    stock_tracking: 'none',
+    service_mode: 'session_based',
+    booking_mode: 'disabled',
+    invoice_mode: 'standard_receipt',
+    customer_required: true,
+    supplier_usage: 'none',
+    delivery_usage: 'none',
+    warehouse_mode: 'single',
+  },
+  visual_preferences: {
+    density: 'comfortable',
+    card_view: 'list',
+    preferred_content_emphasis: 'title_primary',
+    image_importance: 'low',
+    data_density: 'medium',
+    dashboard_emphasis: 'service_first',
+  },
   metadata: {
     ...PRESET_SERVICE.metadata,
     base_preset: 'service',
@@ -921,4 +989,199 @@ export function listBusinessProfiles() {
     description: preset.metadata?.description || '',
     is_active: preset.profile_id === current.profile_id,
   }));
+}
+
+/**
+ * Resolve Adaptive Workspace Profile
+ * Centralized adapter layer that derives operational priorities, primary/secondary actions,
+ * navigation order, presentation preferences, and terminology without scattering if/else across the app.
+ *
+ * @param {string|Object} [profileOrId] Optional preset id or profile object; defaults to active profile
+ * @returns {Object} Full resolved workspace profile object
+ */
+export function resolveWorkspaceProfile(profileOrId = null) {
+  let profile = null;
+  if (!profileOrId) {
+    profile = getBusinessProfile();
+  } else if (typeof profileOrId === 'string') {
+    const id = profileOrId.trim().toLowerCase();
+    profile = PROFILE_PRESETS[id] || deepClone(DEFAULT_BUSINESS_PROFILE);
+  } else if (typeof profileOrId === 'object') {
+    profile = normalizeBusinessProfile(profileOrId);
+  } else {
+    profile = deepClone(DEFAULT_BUSINESS_PROFILE);
+  }
+
+  const pid = profile.profile_id || 'general';
+
+  // 1. Default entry route
+  let default_route = 'dashboard';
+  if (pid === 'fnb' || pid === 'retail') {
+    default_route = 'sales';
+  } else if (pid === 'wholesale') {
+    default_route = 'products';
+  } else if (pid === 'service' || pid === 'consulting') {
+    default_route = 'products';
+  }
+
+  // 2. Primary actions for Dashboard Quick Actions & Priority highlights
+  let primary_actions = [];
+  let secondary_actions = [];
+  let priority_highlights = [];
+
+  if (pid === 'retail') {
+    primary_actions = [
+      { id: 'sales', kind: 'sales', title: 'Bán hàng (POS)', sub: 'Thu ngân bán lẻ', icon: 'shopping-cart', page: 'sales' },
+      { id: 'products', kind: 'products', title: 'Hàng hóa', sub: 'Quản lý sản phẩm', icon: 'package-search', page: 'products' },
+      { id: 'receive', kind: 'receive', title: 'Nhập hàng', sub: 'Thêm vào kho', icon: 'package-plus', action: 'quick-action' },
+      { id: 'count', kind: 'count', title: 'Kiểm tồn', sub: 'Kiểm tra tồn kho', icon: 'clipboard-check', action: 'quick-action' },
+      { id: 'orders', kind: 'orders', title: 'Đơn hàng', sub: 'Đơn giao hàng', icon: 'file-text', page: 'orders' },
+    ];
+    secondary_actions = ['transactions', 'customers', 'suppliers', 'shifts', 'reports'];
+    priority_highlights = [
+      'Bán hàng & thu ngân quầy nhanh',
+      'Hàng hóa & quét mã vạch',
+      'Kiểm tồn kho & nhập hàng',
+      'Theo dõi đơn giao hàng',
+    ];
+  } else if (pid === 'fnb') {
+    primary_actions = [
+      { id: 'sales', kind: 'sales', title: 'Bán hàng nhanh', sub: 'Gọi món & thu ngân', icon: 'shopping-cart', page: 'sales' },
+      { id: 'orders', kind: 'orders', title: 'Đơn gọi món', sub: 'Theo dõi đơn phục vụ', icon: 'file-text', page: 'orders' },
+      { id: 'products', kind: 'products', title: 'Danh sách món', sub: 'Thực đơn & bảng giá', icon: 'package-search', page: 'products' },
+      { id: 'transactions', kind: 'transactions', title: 'Hóa đơn', sub: 'Phiếu thu gần đây', icon: 'file-text', page: 'transactions' },
+      { id: 'receive', kind: 'receive', title: 'Nhập nguyên liệu', sub: 'Kho nguyên liệu/món', icon: 'package-plus', action: 'quick-action' },
+    ];
+    secondary_actions = ['count', 'customers', 'shifts', 'reports', 'transfers'];
+    priority_highlights = [
+      'Bán hàng nhanh & gọi món',
+      'Danh sách món & thực đơn hình ảnh',
+      'Theo dõi đơn gọi món',
+      'Kho nguyên liệu & sản phẩm (phụ)',
+    ];
+  } else if (pid === 'wholesale') {
+    primary_actions = [
+      { id: 'products', kind: 'products', title: 'Mặt hàng sỉ', sub: 'Danh mục & mã hàng', icon: 'package-search', page: 'products' },
+      { id: 'receive', kind: 'receive', title: 'Nhập hàng sỉ', sub: 'Nhập kho lô lớn', icon: 'package-plus', action: 'quick-action' },
+      { id: 'count', kind: 'count', title: 'Tồn kho tổng', sub: 'Kiểm tra tồn đa kho', icon: 'clipboard-check', action: 'quick-action' },
+      { id: 'customers', kind: 'customers', title: 'Đại lý / Đối tác', sub: 'Hồ sơ đại lý & công nợ', icon: 'user', action: 'customer-directory' },
+      { id: 'orders', kind: 'orders', title: 'Đơn đặt sỉ', sub: 'Đơn hàng số lượng lớn', icon: 'file-text', page: 'orders' },
+    ];
+    secondary_actions = ['sales', 'transactions', 'transfers', 'suppliers', 'reports'];
+    priority_highlights = [
+      'Mặt hàng & danh mục phân phối',
+      'Quản lý kho tổng & điều chuyển',
+      'Đại lý, đối tác & công nợ',
+      'Đơn đặt hàng số lượng lớn',
+    ];
+  } else if (pid === 'service') {
+    primary_actions = [
+      { id: 'services', kind: 'products', title: 'Gói dịch vụ', sub: 'Bảng giá & liệu trình', icon: 'sparkles', page: 'products' },
+      { id: 'customers', kind: 'customers', title: 'Khách hàng', sub: 'Hồ sơ khách & hội viên', icon: 'user', action: 'customer-directory' },
+      { id: 'sales', kind: 'sales', title: 'Thu phí dịch vụ', sub: 'Lập hóa đơn dịch vụ', icon: 'shopping-cart', page: 'sales' },
+      { id: 'orders', kind: 'orders', title: 'Phiếu dịch vụ', sub: 'Theo dõi tiến trình', icon: 'file-text', page: 'orders' },
+      { id: 'transactions', kind: 'transactions', title: 'Lịch sử thu', sub: 'Xem phiếu thu tiền', icon: 'file-text', page: 'transactions' },
+    ];
+    secondary_actions = ['receive', 'count', 'transfers', 'shifts', 'reports'];
+    priority_highlights = [
+      'Gói dịch vụ & biểu phí',
+      'Hồ sơ khách hàng & hội viên',
+      'Thanh toán & hóa đơn dịch vụ',
+      'Quản lý vật tư tiêu hao (phụ)',
+    ];
+  } else if (pid === 'consulting') {
+    primary_actions = [
+      { id: 'services', kind: 'products', title: 'Gói tư vấn', sub: 'Dịch vụ & gói giải pháp', icon: 'briefcase', page: 'products' },
+      { id: 'customers', kind: 'customers', title: 'Khách hàng', sub: 'Hồ sơ đối tác & khách', icon: 'user', action: 'customer-directory' },
+      { id: 'sales', kind: 'sales', title: 'Thanh toán', sub: 'Thu phí dịch vụ tư vấn', icon: 'shopping-cart', page: 'sales' },
+      { id: 'orders', kind: 'orders', title: 'Hợp đồng / Đơn', sub: 'Theo dõi hợp đồng', icon: 'file-text', page: 'orders' },
+      { id: 'transactions', kind: 'transactions', title: 'Biên lai', sub: 'Lịch sử thanh toán', icon: 'file-text', page: 'transactions' },
+    ];
+    secondary_actions = ['receive', 'count', 'transfers', 'reports', 'settings'];
+    priority_highlights = [
+      'Gói tư vấn & chuyên môn',
+      'Hồ sơ khách hàng & đối tác',
+      'Thu phí & hợp đồng tư vấn',
+      'Thông tin & liên hệ nhanh',
+    ];
+  } else {
+    // general & other (Identical baseline 100%)
+    primary_actions = [
+      { id: 'sales', kind: 'sales', title: 'Bán hàng', sub: 'Tạo phiếu bán', icon: 'shopping-cart', page: 'sales' },
+      { id: 'receive', kind: 'receive', title: 'Nhập kho', sub: 'Thêm hàng vào kho', icon: 'package-plus', action: 'quick-action' },
+      { id: 'count', kind: 'count', title: 'Kiểm kho', sub: 'Xem tồn kho', icon: 'clipboard-check', action: 'quick-action' },
+      { id: 'transactions', kind: 'transactions', title: 'Hóa đơn', sub: 'Xem phiếu bán', icon: 'file-text', page: 'transactions' },
+      { id: 'customers', kind: 'customers', title: 'Khách hàng', sub: 'Tìm và chọn khách', icon: 'user', action: 'customer-directory' },
+    ];
+    secondary_actions = ['orders', 'transfers', 'suppliers', 'shifts', 'reports'];
+    priority_highlights = [
+      'Bán hàng & thu ngân',
+      'Hàng hóa & danh mục',
+      'Quản lý kho & luân chuyển',
+      'Theo dõi đơn hàng',
+    ];
+  }
+
+  // 3. Navigation priority
+  const navigation_priority = profile.navigation_preferences?.menu_priority || [
+    'dashboard', 'products', 'sales', 'transfers', 'more'
+  ];
+
+  // 4. Module emphasis map
+  const module_emphasis = {
+    dashboard: 'high',
+    sales: pid === 'fnb' || pid === 'retail' ? 'highest' : pid === 'wholesale' ? 'medium' : 'high',
+    products: pid === 'wholesale' || pid === 'service' || pid === 'consulting' ? 'highest' : 'high',
+    transfers: pid === 'wholesale' ? 'highest' : pid === 'service' || pid === 'consulting' ? 'low' : 'high',
+    orders: pid === 'fnb' || pid === 'retail' || pid === 'wholesale' ? 'high' : 'medium',
+    customers: pid === 'service' || pid === 'consulting' || pid === 'wholesale' ? 'highest' : 'medium',
+    suppliers: pid === 'service' || pid === 'consulting' ? 'low' : 'medium',
+  };
+
+  // 5. Terminology overrides summary
+  const terminology_overrides = {
+    PRODUCT: profile.terminology?.PRODUCT?.label || profile.terminology?.PRODUCT?.singular || 'Hàng hóa',
+    SERVICE: profile.terminology?.SERVICE?.label || profile.terminology?.SERVICE?.singular || 'Dịch vụ',
+    CUSTOMER: profile.terminology?.CUSTOMER?.label || profile.terminology?.CUSTOMER?.singular || 'Khách hàng',
+    ORDER: profile.terminology?.ORDER?.label || profile.terminology?.ORDER?.singular || 'Đơn hàng',
+    SALE: profile.terminology?.SALE?.label || profile.terminology?.SALE?.singular || 'Bán hàng',
+    WAREHOUSE: profile.terminology?.WAREHOUSE?.label || profile.terminology?.WAREHOUSE?.singular || 'Kho',
+  };
+
+  // 6. Catalog presentation preferences
+  const catalog_presentation = {
+    view: pid === 'wholesale' ? 'compact' : pid === 'service' || pid === 'consulting' ? 'list' : 'image',
+    density: pid === 'wholesale' || pid === 'retail' ? 'compact' : 'medium',
+    default_type: pid === 'service' || pid === 'consulting' ? 'SERVICE' : 'PRODUCT',
+    show_stock: pid !== 'service' && pid !== 'consulting',
+    quick_add: pid === 'fnb' || pid === 'retail',
+  };
+
+  // 7. POS presentation preferences
+  const pos_presentation = {
+    pos_view: pid === 'fnb' ? 'grid2' : pid === 'wholesale' || pid === 'service' || pid === 'consulting' ? 'list' : 'grid3',
+    fast_pos: pid === 'fnb' || pid === 'retail',
+    show_images: pid === 'fnb' || pid === 'retail' || pid === 'general' || pid === 'other',
+    require_customer: pid === 'wholesale' || pid === 'service' || pid === 'consulting',
+  };
+
+  // 8. Dashboard emphasis
+  const dashboard_emphasis = profile.visual_preferences?.dashboard_emphasis || (
+    pid === 'wholesale' ? 'inventory_first' : pid === 'service' || pid === 'consulting' ? 'service_first' : 'sales_first'
+  );
+
+  return {
+    profile_id: pid,
+    name: profile.name,
+    default_route,
+    primary_actions,
+    secondary_actions,
+    navigation_priority,
+    module_emphasis,
+    terminology_overrides,
+    catalog_presentation,
+    pos_presentation,
+    dashboard_emphasis,
+    priority_highlights,
+  };
 }

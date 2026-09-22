@@ -88,7 +88,7 @@ const ICONS={
 };
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
-async function refresh(){ state.data=await snapshot(); state.businessProfile = businessProfileModule.getBusinessProfile(); render(); }
+async function refresh(){ state.data=await snapshot(); state.businessProfile = businessProfileModule.getBusinessProfile(); state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile); render(); }
 function setTitle(title,eyebrow='QBiz Kho'){ $('#pageTitle').textContent=title; $('#pageEyebrow').textContent=eyebrow; }
 function historyState(){return {qbiz:true,page:state.page,saleStep:state.saleStep}}
 function navigate(page,{replace=false,fromHistory=false}={}){
@@ -134,7 +134,7 @@ function nav(){
   $('#desktopNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="nav-btn ${activePage===id?'active':''}" data-page="${id}"><span class="nav-ico">${icon(ico)}</span><span>${label}</span></button>`).join('');
   $('#mobileNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="${activePage===id?'active':''}" data-page="${id}">${icon(ico)}<span>${label}</span></button>`).join('');
 }
-function render(){ if(!state.data) return; document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports}[state.page]||renderDashboard)(); headerActions(); updateSyncPill(); updateContextAndChips(); }
+function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports}[state.page]||renderDashboard)(); headerActions(); updateSyncPill(); updateContextAndChips(); }
 
 const levelAvail=l=>Math.max(0,(l?.onHand||0)-(l?.reserved||0)-(l?.damaged||0));
 function warehouseStock(productId){return (state.data.levels||[]).filter(l=>l.productId===productId).reduce((m,l)=>Math.max(m,levelAvail(l)),0);}
@@ -219,6 +219,40 @@ async function startSaleBarcodeCamera(){if(!('BarcodeDetector' in window)||!navi
 
 function metricCard(label,value,note,accent='blue',action=''){const tag=action?'button':'div';return `<${tag} class="metric-card ${accent}" ${action||''}><div class="metric-label">${label}</div><div class="metric-value">${value}</div><div class="metric-note">${note}</div>${action?icon('chevron-right'):''}</${tag}>`}
 function quickTile(kind,_icon,title,sub){const names={receive:'package-plus',issue:'package-minus',transfer:'arrow-left-right',count:'clipboard-check'};if(kind==='sales')return `<button class="quick-tile" data-page="sales"><span class="qt-ico">${icon('shopping-cart')}</span><strong>${title}</strong><small>${sub}</small></button>`;if(kind==='transactions')return `<button class="quick-tile" data-page="transactions"><span class="qt-ico">${icon('file-text')}</span><strong>${title}</strong><small>${sub}</small></button>`;if(kind==='customers')return `<button class="quick-tile" data-action="customer-directory"><span class="qt-ico">${icon('user')}</span><strong>${title}</strong><small>${sub}</small></button>`;return `<button class="quick-tile" data-action="quick-action" data-kind="${kind}"><span class="qt-ico">${icon(names[kind]||'package-search')}</span><strong>${title}</strong><small>${sub}</small></button>`}
+function renderQuickActions(workspace){
+  if(!workspace || workspace.profile_id === 'general' || workspace.profile_id === 'other'){
+    return `
+        <div class="quick-tile quick-hero">
+          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon('shopping-cart')}</span><strong>Bán hàng</strong></button>
+          <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
+        </div>
+        ${quickTile('receive','📥','Nhập kho','Thêm hàng vào kho')}
+        ${quickTile('count','✓','Kiểm kho','Xem tồn kho')}
+        ${quickTile('transactions','▣','Hóa đơn','Xem phiếu bán')}
+        ${quickTile('customers','◎','Khách hàng','Tìm và chọn khách')}
+    `;
+  }
+  return workspace.primary_actions.map((act, index) => {
+    if(index === 0 && act.page === 'sales'){
+      return `
+        <div class="quick-tile quick-hero">
+          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon(act.icon || 'shopping-cart')}</span><strong>${esc(act.title)}</strong></button>
+          <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
+        </div>
+      `;
+    }
+    if(act.page){
+      return `<button class="quick-tile" data-page="${act.page}"><span class="qt-ico">${icon(act.icon || 'shopping-cart')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+    }
+    if(act.action === 'customer-directory'){
+      return `<button class="quick-tile" data-action="customer-directory"><span class="qt-ico">${icon(act.icon || 'user')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+    }
+    if(act.action === 'quick-action'){
+      return `<button class="quick-tile" data-action="quick-action" data-kind="${act.kind}"><span class="qt-ico">${icon(act.icon || 'package-search')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+    }
+    return `<button class="quick-tile" data-page="${act.id}"><span class="qt-ico">${icon(act.icon || 'package-search')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+  }).join('');
+}
 function productCard(p){const t=productTotals(p); const [c,l]=productStatus(p); const service=p.type==='SERVICE'; return `<div class="product-card ${state.productSelected.has(p.id)?'selected':''}" data-product="${p.id}">${state.productSelecting?`<button class="row-select card-select" data-select-product="${p.id}" aria-label="Chọn"><span>${state.productSelected.has(p.id)?'✓':''}</span></button>`:''}<div class="pc-cover">${productImage(p)}</div><div class="pc-body"><div class="pc-head"><div><h3>${esc(p.name)}</h3><p><span class="pc-category">${service?'Dịch vụ':`${esc(p.category||'Sản phẩm')} · ${esc(p.unit||'cái')} · `}</span><span class="pc-sku">${esc(p.sku||'')}</span></p></div><span class="badge ${c}">${l}</span></div><div class="pc-info"><span>${esc(p.priceNote||money(p.price)||'Giá chưa cập nhật')}</span><small>${esc(p.description||'Chưa có mô tả')}</small></div>${service?'':'<div class="pc-metrics"><div><strong>'+fmt(t.onHand)+'</strong><span>Tồn thực</span></div><div><strong>'+fmt(t.available)+'</strong><span>Có thể bán</span></div><div><strong>'+fmt(p.lowStock)+'</strong><span>Tối thiểu</span></div></div>'}</div></div>`}
 function alertProductRow(p){const t=productTotals(p);const [,l]=productStatus(p);return `<button class="alert-product-row compact" data-product="${p.id}"><div class="product-photo small">${p.image?`<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>`:esc((p.name||'S').slice(0,1))}</div><span><strong>${esc(p.name)}</strong><small>${l} · Còn ${fmt(t.available)}</small></span>${icon('chevron-right')}</button>`}
 function productTableRow(p){
@@ -382,14 +416,7 @@ function renderDashboard(){
     <section class="card section-card dashboard-quick-card">
       <div class="section-head"><div><h2>Thao tác nhanh</h2></div></div>
       <div class="quick-grid dashboard-quick-grid">
-        <div class="quick-tile quick-hero">
-          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon('shopping-cart')}</span><strong>Bán hàng</strong></button>
-          <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
-        </div>
-        ${quickTile('receive','📥','Nhập kho','Thêm hàng vào kho')}
-        ${quickTile('count','✓','Kiểm kho','Xem tồn kho')}
-        ${quickTile('transactions','▣','Hóa đơn','Xem phiếu bán')}
-        ${quickTile('customers','◎','Khách hàng','Tìm và chọn khách')}
+        ${renderQuickActions(state.workspace)}
       </div>
     </section>
 
@@ -939,6 +966,7 @@ function openBusinessModeModal(){
     const targetPreset = businessProfileModule.PROFILE_PRESETS[selectedId] || businessProfileModule.PROFILE_PRESETS.general;
     const caps = targetPreset?.capabilities || {};
     const isCurrent = (selectedId === (currentProfile.profile_id || 'general'));
+    const targetWorkspace = businessProfileModule.resolveWorkspaceProfile(selectedId);
 
     return `
       <div class="business-mode-container">
@@ -976,6 +1004,18 @@ function openBusinessModeModal(){
                 </div>
               `;
             }).join('')}
+          </div>
+
+          <div class="mode-priorities-section">
+            <div class="mode-section-title">Sau khi áp dụng, QBiz sẽ ưu tiên</div>
+            <ul class="mode-priority-list">
+              ${(targetWorkspace.priority_highlights || []).map(item => `
+                <li class="mode-priority-item">
+                  <span class="priority-bullet">✓</span>
+                  <span>${esc(item)}</span>
+                </li>
+              `).join('')}
+            </ul>
           </div>
 
           <div class="mode-recommended-section">
@@ -1060,6 +1100,7 @@ function openBusinessModeModal(){
       const res = await businessProfileModule.setBusinessProfile(selectedId);
       if (res && res.success) {
         state.businessProfile = businessProfileModule.getBusinessProfile();
+        state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile);
         root.innerHTML = '';
         renderSettings();
         toast(`Đã chuyển sang chế độ ${targetOpt.name}.`, 'ok');

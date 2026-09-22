@@ -1053,6 +1053,397 @@ async def run_foundation_tests():
         print(f"Baseline Confirmed after Reload: {baseline_check}")
         assert baseline_check["profileId"] == "general", "Baseline profile not general after reload!"
 
+        # ----------------------------------------------------
+        # T25: General Workspace Identical Baseline
+        # ----------------------------------------------------
+        print("\n--- [T25] GENERAL WORKSPACE IDENTICAL BASELINE ---")
+        t25_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('general');
+            const cur = bp.getBusinessProfile();
+            const quickTitles = [...document.querySelectorAll('.dashboard-quick-grid .quick-tile strong')].map(s => s.textContent.trim());
+            const navLabels = [...document.querySelectorAll('#mobileNav button span')].map(s => s.textContent.trim());
+            return {
+                isGeneral: cur.profile_id === 'general',
+                defaultRoute: ws.default_route,
+                dashboardEmphasis: ws.dashboard_emphasis,
+                quickTitles,
+                navLabels
+            };
+        }""")
+        print(f"T25 Result: {t25_res}")
+        t25_pass = (
+            t25_res["isGeneral"] and
+            t25_res["defaultRoute"] == "dashboard" and
+            t25_res["dashboardEmphasis"] == "sales_first" and
+            "Bán hàng" in t25_res["quickTitles"] and
+            "Nhập kho" in t25_res["quickTitles"] and
+            "Kiểm kho" in t25_res["quickTitles"] and
+            "Hóa đơn" in t25_res["quickTitles"] and
+            "Khách hàng" in t25_res["quickTitles"] and
+            t25_res["navLabels"] == ['Tổng quan', 'Hàng hóa', 'Bán hàng', 'Kho', 'Thêm']
+        )
+        results["T25_GENERAL_WORKSPACE_BASELINE"] = t25_pass
+
+        # ----------------------------------------------------
+        # T26: Retail Priorities Resolve Đúng
+        # ----------------------------------------------------
+        print("\n--- [T26] RETAIL PRIORITIES RESOLVE ĐÚNG ---")
+        t26_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('retail');
+            const primaryIds = ws.primary_actions.map(a => a.id);
+            return {
+                profileId: ws.profile_id,
+                defaultRoute: ws.default_route,
+                primaryIds,
+                fastPos: ws.pos_presentation.fast_pos,
+                highlights: ws.priority_highlights
+            };
+        }""")
+        print(f"T26 Result: {t26_res}")
+        t26_pass = (
+            t26_res["profileId"] == "retail" and
+            "sales" in t26_res["primaryIds"] and
+            "products" in t26_res["primaryIds"] and
+            "receive" in t26_res["primaryIds"] and
+            "count" in t26_res["primaryIds"] and
+            "orders" in t26_res["primaryIds"] and
+            t26_res["fastPos"] is True and
+            len(t26_res["highlights"]) >= 4
+        )
+        results["T26_RETAIL_PRIORITIES"] = t26_pass
+
+        # ----------------------------------------------------
+        # T27: FNB Priorities Resolve Đúng & Identity=FNB Sau Reload
+        # ----------------------------------------------------
+        print("\n--- [T27] FNB PRIORITIES & RELOAD ---")
+        await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            await bp.setBusinessProfile('fnb');
+        }""")
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        t27_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            const ws = bp.resolveWorkspaceProfile();
+            const primaryIds = ws.primary_actions.map(a => a.id);
+            return {
+                profileId: cur.profile_id,
+                wsProfileId: ws.profile_id,
+                isNotRetail: cur.profile_id !== 'retail',
+                primaryIds,
+                quickAdd: ws.catalog_presentation.quick_add,
+                highlights: ws.priority_highlights
+            };
+        }""")
+        print(f"T27 Result: {t27_res}")
+        t27_pass = (
+            t27_res["profileId"] == "fnb" and
+            t27_res["wsProfileId"] == "fnb" and
+            t27_res["isNotRetail"] and
+            t27_res["primaryIds"][:2] == ["sales", "orders"] and
+            t27_res["quickAdd"] is True
+        )
+        results["T27_FNB_PRIORITIES_PERSISTENCE"] = t27_pass
+
+        # ----------------------------------------------------
+        # T28: Wholesale Priorities Resolve Đúng
+        # ----------------------------------------------------
+        print("\n--- [T28] WHOLESALE PRIORITIES RESOLVE ĐÚNG ---")
+        t28_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('wholesale');
+            const primaryIds = ws.primary_actions.map(a => a.id);
+            return {
+                profileId: ws.profile_id,
+                defaultRoute: ws.default_route,
+                dashboardEmphasis: ws.dashboard_emphasis,
+                primaryIds,
+                catalogView: ws.catalog_presentation.view,
+                highlights: ws.priority_highlights
+            };
+        }""")
+        print(f"T28 Result: {t28_res}")
+        t28_pass = (
+            t28_res["profileId"] == "wholesale" and
+            t28_res["dashboardEmphasis"] == "inventory_first" and
+            t28_res["defaultRoute"] == "products" and
+            "products" in t28_res["primaryIds"] and
+            "receive" in t28_res["primaryIds"] and
+            "customers" in t28_res["primaryIds"] and
+            "orders" in t28_res["primaryIds"] and
+            t28_res["catalogView"] == "compact"
+        )
+        results["T28_WHOLESALE_PRIORITIES"] = t28_pass
+
+        # ----------------------------------------------------
+        # T29: Service Priorities Resolve Đúng
+        # ----------------------------------------------------
+        print("\n--- [T29] SERVICE PRIORITIES RESOLVE ĐÚNG ---")
+        t29_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('service');
+            const primaryIds = ws.primary_actions.map(a => a.id);
+            return {
+                profileId: ws.profile_id,
+                dashboardEmphasis: ws.dashboard_emphasis,
+                primaryIds,
+                catalogDefaultType: ws.catalog_presentation.default_type,
+                showStock: ws.catalog_presentation.show_stock,
+                highlights: ws.priority_highlights
+            };
+        }""")
+        print(f"T29 Result: {t29_res}")
+        t29_pass = (
+            t29_res["profileId"] == "service" and
+            t29_res["dashboardEmphasis"] == "service_first" and
+            "services" in t29_res["primaryIds"] and
+            "customers" in t29_res["primaryIds"] and
+            "sales" in t29_res["primaryIds"] and
+            t29_res["catalogDefaultType"] == "SERVICE" and
+            t29_res["showStock"] is False
+        )
+        results["T29_SERVICE_PRIORITIES"] = t29_pass
+
+        # ----------------------------------------------------
+        # T30: Consulting Priorities Resolve Đúng
+        # ----------------------------------------------------
+        print("\n--- [T30] CONSULTING PRIORITIES RESOLVE ĐÚNG ---")
+        t30_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('consulting');
+            const primaryIds = ws.primary_actions.map(a => a.id);
+            return {
+                profileId: ws.profile_id,
+                dashboardEmphasis: ws.dashboard_emphasis,
+                primaryIds,
+                catalogDefaultType: ws.catalog_presentation.default_type,
+                highlights: ws.priority_highlights
+            };
+        }""")
+        print(f"T30 Result: {t30_res}")
+        t30_pass = (
+            t30_res["profileId"] == "consulting" and
+            t30_res["dashboardEmphasis"] == "service_first" and
+            "services" in t30_res["primaryIds"] and
+            "customers" in t30_res["primaryIds"] and
+            t30_res["catalogDefaultType"] == "SERVICE"
+        )
+        results["T30_CONSULTING_PRIORITIES"] = t30_pass
+
+        # ----------------------------------------------------
+        # T31: Other Fallback An Toàn
+        # ----------------------------------------------------
+        print("\n--- [T31] OTHER FALLBACK AN TOÀN ---")
+        t31_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const wsOther = bp.resolveWorkspaceProfile('other');
+            const wsGen = bp.resolveWorkspaceProfile('general');
+            const primaryIdsOther = wsOther.primary_actions.map(a => a.id);
+            const primaryIdsGen = wsGen.primary_actions.map(a => a.id);
+            return {
+                profileId: wsOther.profile_id,
+                defaultRoute: wsOther.default_route,
+                matchesGeneral: JSON.stringify(primaryIdsOther) === JSON.stringify(primaryIdsGen)
+            };
+        }""")
+        print(f"T31 Result: {t31_res}")
+        t31_pass = (
+            t31_res["profileId"] == "other" and
+            t31_res["defaultRoute"] == "dashboard" and
+            t31_res["matchesGeneral"] is True
+        )
+        results["T31_OTHER_FALLBACK_SAFETY"] = t31_pass
+
+        # ----------------------------------------------------
+        # T32: Switching Modes Không Mutate Business Data
+        # ----------------------------------------------------
+        print("\n--- [T32] SWITCHING MODES DATA IMMUTABILITY ---")
+        t32_res = await page.evaluate("""async (initialCounts) => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const modes = ['general', 'fnb', 'wholesale', 'service', 'consulting', 'other', 'general'];
+            for (const m of modes) {
+                await bp.setBusinessProfile(m);
+            }
+            const state = window.__qbiz_app__.state;
+            const finalCounts = {
+                products: (state.data?.products || []).length,
+                warehouses: (state.data?.warehouses || []).length,
+                movements: (state.data?.movements || []).length,
+                orders: (state.data?.orders || []).length,
+                sales: (state.data?.sales || []).length,
+                customers: (state.data?.customers || []).length,
+                suppliers: (state.data?.suppliers || []).length,
+            };
+            const unchanged = (
+                finalCounts.products === initialCounts.products &&
+                finalCounts.warehouses === initialCounts.warehouses &&
+                finalCounts.movements === initialCounts.movements &&
+                finalCounts.orders === initialCounts.orders &&
+                finalCounts.sales === initialCounts.sales &&
+                finalCounts.customers === initialCounts.customers &&
+                finalCounts.suppliers === initialCounts.suppliers
+            );
+            return { unchanged, finalCounts };
+        }""", initial_counts)
+        print(f"T32 Result: {t32_res}")
+        t32_pass = t32_res["unchanged"] is True
+        results["T32_SWITCHING_DATA_IMMUTABILITY"] = t32_pass
+
+        # ----------------------------------------------------
+        # T33: Disabled/Non-Priority Module Vẫn Accessible
+        # ----------------------------------------------------
+        print("\n--- [T33] NON-PRIORITY MODULE ACCESSIBILITY ---")
+        t33_res = await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            // Switch to service mode (where inventory/transfers is low priority)
+            await bp.setBusinessProfile('service');
+            // Navigate directly to transfers
+            window.__qbiz_app__.state.page = 'transfers';
+            window.__qbiz_app__.render();
+            const transfersSection = document.querySelector('.warehouse-stock-list, .warehouse-operation-grid, .warehouse-toolbar');
+            const levelsCount = (window.__qbiz_app__.state.data?.levels || []).length;
+
+            // Navigate to products
+            window.__qbiz_app__.state.page = 'products';
+            window.__qbiz_app__.render();
+            const goodsToolbar = document.querySelector('.goods-toolbar');
+            const productsCount = (window.__qbiz_app__.state.data?.products || []).length;
+
+            return {
+                transfersRendered: Boolean(transfersSection),
+                levelsCount,
+                goodsToolbarRendered: Boolean(goodsToolbar),
+                productsCount
+            };
+        }""")
+        print(f"T33 Result: {t33_res}")
+        t33_pass = (
+            t33_res["transfersRendered"] and
+            t33_res["levelsCount"] > 0 and
+            t33_res["goodsToolbarRendered"] and
+            t33_res["productsCount"] == initial_counts["products"]
+        )
+        results["T33_NON_PRIORITY_MODULE_ACCESS"] = t33_pass
+
+        # ----------------------------------------------------
+        # T34: Preview Trong Settings Dùng Cùng Resolver Với UI
+        # ----------------------------------------------------
+        print("\n--- [T34] SETTINGS PREVIEW DERIVED FROM RESOLVER ---")
+        await page.evaluate("""() => {
+            window.__qbiz_app__.state.page = 'settings';
+            window.__qbiz_app__.render();
+        }""")
+        await page.wait_for_selector('[data-action="business-mode-selector"]')
+        await page.click('[data-action="business-mode-selector"]')
+        await page.wait_for_selector('.business-mode-container')
+
+        t34_checks = []
+        for test_mode in ['fnb', 'wholesale', 'service', 'general']:
+            await page.click(f'.mode-card[data-mode-id="{test_mode}"]')
+            await page.wait_for_timeout(150)
+            check = await page.evaluate("""(modeId) => {
+                const bp = window.__qbiz_app__.businessProfile;
+                const ws = bp.resolveWorkspaceProfile(modeId);
+                const renderedItems = [...document.querySelectorAll('.mode-priority-list li span:not(.priority-bullet)')].map(s => s.textContent.trim());
+                const expected = ws.priority_highlights || [];
+                return {
+                    modeId,
+                    matches: JSON.stringify(renderedItems) === JSON.stringify(expected),
+                    renderedItems,
+                    expected
+                };
+            }""", test_mode)
+            print(f"T34 Check for {test_mode}: matches={check['matches']}")
+            t34_checks.append(check["matches"])
+
+        # Close modal
+        await page.click('.modal [data-close]')
+        await page.wait_for_selector('.business-mode-container', state='detached')
+
+        t34_pass = all(t34_checks)
+        results["T34_SETTINGS_PREVIEW_RESOLVER_SYNC"] = t34_pass
+
+        # ----------------------------------------------------
+        # T35: Reload Giữ Đúng Workspace
+        # ----------------------------------------------------
+        print("\n--- [T35] RELOAD PRESERVES WORKSPACE ---")
+        await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            await bp.setBusinessProfile('fnb');
+        }""")
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        t35_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            const ws = bp.resolveWorkspaceProfile();
+            return {
+                profileId: cur.profile_id,
+                wsProfileId: ws.profile_id,
+                wsFastPos: ws.pos_presentation.fast_pos,
+                isFnb: cur.profile_id === 'fnb' && ws.profile_id === 'fnb'
+            };
+        }""")
+        print(f"T35 Result: {t35_res}")
+        t35_pass = t35_res["isFnb"] and t35_res["wsFastPos"] is True
+        results["T35_RELOAD_PRESERVES_WORKSPACE"] = t35_pass
+
+        # ----------------------------------------------------
+        # T36: Return General Khôi Phục Baseline Presentation
+        # ----------------------------------------------------
+        print("\n--- [T36] RETURN GENERAL KHÔI PHỤC BASELINE PRESENTATION ---")
+        await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            await bp.resetToDefaultProfile();
+            window.__qbiz_app__.state.page = 'dashboard';
+            window.__qbiz_app__.render();
+        }""")
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.businessProfile")
+
+        for width in [390, 412, 1440]:
+            await page.set_viewport_size({"width": width, "height": 900})
+            await page.wait_for_timeout(200)
+            overflow = await page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth")
+            assert overflow <= 0, f"Overflow {overflow}px detected at {width}px!"
+
+        t36_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const cur = bp.getBusinessProfile();
+            const ws = bp.resolveWorkspaceProfile();
+            const title = document.getElementById('pageTitle')?.textContent;
+            const mobileNavLabels = [...document.querySelectorAll('#mobileNav button span')].map(s => s.textContent.trim());
+            const quickTitles = [...document.querySelectorAll('.dashboard-quick-grid .quick-tile strong')].map(s => s.textContent.trim());
+            const hasSidebar = Boolean(document.querySelector('.sidebar'));
+            return {
+                profileId: cur.profile_id,
+                wsProfileId: ws.profile_id,
+                title,
+                mobileNavLabels,
+                quickTitles,
+                hasSidebar
+            };
+        }""")
+        print(f"T36 Result: {t36_res}")
+        t36_pass = (
+            t36_res["profileId"] == "general" and
+            t36_res["wsProfileId"] == "general" and
+            t36_res["title"] == "Tổng quan" and
+            t36_res["mobileNavLabels"] == ['Tổng quan', 'Hàng hóa', 'Bán hàng', 'Kho', 'Thêm'] and
+            "Bán hàng" in t36_res["quickTitles"] and
+            "Nhập kho" in t36_res["quickTitles"] and
+            "Kiểm kho" in t36_res["quickTitles"] and
+            "Hóa đơn" in t36_res["quickTitles"] and
+            "Khách hàng" in t36_res["quickTitles"] and
+            t36_res["hasSidebar"] is True
+        )
+        results["T36_RESTORE_BASELINE_PRESENTATION"] = t36_pass
+
         # Check console errors
         print(f"\nConsole Errors Count: {len(console_errors)}")
         if console_errors:
@@ -1062,7 +1453,7 @@ async def run_foundation_tests():
         await browser.close()
 
     print("\n================================================================")
-    print("FINAL TEST RESULTS (T01 - T24 & INVARIANTS)")
+    print("FINAL TEST RESULTS (T01 - T36 & INVARIANTS)")
     print("================================================================")
     all_pass = True
     for k, v in results.items():
