@@ -401,8 +401,8 @@ export const PRESET_FNB = Object.freeze({
   terminology: {
     ...PRESET_RETAIL.terminology,
     PRODUCT: { singular: 'Món', plural: 'Danh sách món', label: 'Món / Sản phẩm', action_create: 'Thêm món' },
-    SALE: { singular: 'Bán hàng', plural: 'Phiếu gọi món', label: 'Bán hàng nhanh', action_create: 'Gọi món' },
-    ORDER: { singular: 'Đơn món', plural: 'Đơn gọi món', label: 'Đơn món', action_create: 'Tạo đơn' },
+    SALE: { singular: 'Bán hàng', plural: 'Phiếu bán nhanh', label: 'Bán hàng nhanh', action_create: 'Bán hàng' },
+    ORDER: { singular: 'Đơn hàng', plural: 'Đơn hàng', label: 'Đơn hàng', action_create: 'Tạo đơn' },
     WAREHOUSE: { singular: 'Kho nguyên liệu', plural: 'Kho nguyên liệu', label: 'Kho', action_create: 'Thêm kho' },
   },
   navigation_preferences: {
@@ -450,7 +450,7 @@ export const PRESET_CONSULTING = Object.freeze({
     PRODUCT: { singular: 'Gói tư vấn', plural: 'Gói tư vấn', label: 'Gói tư vấn', action_create: 'Thêm gói tư vấn' },
     SERVICE: { singular: 'Dịch vụ tư vấn', plural: 'Dịch vụ', label: 'Dịch vụ', action_create: 'Thêm dịch vụ' },
     CUSTOMER: { singular: 'Khách tư vấn', plural: 'Khách hàng / Đối tác', label: 'Khách hàng', action_create: 'Thêm hồ sơ' },
-    ORDER: { singular: 'Hợp đồng / Đơn', plural: 'Hợp đồng / Đơn', label: 'Hợp đồng', action_create: 'Tạo hợp đồng' },
+    ORDER: { singular: 'Đơn dịch vụ', plural: 'Đơn dịch vụ', label: 'Đơn dịch vụ', action_create: 'Tạo đơn' },
     SALE: { singular: 'Thu phí tư vấn', plural: 'Biên lai', label: 'Thanh toán', action_create: 'Thu phí' },
     WAREHOUSE: { singular: 'Kho tài liệu', plural: 'Kho tài liệu', label: 'Kho', action_create: 'Thêm kho' },
   },
@@ -483,7 +483,7 @@ export const PRESET_CONSULTING = Object.freeze({
   metadata: {
     ...PRESET_SERVICE.metadata,
     base_preset: 'service',
-    description: 'Dịch vụ, khách hàng, lịch hẹn',
+    description: 'Dịch vụ tư vấn, hồ sơ khách hàng, đơn dịch vụ',
   },
 });
 
@@ -549,16 +549,16 @@ export const BUSINESS_MODE_OPTIONS = Object.freeze([
   {
     id: 'service',
     name: 'Dịch vụ',
-    desc: 'Dịch vụ, khách hàng, lịch hẹn',
+    desc: 'Gói dịch vụ, hồ sơ khách, hóa đơn',
     icon: 'sparkles',
-    recommended_uses: ['Quản lý gói dịch vụ', 'Hồ sơ khách hàng', 'Lịch hẹn & liệu trình'],
+    recommended_uses: ['Quản lý gói dịch vụ', 'Hồ sơ khách hàng', 'Hóa đơn dịch vụ'],
   },
   {
     id: 'consulting',
     name: 'Chuyên gia / Tư vấn',
-    desc: 'Dịch vụ, khách hàng, lịch hẹn',
+    desc: 'Dịch vụ tư vấn, hồ sơ khách hàng',
     icon: 'user-check',
-    recommended_uses: ['Tư vấn chuyên gia', 'Hồ sơ hội viên', 'Đặt lịch làm việc'],
+    recommended_uses: ['Tư vấn chuyên gia', 'Hồ sơ đối tác & khách', 'Theo dõi đơn dịch vụ'],
   },
   {
     id: 'other',
@@ -996,6 +996,19 @@ export function listBusinessProfiles() {
  * Centralized adapter layer that derives operational priorities, primary/secondary actions,
  * navigation order, presentation preferences, and terminology without scattering if/else across the app.
  *
+ * SCOPE & STATUS CLASSIFICATION (Phase 2B):
+ * - IMPLEMENTED_NOW:
+ *   + Adaptive Dashboard Quick Actions (renderQuickActions in app.js)
+ *   + Settings Mode Priority Preview (renderPriorityHighlights in app.js)
+ *   + Profile & Workspace Resolver (resolveWorkspaceProfile in business-profile.js)
+ *   + Profile Persistence (qbiz_business_mode_profile in settings store)
+ * - PREPARED_NOT_APPLIED:
+ *   + Navigation adaptation (menu_priority preserved at general baseline)
+ *   + Catalog presentation adaptation (view/density/default_type preserved at general baseline)
+ *   + POS presentation adaptation (pos_view/fast_pos preserved at general baseline)
+ *   + Default route adaptation (entry route preserved at dashboard)
+ *   + Broad terminology adaptation (entity labels preserved at general baseline)
+ *
  * @param {string|Object} [profileOrId] Optional preset id or profile object; defaults to active profile
  * @returns {Object} Full resolved workspace profile object
  */
@@ -1046,17 +1059,17 @@ export function resolveWorkspaceProfile(profileOrId = null) {
     ];
   } else if (pid === 'fnb') {
     primary_actions = [
-      { id: 'sales', kind: 'sales', title: 'Bán hàng nhanh', sub: 'Gọi món & thu ngân', icon: 'shopping-cart', page: 'sales' },
-      { id: 'orders', kind: 'orders', title: 'Đơn gọi món', sub: 'Theo dõi đơn phục vụ', icon: 'file-text', page: 'orders' },
+      { id: 'sales', kind: 'sales', title: 'Bán hàng nhanh', sub: 'Bán hàng nhanh & thu ngân', icon: 'shopping-cart', page: 'sales' },
+      { id: 'orders', kind: 'orders', title: 'Đơn hàng', sub: 'Theo dõi đơn bán', icon: 'file-text', page: 'orders' },
       { id: 'products', kind: 'products', title: 'Danh sách món', sub: 'Thực đơn & bảng giá', icon: 'package-search', page: 'products' },
       { id: 'transactions', kind: 'transactions', title: 'Hóa đơn', sub: 'Phiếu thu gần đây', icon: 'file-text', page: 'transactions' },
       { id: 'receive', kind: 'receive', title: 'Nhập nguyên liệu', sub: 'Kho nguyên liệu/món', icon: 'package-plus', action: 'quick-action' },
     ];
     secondary_actions = ['count', 'customers', 'shifts', 'reports', 'transfers'];
     priority_highlights = [
-      'Bán hàng nhanh & gọi món',
+      'Bán hàng nhanh',
       'Danh sách món & thực đơn hình ảnh',
-      'Theo dõi đơn gọi món',
+      'Theo dõi đơn bán',
       'Kho nguyên liệu & sản phẩm (phụ)',
     ];
   } else if (pid === 'wholesale') {
@@ -1064,14 +1077,14 @@ export function resolveWorkspaceProfile(profileOrId = null) {
       { id: 'products', kind: 'products', title: 'Mặt hàng sỉ', sub: 'Danh mục & mã hàng', icon: 'package-search', page: 'products' },
       { id: 'receive', kind: 'receive', title: 'Nhập hàng sỉ', sub: 'Nhập kho lô lớn', icon: 'package-plus', action: 'quick-action' },
       { id: 'count', kind: 'count', title: 'Tồn kho tổng', sub: 'Kiểm tra tồn đa kho', icon: 'clipboard-check', action: 'quick-action' },
-      { id: 'customers', kind: 'customers', title: 'Đại lý / Đối tác', sub: 'Hồ sơ đại lý & công nợ', icon: 'user', action: 'customer-directory' },
+      { id: 'customers', kind: 'customers', title: 'Đại lý / Đối tác', sub: 'Hồ sơ đại lý / đối tác', icon: 'user', action: 'customer-directory' },
       { id: 'orders', kind: 'orders', title: 'Đơn đặt sỉ', sub: 'Đơn hàng số lượng lớn', icon: 'file-text', page: 'orders' },
     ];
     secondary_actions = ['sales', 'transactions', 'transfers', 'suppliers', 'reports'];
     priority_highlights = [
       'Mặt hàng & danh mục phân phối',
       'Quản lý kho tổng & điều chuyển',
-      'Đại lý, đối tác & công nợ',
+      'Đại lý & đối tác phân phối',
       'Đơn đặt hàng số lượng lớn',
     ];
   } else if (pid === 'service') {
@@ -1094,14 +1107,14 @@ export function resolveWorkspaceProfile(profileOrId = null) {
       { id: 'services', kind: 'products', title: 'Gói tư vấn', sub: 'Dịch vụ & gói giải pháp', icon: 'briefcase', page: 'products' },
       { id: 'customers', kind: 'customers', title: 'Khách hàng', sub: 'Hồ sơ đối tác & khách', icon: 'user', action: 'customer-directory' },
       { id: 'sales', kind: 'sales', title: 'Thanh toán', sub: 'Thu phí dịch vụ tư vấn', icon: 'shopping-cart', page: 'sales' },
-      { id: 'orders', kind: 'orders', title: 'Hợp đồng / Đơn', sub: 'Theo dõi hợp đồng', icon: 'file-text', page: 'orders' },
+      { id: 'orders', kind: 'orders', title: 'Đơn dịch vụ', sub: 'Theo dõi đơn dịch vụ', icon: 'file-text', page: 'orders' },
       { id: 'transactions', kind: 'transactions', title: 'Biên lai', sub: 'Lịch sử thanh toán', icon: 'file-text', page: 'transactions' },
     ];
     secondary_actions = ['receive', 'count', 'transfers', 'reports', 'settings'];
     priority_highlights = [
       'Gói tư vấn & chuyên môn',
       'Hồ sơ khách hàng & đối tác',
-      'Thu phí & hợp đồng tư vấn',
+      'Thu phí & đơn dịch vụ tư vấn',
       'Thông tin & liên hệ nhanh',
     ];
   } else {

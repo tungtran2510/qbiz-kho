@@ -1444,6 +1444,151 @@ async def run_foundation_tests():
         )
         results["T36_RESTORE_BASELINE_PRESENTATION"] = t36_pass
 
+        # ----------------------------------------------------
+        # T37: FNB No Fake Restaurant Workflow
+        # ----------------------------------------------------
+        print("\n--- [T37] FNB NO FAKE RESTAURANT WORKFLOW ---")
+        t37_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('fnb');
+            const salesAction = ws.primary_actions.find(a => a.id === 'sales');
+            const ordersAction = ws.primary_actions.find(a => a.id === 'orders');
+            const allSubs = ws.primary_actions.map(a => a.sub).join(' ');
+            const allTitles = ws.primary_actions.map(a => a.title).join(' ');
+            const allHighlights = (ws.priority_highlights || []).join(' ');
+            const combinedText = `${allSubs} ${allTitles} ${allHighlights}`.toLowerCase();
+
+            const preset = bp.PROFILE_PRESETS?.['fnb'] || {};
+            const termOrder = preset.terminology?.ORDER || {};
+            const termSale = preset.terminology?.SALE || {};
+
+            return {
+                salesTitle: salesAction?.title,
+                salesSub: salesAction?.sub,
+                ordersTitle: ordersAction?.title,
+                ordersSub: ordersAction?.sub,
+                hasGoiMon: combinedText.includes('gọi món'),
+                hasPhucVu: combinedText.includes('phục vụ'),
+                termOrderLabel: termOrder.label,
+                termSaleAction: termSale.action_create
+            };
+        }""")
+        print(f"T37 Result: {t37_res}")
+        t37_pass = (
+            t37_res["salesTitle"] == "Bán hàng nhanh" and
+            t37_res["ordersTitle"] == "Đơn hàng" and
+            not t37_res["hasGoiMon"] and
+            not t37_res["hasPhucVu"] and
+            t37_res["termOrderLabel"] == "Đơn hàng" and
+            t37_res["termSaleAction"] == "Bán hàng"
+        )
+        results["T37_FNB_NO_FAKE_RESTAURANT_WORKFLOW"] = t37_pass
+
+        # ----------------------------------------------------
+        # T38: Wholesale No Unattached Debt Claim
+        # ----------------------------------------------------
+        print("\n--- [T38] WHOLESALE NO UNATTACHED DEBT CLAIM ---")
+        t38_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('wholesale');
+            const customersAction = ws.primary_actions.find(a => a.id === 'customers');
+            const allHighlights = (ws.priority_highlights || []).join(' ').toLowerCase();
+
+            return {
+                customersTitle: customersAction?.title,
+                customersSub: customersAction?.sub,
+                customerActionTarget: customersAction?.action,
+                subHasDebt: (customersAction?.sub || '').toLowerCase().includes('công nợ'),
+                highlightsHasDebtClaimOnCustomer: allHighlights.includes('đại lý, đối tác & công nợ')
+            };
+        }""")
+        print(f"T38 Result: {t38_res}")
+        t38_pass = (
+            t38_res["customerActionTarget"] == "customer-directory" and
+            not t38_res["subHasDebt"] and
+            not t38_res["highlightsHasDebtClaimOnCustomer"] and
+            t38_res["customersSub"] == "Hồ sơ đại lý / đối tác"
+        )
+        results["T38_WHOLESALE_NO_UNATTACHED_DEBT_CLAIM"] = t38_pass
+
+        # ----------------------------------------------------
+        # T39: Consulting No Fake Contract Entity
+        # ----------------------------------------------------
+        print("\n--- [T39] CONSULTING NO FAKE CONTRACT ENTITY ---")
+        t39_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const ws = bp.resolveWorkspaceProfile('consulting');
+            const ordersAction = ws.primary_actions.find(a => a.id === 'orders');
+            const allHighlights = (ws.priority_highlights || []).join(' ').toLowerCase();
+
+            const preset = bp.PROFILE_PRESETS?.['consulting'] || {};
+            const termOrder = preset.terminology?.ORDER || {};
+
+            return {
+                ordersTitle: ordersAction?.title,
+                ordersSub: ordersAction?.sub,
+                ordersPage: ordersAction?.page,
+                hasContractInTitle: (ordersAction?.title || '').toLowerCase().includes('hợp đồng'),
+                hasContractInSub: (ordersAction?.sub || '').toLowerCase().includes('hợp đồng'),
+                hasContractInHighlights: allHighlights.includes('hợp đồng'),
+                termOrderLabel: termOrder.label
+            };
+        }""")
+        print(f"T39 Result: {t39_res}")
+        t39_pass = (
+            t39_res["ordersPage"] == "orders" and
+            not t39_res["hasContractInTitle"] and
+            not t39_res["hasContractInSub"] and
+            not t39_res["hasContractInHighlights"] and
+            t39_res["ordersTitle"] == "Đơn dịch vụ" and
+            t39_res["ordersSub"] == "Theo dõi đơn dịch vụ" and
+            t39_res["termOrderLabel"] == "Đơn dịch vụ"
+        )
+        results["T39_CONSULTING_NO_FAKE_CONTRACT_ENTITY"] = t39_pass
+
+        # ----------------------------------------------------
+        # T40: Service / Consulting No Active Appointment Claim
+        # ----------------------------------------------------
+        print("\n--- [T40] SERVICE/CONSULTING NO ACTIVE APPOINTMENT CLAIM ---")
+        t40_res = await page.evaluate("""() => {
+            const bp = window.__qbiz_app__.businessProfile;
+            const options = bp.BUSINESS_MODE_OPTIONS || [];
+            const serviceOpt = options.find(o => o.id === 'service') || {};
+            const consultingOpt = options.find(o => o.id === 'consulting') || {};
+
+            const wsService = bp.resolveWorkspaceProfile('service');
+            const wsConsulting = bp.resolveWorkspaceProfile('consulting');
+
+            const hasAppointmentActionService = wsService.primary_actions.some(a => a.id === 'appointment' || a.id === 'booking');
+            const hasAppointmentActionConsulting = wsConsulting.primary_actions.some(a => a.id === 'appointment' || a.id === 'booking');
+
+            const serviceDescHasAppt = (serviceOpt.desc || '').toLowerCase().includes('lịch hẹn');
+            const consultingDescHasAppt = (consultingOpt.desc || '').toLowerCase().includes('lịch hẹn');
+
+            return {
+                serviceDesc: serviceOpt.desc,
+                consultingDesc: consultingOpt.desc,
+                serviceDescHasAppt,
+                consultingDescHasAppt,
+                hasAppointmentActionService,
+                hasAppointmentActionConsulting
+            };
+        }""")
+        print(f"T40 Result: {t40_res}")
+        t40_pass = (
+            not t40_res["serviceDescHasAppt"] and
+            not t40_res["consultingDescHasAppt"] and
+            not t40_res["hasAppointmentActionService"] and
+            not t40_res["hasAppointmentActionConsulting"]
+        )
+        results["T40_SERVICE_CONSULTING_NO_ACTIVE_APPOINTMENT_CLAIM"] = t40_pass
+
+        # Reset back to default general profile at end of test suite
+        await page.evaluate("""async () => {
+            const bp = window.__qbiz_app__.businessProfile;
+            await bp.resetToDefaultProfile();
+        }""")
+
         # Check console errors
         print(f"\nConsole Errors Count: {len(console_errors)}")
         if console_errors:
@@ -1453,7 +1598,7 @@ async def run_foundation_tests():
         await browser.close()
 
     print("\n================================================================")
-    print("FINAL TEST RESULTS (T01 - T36 & INVARIANTS)")
+    print("FINAL TEST RESULTS (T01 - T40 & INVARIANTS)")
     print("================================================================")
     all_pass = True
     for k, v in results.items():
