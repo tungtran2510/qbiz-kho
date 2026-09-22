@@ -162,8 +162,8 @@ export function buildContextEnvelope(appState = {}, overrides = {}) {
     ? appState.warehouse
     : (appState.saleDraft?.warehouseId || getLastResolvedWarehouse() || defaultWarehouse);
 
-  // Active modal or screen entity bindings (with multi-turn memory fallback)
-  const boundProductId = overrides.current_product_id || appState.currentProductId || getLastResolvedProduct()?.id || null;
+  // Active modal or screen entity bindings
+  const boundProductId = overrides.current_product_id || appState.currentProductId || null;
   const boundOrderId = overrides.current_order_id || appState.currentOrderId || null;
   const boundSaleId = overrides.current_sale_id || appState.currentSaleId || null;
   const boundCustomerId = overrides.current_customer_id || appState.saleCustomer?.id || appState.currentCustomerId || null;

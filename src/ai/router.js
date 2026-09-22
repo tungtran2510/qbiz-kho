@@ -46,7 +46,7 @@ function norm(str) {
  * Dictionary-based intent routing layer (Batch A5).
  * Returns structured result or null if no confident match.
  */
-function dictionaryRoute(rawPrompt, context, state) {
+export function dictionaryRoute(rawPrompt, context, state) {
   const p = dictNorm(rawPrompt);
   if (!p || p.length < 2) return null;
 
@@ -95,8 +95,8 @@ function dictionaryRoute(rawPrompt, context, state) {
     }
   }
 
-  // 4. If only intent detected but no entity, try to suggest
-  if (intent && intent.confidence >= 70 && !entity) {
+  // 4. If only intent detected but no entity, try to suggest (only if not an action with numbers/pronouns)
+  if (intent && intent.confidence >= 70 && !entity && !/\d+/.test(p) && !p.includes('nay')) {
     const route = context?.current_route || 'dashboard';
     const suggestions = getSuggestedActions(route);
     if (suggestions.length > 0) {
@@ -116,7 +116,7 @@ function dictionaryRoute(rawPrompt, context, state) {
 /**
  * Map intent + entity type to a specific action ID.
  */
-function mapIntentEntityToAction(intent, entityType, context) {
+export function mapIntentEntityToAction(intent, entityType, context) {
   const route = context?.current_route || 'dashboard';
   const MAP = {
     // OPEN + entity
@@ -137,7 +137,7 @@ function mapIntentEntityToAction(intent, entityType, context) {
     'CREATE_SUPPLIER': 'new_supplier',
     'CREATE_ORDER': 'new_order',
     // SEARCH + entity (delegate to existing skills)
-    'SEARCH_PRODUCT': null,  // handled by existing router search logic
+    'SEARCH_PRODUCT': null,
     'SEARCH_CUSTOMER': null,
     'SEARCH_ORDER': null,
     // VIEW + entity
@@ -149,23 +149,28 @@ function mapIntentEntityToAction(intent, entityType, context) {
     // CONFIGURE
     'CONFIGURE_SETTINGS': 'open_settings',
     'CONFIGURE_PRINT': 'open_print_settings',
+    'EDIT_PRINT': 'open_print_settings',
     // BACKUP/RESTORE
     'BACKUP_SETTINGS': 'open_backup',
     'RESTORE_SETTINGS': 'open_backup',
+    'BACKUP_null': 'open_backup',
+    'RESTORE_null': 'open_backup',
     // REPORT
     'REPORT_REPORT': 'open_reports',
     'REPORT_SALE': 'open_reports',
     'SUMMARIZE_REPORT': 'open_reports',
     'SUMMARIZE_SALE': 'open_reports',
     // PAY
-    'PAY_SALE': null, // handled by existing POS flow
+    'PAY_SALE': null,
     // MOVE
     'MOVE_WAREHOUSE': 'open_transfer',
+    'MOVE_null': 'open_transfer',
     // COUNT
     'COUNT_WAREHOUSE': 'open_stocktake',
+    'COUNT_null': 'open_stocktake',
   };
-  const key = `${intent}_${entityType}`;
-  return MAP[key] || null;
+  const key = `${intent}_${entityType || 'null'}`;
+  return MAP[key] || MAP[`${intent}_null`] || null;
 }
 
 export async function routeIntent(prompt, context, state) {
@@ -186,8 +191,121 @@ export async function routeIntent(prompt, context, state) {
     if (dictResult.type === 'SUGGEST') {
       return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `\u2022 ${s.label}`).join('\n'), tier: 0, provider: 'dictionary' };
     }
-    if (dictResult.type === 'CONFIRM_PENDING' || dictResult.type === 'CANCEL_PENDING') {
-      // These are handled by existing pending intent logic, fall through
+    if (dictResult.type === 'CONFIRM_PENDING') {
+      const pIntent = getPendingIntent() || dictResult.pending;
+      clearPendingIntent();
+      if (pIntent?.skillId) {
+        const res = await executeSkill(pIntent.skillId, pIntent.params || {}, context, state);
+        return { ...res, text: `Đã xác nhận: ${res.text || 'thực hiện thao tác thành công.'}`, tier: 0, provider: 'dictionary' };
+      }
+      return { text: 'Đã xác nhận thao tác.', tier: 0, provider: 'dictionary' };
+    }
+    if (dictResult.type === 'CANCEL_PENDING') {
+      clearPendingIntent();
+      return { text: 'Đã hủy thao tác đang chờ.', tier: 0, provider: 'dictionary' };
+    }
+    if (dictResult.type === 'CORRECT_PENDING') {
+      clearPendingIntent();
+      return { text: 'Đã hủy lệnh trước. Vui lòng cho biết yêu cầu mới của bạn.', tier: 0, provider: 'dictionary' };
+    }
+  }
+
+  // Multi-turn resolution for pending intent (e.g. user replies with warehouse name)
+  const activePending = getPendingIntent() || context?.pending_intent;
+  if (activePending && (activePending.skillId === 'receipt-proposal' || activePending.skillId === 'transfer-proposal')) {
+    const pn = dictNorm(rawPrompt);
+    let chosenWh = null;
+    const warehouses = state.data?.warehouses || [];
+    if (pn.includes('kho phu') || pn.includes('phu')) {
+      const m = warehouses.filter(w => dictNorm(w.name).includes('phu'));
+      if (m.length) chosenWh = m[0].id;
+    } else if (pn.includes('kho chinh') || pn.includes('chinh') || pn.includes('mac dinh')) {
+      const m = warehouses.filter(w => dictNorm(w.name).includes('chinh') || w.is_default);
+      if (m.length) chosenWh = m[0].id;
+    } else if (pn.includes('chi nhanh')) {
+      const m = warehouses.filter(w => dictNorm(w.name).includes('chi nhanh'));
+      if (m.length) chosenWh = m[0].id;
+    }
+    if (chosenWh) {
+      clearPendingIntent();
+      const mergedParams = { ...(activePending.params || {}), warehouseId: chosenWh, toWarehouseId: chosenWh };
+      const res = await executeSkill(activePending.skillId, mergedParams, context, state);
+      return { ...res, text: `Đã chọn kho và tiếp tục: ${res.text || ''}`, tier: 0, provider: 'dictionary' };
+    }
+  }
+
+  // Context-sensitive "thêm [số]" handling
+  const addMatch = dictNorm(rawPrompt).match(/^(?:them|cong|tang|nhap them)\s+(\d+)(?:\s*(?:cai|mon|chiec|san pham|sp))?(?:\s*(?:nay|cai nay))?$/i);
+  if (addMatch) {
+    const qty = parseInt(addMatch[1], 10) || 1;
+    // Context A: Sales / POS
+    if (context.current_route === 'sales') {
+      let targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+      if (!targetProdId && state.data?.products?.length) {
+        targetProdId = state.data.products[0].id;
+      }
+      if (targetProdId) {
+        const prodObj = (state.data?.products || []).find(p => p.id === targetProdId);
+        const res = await executeSkill('add-cart-draft', { items: [{ productId: targetProdId, qty }] }, context, state);
+        return { ...res, text: `Đã đưa ${qty} ${prodObj ? prodObj.name : 'sản phẩm'} vào giỏ hàng POS.`, tier: 0, provider: 'contextual' };
+      }
+      return { text: 'Vui lòng chọn sản phẩm trên màn hình bán hàng để thêm vào giỏ.', tier: 0, provider: 'contextual' };
+    }
+    // Context B: Product detail (bound product)
+    if (context.current_product_id) {
+      const res = await executeSkill('receipt-proposal', {
+        productId: context.current_product_id,
+        qty,
+        warehouseId: context.warehouse_id,
+        reason: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
+      }, context, state);
+      return { ...res, tier: 0, provider: 'contextual' };
+    }
+    // Context C: Products list (unbound)
+    if (context.current_route === 'products') {
+      return {
+        text: `Bạn muốn thêm ${qty} cho sản phẩm nào? Vui lòng chọn một sản phẩm trong danh sách hoặc nhập tên sản phẩm.`,
+        isAmbiguous: true,
+        tier: 0,
+        provider: 'contextual',
+      };
+    }
+    // Context D: Other routes
+    return {
+      text: `Bạn muốn thêm ${qty} vào giỏ bán hàng hay tạo phiếu nhập kho cho sản phẩm nào?`,
+      isAmbiguous: true,
+      tier: 0,
+      provider: 'contextual',
+    };
+  }
+
+  // Customer search
+  const custMatch = rawPrompt.match(/^(?:tìm|tra)\s+khách(?:\s+hàng)?\s+(.+)/i) || 
+                    (context.current_route === 'customers' && rawPrompt.match(/^(?:tìm|tra)\s+(.+)/i));
+  if (custMatch) {
+    const custQuery = custMatch[1].trim();
+    const custRes = executeTool('search_customers', { query: custQuery }, state, context);
+    if (custRes.count === 1) {
+      const c = custRes.customers[0];
+      return {
+        text: `Tìm thấy khách hàng **${c.name}**${c.phone ? ' - SĐT: ' + c.phone : ''}${c.code ? ' (Mã: ' + c.code + ')' : ''}.`,
+        customer: c,
+        tier: 0,
+        provider: 'dictionary',
+      };
+    } else if (custRes.count > 1) {
+      return {
+        text: `Tìm thấy ${custRes.count} khách hàng phù hợp:\n` + custRes.customers.map(c => `• **${c.name}**${c.phone ? ' (' + c.phone + ')' : ''}`).join('\n'),
+        customers: custRes.customers,
+        tier: 0,
+        provider: 'dictionary',
+      };
+    } else {
+      return {
+        text: `Không tìm thấy khách hàng nào khớp với "${custQuery}".`,
+        tier: 0,
+        provider: 'dictionary',
+      };
     }
   }
 

@@ -9,6 +9,7 @@
 
 import { norm, classifyIntent, detectEntityType, isConfirmation, isCancellation, isCorrection } from '../src/ai/dictionary.js';
 import { findActionsByAlias } from '../src/ai/registry.js';
+import { mapIntentEntityToAction } from '../src/ai/router.js';
 
 /**
  * Evaluate a single test case against the dictionary + registry layer.
@@ -60,7 +61,7 @@ function evaluateCase(testCase) {
     } else if (expected.type === 'ACTION_OR_SUGGEST' || expected.type === 'SUGGEST_OR_FALLBACK') {
       result.pass = true; // Any action match is acceptable
     }
-    return result;
+    if (result.pass) return result;
   }
 
   // Try dictionary classification
@@ -68,18 +69,21 @@ function evaluateCase(testCase) {
   const entity = detectEntityType(p);
 
   if (intent) {
-    result.actual = `CLASSIFIED:${intent.intent}${entity ? '+' + entity.entityType : ''}(conf:${intent.confidence})`;
+    const mappedAction = mapIntentEntityToAction(intent.intent, entity?.entityType);
+    result.actual = `CLASSIFIED:${intent.intent}${entity ? '+' + entity.entityType : ''}${mappedAction ? '->' + mappedAction : ''}(conf:${intent.confidence})`;
     
     if (expected.type === 'ACTION_OR_SUGGEST' || expected.type === 'SUGGEST_OR_FALLBACK') {
       result.pass = true; // Classification is acceptable
     } else if (expected.type === 'ACTION') {
-      // Check if intent+entity combo maps to expected action
-      result.pass = false; // Strict: need full router for this
-      // Partial credit if intent matches direction
-      if (expected.action_contains && intent.intent) {
+      if (mappedAction && expected.action && mappedAction === expected.action) {
+        result.pass = true;
+      } else if (mappedAction && expected.action_contains && mappedAction.includes(expected.action_contains)) {
+        result.pass = true;
+      } else if (expected.action_contains) {
         const intentLower = intent.intent.toLowerCase();
         const actionLower = expected.action_contains.toLowerCase();
-        if (intentLower.includes(actionLower) || actionLower.includes(intentLower)) {
+        const entityLower = (entity?.entityType || '').toLowerCase();
+        if (intentLower.includes(actionLower) || actionLower.includes(intentLower) || entityLower.includes(actionLower)) {
           result.pass = true;
           result.actual += ' (intent_match)';
         }

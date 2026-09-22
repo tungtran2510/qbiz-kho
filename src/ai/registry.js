@@ -324,6 +324,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['tong quan', 'trang chu', 'dashboard', 'mo tong quan'],
+    example_phrases: ['mở tổng quan', 'về trang chủ', 'tổng quan'],
+    contexts: ['products', 'sales', 'orders', 'transfers', 'settings'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('dashboard');
@@ -344,6 +347,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['hang sap het', 'canh bao ton', 'het hang', 'hang ton it', 'sap het hang', 'hang nao sap het'],
+    example_phrases: ['hàng nào sắp hết', 'xem hàng sắp hết', 'hàng hết'],
+    contexts: ['dashboard', 'products', 'transfers'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         state.warehouseFilter = 'low';
@@ -366,6 +372,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['hang hoa', 'san pham', 'danh muc', 'danh sach hang', 'vao hang hoa', 'mo hang hoa', 'mo danh muc', 'mo san pham'],
+    example_phrases: ['mở hàng hóa', 'vào hàng hóa', 'mở danh mục', 'xem sản phẩm'],
+    contexts: ['dashboard', 'sales', 'orders', 'settings'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         state.warehouseFilter = 'all';
@@ -388,6 +397,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['chi tiet san pham', 'mo san pham nay', 'xem mat hang'],
+    example_phrases: ['mở chi tiết sản phẩm', 'xem sản phẩm'],
+    contexts: ['products'],
     async execute({ productId }, state) {
       if (!productId) return { success: false, error: 'Thiếu mã sản phẩm.' };
       if (window.__qbiz_app__?.openProduct) {
@@ -409,6 +421,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['don cho', 'don hang cho xu ly', 'don chua xong', 'don dang xu ly'],
+    example_phrases: ['xem đơn chờ xử lý', 'đơn hàng chờ', 'đơn chưa xong'],
+    contexts: ['dashboard', 'orders'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         state.orderFilter = 'active';
@@ -430,6 +445,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['don chua thanh toan', 'chua thanh toan', 'chua tra tien', 'no don'],
+    example_phrases: ['đơn chưa thanh toán', 'xem đơn chưa thanh toán'],
+    contexts: ['dashboard', 'orders'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         state.orderFilter = 'unpaid';
@@ -451,6 +469,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['chi tiet don hang', 'mo don nay'],
+    example_phrases: ['mở chi tiết đơn hàng'],
+    contexts: ['orders'],
     async execute({ orderId }, state) {
       if (!orderId) return { success: false, error: 'Thiếu mã đơn hàng.' };
       if (window.__qbiz_app__?.openOrderDetail) {
@@ -472,6 +493,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['kho', 'kho hang', 'vao kho', 'mo kho', 'trung tam kho'],
+    example_phrases: ['vào kho', 'mở kho hàng', 'quản lý kho'],
+    contexts: ['dashboard', 'products'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         state.warehouseTab = 'operations';
@@ -493,6 +517,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['luan chuyen kho', 'chuyen kho list', 'danh sach chuyen'],
+    example_phrases: ['xem luân chuyển kho'],
+    contexts: ['transfers'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         state.warehouseTab = 'operations';
@@ -514,6 +541,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['nhap kho', 'phieu nhap', 'mo nhap kho', 'lap phieu nhap'],
+    example_phrases: ['nhập kho', 'mở phiếu nhập kho', 'tạo phiếu nhập'],
+    contexts: ['transfers', 'products', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.openQuick) {
         window.__qbiz_app__.openQuick('receive');
@@ -534,6 +564,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['chuyen kho', 'phieu chuyen', 'mo chuyen kho', 'dieu chuyen'],
+    example_phrases: ['chuyển kho', 'mở phiếu chuyển kho'],
+    contexts: ['transfers', 'products', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.openQuick) {
         window.__qbiz_app__.openQuick('transfer');
@@ -554,6 +587,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['kiem kho', 'kiem ke', 'mo kiem kho', 'kiem tra ton'],
+    example_phrases: ['kiểm kho', 'mở kiểm kho'],
+    contexts: ['transfers', 'products', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.openQuick) {
         window.__qbiz_app__.openQuick('count');
@@ -574,6 +610,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['may in', 'cai may in', 'mo may in', 'thiet bi in', 'sua may in', 'in thu', 'vao may in'],
+    example_phrases: ['mở máy in', 'cài máy in', 'sửa máy in', 'vào máy in'],
+    contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('print');
@@ -594,6 +633,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.PARTIAL,
+    aliases: ['van chuyen', 'cai dat van chuyen', 'ghn', 'ghtk'],
+    example_phrases: ['cài đặt vận chuyển'],
+    contexts: ['settings'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('shipping');
@@ -614,6 +656,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.COMING_SOON,
+    aliases: ['kenh ban hang', 'shopee', 'tiktok shop', 'san tmdt'],
+    example_phrases: ['kênh bán hàng'],
+    contexts: ['settings'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('channels');
@@ -634,6 +679,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['sao luu', 'sao luu du lieu', 'khoi phuc du lieu', 'phuc hoi du lieu', 'backup'],
+    example_phrases: ['sao lưu dữ liệu', 'sao lưu', 'khôi phục dữ liệu'],
+    contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('backup');
@@ -654,6 +702,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.PARTIAL,
+    aliases: ['phan quyen', 'nguoi dung', 'phan quyen nhan vien', 'them nhan vien', 'nguoi dung va phan quyen'],
+    example_phrases: ['phân quyền nhân viên', 'thêm nhân viên', 'người dùng và phân quyền'],
+    contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('permissions');
@@ -674,6 +725,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['so quy', 'quy tien', 'tien mat', 'so quy tien mat'],
+    example_phrases: ['sổ quỹ', 'mở sổ quỹ tiền mặt'],
+    contexts: ['dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('cash');
@@ -694,6 +748,9 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['so ca', 'ca ban hang', 'mo ca', 'dong ca', 'ca lam viec', 'so ca thu ngan', 'mo ca ban hang'],
+    example_phrases: ['mở sổ ca', 'sổ ca', 'mở ca bán hàng', 'đóng ca'],
+    contexts: ['dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('shifts');
@@ -988,15 +1045,25 @@ export const ACTION_REGISTRY = {
  */
 export function findActionsByAlias(normalizedAlias) {
   const results = [];
+  const pNorm = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const target = pNorm(normalizedAlias);
+  if (!target) return [];
+
   for (const [id, action] of Object.entries(ACTION_REGISTRY)) {
-    if (!action.aliases) continue;
-    for (const alias of action.aliases) {
-      if (alias === normalizedAlias) {
+    const list = [
+      ...(action.aliases || []),
+      ...(action.example_phrases || []).map(pNorm),
+      pNorm(action.name),
+    ];
+    for (const rawAlias of list) {
+      const alias = pNorm(rawAlias);
+      if (!alias) continue;
+      if (alias === target) {
         results.push({ action, matchScore: 100 });
-      } else if (normalizedAlias.startsWith(alias) || alias.startsWith(normalizedAlias)) {
-        results.push({ action, matchScore: 80 });
-      } else if (normalizedAlias.includes(alias) || alias.includes(normalizedAlias)) {
-        results.push({ action, matchScore: 60 });
+      } else if (target.startsWith(alias) || alias.startsWith(target)) {
+        results.push({ action, matchScore: 85 });
+      } else if (target.includes(alias) || alias.includes(target)) {
+        results.push({ action, matchScore: 70 });
       }
     }
   }

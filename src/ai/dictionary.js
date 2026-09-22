@@ -175,7 +175,9 @@ export function classifyIntent(normalizedText) {
   
   for (let [key, intentDef] of Object.entries(INTENT_TAXONOMY)) {
     for (let trigger of intentDef.triggers) {
-      if (normalizedText.includes(trigger)) {
+      // Use word boundaries so 'u' doesn't match 'quy', 'bo' doesn't match 'bao cao'
+      const rx = new RegExp(`(?:^|\\s)${trigger.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\s|$)`, 'i');
+      if (rx.test(normalizedText)) {
         let confidence = 80;
         // higher confidence if it starts with the trigger
         if (normalizedText.startsWith(trigger)) {

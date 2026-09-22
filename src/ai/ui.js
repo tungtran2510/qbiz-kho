@@ -675,15 +675,18 @@ function renderChips() {
     chips = ROUTE_CHIPS[route] || ROUTE_CHIPS.dashboard;
   }
 
-  // If a product is actively bound, ensure product chips are prioritized
-  if (currentEnvelope.current_product_id) {
+  // If a product is actively bound on products screen or open modal, ensure product chips are prioritized
+  if (currentEnvelope.current_product_id && (route === 'products' || appStateRef?.currentProductId)) {
     chips = ROUTE_CHIPS.products;
-  } else if (currentEnvelope.current_order_id) {
+  } else if (currentEnvelope.current_order_id && (route === 'orders' || appStateRef?.currentOrderId)) {
     chips = ROUTE_CHIPS.orders;
   }
 
   bar.innerHTML = chips
-    .map(c => `<button class="ai-chip" type="button" data-chip-query="${esc(c)}">${esc(c)}</button>`)
+    .map(c => {
+      const text = typeof c === 'string' ? c : (c.phrase || c.name || '');
+      return `<button class="ai-chip" type="button" data-chip-query="${esc(text)}">${esc(text)}</button>`;
+    })
     .join('');
 
   bar.querySelectorAll('[data-chip-query]').forEach(btn => {
