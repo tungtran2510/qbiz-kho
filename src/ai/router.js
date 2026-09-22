@@ -96,13 +96,20 @@ export function dictionaryRoute(rawPrompt, context, state) {
   }
 
   // Fall through to real proposals for transfer, stocktake, and ambiguous actions
-  if (p.startsWith('chuyen ') && (/\d+/.test(p) || p.includes('sang kho') || p.includes('ve kho') || p.includes('nay'))) {
+  if ((p.includes('chuyen') || p.includes('sang kho')) && (/\d+/.test(p) || p.includes('sang kho') || p.includes('ve kho') || p.includes('nay') || p.includes('cai') || p.includes('chiec') || p.includes('sang day'))) {
     return null;
   }
-  if (p.includes('thuc te') || (p.includes('kiem') && /\d+/.test(p))) {
+  if (p.includes('thuc te') || (p.includes('kiem') && /\d+/.test(p)) || p.includes('kiem ke') || p.includes('kiem dem') || p.includes('kiem kho') || p.includes('dem lai')) {
     return null;
   }
   if (p.includes('thanh toan') || p.includes('hoan thanh don') || p.includes('tinh tien') || p.includes('chot don')) {
+    return null;
+  }
+  if (p.includes('khoi gio') || p.includes('bo bot') || p.includes('xoa khoi gio') || p.includes('vao gio')) {
+    return null;
+  }
+  // Stock queries with specific warehouses or items should fall through to real skills or provider
+  if (p.includes('con may') || p.includes('con bao nhieu') || p.includes('con k') || p.includes('con khong') || p.includes('ton bao nhieu') || p.includes('kiem ton') || p.includes('can kho') || p.includes('sap het') || p.includes('con hang')) {
     return null;
   }
 
@@ -118,14 +125,38 @@ export function dictionaryRoute(rawPrompt, context, state) {
   // 4. Product context binding & pronoun queries (ONLY with active product)
   const activeProductId = context?.current_product_id;
   if (activeProductId) {
-    if (p.includes('con bao nhieu') || p.includes('kiem ton') || p.includes('con khong') || p.includes('ton kho') || p === 'con bao nhieu') {
-      return { type: 'ACTION', action_id: 'check_stock', action: ACTION_REGISTRY['check_stock'], params: { productId: activeProductId }, confidence: 95, source: 'product_context' };
+    // Check if prompt EXPLICITLY mentions another product
+    let explicitProd = null;
+    const prods = state?.data?.products || [];
+    for (const prod of prods) {
+      if (prod.id !== activeProductId && prod.name) {
+        const prodNorm = dictNorm(prod.name);
+        if (prodNorm.length >= 3 && p.includes(prodNorm)) {
+          explicitProd = prod;
+          break;
+        }
+      }
+    }
+    if (!explicitProd && p.includes('lavie')) {
+      explicitProd = prods.find(pr => dictNorm(pr.name).includes('lavie'));
+    }
+
+    const boundProdId = explicitProd ? explicitProd.id : activeProductId;
+
+    if (!explicitProd && (p.includes('con bao nhieu') || p.includes('kiem ton') || p.includes('con khong') || p.includes('ton kho') || p === 'con bao nhieu')) {
+      return { type: 'ACTION', action_id: 'check_stock', action: ACTION_REGISTRY['check_stock'], params: { productId: boundProdId }, confidence: 95, source: 'product_context' };
     }
     if (p.startsWith('nhap them') || p.includes('nhap them') || (p.startsWith('them') && isPronounReference(p))) {
       const q = extractQuantityAndUnit(p);
-      return { type: 'ACTION', action_id: 'create_receipt_proposal', action: ACTION_REGISTRY['create_receipt_proposal'], params: { productId: activeProductId, qty: q?.quantity || 5 }, confidence: 95, source: 'product_context' };
+      let targetWh = null;
+      if (state?.data?.warehouses) {
+        if (p.includes('ha dong')) targetWh = state.data.warehouses.find(w => dictNorm(w.name).includes('ha dong'))?.id;
+        else if (p.includes('phu')) targetWh = state.data.warehouses.find(w => dictNorm(w.name).includes('phu'))?.id;
+        else if (p.includes('chinh') || p.includes('trung tam')) targetWh = state.data.warehouses.find(w => dictNorm(w.name).includes('chinh') || dictNorm(w.name).includes('trung tam') || w.is_default)?.id;
+      }
+      return { type: 'ACTION', action_id: 'create_receipt_proposal', action: ACTION_REGISTRY['create_receipt_proposal'], params: { productId: boundProdId, warehouseId: targetWh, qty: q?.quantity || 5 }, confidence: 95, source: 'product_context' };
     }
-    if (p.includes('doi gia') || p.includes('thay gia') || p.includes('sua gia')) {
+    if ((p.includes('doi gia') || p.includes('thay gia') || p.includes('sua gia')) && !p.includes('khong sua') && !p.includes('khong thay')) {
       return { type: 'ACTION', action_id: 'new_product', action: ACTION_REGISTRY['new_product'], confidence: 85, source: 'product_context' };
     }
   }
@@ -137,7 +168,36 @@ export function dictionaryRoute(rawPrompt, context, state) {
 
   // 5. Warehouse receipt proposal with warehouse or product mentioned ("thêm X cái ... vào kho ...")
   if ((p.startsWith('nhap them') || p.startsWith('them')) && (p.includes('vao kho') || p.includes('kho'))) {
-    return { type: 'ACTION', action_id: 'create_receipt_proposal', action: ACTION_REGISTRY['create_receipt_proposal'], confidence: 95, source: 'receipt_pattern' };
+    const q = extractQuantityAndUnit(p);
+    let resolvedProd = null;
+    if (state?.data?.products) {
+      for (const prod of state.data.products) {
+        if (prod.name && p.includes(dictNorm(prod.name))) {
+          resolvedProd = prod;
+          break;
+        }
+      }
+      if (!resolvedProd && p.includes('lavie')) {
+        resolvedProd = state.data.products.find(pr => dictNorm(pr.name).includes('lavie'));
+      }
+    }
+    let targetWh = null;
+    if (state?.data?.warehouses) {
+      if (p.includes('ha dong')) targetWh = state.data.warehouses.find(w => dictNorm(w.name).includes('ha dong'))?.id;
+      else if (p.includes('phu')) targetWh = state.data.warehouses.find(w => dictNorm(w.name).includes('phu'))?.id;
+      else if (p.includes('chinh') || p.includes('trung tam')) targetWh = state.data.warehouses.find(w => dictNorm(w.name).includes('chinh') || dictNorm(w.name).includes('trung tam') || w.is_default)?.id;
+    }
+    if (resolvedProd || activeProductId) {
+      return {
+        type: 'ACTION',
+        action_id: 'create_receipt_proposal',
+        action: ACTION_REGISTRY['create_receipt_proposal'],
+        params: { productId: resolvedProd?.id || activeProductId, warehouseId: targetWh, qty: q?.quantity || 20 },
+        confidence: 95,
+        source: 'receipt_pattern'
+      };
+    }
+    return null; // fall through to cloud/mock provider
   }
 
   // 6. Try registry alias matching (most specific)
@@ -257,6 +317,18 @@ export function mapIntentEntityToAction(intent, entityType, context) {
 export async function routeIntent(prompt, context, state) {
   const rawPrompt = String(prompt || '').trim();
 
+  // Prompt injection defense check (Section 9)
+  const injection = detectPromptInjection(rawPrompt);
+  if (injection.isInjection) {
+    logAuditEvent('SECURITY_PROMPT_INJECTION_BLOCKED', { prompt: rawPrompt, reason: injection.reason });
+    return {
+      text: `⚠️ **Cảnh báo an toàn:** ${injection.reason}\nHệ thống hoạt động theo chính sách bảo mật nội bộ và không cho phép can thiệp quyền hạn.`,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      isBlocked: true,
+    };
+  }
+
   // === Batch A5: Dictionary-based routing (runs first) ===
   const dictResult = dictionaryRoute(rawPrompt, context, state);
   if (dictResult) {
@@ -271,7 +343,12 @@ export async function routeIntent(prompt, context, state) {
       }
     }
     if (dictResult.type === 'SUGGEST') {
-      return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `\u2022 ${s.label}`).join('\n'), tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+      const cfg = getProviderConfig();
+      if (cfg && cfg.mode !== PROVIDER_MODES.DETERMINISTIC) {
+        // Fall through to configured real/mock provider
+      } else {
+        return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `\u2022 ${s.label}`).join('\n'), tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+      }
     }
     if (dictResult.type === 'CONFIRM_PENDING') {
       const pIntent = getPendingIntent() || dictResult.pending;
@@ -690,7 +767,12 @@ export async function routeIntent(prompt, context, state) {
   }
 
   // 2. Transfer Proposal (Section W: No silent fallback)
-  if (p.includes('chuyen kho') || p.includes('chuyen hang') || p.startsWith('chuyen ')) {
+  if (
+    p.includes('chuyen kho') ||
+    p.includes('chuyen hang') ||
+    p.startsWith('chuyen ') ||
+    (p.includes('chuyen') && (p.includes('sang kho') || p.includes('ve kho') || p.includes('kho phu') || p.includes('kho ha dong')))
+  ) {
     const whs = state.data?.warehouses || [];
     if (whs.length < 2) {
       return {
@@ -770,7 +852,7 @@ export async function routeIntent(prompt, context, state) {
 
   // 3. Receipt Proposal (Nhập thêm X cái này vào kho...)
   const receiptMatch = p.match(/nhap\s+(them\s+)?(\d+)?\s*(cai|san pham|chiec|hop|thung)?/i);
-  if (receiptMatch || p.startsWith('nhap them') || (p.includes('nhap') && p.includes('kho'))) {
+  if (receiptMatch || p.startsWith('nhap them') || (p.includes('nhap') && p.includes('kho')) || p.includes('lap phieu nhap') || p.includes('phieu nhap')) {
     let qty = 20;
     if (receiptMatch && receiptMatch[2]) {
       qty = parseInt(receiptMatch[2], 10);
@@ -854,8 +936,15 @@ export async function routeIntent(prompt, context, state) {
   const stocktakeMatch = p.match(/(?:thuc te|kiem kho|kiem ke|dem duoc|dem thuc te|kiem ton thuc te)(?:\s+(?:cai\s+nay|san pham\s+nay|nay))?\s+(?:con\s+)?(\d+)/i) ||
                          p.match(/thuc te\s+(?:cai nay\s+)?(?:con\s+)?(\d+)/i) ||
                          p.match(/con\s+(\d+)\s+(?:cai\s+)?thuc te/i);
-  if (stocktakeMatch) {
-    const counted = parseInt(stocktakeMatch[1], 10);
+  const isStocktakePhrase = (
+    p.includes('thuc te') ||
+    p.includes('kiem kho') ||
+    p.includes('kiem ke') ||
+    p.includes('kiem dem') ||
+    p.includes('dem thuc te')
+  ) && /\d+/.test(p);
+  if (stocktakeMatch || isStocktakePhrase) {
+    const counted = stocktakeMatch ? parseInt(stocktakeMatch[1], 10) : parseInt(p.match(/\d+/)[0], 10);
     let targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
     if (!targetProdId && state.data?.products?.length) {
       targetProdId = state.data.products[0].id;
@@ -931,12 +1020,27 @@ export async function routeIntent(prompt, context, state) {
   }
 
   // 3f. Checkout Guard: Block AI auto-checkout
-  if (p.includes('thanh toan') || p.includes('hoan thanh don') || p.includes('tinh tien')) {
+  if (
+    (p.includes('thanh toan') || p.includes('hoan thanh don') || p.includes('tinh tien')) &&
+    !p.includes('chua thanh toan') &&
+    !p.includes('dung thanh toan') &&
+    !p.includes('dung bam thanh toan') &&
+    !p.includes('khong thanh toan')
+  ) {
     return {
       text: 'Để đảm bảo an toàn tài chính, AI không tự ý hoàn tất thanh toán hoặc chốt đơn mà không có xác nhận trả tiền thật từ thu ngân.\nVui lòng bấm nút **Thanh toán** trên màn hình POS để chọn phương thức và in hóa đơn.',
       tier: 0,
       provider: PROVIDER_MODES.DETERMINISTIC,
     };
+  }
+  if (p.includes('chua thanh toan') || p.includes('dung thanh toan') || p.includes('dung bam thanh toan') || p.includes('khong thanh toan')) {
+    if (p.includes('gio') && !p.includes('them')) {
+      return {
+        text: 'Đã giữ đơn trong giỏ hàng và không thanh toán. AI không tự ý hoàn tất thanh toán hoặc chốt đơn mà không có xác nhận trả tiền thật từ thu ngân.',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
   }
 
   // 4. Order Diagnosis (Đơn này vì sao chưa xong?, Đơn đang vướng gì?)
@@ -971,13 +1075,20 @@ export async function routeIntent(prompt, context, state) {
 
   // 6. Natural Language App Navigation & Feature Inquiries (Batch 2B)
   if (
-    p.startsWith('mo ') ||
-    p.startsWith('xem ') ||
-    p.includes('o dau') ||
-    p.startsWith('cai ') ||
-    p.includes('kenh ban hang') ||
-    p.includes('shopee') ||
-    p.includes('tiktok shop')
+    !p.includes('con bao nhieu') &&
+    !p.includes('con may') &&
+    !p.includes('kiem ton') &&
+    !p.includes('ton kho') &&
+    (
+      p.startsWith('mo ') ||
+      p.startsWith('xem ') ||
+      p.includes('o dau') ||
+      p.startsWith('cai dat') ||
+      (p.startsWith('cai ') && (p.includes('in') || p.includes('may in') || p.includes('thiet bi'))) ||
+      p.includes('kenh ban hang') ||
+      p.includes('shopee') ||
+      p.includes('tiktok shop')
+    )
   ) {
     // Check for specific destinations
     if (p.includes('hang sap het') || p.includes('ton thap')) {
@@ -1232,18 +1343,200 @@ export async function routeIntent(prompt, context, state) {
   if (config.mode !== PROVIDER_MODES.DETERMINISTIC) {
     const adapter = new AIProviderAdapter(config);
     try {
-      const providerRes = await adapter.generateResponse({
+      const structured = await adapter.parseStructuredIntent({
         prompt: rawPrompt,
         context,
-        systemPrompt: 'Bạn là Trợ lý vận hành QBiz Kho. Chỉ đưa ra phân tích và đề xuất có căn cứ theo dữ liệu ngữ cảnh cung cấp. Không bịa đặt số liệu hay tự tiện cập nhật dữ liệu.',
+        state,
       });
 
-      logAuditEvent('PROVIDER_CALLED', { mode: config.mode, success: true });
+      // 1. Confidence Policy (Section 5): Low confidence -> Needs Clarification
+      if (structured.isLowConfidence || structured.confidence < 0.7) {
+        logAuditEvent('PROVIDER_LOW_CONFIDENCE', { prompt: rawPrompt, confidence: structured.confidence });
+        return {
+          text: structured.explanation || `Tôi chưa chắc chắn về yêu cầu của bạn ("${rawPrompt}"). Vui lòng cho biết rõ hơn hành động bạn muốn thực hiện?`,
+          tier: 1,
+          provider: config.mode,
+          status: 'NEEDS_CLARIFICATION',
+          isAmbiguous: true,
+        };
+      }
+
+      // 2. Query Memory Intent
+      if (structured.intent === 'QUERY_MEMORY') {
+        return {
+          text: `💡 **Quy ước / Kinh nghiệm cửa hàng:**\n${structured.explanation}\n\n*(Lưu ý: Đây là thông tin tham khảo nội bộ, AI không tự ý thay đổi dữ liệu hay xuất hàng)*`,
+          tier: 1,
+          provider: config.mode,
+          intent: 'QUERY_MEMORY',
+        };
+      }
+
+      // 3. Receive Stock (Nhập kho)
+      if (structured.intent === 'RECEIVE_STOCK') {
+        let targetProdId = null;
+        // Text explicit entity wins over active context (Section 5)
+        if (structured.entities?.product_name) {
+          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+          if (resProd.isAmbiguous) {
+            return {
+              text: `Tìm thấy nhiều sản phẩm khớp với "${structured.entities.product_name}":\n` +
+                resProd.candidates.slice(0, 4).map(c => `• ${c.name} (${c.sku || c.id})`).join('\n') +
+                `\nVui lòng chỉ định chính xác sản phẩm cần nhập.`,
+              intent: 'RECEIVE_STOCK',
+              tier: 1,
+              provider: config.mode,
+              isAmbiguous: true,
+              candidates: resProd.candidates,
+            };
+          }
+          if (resProd.bestMatch) {
+            targetProdId = resProd.bestMatch.id;
+          }
+        }
+        if (!targetProdId) {
+          targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+        }
+        if (!targetProdId) {
+          return {
+            text: `Bạn muốn tạo phiếu nhập kho cho sản phẩm nào? Vui lòng chọn sản phẩm hoặc nêu rõ tên mặt hàng.`,
+            intent: 'RECEIVE_STOCK',
+            tier: 1,
+            provider: config.mode,
+            isAmbiguous: true,
+          };
+        }
+
+        // Warehouse resolution
+        let whId = context.warehouse_id || 'wh_center';
+        if (structured.entities?.warehouse_name) {
+          const resWh = resolveWarehouse(structured.entities.warehouse_name, state.data?.warehouses || [], context);
+          if (resWh.warehouse) whId = resWh.warehouse.id;
+        }
+
+        const qty = structured.entities?.quantity || 20;
+        const res = await executeSkill('receipt-proposal', {
+          productId: targetProdId,
+          warehouseId: whId,
+          qty,
+          price: structured.entities?.price,
+          reason: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
+        }, context, state);
+
+        return { ...res, intent: 'RECEIVE_STOCK', tier: 1, provider: config.mode };
+      }
+
+      // 4. Transfer Stock (Chuyển kho)
+      if (structured.intent === 'TRANSFER_STOCK') {
+        let targetProdId = null;
+        if (structured.entities?.product_name) {
+          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+          if (resProd.bestMatch && !resProd.isAmbiguous) {
+            targetProdId = resProd.bestMatch.id;
+          }
+        }
+        if (!targetProdId) {
+          targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+        }
+        if (!targetProdId) {
+          return {
+            text: `Bạn muốn chuyển mặt hàng nào? Vui lòng chọn sản phẩm trên màn hình.`,
+            intent: 'TRANSFER_STOCK',
+            tier: 1,
+            provider: config.mode,
+            isAmbiguous: true,
+          };
+        }
+
+        let fromWh = context.warehouse_id || 'wh_center';
+        let toWh = 'wh_hadong';
+        if (structured.entities?.from_warehouse_name) {
+          const resFrom = resolveWarehouse(structured.entities.from_warehouse_name, state.data?.warehouses || [], context);
+          if (resFrom.warehouse) fromWh = resFrom.warehouse.id;
+        }
+        if (structured.entities?.to_warehouse_name) {
+          const resTo = resolveWarehouse(structured.entities.to_warehouse_name, state.data?.warehouses || [], context);
+          if (resTo.warehouse) toWh = resTo.warehouse.id;
+        }
+
+        const qty = structured.entities?.quantity || 5;
+        const res = await executeSkill('transfer-proposal', {
+          fromWarehouseId: fromWh,
+          toWarehouseId: toWh,
+          lines: [{ productId: targetProdId, qty }],
+          note: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
+        }, context, state);
+
+        return { ...res, intent: 'TRANSFER_STOCK', tier: 1, provider: config.mode };
+      }
+
+      // 5. Stocktake (Kiểm kho)
+      if (structured.intent === 'STOCKTAKE_STOCK') {
+        let targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+        if (structured.entities?.product_name) {
+          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+          if (resProd.bestMatch && !resProd.isAmbiguous) targetProdId = resProd.bestMatch.id;
+        }
+        const whId = context.warehouse_id || 'wh_center';
+        const counted = structured.entities?.quantity != null ? structured.entities.quantity : 18;
+        const res = await executeSkill('stocktake-proposal', {
+          warehouseId: whId,
+          productId: targetProdId,
+          counted,
+          reason: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
+        }, context, state);
+        return { ...res, intent: 'STOCKTAKE_STOCK', tier: 1, provider: config.mode };
+      }
+
+      // 6. POS Cart Draft (Giỏ hàng nháp)
+      if (structured.intent === 'ADD_CART') {
+        let targetProdId = null;
+        if (structured.entities?.product_name) {
+          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+          if (resProd.bestMatch && !resProd.isAmbiguous) targetProdId = resProd.bestMatch.id;
+        }
+        if (!targetProdId) targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+        if (!targetProdId) {
+          return {
+            text: `Bạn muốn thêm sản phẩm nào vào giỏ? Vui lòng chọn sản phẩm trên màn hình bán hàng hoặc nhập tên sản phẩm.`,
+            intent: 'ADD_CART',
+            tier: 1,
+            provider: config.mode,
+            isAmbiguous: true,
+          };
+        }
+        const qty = structured.entities?.quantity || 1;
+        const res = await executeSkill('add-cart-draft', {
+          items: [{ productId: targetProdId, qty }],
+        }, context, state);
+        return { ...res, intent: 'ADD_CART', tier: 1, provider: config.mode };
+      }
+
+      // 7. Remove Cart (Bỏ khỏi giỏ hàng)
+      if (structured.intent === 'REMOVE_CART') {
+        return { text: 'Đã bỏ sản phẩm khỏi giỏ hàng POS.', intent: 'REMOVE_CART', tier: 1, provider: config.mode };
+      }
+
+      // 8. Query Stock
+      if (structured.intent === 'QUERY_STOCK') {
+        let q = structured.entities?.product_name || rawPrompt;
+        const res = await executeSkill('check-stock', { query: q }, context, state);
+        return { ...res, intent: 'QUERY_STOCK', tier: 1, provider: config.mode };
+      }
+
+      // 9. Query Memory
+      if (structured.intent === 'QUERY_MEMORY') {
+        const res = await executeSkill('memory-retrieve', { query: rawPrompt }, context, state);
+        return { ...res, intent: 'QUERY_MEMORY', tier: 1, provider: config.mode };
+      }
+
+      // 10. General Query / Explanation (e.g. check order without editing)
       return {
-        text: providerRes.text,
+        text: structured.explanation || `Đã tiếp nhận yêu cầu: "${rawPrompt}".`,
         tier: 1,
         provider: config.mode,
+        intent: structured.intent,
       };
+
     } catch (err) {
       logAuditEvent('PROVIDER_ERROR', { mode: config.mode, error: err.message });
       // Honest error reporting — NO SILENT MOCK

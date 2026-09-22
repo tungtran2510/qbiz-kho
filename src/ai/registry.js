@@ -8,6 +8,10 @@
 import { hasCapability, PERMISSIONS } from './policy.js';
 import { getCurrentActor } from './context.js';
 
+if (typeof window === 'undefined') {
+  globalThis.window = globalThis;
+}
+
 export const IMPLEMENTATION_STATE = {
   AVAILABLE: 'AVAILABLE',
   PARTIAL: 'PARTIAL',
@@ -766,7 +770,7 @@ export const ACTION_REGISTRY = {
     required_capabilities: [PERMISSIONS.VIEW_SALES],
     execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['ban hang', 'vao ban hang', 'mo pos', 'ban', 'vao pos'],
+    aliases: ['ban hang', 'vao ban hang', 'mo pos', 'ban', 'vao pos', 'pos'],
     example_phrases: ['vào bán hàng', 'mở bán hàng', 'bán hàng'],
     contexts: ['dashboard', 'products', 'orders', 'settings'],
     async execute(params, state) {
@@ -1167,9 +1171,14 @@ export function findActionsByAlias(normalizedAlias) {
       if (!alias) continue;
       if (alias === target) {
         results.push({ action, matchScore: 100 });
-      } else if (target.startsWith(alias) || alias.startsWith(target)) {
+      } else if (
+        target === alias ||
+        target.startsWith(alias + ' ') ||
+        alias.startsWith(target + ' ') ||
+        (alias.length >= 6 && target.startsWith(alias))
+      ) {
         results.push({ action, matchScore: 85 });
-      } else if (target.includes(alias) || alias.includes(target)) {
+      } else if (new RegExp(`(?:^|\\s)${alias.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\s|$)`, 'i').test(target)) {
         results.push({ action, matchScore: 70 });
       }
     }

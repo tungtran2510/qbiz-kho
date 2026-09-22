@@ -137,7 +137,7 @@ function evaluateCase(testCase) {
 export async function runAIEval(testCases) {
   if (!testCases) {
     try {
-      if (typeof window === 'undefined' && typeof process !== 'undefined') {
+      if (typeof process !== 'undefined' && process.versions?.node) {
         const fs = await import('fs');
         const path = await import('path');
         const filePath = path.resolve('tests/ai-intent-eval.json');

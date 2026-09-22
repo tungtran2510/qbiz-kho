@@ -403,6 +403,12 @@ const INJECTION_PATTERNS = [
   /<script[\s>]/i,
   /javascript:/i,
   /eval\s*\(/i,
+  /bạn\s+là\s+(admin|root|chủ\s+hệ\s+thống|siêu\s+quản\s+trị)/i,
+  /ban\s+la\s+(admin|root)/i,
+  /admin\s+root/i,
+  /root\s+admin/i,
+  /xóa\s+sạch\s+(kho|dữ\s+liệu|data|db|cơ\s+sở)/i,
+  /xoa\s+sach\s+(kho|du\s+lieu|data|db)/i,
 ];
 
 /**

@@ -22,7 +22,7 @@ export const INTENT_TAXONOMY = {
   DELETE: { id: 'DELETE', triggers: ['xoa', 'bo', 'loai', 'go', 'huy'] },
   SEARCH: { id: 'SEARCH', triggers: ['tim', 'tim kiem', 'tra', 'tra cuu', 'kiem', 'xem co'] },
   VIEW: { id: 'VIEW', triggers: ['xem', 'hien thi', 'cho xem', 'kiem tra'] },
-  ADD_QTY: { id: 'ADD_QTY', triggers: ['them', 'cong', 'tang', 'nhap them', 'bo sung'] },
+  ADD_QTY: { id: 'ADD_QTY', triggers: ['them', 'cong', 'tang', 'nhap them', 'nhap', 'bo sung'] },
   REMOVE_QTY: { id: 'REMOVE_QTY', triggers: ['bot', 'giam', 'tru', 'lay ra', 'xuat'] },
   MOVE: { id: 'MOVE', triggers: ['chuyen', 'chuyen kho', 'dieu chuyen', 'chuyen sang'] },
   COUNT: { id: 'COUNT', triggers: ['kiem', 'kiem kho', 'kiem ke', 'dem', 'doi chieu'] },

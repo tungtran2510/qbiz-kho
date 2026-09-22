@@ -745,9 +745,13 @@ export function updateContextAndChips() {
   const providerBadge = document.getElementById('aiProviderBadge');
   if (providerBadge) {
     const cfg = getProviderConfig();
-    providerBadge.textContent = cfg.mode === PROVIDER_MODES.DETERMINISTIC
-      ? 'Tier 0: Offline'
-      : `${cfg.mode}`;
+    if (cfg.mode === PROVIDER_MODES.DETERMINISTIC) {
+      providerBadge.textContent = 'Tier 0: Offline';
+    } else {
+      const model = cfg.mode === PROVIDER_MODES.GEMINI ? 'gemini-1.5-flash' : (cfg.mode === PROVIDER_MODES.OPENAI_COMPATIBLE ? 'gpt-4o-mini' : 'mock-dev');
+      const hasKey = cfg.mode === PROVIDER_MODES.MOCK_DEV || (cfg.mode === PROVIDER_MODES.GEMINI && Boolean(cfg.geminiKey)) || (cfg.mode === PROVIDER_MODES.OPENAI_COMPATIBLE && Boolean(cfg.openaiKey));
+      providerBadge.textContent = `${cfg.mode}: ${model} (${hasKey ? 'Connected' : 'Key Needed'})`;
+    }
   }
 
   // Update Trigger Badge (if active entity bound)

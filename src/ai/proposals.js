@@ -59,15 +59,26 @@ const ALLOWED_TRANSITIONS = {
   [PROPOSAL_STATUS.CANCELLED]: new Set([]),
 };
 
-// Section B: In-Memory Business-Grade Idempotency Cache
+// Section B: Persistent Business-Grade Idempotency Storage
 // Maps idempotency_key -> { proposalId, status, result, timestamp }
 const IDEMPOTENCY_CACHE = new Map();
+const STORAGE_KEY_IDEM = 'qbiz_ai_idempotency_records';
 
 export function getIdempotencyRecord(key) {
   if (IDEMPOTENCY_CACHE.has(key)) return IDEMPOTENCY_CACHE.get(key);
   try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(STORAGE_KEY_IDEM) || localStorage.getItem('qbiz_ai_idempotency_cache');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj[key]) {
+          IDEMPOTENCY_CACHE.set(key, obj[key]);
+          return obj[key];
+        }
+      }
+    }
     if (typeof sessionStorage !== 'undefined') {
-      const raw = sessionStorage.getItem('qbiz_ai_idempotency_records') || sessionStorage.getItem('qbiz_ai_idempotency_cache');
+      const raw = sessionStorage.getItem(STORAGE_KEY_IDEM) || sessionStorage.getItem('qbiz_ai_idempotency_cache');
       if (raw) {
         const obj = JSON.parse(raw);
         if (obj[key]) {
@@ -83,13 +94,23 @@ export function getIdempotencyRecord(key) {
 export function setIdempotencyRecord(key, record) {
   IDEMPOTENCY_CACHE.set(key, record);
   try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(STORAGE_KEY_IDEM) || localStorage.getItem('qbiz_ai_idempotency_cache');
+      const obj = raw ? JSON.parse(raw) : {};
+      obj[key] = record;
+      const str = JSON.stringify(obj);
+      localStorage.setItem('qbiz_ai_idempotency_cache', str);
+      localStorage.setItem(STORAGE_KEY_IDEM, str);
+    }
+  } catch (_) {}
+  try {
     if (typeof sessionStorage !== 'undefined') {
-      const raw = sessionStorage.getItem('qbiz_ai_idempotency_records') || sessionStorage.getItem('qbiz_ai_idempotency_cache');
+      const raw = sessionStorage.getItem(STORAGE_KEY_IDEM) || sessionStorage.getItem('qbiz_ai_idempotency_cache');
       const obj = raw ? JSON.parse(raw) : {};
       obj[key] = record;
       const str = JSON.stringify(obj);
       sessionStorage.setItem('qbiz_ai_idempotency_cache', str);
-      sessionStorage.setItem('qbiz_ai_idempotency_records', str);
+      sessionStorage.setItem(STORAGE_KEY_IDEM, str);
     }
   } catch (_) {}
 }
@@ -537,6 +558,31 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
       isDuplicate: true,
       message: 'Thao tác đã được thực thi trước đó. Trả về kết quả ghi nhận ban đầu (Idempotent Replay). Không tạo nghiệp vụ lần hai.',
     };
+  }
+
+  // Cross-check: check committed movements/transfers/documents in domain state for this opKey across reload
+  if (appState?.data) {
+    const movements = appState.data.movements || [];
+    const transfers = appState.data.transfers || [];
+    const existingMovement = movements.find(m => m.operation_id === opKey || m.id?.startsWith(`${opKey}:`));
+    const existingTransfer = transfers.find(t => t.operation_id === opKey || t.id === opKey);
+    if (existingMovement || existingTransfer) {
+      const rec = {
+        proposalId: proposal.id,
+        status: PROPOSAL_STATUS.SUCCEEDED,
+        result: existingTransfer || existingMovement,
+        timestamp: existingMovement?.createdAt || existingTransfer?.createdAt || new Date().toISOString(),
+      };
+      setIdempotencyRecord(opKey, rec);
+      logAuditEvent('IDEMPOTENT_REPLAY_RETURNED', { opKey, proposalId: proposal.id, source: 'domain_ledger' });
+      return {
+        success: true,
+        result: rec.result,
+        isIdempotentReplay: true,
+        isDuplicate: true,
+        message: 'Thao tác đã được thực thi trước đó trong sổ cái nghiệp vụ. Trả về kết quả ghi nhận ban đầu (Idempotent Replay). Không tạo nghiệp vụ lần hai.',
+      };
+    }
   }
 
   // 2. Section X: Write Gate Check
