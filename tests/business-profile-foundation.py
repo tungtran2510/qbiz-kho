@@ -1583,10 +1583,462 @@ async def run_foundation_tests():
         )
         results["T40_SERVICE_CONSULTING_NO_ACTIVE_APPOINTMENT_CLAIM"] = t40_pass
 
-        # Reset back to default general profile at end of test suite
+        # ----------------------------------------------------
+        # T41: Settings Screen UI Profile Entry Exists
+        # ----------------------------------------------------
+        print("\n--- [T41] SETTINGS UI PROFILE ENTRY ---")
+        await page.evaluate("""() => {
+            window.__qbiz_app__.state.page = 'settings';
+            window.__qbiz_app__.render();
+        }""")
+        await page.wait_for_selector('[data-action="ui-profile-selector"]', timeout=5000)
+
+        t41_res = await page.evaluate("""() => {
+            const btn = document.querySelector('[data-action="ui-profile-selector"]');
+            const title = btn?.querySelector('b, strong')?.textContent.trim();
+            const sub = btn?.querySelector('small, .sub')?.textContent.trim();
+            const pageHtml = (document.getElementById('mainContent')?.innerHTML || document.body.innerHTML).toLowerCase();
+            const hasSection = pageHtml.includes('giao diện &amp; sử dụng') || pageHtml.includes('giao diện & sử dụng');
+            return {
+                hasBtn: Boolean(btn),
+                title,
+                sub,
+                hasSection
+            };
+        }""")
+        print(f"T41 Result: {t41_res}")
+        t41_pass = (
+            t41_res["hasBtn"] is True and
+            t41_res["title"] == "Kiểu giao diện" and
+            t41_res["hasSection"] is True
+        )
+        results["T41_SETTINGS_UI_PROFILE_ENTRY"] = t41_pass
+
+        # ----------------------------------------------------
+        # T42: Default Standard Baseline
+        # ----------------------------------------------------
+        print("\n--- [T42] DEFAULT STANDARD BASELINE ---")
+        t42_res = await page.evaluate("""() => {
+            const up = window.__qbiz_app__.uiProfile;
+            const cur = up.getUiProfile();
+            const resolved = up.resolveUiProfile(cur.id);
+            const options = up.UI_PROFILE_OPTIONS || [];
+            return {
+                id: cur.id,
+                effectiveId: resolved.id || resolved.effective_profile_id,
+                optionsCount: options.length,
+                hasAuto: options.some(o => o.id === 'auto'),
+                hasStandard: options.some(o => o.id === 'standard'),
+                hasFast: options.some(o => o.id === 'fast'),
+                hasVisual: options.some(o => o.id === 'visual'),
+                hasCompact: options.some(o => o.id === 'compact')
+            };
+        }""")
+        print(f"T42 Result: {t42_res}")
+        t42_pass = (
+            t42_res["id"] == "standard" and
+            t42_res["effectiveId"] == "standard" and
+            t42_res["optionsCount"] == 5 and
+            t42_res["hasAuto"] and
+            t42_res["hasStandard"] and
+            t42_res["hasFast"] and
+            t42_res["hasVisual"] and
+            t42_res["hasCompact"]
+        )
+        results["T42_DEFAULT_STANDARD_BASELINE"] = t42_pass
+
+        # ----------------------------------------------------
+        # T43: Selection Without Apply Safety
+        # ----------------------------------------------------
+        print("\n--- [T43] SELECTION WITHOUT APPLY SAFETY ---")
+        await page.click('[data-action="ui-profile-selector"]')
+        await page.wait_for_selector('.ui-profile-container', timeout=5000)
+
+        # Click visual card
+        await page.click('.ui-profile-card[data-profile-id="visual"]')
+        await page.wait_for_timeout(200)
+
+        pre_apply = await page.evaluate("""() => {
+            const up = window.__qbiz_app__.uiProfile;
+            const visualCard = document.querySelector('.ui-profile-card[data-profile-id="visual"]');
+            return {
+                cardSelected: visualCard?.classList.contains('selected') || visualCard?.classList.contains('active'),
+                activeProfileId: up.getUiProfile().id
+            };
+        }""")
+
+        # Close modal without clicking apply
+        close_btn = await page.query_selector('[data-close], .btn-close-modal')
+        if close_btn:
+            await close_btn.click()
+        else:
+            await page.evaluate("() => window.__qbiz_app__.closeModal()")
+        await page.wait_for_timeout(200)
+
+        post_close = await page.evaluate("""() => {
+            const up = window.__qbiz_app__.uiProfile;
+            const cur = up.getUiProfile();
+            const ls = JSON.parse(localStorage.getItem('qbiz_ui_profile') || '{"id":"standard"}');
+            return {
+                activeProfileId: cur.id,
+                lsProfileId: ls.id
+            };
+        }""")
+        print(f"T43 Result: pre_apply={pre_apply}, post_close={post_close}")
+        t43_pass = (
+            pre_apply["cardSelected"] is True and
+            pre_apply["activeProfileId"] == "standard" and
+            post_close["activeProfileId"] == "standard" and
+            post_close["lsProfileId"] == "standard"
+        )
+        results["T43_SELECTION_WITHOUT_APPLY_SAFETY"] = t43_pass
+
+        # ----------------------------------------------------
+        # T44: Apply Visual Persistence
+        # ----------------------------------------------------
+        print("\n--- [T44] APPLY VISUAL PERSISTENCE ---")
+        await page.click('[data-action="ui-profile-selector"]')
+        await page.wait_for_selector('.ui-profile-container', timeout=5000)
+        await page.click('.ui-profile-card[data-profile-id="visual"]')
+        await page.wait_for_timeout(200)
+        await page.click('#btnApplyUiProfile, #modalSubmitUiProfile')
+        await page.wait_for_timeout(300)
+
+        t44_res = await page.evaluate("""() => {
+            const up = window.__qbiz_app__.uiProfile;
+            const cur = up.getUiProfile();
+            const btn = document.querySelector('[data-action="ui-profile-selector"]');
+            const sub = btn?.querySelector('small, .sub')?.textContent.trim();
+            const ls = JSON.parse(localStorage.getItem('qbiz_ui_profile') || '{}');
+            return {
+                id: cur.id,
+                subHasVisual: (sub || '').includes('Hình ảnh'),
+                lsId: ls.id
+            };
+        }""")
+        print(f"T44 Result: {t44_res}")
+        t44_pass = (
+            t44_res["id"] == "visual" and
+            t44_res["subHasVisual"] is True and
+            t44_res["lsId"] == "visual"
+        )
+        results["T44_APPLY_VISUAL_PERSISTENCE"] = t44_pass
+
+        # ----------------------------------------------------
+        # T45: Reload Persistence Visual
+        # ----------------------------------------------------
+        print("\n--- [T45] RELOAD PERSISTENCE VISUAL ---")
+        await page.reload()
+        await page.wait_for_function("() => window.__qbiz_app__?.uiProfile")
+
+        t45_res = await page.evaluate("""() => {
+            const up = window.__qbiz_app__.uiProfile;
+            const cur = up.getUiProfile();
+            const stateProfile = window.__qbiz_app__.state?.uiProfile;
+            return {
+                upId: cur.id,
+                stateProfileId: stateProfile?.id
+            };
+        }""")
+        print(f"T45 Result: {t45_res}")
+        t45_pass = (
+            t45_res["upId"] == "visual" and
+            t45_res["stateProfileId"] == "visual"
+        )
+        results["T45_RELOAD_PERSISTENCE_VISUAL"] = t45_pass
+
+        # ----------------------------------------------------
+        # T46: Compact Presentation Real Data Intact
+        # ----------------------------------------------------
+        print("\n--- [T46] COMPACT PRESENTATION REAL DATA INTACT ---")
+        await page.evaluate("""async () => {
+            await window.__qbiz_app__.uiProfile.setUiProfile('compact');
+        }""")
+
+        t46_res = await page.evaluate("""(initialCounts) => {
+            const app = window.__qbiz_app__;
+            // 1. Dashboard
+            app.navigate('dashboard');
+            const dashGrid = document.querySelector('.dashboard-quick-grid');
+            const dashHasCompact = dashGrid?.classList.contains('ui-profile-compact');
+
+            // 2. Catalog
+            app.navigate('products');
+            const goodsToolbar = document.querySelector('.goods-toolbar');
+            const goodsToolbarHasCompact = goodsToolbar?.classList.contains('ui-profile-compact');
+            const catalogContainer = document.querySelector('.product-grid, .goods-list');
+            const catalogHasCompact = catalogContainer?.classList.contains('ui-profile-compact');
+
+            // 3. POS
+            app.navigate('sales');
+            const posBrowser = document.querySelector('.pos-browser');
+            const posBrowserHasCompact = posBrowser?.classList.contains('ui-profile-compact');
+
+            // 4. Data counts
+            const state = app.state;
+            const currentCounts = {
+                products: (state.data?.products || []).length,
+                warehouses: (state.data?.warehouses || []).length,
+                movements: (state.data?.movements || []).length,
+                orders: (state.data?.orders || []).length,
+                sales: (state.data?.sales || []).length,
+                customers: (state.data?.customers || []).length,
+                suppliers: (state.data?.suppliers || []).length,
+            };
+            const dataIntact = JSON.stringify(currentCounts) === JSON.stringify(initialCounts);
+
+            return {
+                dashHasCompact,
+                goodsToolbarHasCompact,
+                catalogHasCompact,
+                posBrowserHasCompact,
+                dataIntact
+            };
+        }""", initial_counts)
+        print(f"T46 Result: {t46_res}")
+        t46_pass = (
+            t46_res["dashHasCompact"] is True and
+            t46_res["goodsToolbarHasCompact"] is True and
+            t46_res["catalogHasCompact"] is True and
+            t46_res["posBrowserHasCompact"] is True and
+            t46_res["dataIntact"] is True
+        )
+        results["T46_COMPACT_PRESENTATION_REAL_DATA_INTACT"] = t46_pass
+
+        # ----------------------------------------------------
+        # T47: Fast Presentation Real Data Intact
+        # ----------------------------------------------------
+        print("\n--- [T47] FAST PRESENTATION REAL DATA INTACT ---")
+        await page.evaluate("""async () => {
+            await window.__qbiz_app__.uiProfile.setUiProfile('fast');
+        }""")
+
+        t47_res = await page.evaluate("""(initialCounts) => {
+            const app = window.__qbiz_app__;
+            // 1. Dashboard
+            app.navigate('dashboard');
+            const dashGrid = document.querySelector('.dashboard-quick-grid');
+            const dashHasFast = dashGrid?.classList.contains('ui-profile-fast');
+
+            // 2. Catalog
+            app.navigate('products');
+            const goodsToolbar = document.querySelector('.goods-toolbar');
+            const goodsToolbarHasFast = goodsToolbar?.classList.contains('ui-profile-fast');
+            const catalogContainer = document.querySelector('.product-grid, .goods-list');
+            const catalogHasFast = catalogContainer?.classList.contains('ui-profile-fast');
+
+            // 3. POS
+            app.navigate('sales');
+            const posBrowser = document.querySelector('.pos-browser');
+            const posBrowserHasFast = posBrowser?.classList.contains('ui-profile-fast');
+
+            // 4. Data counts
+            const state = app.state;
+            const currentCounts = {
+                products: (state.data?.products || []).length,
+                warehouses: (state.data?.warehouses || []).length,
+                movements: (state.data?.movements || []).length,
+                orders: (state.data?.orders || []).length,
+                sales: (state.data?.sales || []).length,
+                customers: (state.data?.customers || []).length,
+                suppliers: (state.data?.suppliers || []).length,
+            };
+            const dataIntact = JSON.stringify(currentCounts) === JSON.stringify(initialCounts);
+
+            return {
+                dashHasFast,
+                goodsToolbarHasFast,
+                catalogHasFast,
+                posBrowserHasFast,
+                dataIntact
+            };
+        }""", initial_counts)
+        print(f"T47 Result: {t47_res}")
+        t47_pass = (
+            t47_res["dashHasFast"] is True and
+            t47_res["goodsToolbarHasFast"] is True and
+            t47_res["catalogHasFast"] is True and
+            t47_res["posBrowserHasFast"] is True and
+            t47_res["dataIntact"] is True
+        )
+        results["T47_FAST_PRESENTATION_REAL_DATA_INTACT"] = t47_pass
+
+        # ----------------------------------------------------
+        # T48: Standard Restore Baseline
+        # ----------------------------------------------------
+        print("\n--- [T48] STANDARD RESTORE BASELINE ---")
+        await page.evaluate("""async () => {
+            await window.__qbiz_app__.uiProfile.setUiProfile('standard');
+            window.__qbiz_app__.state.page = 'dashboard';
+            window.__qbiz_app__.render();
+        }""")
+
+        for width in [390, 412, 1440]:
+            await page.set_viewport_size({"width": width, "height": 900})
+            await page.wait_for_timeout(100)
+            overflow = await page.evaluate("() => document.documentElement.scrollWidth - window.innerWidth")
+            assert overflow <= 0, f"Overflow {overflow}px detected at {width}px!"
+
+        t48_res = await page.evaluate("""() => {
+            const app = window.__qbiz_app__;
+            const dashGrid = document.querySelector('.dashboard-quick-grid');
+            const dashHasStandard = dashGrid?.classList.contains('ui-profile-standard');
+            return {
+                profileId: app.uiProfile.getUiProfile().id,
+                dashHasStandard
+            };
+        }""")
+        print(f"T48 Result: {t48_res}")
+        t48_pass = (
+            t48_res["profileId"] == "standard" and
+            t48_res["dashHasStandard"] is True
+        )
+        results["T48_STANDARD_RESTORE_BASELINE"] = t48_pass
+
+        # ----------------------------------------------------
+        # T49: Auto Mode Recommendation
+        # ----------------------------------------------------
+        print("\n--- [T49] AUTO MODE RECOMMENDATION ---")
+        await page.evaluate("""async () => {
+            await window.__qbiz_app__.uiProfile.setUiProfile('auto');
+        }""")
+
+        t49_res = await page.evaluate("""() => {
+            const up = window.__qbiz_app__.uiProfile;
+            return {
+                retail: up.resolveUiProfile('auto', 'retail').id,
+                wholesale: up.resolveUiProfile('auto', 'wholesale').id,
+                fnb: up.resolveUiProfile('auto', 'fnb').id,
+                general: up.resolveUiProfile('auto', 'general').id,
+                service: up.resolveUiProfile('auto', 'service').id,
+                consulting: up.resolveUiProfile('auto', 'consulting').id,
+                other: up.resolveUiProfile('auto', 'other').id,
+            };
+        }""")
+        print(f"T49 Result: {t49_res}")
+        t49_pass = (
+            t49_res["retail"] == "fast" and
+            t49_res["wholesale"] == "compact" and
+            t49_res["fnb"] == "visual" and
+            t49_res["general"] == "standard" and
+            t49_res["service"] == "standard" and
+            t49_res["consulting"] == "standard" and
+            t49_res["other"] == "standard"
+        )
+        results["T49_AUTO_MODE_RECOMMENDATION"] = t49_pass
+
+        # ----------------------------------------------------
+        # T50: Manual Override Not Overwritten
+        # ----------------------------------------------------
+        print("\n--- [T50] MANUAL OVERRIDE NOT OVERWRITTEN ---")
+        await page.evaluate("""async () => {
+            await window.__qbiz_app__.uiProfile.setUiProfile('compact');
+            await window.__qbiz_app__.businessProfile.setBusinessProfile('fnb');
+        }""")
+
+        t50_res = await page.evaluate("""() => {
+            const up = window.__qbiz_app__.uiProfile;
+            const cur = up.getUiProfile();
+            const resolved = up.resolveUiProfile();
+            return {
+                curId: cur.id,
+                resolvedId: resolved.id
+            };
+        }""")
+        print(f"T50 Result: {t50_res}")
+        t50_pass = (
+            t50_res["curId"] == "compact" and
+            t50_res["resolvedId"] == "compact"
+        )
+        results["T50_MANUAL_OVERRIDE_NOT_OVERWRITTEN"] = t50_pass
+
+        # ----------------------------------------------------
+        # T51: Key Isolation Independence
+        # ----------------------------------------------------
+        print("\n--- [T51] KEY ISOLATION INDEPENDENCE ---")
+        t51_res = await page.evaluate("""async () => {
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open('qbiz_kho_v1');
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+
+            const getRecord = (key) => new Promise((resolve) => {
+                const tx = db.transaction('settings', 'readonly');
+                const store = tx.objectStore('settings');
+                const req = store.get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            });
+
+            const uiRecord = await getRecord('qbiz_ui_profile');
+            const modeRecord = await getRecord('qbiz_business_mode_profile');
+
+            return {
+                uiHasKey: Boolean(uiRecord),
+                uiValueId: uiRecord?.value?.id,
+                modeHasKey: Boolean(modeRecord),
+                modeValueProfileId: modeRecord?.value?.profile_id,
+                distinctKeys: uiRecord?.id !== modeRecord?.id && uiRecord?.id === 'qbiz_ui_profile' && modeRecord?.id === 'qbiz_business_mode_profile'
+            };
+        }""")
+        print(f"T51 Result: {t51_res}")
+        t51_pass = (
+            t51_res["uiHasKey"] is True and
+            t51_res["modeHasKey"] is True and
+            t51_res["distinctKeys"] is True and
+            t51_res["uiValueId"] == "compact" and
+            t51_res["modeValueProfileId"] == "fnb"
+        )
+        results["T51_KEY_ISOLATION_INDEPENDENCE"] = t51_pass
+
+        # ----------------------------------------------------
+        # T52: Switching UI Profiles Data Immutability
+        # ----------------------------------------------------
+        print("\n--- [T52] SWITCHING UI PROFILES DATA IMMUTABILITY ---")
+        t52_res = await page.evaluate("""async (initialCounts) => {
+            const app = window.__qbiz_app__;
+            const profiles = ['standard', 'fast', 'visual', 'compact', 'auto', 'standard'];
+            const logs = [];
+            let allIntact = true;
+
+            for (const p of profiles) {
+                await app.uiProfile.setUiProfile(p);
+                app.render();
+
+                const state = app.state;
+                const currentCounts = {
+                    products: (state.data?.products || []).length,
+                    warehouses: (state.data?.warehouses || []).length,
+                    movements: (state.data?.movements || []).length,
+                    orders: (state.data?.orders || []).length,
+                    sales: (state.data?.sales || []).length,
+                    customers: (state.data?.customers || []).length,
+                    suppliers: (state.data?.suppliers || []).length,
+                };
+
+                const match = JSON.stringify(currentCounts) === JSON.stringify(initialCounts);
+                if (!match) allIntact = false;
+                logs.push({ profile: p, match });
+            }
+
+            return {
+                allIntact,
+                logs
+            };
+        }""", initial_counts)
+        print(f"T52 Result: {t52_res}")
+        t52_pass = t52_res["allIntact"] is True
+        results["T52_SWITCHING_UI_PROFILES_DATA_IMMUTABILITY"] = t52_pass
+
+        # Reset back to default general business profile and standard UI profile
         await page.evaluate("""async () => {
             const bp = window.__qbiz_app__.businessProfile;
             await bp.resetToDefaultProfile();
+            const up = window.__qbiz_app__.uiProfile;
+            await up.resetToDefaultUiProfile();
+            window.__qbiz_app__.state.page = 'dashboard';
+            window.__qbiz_app__.render();
         }""")
 
         # Check console errors
@@ -1598,7 +2050,7 @@ async def run_foundation_tests():
         await browser.close()
 
     print("\n================================================================")
-    print("FINAL TEST RESULTS (T01 - T40 & INVARIANTS)")
+    print("FINAL TEST RESULTS (T01 - T52 & INVARIANTS)")
     print("================================================================")
     all_pass = True
     for k, v in results.items():

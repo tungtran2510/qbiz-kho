@@ -5,6 +5,7 @@ import { CONFIG } from './config.js';
 import * as aiModule from './ai/index.js';
 const { initAiUI, updateContextAndChips } = aiModule;
 import * as businessProfileModule from './business-profile.js';
+import * as uiProfileModule from './ui-profile.js';
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -134,7 +135,7 @@ function nav(){
   $('#desktopNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="nav-btn ${activePage===id?'active':''}" data-page="${id}"><span class="nav-ico">${icon(ico)}</span><span>${label}</span></button>`).join('');
   $('#mobileNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="${activePage===id?'active':''}" data-page="${id}">${icon(ico)}<span>${label}</span></button>`).join('');
 }
-function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports}[state.page]||renderDashboard)(); headerActions(); updateSyncPill(); updateContextAndChips(); }
+function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports}[state.page]||renderDashboard)(); headerActions(); updateSyncPill(); updateContextAndChips(); }
 
 const levelAvail=l=>Math.max(0,(l?.onHand||0)-(l?.reserved||0)-(l?.damaged||0));
 function warehouseStock(productId){return (state.data.levels||[]).filter(l=>l.productId===productId).reduce((m,l)=>Math.max(m,levelAvail(l)),0);}
@@ -210,7 +211,7 @@ function renderSales(){
   if(state.saleStep==='cart'){$('#content').innerHTML=`<section class="pos-flow card">${saleStepHeader('Giỏ hàng')}<button class="customer-chip" data-action="customer-picker">${icon('user')}<span><small>Khách hàng</small>${esc(customerLabel(customer))}</span>${icon('chevron-right')}</button><div class="cart-list">${saleCartRows()||'<div class="empty">Giỏ hàng đang trống.</div>'}</div><details class="order-options" ${state.saleOptionsOpen?'open':''}><summary>Tùy chọn đơn hàng</summary><div class="discount-box"><strong>Giảm giá đơn</strong><div class="discount-control"><input id="saleDiscount" type="number" inputmode="decimal" min="0" value="${state.saleDraft.discount}"/><button class="discount-mode ${state.saleDraft.discountMode==='amount'?'active':''}" data-discount-mode="amount">₫</button><button class="discount-mode ${state.saleDraft.discountMode==='percent'?'active':''}" data-discount-mode="percent">%</button></div></div></details><div class="cart-totals"><div><span>Tạm tính</span><b>${fmt(totals.subtotal)} ₫</b></div>${totals.discount?`<div><span>Giảm giá</span><b>− ${fmt(totals.discount)} ₫</b></div>`:''}${totals.tax?`<div><span>Thuế/VAT theo mặt hàng</span><b>${fmt(totals.tax)} ₫</b></div>`:''}<div class="grand"><span>Tổng cộng</span><b>${fmt(totals.total)} ₫</b></div></div><button class="primary-btn flow-primary" data-sale-step="checkout" ${!totals.lines.length?'disabled':''}>Tiếp tục thanh toán</button></section>`;$('.order-options')?.addEventListener('toggle',e=>state.saleOptionsOpen=e.target.open);$('#saleDiscount')?.addEventListener('input',e=>{state.saleDraft.discount=e.target.value;renderSales()});bindSaleControls();return;}
    if(state.saleStep==='checkout'){const change=(Number(state.saleDraft.cashReceived)||0)-totals.total,delivery=state.saleDraft.fulfillment==='delivery';$('#content').innerHTML=`<section class="pos-flow checkout-screen card">${saleStepHeader('Thanh toán','cart')}<button class="customer-chip" data-action="customer-picker">${icon('user')}<span><small>Khách hàng</small>${esc(customerLabel(customer))}</span>${icon('chevron-right')}</button><div class="checkout-total"><span>Tổng thanh toán</span><strong>${fmt(totals.total)} ₫</strong></div><div class="choice-section"><h3>Phương thức thanh toán</h3>${[['cash','Tiền mặt'],['transfer','Chuyển khoản'],['qr','QR']].map(([v,l])=>`<button class="choice-row ${state.saleDraft.payment===v?'active':''}" data-payment-choice="${v}"><i></i><span>${l}</span></button>`).join('')}</div>${state.saleDraft.payment==='cash'?`<div class="cash-panel"><label>Khách đưa<input id="cashReceived" type="number" inputmode="decimal" value="${esc(state.saleDraft.cashReceived)}" placeholder="0"/></label><button class="cash-suggest" data-cash-exact>Đủ tiền · ${fmt(totals.total)} ₫</button><div><span>Tiền thừa</span><strong id="cashChange">${fmt(Math.max(0,change))} ₫</strong></div></div>`:''}<div class="choice-section"><h3>Hình thức nhận hàng</h3><div class="segment"><button class="${!delivery?'active':''}" data-fulfillment="counter">Tại quầy</button><button class="${delivery?'active':''}" data-fulfillment="delivery">Giao hàng</button></div>${delivery?`<div class="delivery-fields"><input id="recipient" value="${esc(state.saleDraft.recipient)}" placeholder="Người nhận"/><input id="deliveryPhone" inputmode="tel" value="${esc(state.saleDraft.phone)}" placeholder="Số điện thoại"/><input id="deliveryAddress" value="${esc(state.saleDraft.address)}" placeholder="Địa chỉ"/><input id="shippingFee" type="number" inputmode="decimal" value="${state.saleDraft.shippingFee||''}" placeholder="Phí giao hàng"/><label class="cod-disabled"><input type="checkbox" disabled/> COD · chưa hỗ trợ lưu an toàn</label><small class="field-limit">Thông tin giao hàng chưa được ghi vào phiếu bán trong data contract hiện tại.</small></div>`:''}</div><label class="cart-note">Ghi chú đơn hàng<input id="saleNote" value="${esc(state.saleDraft.note)}" placeholder="Nhập ghi chú (nếu có)..."/></label><div class="vat-box"><span>Thuế/VAT</span><div class="vat-control"><select id="vatRate">${[[0,'Không VAT'],[5,'5%'],[8,'8%'],[10,'10%'],[-1,'Tùy chỉnh…']].map(([v,l])=>`<option value="${v}" ${(v===-1?state.saleDraft.vatCustom!=='':Number(state.saleDraft.vatRate)===v)?'selected':''}>${l}</option>`).join('')}</select>${state.saleDraft.vatCustom!==''?`<input id="vatCustom" type="number" inputmode="decimal" min="0" max="100" value="${esc(state.saleDraft.vatCustom)}" placeholder="%"/>`:''}<b id="vatAmount">${fmt(totals.vat)} ₫</b></div></div><div class="invoice-box"><span>Hóa đơn điện tử</span><b>Chưa kết nối</b></div><button class="primary-btn flow-primary" data-sale-pay ${state.saleBusy?'disabled':''}>${state.saleBusy?'Đang lưu…':'Hoàn tất thanh toán'}</button></section>`;$('#cashReceived')?.addEventListener('input',e=>{state.saleDraft.cashReceived=e.target.value;const next=Math.max(0,(Number(e.target.value)||0)-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`});$('[data-cash-exact]')?.addEventListener('click',()=>{state.saleDraft.cashReceived=totals.total;$('#cashReceived').value=totals.total;$('#cashChange').textContent='0 ₫'});$('#saleNote')?.addEventListener('input',e=>state.saleDraft.note=e.target.value);[['recipient','recipient'],['deliveryPhone','phone'],['deliveryAddress','address'],['shippingFee','shippingFee']].forEach(([id,key])=>$('#'+id)?.addEventListener('input',e=>state.saleDraft[key]=e.target.value));$('#vatRate')?.addEventListener('change',e=>{const v=e.target.value;if(v==='-1'){state.saleDraft.vatCustom=state.saleDraft.vatCustom||'5';state.saleDraft.vatRate=Math.max(0,Math.min(100,Number(state.saleDraft.vatCustom)||0));}else{state.saleDraft.vatCustom='';state.saleDraft.vatRate=Number(v)||0;}renderSales();});$('#vatCustom')?.addEventListener('input',e=>{state.saleDraft.vatCustom=e.target.value;state.saleDraft.vatRate=Math.max(0,Math.min(100,Number(e.target.value)||0));const t=saleTotals();const va=$('#vatAmount');if(va)va.textContent=fmt(t.vat)+' ₫';const tt=document.querySelector('.checkout-total strong');if(tt)tt.textContent=fmt(t.total)+' ₫';});bindSaleControls();return;}
   const q=state.saleSearch.toLowerCase(),matched=state.data.products.filter(p=>p.active!==false&&(state.saleType==='all'||p.type===state.saleType)&&(!q||[p.name,p.sku,p.barcode].some(v=>String(v||'').toLowerCase().includes(q)||norm(v).includes(norm(q))))),items=(q||state.saleShowAll)?matched.slice(0,state.saleShowAll?40:20):matched.slice(0,8);
-   $('#content').innerHTML=`<section class="pos-browser"><div class="pos-search-row"><input id="saleSearch" value="${esc(state.saleSearch)}" placeholder="Tên / SKU / barcode"/><button data-action="sale-scan" aria-label="Quét mã">${icon('scan-line')}</button></div><div class="pos-chips"><button class="${state.saleType==='all'?'active':''}" data-sale-type="all">Tất cả</button><button class="${state.saleType==='PRODUCT'?'active':''}" data-sale-type="PRODUCT">Sản phẩm</button><button class="${state.saleType==='SERVICE'?'active':''}" data-sale-type="SERVICE">Dịch vụ</button></div><div class="pos-grid ${state.displayPrefs.posView}">${items.map(saleProductTile).join('')||'<div class="empty">Không tìm thấy sản phẩm.</div>'}</div>${!q&&!state.saleShowAll&&matched.length>items.length?'<button class="catalog-more" data-sale-show-all>Xem tất cả sản phẩm</button>':''}</section>${totals.lines.length?`<div class="sale-mobile-bar pos-cart-bar"><button class="sale-mobile-summary" data-sale-step="cart"><b>${totals.lines.reduce((n,x)=>n+x.quantity,0)} sản phẩm</b><strong>${fmt(totals.total)} ₫</strong></button><button class="primary-btn" data-sale-step="cart">Tiếp tục</button></div>`:''}`;
+   $('#content').innerHTML=`<section class="pos-browser ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}"><div class="pos-search-row"><input id="saleSearch" value="${esc(state.saleSearch)}" placeholder="Tên / SKU / barcode"/><button data-action="sale-scan" aria-label="Quét mã">${icon('scan-line')}</button></div><div class="pos-chips"><button class="${state.saleType==='all'?'active':''}" data-sale-type="all">Tất cả</button><button class="${state.saleType==='PRODUCT'?'active':''}" data-sale-type="PRODUCT">Sản phẩm</button><button class="${state.saleType==='SERVICE'?'active':''}" data-sale-type="SERVICE">Dịch vụ</button></div><div class="pos-grid ${state.displayPrefs.posView} ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">${items.map(saleProductTile).join('')||'<div class="empty">Không tìm thấy sản phẩm.</div>'}</div>${!q&&!state.saleShowAll&&matched.length>items.length?'<button class="catalog-more" data-sale-show-all>Xem tất cả sản phẩm</button>':''}</section>${totals.lines.length?`<div class="sale-mobile-bar pos-cart-bar"><button class="sale-mobile-summary" data-sale-step="cart"><b>${totals.lines.reduce((n,x)=>n+x.quantity,0)} sản phẩm</b><strong>${fmt(totals.total)} ₫</strong></button><button class="primary-btn" data-sale-step="cart">Tiếp tục</button></div>`:''}`;
   $('#saleSearch').oninput=e=>{state.saleSearch=e.target.value;state.saleShowAll=false;keepFocus('#saleSearch',renderSales)};$$('[data-sale-type]').forEach(b=>b.onclick=()=>{state.saleType=b.dataset.saleType;state.saleShowAll=false;renderSales()});$('[data-sale-show-all]')?.addEventListener('click',()=>{state.saleShowAll=true;renderSales()});bindSaleControls();
 }
 async function submitSale(){if(state.saleBusy)return;state.saleBusy=true;renderSales();const saleId=state.salePendingId||(state.salePendingId=saleUuid());try{const totals=saleTotals();const vatLines=(()=>{if(!totals.vat)return state.saleCart;const base=Math.max(0,totals.subtotal-totals.discount);let acc=0;return state.saleCart.map((line,i,arr)=>{const lt=Math.max(0,line.quantity*line.unitPrice-line.discount);const share=i===arr.length-1?totals.vat-acc:Math.round(totals.vat*(base?lt/base:0));acc+=share;return {...line,tax_amount:Math.max(0,Number(line.tax_amount)||0)+Math.max(0,share)};})})();const sale=await createSale({saleId,items:vatLines,warehouseId:state.saleDraft.warehouseId||bestSaleWarehouse(state.saleCart)||state.data.warehouses[0]?.id,paymentMethod:state.saleDraft.payment,discount:totals.discount,note:state.saleDraft.note,customerLabel:customerLabel()});state.saleReceipt=sale;state.saleCart=[];state.salePendingId='';state.saleBusy=false;state.saleCustomer=null;state.saleStep='success';state.saleDraft={discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:''};await refresh();toast('Đã thanh toán và lưu phiếu bán.','ok')}catch(err){state.saleBusy=false;renderSales();toast(err.message,'error')} }
@@ -415,7 +416,7 @@ function renderDashboard(){
 
     <section class="card section-card dashboard-quick-card">
       <div class="section-head"><div><h2>Thao tác nhanh</h2></div></div>
-      <div class="quick-grid dashboard-quick-grid">
+      <div class="quick-grid dashboard-quick-grid ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">
         ${renderQuickActions(state.workspace)}
       </div>
     </section>
@@ -834,7 +835,7 @@ function renderProducts(){
   const totalQty=list.reduce((n,p)=>n+(p.type==='SERVICE'?0:productTotals(p).onHand),0);
   const gridMode=['grid2','grid3'].includes(state.displayPrefs.view);
   $('#content').innerHTML=`
-    <section class="goods-toolbar card">
+    <section class="goods-toolbar card ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">
       <div class="goods-title goods-title-compact"><div class="goods-stats"><strong class="goods-stat-main">${fmt(list.length)} ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'}</strong><span class="goods-stat-meta"><span class="goods-stat-sub">Tồn kho ${fmt(totalQty)}</span>${low?`<span class="goods-stat-sub warn">${fmt(low)} sắp hết</span>`:''}</span></div><div><button class="secondary-btn compact" data-display-settings>Hiển thị</button><button class="primary-btn compact" data-action="new-product" aria-label="Thêm hàng hóa">Thêm ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'} +</button></div></div>
       <div class="goods-segments"><button class="${state.productType==='PRODUCT'?'active':''}" data-product-type="PRODUCT">Sản phẩm</button><button class="${state.productType==='SERVICE'?'active':''}" data-product-type="SERVICE">Dịch vụ</button></div>
       <div class="goods-search"><input id="productSearch" value="${esc(state.search)}" placeholder="${state.productType==='PRODUCT'?'Tìm tên / SKU / barcode...':'Tìm tên dịch vụ...'}"/><button data-action="scan" aria-label="Quét mã" ${state.productType==='SERVICE'?'hidden':''}>${icon('scan-line')}</button></div>
@@ -843,8 +844,8 @@ function renderProducts(){
     </section>
 
     ${gridMode
-      ? `<section class="product-grid ${state.displayPrefs.view}">${visible.map(productCard).join('')||'<div class="empty"><strong>Không tìm thấy</strong>Thử tên hoặc SKU khác.</div>'}</section>`
-      : `<section class="card goods-list ${state.displayPrefs.density==='compact'?'is-compact':''}">${visible.map(productTableRow).join('')||'<div class="empty"><strong>Không tìm thấy</strong>Thử tên hoặc SKU khác.</div>'}</section>`}${visible.length<list.length?`<button class="catalog-more product-more" data-product-more>Xem thêm ${Math.min(40,list.length-visible.length)}</button>`:''}
+      ? `<section class="product-grid ${state.displayPrefs.view} ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">${visible.map(productCard).join('')||'<div class="empty"><strong>Không tìm thấy</strong>Thử tên hoặc SKU khác.</div>'}</section>`
+      : `<section class="card goods-list ${state.displayPrefs.density==='compact'?'is-compact':''} ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">${visible.map(productTableRow).join('')||'<div class="empty"><strong>Không tìm thấy</strong>Thử tên hoặc SKU khác.</div>'}</section>`}${visible.length<list.length?`<button class="catalog-more product-more" data-product-more>Xem thêm ${Math.min(40,list.length-visible.length)}</button>`:''}
   `;
   $('#productSearch')?.addEventListener('input',e=>{state.search=e.target.value;keepFocus('#productSearch',renderProducts)});
   $$('[data-product-type]').forEach(b=>b.onclick=()=>{state.productType=b.dataset.productType;state.productCategory='all';state.productLimit=40;state.productSelected.clear();renderProducts()});
@@ -926,9 +927,12 @@ function renderSettings(){
   const d=state.data;
   const currentMode = businessProfileModule.getBusinessProfile?.() || {};
   const currentModeName = currentMode.name || 'Cửa hàng chung';
+  const resolvedUi = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, currentMode.profile_id);
+  const currentUiProfileDisplay = resolvedUi.is_auto ? `Tự động (${resolvedUi.effective_name})` : resolvedUi.name;
   $('#content').innerHTML=`
   <section class="settings-center">
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Cửa hàng</h2><p>Thông tin và quy tắc vận hành.</p></div></div><div class="settings-list"><button data-action="business-profile"><span>${icon('store')}<b>Thông tin cửa hàng</b><small>Tên, liên hệ, địa chỉ lấy và hoàn hàng</small></span>${icon('chevron-right')}</button><button data-action="business-mode-selector"><span>${icon('briefcase')}<b>Chế độ kinh doanh</b><small>${esc(currentModeName)}</small></span>${icon('chevron-right')}</button><button data-action="sale-preferences"><span>${icon('shopping-cart')}<b>Bán hàng & thanh toán</b><small>Kho và phương thức thanh toán mặc định</small></span>${icon('chevron-right')}</button><button data-action="warehouse-management"><span>${icon('arrow-left-right')}<b>Kho hàng</b><small>${d.warehouses.length} kho đang hoạt động</small></span>${icon('chevron-right')}</button></div></section>
+    <section class="card section-card settings-section"><div class="section-head"><div><h2>Giao diện & Sử dụng</h2><p>Tùy chỉnh kiểu hiển thị phù hợp thói quen thao tác.</p></div></div><div class="settings-list"><button data-action="ui-profile-selector"><span>${icon('layout-grid')}<b>Kiểu giao diện</b><small>${esc(currentUiProfileDisplay)}</small></span>${icon('chevron-right')}</button></div></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Thiết lập</h2></div></div><div class="settings-list"><button data-page="prints"><span>${icon('printer')}<b>In & thiết bị</b><small>Máy in, mẫu in và nhật ký</small></span>${icon('chevron-right')}</button><button data-action="data-settings"><span>${icon('file-text')}<b>Dữ liệu</b><small>Nhập, xuất, sao lưu và khôi phục</small></span>${icon('chevron-right')}</button><button class="settings-muted" data-page="permissions"><span>${icon('user')}<b>Người dùng & phân quyền</b><small>Vai trò và quyền truy cập · sắp có</small></span>${icon('chevron-right')}</button></div></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Đồng bộ</h2><p>${CONFIG.SYNC_MODE==='api'?'Đang kết nối QBiz':'Dữ liệu đang lưu trên thiết bị này.'}</p></div></div><div class="surface-callout"><span class="surface-status ${CONFIG.SYNC_MODE==='api'?'working':'prepared'}">${CONFIG.SYNC_MODE==='api'?'Đang đồng bộ':'Chưa kết nối'}</span><p>${CONFIG.SYNC_MODE==='api'?'Theo dõi trạng thái đồng bộ tại đây.':'Chưa bật đồng bộ nhiều thiết bị.'}</p></div><button class="secondary-btn" data-action="sync-now">${CONFIG.SYNC_MODE==='api'?'Đồng bộ ngay':'Kiểm tra dữ liệu chờ'}</button></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Tiện ích nâng cao</h2><p>Bảng giá, khuyến mại, sổ quỹ, công nợ và mô-đun.</p></div></div><div class="settings-list"><button data-page="advanced"><span>${icon('settings-2')}<b>Tiện ích nâng cao</b><small>Bảng giá, khuyến mại, combo, tồn đầu, in tem, sổ quỹ, công nợ, nhật ký, tìm kiếm toàn cục</small></span>${icon('chevron-right')}</button></div></section>
@@ -1111,6 +1115,153 @@ function openBusinessModeModal(){
       toast(err.message || 'Lỗi khi lưu chế độ kinh doanh.', 'error');
     }
   };
+}
+
+function openUiProfileModal(){
+  const currentUi = uiProfileModule.getUiProfile();
+  let selectedId = currentUi.id || 'standard';
+  const options = uiProfileModule.UI_PROFILE_OPTIONS || [];
+
+  function renderModalBody(){
+    const currentMode = businessProfileModule.getBusinessProfile?.() || {};
+    const resolvedPreview = uiProfileModule.resolveUiProfile(selectedId, currentMode.profile_id);
+    const isCurrent = (selectedId === currentUi.id);
+    const effId = resolvedPreview.effective_profile_id;
+
+    return `
+      <div class="ui-profile-container">
+        <div class="mode-current-banner ui-profile-banner">
+          <div>
+            <span class="mode-badge-label">Đang sử dụng:</span>
+            <strong class="mode-badge-name">${esc(currentUi.name || 'Tiêu chuẩn')}</strong>
+          </div>
+          ${resolvedPreview.is_auto ? `
+            <div class="ui-profile-auto-hint">
+              <span>Đề xuất theo Chế độ kinh doanh: <strong>${esc(resolvedPreview.recommended_name)}</strong></span>
+            </div>
+          ` : ''}
+          ${!isCurrent ? `<button type="button" class="ghost-btn btn-sm" id="btnRestoreCurrentUi">Chọn lại kiểu hiện tại</button>` : ''}
+        </div>
+
+        <div class="mode-section-title">Chọn kiểu giao diện</div>
+        <div class="mode-grid ui-profile-grid">
+          ${options.map(opt => `
+            <div class="mode-card ui-profile-card ${opt.id === selectedId ? 'active selected' : ''}" data-ui-id="${opt.id}" data-profile-id="${opt.id}">
+              <div class="mode-card-header">
+                <span class="mode-card-icon">${icon(opt.icon || 'layout-grid')}</span>
+                <span class="mode-card-name">${esc(opt.name)}</span>
+                ${opt.id === currentUi.id ? '<span class="mode-pill-current">Đang dùng</span>' : ''}
+              </div>
+              <div class="mode-card-desc">${esc(opt.desc)}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="ui-profile-preview-section">
+          <div class="mode-section-title">Xem trước kiểu giao diện: <strong>${esc(resolvedPreview.name)}</strong> ${resolvedPreview.is_auto ? `(Hiển thị: ${esc(resolvedPreview.effective_name)})` : ''}</div>
+          <div class="ui-preview-box ui-profile-${effId}">
+            <div class="ui-preview-subhead">Mẫu Thao tác nhanh</div>
+            <div class="ui-preview-quick-grid ui-profile-${effId}">
+              <div class="preview-quick-tile preview-hero">
+                <span class="qt-ico">${icon('shopping-cart')}</span>
+                <strong>Bán hàng</strong>
+              </div>
+              <div class="preview-quick-tile">
+                <span class="qt-ico">${icon('package-plus')}</span>
+                <strong>Nhập kho</strong>
+                ${resolvedPreview.show_secondary_text ? '<small>Thêm hàng</small>' : ''}
+              </div>
+              <div class="preview-quick-tile">
+                <span class="qt-ico">${icon('clipboard-check')}</span>
+                <strong>Kiểm kho</strong>
+                ${resolvedPreview.show_secondary_text ? '<small>Xem tồn</small>' : ''}
+              </div>
+            </div>
+
+            <div class="ui-preview-subhead" style="margin-top:12px">Mẫu Danh mục sản phẩm</div>
+            <div class="ui-preview-product-card ui-profile-${effId}">
+              <div class="preview-product-photo size-${resolvedPreview.product_image_size}">
+                ${icon('package-search')}
+              </div>
+              <div class="preview-product-info">
+                <strong>Cà phê Robusta Đắk Lắk</strong>
+                <p><span>Đồ uống</span> · <span>SKU: CF-ROB-01</span></p>
+                <b>120.000 ₫</b>
+              </div>
+              ${effId === 'fast' ? `<button class="preview-fast-add">+ Thêm</button>` : `<div class="preview-badge">Còn hàng</div>`}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function updateView(root){
+    const bodyEl = $('.modal-body', root);
+    if(bodyEl) bodyEl.innerHTML = renderModalBody();
+    bindEvents(root);
+  }
+
+  function bindEvents(root){
+    const isCurrent = (selectedId === currentUi.id);
+    const submitBtn = $('#btnApplyUiProfile', root) || $('#modalSubmitUiProfile', root);
+    if(submitBtn){
+      submitBtn.disabled = isCurrent;
+      submitBtn.classList.toggle('disabled', isCurrent);
+    }
+
+    $$('.ui-profile-card', root).forEach(card => {
+      card.onclick = () => {
+        const uiId = card.dataset.uiId || card.dataset.profileId;
+        if(uiId && uiId !== selectedId){
+          selectedId = uiId;
+          updateView(root);
+        }
+      };
+    });
+
+    const restoreBtn = $('#btnRestoreCurrentUi', root);
+    if(restoreBtn){
+      restoreBtn.onclick = () => {
+        selectedId = currentUi.id || 'standard';
+        updateView(root);
+      };
+    }
+  }
+
+  openModal({
+    title: 'Kiểu giao diện',
+    sub: 'Tùy chỉnh cách QBiz hiển thị phù hợp thói quen thao tác.',
+    fullScreen: true,
+    hideSubmit: true,
+    footer: `
+      <button class="secondary-btn" data-close>Đóng</button>
+      <button class="primary-btn" id="btnApplyUiProfile">Áp dụng</button>
+    `,
+    body: renderModalBody()
+  });
+
+  const root = $('#modalRoot');
+  bindEvents(root);
+
+  const applyBtn = $('#btnApplyUiProfile', root) || $('#modalSubmitUiProfile', root);
+  if(applyBtn){
+    applyBtn.onclick = async () => {
+      const isCurrent = (selectedId === currentUi.id);
+      if (isCurrent) return;
+
+      try {
+        await uiProfileModule.setUiProfile(selectedId);
+        state.uiProfile = uiProfileModule.resolveUiProfile(selectedId, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id);
+        if($('#modalRoot')) $('#modalRoot').innerHTML = '';
+        render();
+        toast('Đã áp dụng kiểu giao diện.', 'ok');
+      } catch (err) {
+        console.error('Lỗi khi áp dụng kiểu giao diện:', err);
+        toast('Không thể áp dụng kiểu giao diện: ' + (err.message || err), 'error');
+      }
+    };
+  }
 }
 
 async function openSalePreferences(){
@@ -2354,6 +2505,7 @@ document.addEventListener('click', async e=>{
   if(action==='device-center') return openDeviceCenter();
   if(action==='business-profile') return openBusinessProfile();
   if(action==='business-mode-selector') return openBusinessModeModal();
+  if(action==='ui-profile-selector') return openUiProfileModal();
   if(action==='sale-preferences') return openSalePreferences();
   if(action==='connections-settings') return openConnectionSettings();
   if(action==='data-settings') return openDataSettings();
@@ -2456,9 +2608,11 @@ async function boot(){
   state.data=await snapshot();
   await businessProfileModule.initBusinessProfile(state.data?.settings);
   state.businessProfile = businessProfileModule.getBusinessProfile();
+  await uiProfileModule.initUiProfile(state.data?.settings);
+  state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, state.businessProfile?.profile_id);
   history.replaceState(historyState(),'');render();
   initAiUI(state);
-  window.__qbiz_app__ = { state, navigate, render, openQuick, openProduct, openOrderDetail, openTransaction, refresh, closeModal: () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; updateContextAndChips(); }, ai: aiModule, businessProfile: businessProfileModule };
+  window.__qbiz_app__ = { state, navigate, render, openQuick, openProduct, openOrderDetail, openTransaction, refresh, closeModal: () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; updateContextAndChips(); }, ai: aiModule, businessProfile: businessProfileModule, uiProfile: uiProfileModule };
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
   const params=new URLSearchParams(location.search);
   const action=params.get('action');

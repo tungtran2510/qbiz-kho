@@ -1921,3 +1921,316 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   font-size: 13px;
   line-height: 1;
 }
+
+/* ==========================================================================
+   UI Profile / Kiểu Giao Diện (Phase 3A)
+   ========================================================================== */
+
+/* Settings Modal: UI Profile */
+.ui-profile-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0 16px 0;
+}
+
+.ui-profile-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ui-profile-auto-hint {
+  font-size: 12.5px;
+  color: #0369a1;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: var(--radius-sm, 6px);
+  padding: 5px 10px;
+  width: 100%;
+}
+
+.ui-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.ui-profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: var(--bg-card, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.ui-profile-card:hover {
+  border-color: var(--primary-light, #93c5fd);
+}
+
+.ui-profile-card.active {
+  border-color: var(--primary, #0284c7);
+  background: #f0f9ff;
+  box-shadow: 0 0 0 1px var(--primary, #0284c7);
+}
+
+.ui-profile-preview-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.ui-preview-box {
+  background: var(--bg-card, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ui-preview-subhead {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, #64748b);
+}
+
+.ui-preview-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.preview-quick-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  min-height: 60px;
+}
+
+.preview-quick-tile strong {
+  font-size: 12px;
+  color: #0f172a;
+}
+
+.preview-quick-tile small {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.preview-quick-tile .qt-ico {
+  display: grid;
+  place-items: center;
+  color: #0284c7;
+}
+
+.preview-quick-tile.preview-hero {
+  border-color: #93c5fd;
+  background: #f0f7ff;
+}
+
+.ui-preview-product-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.preview-product-photo {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #e2e8f0;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.preview-product-photo.size-large {
+  width: 56px;
+  height: 56px;
+}
+
+.preview-product-photo.size-small {
+  width: 34px;
+  height: 34px;
+}
+
+.preview-product-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preview-product-info strong {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.preview-product-info p {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+.preview-product-info b {
+  font-size: 12px;
+  color: #0284c7;
+}
+
+.preview-badge {
+  font-size: 11px;
+  color: #166534;
+  background: #dcfce7;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.preview-fast-add {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #0284c7;
+  border: 0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Presentation Area A: Dashboard Quick Actions */
+.dashboard-quick-grid.ui-profile-compact {
+  gap: 6px;
+}
+.dashboard-quick-grid.ui-profile-compact .quick-tile {
+  padding: 8px 6px;
+  min-height: 64px;
+}
+.dashboard-quick-grid.ui-profile-compact .quick-tile strong {
+  font-size: 13px;
+}
+
+.dashboard-quick-grid.ui-profile-fast .quick-tile {
+  border-width: 1.5px;
+  border-color: #93c5fd;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.08);
+}
+.dashboard-quick-grid.ui-profile-fast .quick-hero-main {
+  background: #f0f7ff;
+}
+.dashboard-quick-grid.ui-profile-fast .quick-tile strong {
+  font-weight: 800;
+}
+
+.dashboard-quick-grid.ui-profile-visual {
+  gap: 10px;
+}
+.dashboard-quick-grid.ui-profile-visual .quick-tile .qt-ico {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+/* Presentation Area B: Catalog (Hàng hóa / Dịch vụ) */
+.goods-list.ui-profile-compact .goods-row {
+  padding: 6px 10px;
+  min-height: 44px;
+}
+.product-grid.ui-profile-compact {
+  gap: 8px;
+}
+.product-grid.ui-profile-compact .product-card {
+  padding: 8px;
+  gap: 6px;
+}
+.product-grid.ui-profile-compact .pc-cover {
+  height: 90px;
+}
+.product-grid.ui-profile-compact .pc-body h3 {
+  font-size: 13px;
+}
+
+.product-grid.ui-profile-visual .product-card {
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  border-color: #cbd5e1;
+}
+.product-grid.ui-profile-visual .pc-cover {
+  height: 150px;
+}
+.product-grid.ui-profile-visual .pc-body h3 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.product-grid.ui-profile-fast .product-card {
+  border-color: #93c5fd;
+}
+.product-grid.ui-profile-fast .product-card:active {
+  transform: scale(0.98);
+}
+
+/* Presentation Area C: POS (Bán hàng) */
+.pos-grid.ui-profile-compact {
+  gap: 6px;
+}
+.pos-grid.ui-profile-compact .pos-product {
+  padding: 6px;
+}
+.pos-grid.ui-profile-compact .pos-product-image {
+  height: 38px;
+}
+.pos-grid.ui-profile-compact .pos-product strong {
+  font-size: 12px;
+}
+
+.pos-grid.ui-profile-visual .pos-product-image {
+  height: 64px;
+  border-radius: 10px;
+}
+.pos-grid.ui-profile-visual .pos-product {
+  padding: 10px;
+  border-radius: 12px;
+}
+.pos-grid.ui-profile-visual .pos-product strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pos-grid.ui-profile-fast .pos-add {
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 18px;
+  font-weight: 800;
+  background: var(--primary, #0284c7);
+  color: #ffffff;
+  border-radius: 8px;
+}
+.pos-grid.ui-profile-fast .pos-inline-qty button {
+  min-width: 32px;
+  min-height: 32px;
+  font-weight: 800;
+}
