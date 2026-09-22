@@ -5,6 +5,7 @@
 
 import { executeTool } from './tools.js';
 import { queryMemory, proposeMemorySave } from './memory.js';
+import { resolveProduct } from './resolver.js';
 
 function norm(str) {
   return String(str || '')
@@ -59,19 +60,23 @@ export const SKILL_REGISTRY = {
       let targetId = productId || context?.current_product_id;
 
       if (!targetId && query) {
-        const search = executeTool('search_products', { query }, state, context);
-        if (search.count === 1) {
-          targetId = search.candidates[0].id;
-        } else if (search.count > 1) {
+        const resolved = resolveProduct(query, state?.data?.products || [], context);
+        if (resolved.isExact || (resolved.candidates.length === 1 && !resolved.isAmbiguous)) {
+          targetId = resolved.bestMatch ? resolved.bestMatch.id : resolved.candidates[0].id;
+        } else if (resolved.isAmbiguous || resolved.candidates.length > 1) {
           return {
-            text: `Có ${search.count} sản phẩm khớp với "${query}". Vui lòng chọn sản phẩm cần xem tồn:`,
-            candidates: search.candidates,
+            text: `Có ${resolved.candidates.length} sản phẩm khớp với "${query}". Vui lòng chọn sản phẩm cần xem tồn:`,
+            candidates: resolved.candidates,
             isAmbiguous: true,
+            status: 'NEEDS_CLARIFICATION',
             tier: 0,
           };
         } else {
           return {
             text: `Không tìm thấy sản phẩm "${query}" trong kho.`,
+            isAmbiguous: true,
+            status: 'NEEDS_CLARIFICATION',
+            candidates: (state?.data?.products || []).slice(0, 5),
             tier: 0,
           };
         }
@@ -80,6 +85,9 @@ export const SKILL_REGISTRY = {
       if (!targetId) {
         return {
           text: 'Vui lòng mở một sản phẩm hoặc cung cấp tên/mã sản phẩm cần kiểm tra tồn kho.',
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+          candidates: (state?.data?.products || []).slice(0, 5),
           tier: 0,
         };
       }

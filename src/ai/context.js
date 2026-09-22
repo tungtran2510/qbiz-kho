@@ -279,6 +279,13 @@ export function revalidateContext(envelope, currentState) {
     if (!prod) {
       return { valid: false, reason: 'Sản phẩm đang xem không còn tồn tại.' };
     }
+    // Check entity version mismatch if tracked
+    if (envelope.entity_version !== undefined && envelope.entity_version !== null) {
+      const curVersion = prod.version || prod.updated_at || 1;
+      if (curVersion !== envelope.entity_version) {
+        return { valid: false, reason: 'Phiên bản thực thể đã thay đổi (entity_version mismatch).' };
+      }
+    }
   }
 
   // Check if bound order still exists

@@ -11,6 +11,7 @@ import { setProviderConfig, PROVIDER_MODES } from '../src/ai/providers.js';
 import { detectPromptInjection, hasCapability, PERMISSIONS } from '../src/ai/policy.js';
 import { queryMemory } from '../src/ai/memory.js';
 import { clearPendingIntent, setPendingIntent } from '../src/ai/context.js';
+import { confirmProposal, createProposal } from '../src/ai/proposals.js';
 
 export async function runStressSuite(options = {}) {
   const startTime = Date.now();
@@ -27,35 +28,49 @@ export async function runStressSuite(options = {}) {
   // unless case specifies a cloud simulation
   setProviderConfig({ mode: PROVIDER_MODES.DETERMINISTIC });
 
-  const state = window.__qbiz_app__?.state || {
+  const baseFixture = {
+    products: [
+      { id: 'p_135', name: 'Ghế sáng chế 135', sku: 'SKU-G135', barcode: '8931234567890', price: 150000, cost: 95000, min_stock: 5 },
+      { id: 'p_lavie', name: 'Nước khoáng Lavie 500ml', sku: 'SKU-LAVIE', barcode: '893500123456', price: 10000, cost: 5000, min_stock: 10 },
+      { id: 'p_lavie_1500', name: 'Nước khoáng Lavie 1500ml', sku: 'SKU-LAVIE15', barcode: '893500123457', price: 18000, cost: 9000, min_stock: 10 },
+      { id: 'p_g90t', name: 'Ghế 90T Trắng', sku: 'SKU-G90T', price: 90000 },
+      { id: 'p_g90d', name: 'Ghế 90D Đen', sku: 'SKU-G90D', price: 90000 }
+    ],
+    warehouses: [
+      { id: 'wh_center', name: 'Kho Trung tâm', is_default: true },
+      { id: 'wh_hadong', name: 'Kho Hà Đông', is_default: false }
+    ],
+    customers: [
+      { id: 'cust_lan1', name: 'Nguyễn Thị Lan', phone: '0912345678', code: 'KH001' },
+      { id: 'cust_lan2', name: 'Trần Thị Lan', phone: '0987654321', code: 'KH002' },
+      { id: 'cust_nam1', name: 'Nguyễn Văn Nam', phone: '0905112233', address: 'Cầu Giấy' },
+      { id: 'cust_nam2', name: 'Nguyễn Văn Nam', phone: '0933445566', address: 'Hoàn Kiếm' }
+    ],
+    orders: [
+      { id: 'ord_1', code: 'DH-001', customer_id: 'cust_lan1', status: 'pending', payment_status: 'unpaid', lines: [{ productId: 'p_135', qty: 2 }] },
+      { id: 'ord_2', code: 'DH-002', status: 'shipped', payment_status: 'paid' }
+    ],
+    suppliers: [
+      { id: 'sup_hb1', name: 'NCC Hòa Bình', code: 'NCC001' },
+      { id: 'sup_hb2', name: 'Hòa Bình Food', code: 'NCC002' }
+    ],
+    levels: [
+      { productId: 'p_135', warehouseId: 'wh_center', onHand: 15, reserved: 0 },
+      { productId: 'p_lavie', warehouseId: 'wh_center', onHand: 50, reserved: 0 }
+    ]
+  };
+
+  const runtimeState = window.__qbiz_app__?.state;
+  const state = {
     data: {
-      products: [
-        { id: 'p_135', name: 'Ghế sáng chế 135', sku: 'SKU-G135', barcode: '8931234567890', price: 150000, cost: 95000, min_stock: 5 },
-        { id: 'p_lavie', name: 'Nước khoáng Lavie 500ml', sku: 'SKU-LAVIE', barcode: '893500123456', price: 10000, cost: 5000, min_stock: 10 },
-        { id: 'p_g90t', name: 'Ghế 90T Trắng', sku: 'SKU-G90T', price: 90000 },
-        { id: 'p_g90d', name: 'Ghế 90D Đen', sku: 'SKU-G90D', price: 90000 }
-      ],
-      warehouses: [
-        { id: 'wh_center', name: 'Kho Trung tâm', is_default: true },
-        { id: 'wh_hadong', name: 'Kho Hà Đông', is_default: false },
-        { id: 'wh_hadong2', name: 'Kho Hà Đông 2', is_default: false }
-      ],
-      customers: [
-        { id: 'cust_lan1', name: 'Nguyễn Thị Lan', phone: '0912345678', code: 'KH001' },
-        { id: 'cust_lan2', name: 'Trần Thị Lan', phone: '0987654321', code: 'KH002' },
-        { id: 'cust_nam1', name: 'Nguyễn Văn Nam', phone: '0905112233', address: 'Cầu Giấy' },
-        { id: 'cust_nam2', name: 'Nguyễn Văn Nam', phone: '0933445566', address: 'Hoàn Kiếm' }
-      ],
-      orders: [
-        { id: 'ord_1', code: 'DH-001', customer_id: 'cust_lan1', status: 'pending', payment_status: 'unpaid', lines: [{ productId: 'p_135', qty: 2 }] },
-        { id: 'ord_2', code: 'DH-002', status: 'shipped', payment_status: 'paid' }
-      ],
-      suppliers: [
-        { id: 'sup_hb1', name: 'NCC Hòa Bình', code: 'NCC001' },
-        { id: 'sup_hb2', name: 'Hòa Bình Food', code: 'NCC002' }
-      ]
+      products: [...baseFixture.products, ...(runtimeState?.data?.products || []).filter(p => !baseFixture.products.some(bp => bp.id === p.id))],
+      warehouses: [...baseFixture.warehouses, ...(runtimeState?.data?.warehouses || []).filter(w => !baseFixture.warehouses.some(bw => bw.id === w.id))],
+      customers: [...baseFixture.customers, ...(runtimeState?.data?.customers || []).filter(c => !baseFixture.customers.some(bc => bc.id === c.id))],
+      orders: [...baseFixture.orders, ...(runtimeState?.data?.orders || []).filter(o => !baseFixture.orders.some(bo => bo.id === o.id))],
+      suppliers: [...baseFixture.suppliers, ...(runtimeState?.data?.suppliers || []).filter(s => !baseFixture.suppliers.some(bs => bs.id === s.id))],
+      levels: [...baseFixture.levels, ...(runtimeState?.data?.levels || []).filter(l => !baseFixture.levels.some(bl => bl.productId === l.productId && bl.warehouseId === l.warehouseId))]
     },
-    saleCart: []
+    saleCart: runtimeState?.saleCart || []
   };
 
   let passed = 0;
@@ -89,8 +104,55 @@ export async function runStressSuite(options = {}) {
       const rawPrompt = inputIsObj ? (c.input.utterance || c.input.initial_prompt || '') : String(c.input || '');
       const testContext = { ...(c.context || {}) };
 
-      // Multi-turn sequence support
-      if (c.sub_category === 'correction_sequence' && inputIsObj && c.input.follow_up) {
+      // Stale Proposal Invariant Check
+      if (c.sub_category === 'stale_proposal') {
+        const mockProp = createProposal({
+          intent: c.context?.domain === 'receipt' ? 'create_receipt_proposal' : (c.context?.domain === 'stocktake' ? 'create_stocktake_proposal' : 'create_transfer_proposal'),
+          parameters: {
+            productId: 'p_135',
+            qty: 10,
+            warehouseId: 'wh_center',
+            fromWarehouseId: 'wh_center',
+            toWarehouseId: 'wh_hadong',
+            lines: [{ productId: 'p_135', qty: 10 }]
+          },
+          inventorySnapshot: {
+            productId: 'p_135',
+            warehouseId: 'wh_center',
+            onHand: 15,
+            lines: [{ productId: 'p_135', onHand: 15 }]
+          },
+          contextSnapshot: {
+            shop_id: 'shop_default',
+            warehouse_id: 'wh_center',
+            current_product_id: 'p_135',
+            context_version: 1
+          }
+        });
+
+        // Apply the stale condition
+        const staleState = JSON.parse(JSON.stringify(state));
+        if (c.context?.stale_reason === 'product_deleted') {
+          staleState.data.products = (staleState.data.products || []).filter(p => p.id !== 'p_135');
+        } else if (c.context?.stale_reason === 'stock_exhausted' || c.context?.stale_reason === 'insufficient_stock') {
+          staleState.data.levels = [{ product_id: 'p_135', warehouse_id: 'wh_center', on_hand: 0 }];
+        } else if (c.context?.stale_reason === 'proposal_expired') {
+          mockProp.expires_at = new Date(Date.now() - 60000).toISOString();
+        } else if (c.context?.stale_reason === 'version_mismatch') {
+          mockProp.context_snapshot.entity_version = 1;
+          const prod = (staleState.data.products || []).find(p => p.id === 'p_135');
+          if (prod) prod.version = 2;
+        } else {
+          staleState.data.levels = [{ product_id: 'p_135', warehouse_id: 'wh_center', on_hand: 2 }];
+        }
+
+        const confirmRes = confirmProposal(mockProp, staleState, { id: 'test_actor', role: 'owner' });
+        if (!confirmRes.success) {
+          actualOutput = { isBlocked: true, isStale: true, text: 'Đã chặn thực thi do dữ liệu đã thay đổi (stale)', message: confirmRes.message };
+        } else {
+          actualOutput = { isBlocked: false, text: 'Đã xác nhận' };
+        }
+      } else if (c.sub_category === 'correction_sequence' && inputIsObj && c.input.follow_up) {
         // Run first turn
         await routeIntent(c.input.initial_prompt, testContext, state);
         // Run second turn

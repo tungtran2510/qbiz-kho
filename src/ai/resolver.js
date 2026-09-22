@@ -74,6 +74,8 @@ function formatResult(candidates) {
  */
 export function resolveProduct(query, products, context = {}) {
   const normQuery = norm(query);
+  const cleanQuery = normQuery.replace(/^(cai|chiec|mon|san pham|sp|hang|bo|loai)\s+/i, '').trim() || normQuery;
+  const tokens = cleanQuery.split(/\s+/).filter(w => w.length > 0);
   const candidates = [];
 
   for (const p of products) {
@@ -86,17 +88,20 @@ export function resolveProduct(query, products, context = {}) {
     const barcode = norm(p.barcode || '');
     const name = norm(p.name || '');
 
-    if (normQuery && (sku === normQuery || barcode === normQuery)) {
+    if (normQuery && (sku === normQuery || barcode === normQuery || sku === cleanQuery || barcode === cleanQuery)) {
       score = SCORE.EXACT_CODE;
       matchType = 'code';
     } else {
-      const fScore = fuzzyScore(normQuery, name);
+      const fScore = Math.max(fuzzyScore(normQuery, name), fuzzyScore(cleanQuery, name));
       if (fScore === 100) {
         score = SCORE.EXACT_NAME;
         matchType = 'name';
       } else if (fScore > 0) {
         score = fScore;
         matchType = fScore >= SCORE.CONTAINS ? 'contains' : 'fuzzy';
+      } else if (tokens.length >= 2 && tokens.every(tk => name.includes(tk))) {
+        score = SCORE.CONTAINS;
+        matchType = 'contains';
       }
     }
 

@@ -81,10 +81,51 @@ export const MULTIPLIERS = {
   chuc: 10, tram: 100, nghin: 1000, ngan: 1000, k: 1000, trieu: 1000000, tr: 1000000
 };
 
+export const SPELLED_COMPOUNDS = [
+  { pattern: /\b(?:nua\s+ta)\b/i, value: 6, raw: 'nua ta' },
+  { pattern: /\b(?:mot\s+ta)\b/i, value: 12, raw: 'mot ta' },
+  { pattern: /\b(?:hai\s+ta)\b/i, value: 24, raw: 'hai ta' },
+  { pattern: /\bta\b/i, value: 12, raw: 'ta' },
+  { pattern: /\b(?:mot\s+chuc)\b/i, value: 10, raw: 'mot chuc' },
+  { pattern: /\b(?:hai\s+chuc)\b/i, value: 20, raw: 'hai chuc' },
+  { pattern: /\b(?:ba\s+chuc)\b/i, value: 30, raw: 'ba chuc' },
+  { pattern: /\b(?:bon\s+chuc)\b/i, value: 40, raw: 'bon chuc' },
+  { pattern: /\b(?:nam\s+chuc)\b/i, value: 50, raw: 'nam chuc' },
+  { pattern: /\b(?:sau\s+chuc)\b/i, value: 60, raw: 'sau chuc' },
+  { pattern: /\b(?:bay\s+chuc)\b/i, value: 70, raw: 'bay chuc' },
+  { pattern: /\b(?:tam\s+chuc)\b/i, value: 80, raw: 'tam chuc' },
+  { pattern: /\b(?:chin\s+chuc)\b/i, value: 90, raw: 'chin chuc' },
+  { pattern: /\bchuc\b/i, value: 10, raw: 'chuc' },
+  { pattern: /\b(?:hai\s+lam)\b/i, value: 25, raw: 'hai lam' },
+  { pattern: /\b(?:ba\s+lam)\b/i, value: 35, raw: 'ba lam' },
+  { pattern: /\b(?:bon\s+lam)\b/i, value: 45, raw: 'bon lam' },
+  { pattern: /\b(?:nam\s+lam)\b/i, value: 55, raw: 'nam lam' },
+  { pattern: /\b(?:muoi\s+mot)\b/i, value: 11, raw: 'muoi mot' },
+  { pattern: /\b(?:muoi\s+hai)\b/i, value: 12, raw: 'muoi hai' },
+  { pattern: /\b(?:muoi\s+ba)\b/i, value: 13, raw: 'muoi ba' },
+  { pattern: /\b(?:muoi\s+(?:bon|tu))\b/i, value: 14, raw: 'muoi bon' },
+  { pattern: /\b(?:muoi\s+(?:lam|nam))\b/i, value: 15, raw: 'muoi lam' },
+  { pattern: /\b(?:muoi\s+sau)\b/i, value: 16, raw: 'muoi sau' },
+  { pattern: /\b(?:muoi\s+bay)\b/i, value: 17, raw: 'muoi bay' },
+  { pattern: /\b(?:muoi\s+tam)\b/i, value: 18, raw: 'muoi tam' },
+  { pattern: /\b(?:muoi\s+chin)\b/i, value: 19, raw: 'muoi chin' },
+  { pattern: /\b(?:hai\s+muoi)\b/i, value: 20, raw: 'hai muoi' },
+  { pattern: /\b(?:ba\s+muoi)\b/i, value: 30, raw: 'ba muoi' },
+  { pattern: /\b(?:bon\s+muoi)\b/i, value: 40, raw: 'bon muoi' },
+  { pattern: /\b(?:nam\s+muoi)\b/i, value: 50, raw: 'nam muoi' },
+];
+
 export function parseVietnameseNumber(text) {
   text = norm(text);
   if (!text) return null;
   
+  // Check spelled compound numbers first
+  for (const comp of SPELLED_COMPOUNDS) {
+    if (comp.pattern.test(text)) {
+      return comp.value;
+    }
+  }
+
   // Try direct parsing first
   let directNum = parseFloat(text);
   if (!isNaN(directNum) && text === directNum.toString()) {
@@ -270,19 +311,38 @@ export function parseTimeExpression(normalizedText) {
 
 export function extractQuantityAndUnit(normalizedText) {
   if (!normalizedText) return null;
+  const cleanText = normalizedText
+    .replace(/[.,!?:;]+$/g, '')
+    .replace(/\s*(?:ho|giup)\s+(?:toi|minh|em|anh|chi)\s*/g, ' ')
+    .trim();
   
-  // Extract number
-  let numMatch = normalizedText.match(/(?:\d+(?:\.\d+)?(?:k|tr)?|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)/i);
-  if (!numMatch) return null;
-  
-  let numStr = numMatch[0];
-  let qty = parseVietnameseNumber(numStr);
-  
-  if (qty === null) return null;
+  let qty = null;
+  let numStr = null;
+
+  // 1. Try compound spelled numbers first (e.g. hai chuc, mot ta, muoi tam, hai lam)
+  for (const comp of SPELLED_COMPOUNDS) {
+    const match = cleanText.match(comp.pattern);
+    if (match) {
+      qty = comp.value;
+      numStr = match[0];
+      break;
+    }
+  }
+
+  // 2. Fall back to standard numeric / single word match
+  if (qty === null) {
+    // Strip phone numbers so they don't get misparsed as huge quantities
+    const textWithoutPhone = cleanText.replace(/\b0\d{8,10}\b/g, ' ');
+    const numMatch = textWithoutPhone.match(/(?:\d+(?:\.\d+)?(?:k|tr)?|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi)/i);
+    if (!numMatch) return null;
+    numStr = numMatch[0];
+    qty = parseVietnameseNumber(numStr);
+    if (qty === null) return null;
+  }
   
   // Find unit
   let unitFound = null;
-  let textAfterNum = normalizedText.substring(normalizedText.indexOf(numStr) + numStr.length);
+  let textAfterNum = cleanText.substring(cleanText.indexOf(numStr) + numStr.length);
   
   // Try to find a unit right after the number
   for (let unit of UNIT_DICTIONARY) {
