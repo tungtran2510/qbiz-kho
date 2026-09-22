@@ -23,6 +23,7 @@ export const PERMISSIONS = {
   VIEW_SALES: 'VIEW_SALES',
   RECEIVE_STOCK: 'RECEIVE_STOCK',
   TRANSFER_STOCK: 'TRANSFER_STOCK',
+  STOCKTAKE_STOCK: 'STOCKTAKE_STOCK',
   MANAGE_ORDERS: 'MANAGE_ORDERS',
   MANAGE_SETTINGS: 'MANAGE_SETTINGS',
 };
@@ -37,6 +38,7 @@ export const ROLES = {
       PERMISSIONS.VIEW_SALES,
       PERMISSIONS.RECEIVE_STOCK,
       PERMISSIONS.TRANSFER_STOCK,
+      PERMISSIONS.STOCKTAKE_STOCK,
       PERMISSIONS.MANAGE_ORDERS,
       PERMISSIONS.MANAGE_SETTINGS,
     ]),
@@ -60,6 +62,7 @@ export const ROLES = {
       PERMISSIONS.READ_STOCK,
       PERMISSIONS.RECEIVE_STOCK,
       PERMISSIONS.TRANSFER_STOCK,
+      PERMISSIONS.STOCKTAKE_STOCK,
     ]),
     // Can be restricted to specific warehouses
     warehouse_scope: ['wh_center'],
@@ -82,9 +85,13 @@ export function hasCapability(actor, permission) {
 export const ALLOWED_WRITE_ACTIONS = new Set([
   'create_receipt_proposal',
   'create_transfer_proposal',
+  'create_stocktake_proposal',
   'create_cart_draft',
   'RECEIVE_STOCK',
   'TRANSFER_STOCK',
+  'STOCKTAKE_STOCK',
+  'propose_memory_save',
+  'saveMemory',
 ]);
 
 const HIGH_RISK_ACTIONS = new Set([
@@ -233,6 +240,15 @@ export function computeAllowedTools(actor = {}, context = {}) {
   }
   if (roleDef.permissions.has(PERMISSIONS.TRANSFER_STOCK)) {
     tools.add('create_transfer_proposal');
+  }
+  if (roleDef.permissions.has(PERMISSIONS.STOCKTAKE_STOCK)) {
+    tools.add('create_stocktake_proposal');
+  }
+
+  // Memory & Settings management
+  if (roleDef.permissions.has(PERMISSIONS.MANAGE_SETTINGS) || roleKey === 'OWNER') {
+    tools.add('propose_memory_save');
+    tools.add('saveMemory');
   }
 
   return tools;

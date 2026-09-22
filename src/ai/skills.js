@@ -242,8 +242,12 @@ export const SKILL_REGISTRY = {
       }
 
       const proposal = executeTool('create_cart_draft', { items }, state, context);
+      const { executeProposal, confirmProposal } = await import('./proposals.js');
+      const actor = context?.actor_role ? { id: context.actor_id || 'cashier', role: context.actor_role } : { id: 'cashier', role: 'owner' };
+      confirmProposal(proposal, state, actor);
+      await executeProposal(proposal, state, `cart_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, actor);
       return {
-        text: `Đã tạo đề xuất đưa sản phẩm vào giỏ hàng.`,
+        text: `Đã cập nhật giỏ hàng POS theo đề xuất.`,
         proposal,
         tier: 0,
       };
@@ -306,16 +310,19 @@ export const SKILL_REGISTRY = {
     id: 'stocktake-proposal',
     name: 'Đề xuất kiểm kho',
     description: 'Tạo Structured Proposal để kiểm kê và đối soát tồn kho',
-    async execute({ warehouseId, lines = [], reason }, context, state) {
-      const targetWh = warehouseId || context?.warehouse_id;
+    async execute({ warehouseId, productId, counted, lines = [], reason }, context, state) {
+      const targetProdId = productId || context?.current_product_id;
+      const targetWh = warehouseId || context?.warehouse_id || (state?.data?.warehouses || [])[0]?.id;
       const proposal = executeTool('create_stocktake_proposal', {
         warehouseId: targetWh,
+        productId: targetProdId,
+        counted: counted !== undefined ? Number(counted) : undefined,
         lines,
         reason,
       }, state, context);
 
       return {
-        text: `Đã tạo đề xuất kiểm kho: **${proposal.human_summary}**.`,
+        text: `Đã tạo đề xuất kiểm kho: **${proposal.human_summary}**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*`,
         proposal,
         tier: 0,
       };
@@ -355,6 +362,21 @@ export const SKILL_REGISTRY = {
       return {
         text: `Trí nhớ cửa hàng đã ghi nhận:\n${formatted}`,
         entries: records,
+        tier: 0,
+      };
+    },
+  },
+
+  // 10b. memory-save-proposal
+  'memory-save-proposal': {
+    id: 'memory-save-proposal',
+    name: 'Đề xuất ghi nhớ',
+    description: 'Tạo đề xuất lưu thông tin/quy tắc vào QBiz Memory (yêu cầu người dùng duyệt, không tự ý lưu)',
+    async execute(params, context, state) {
+      const proposal = proposeMemorySave(params, context);
+      return {
+        text: `Đã tạo đề xuất ghi nhớ: **${proposal.human_summary}**.\n*(Chưa lưu vào hệ thống — vui lòng xác nhận để lưu)*`,
+        proposal,
         tier: 0,
       };
     },

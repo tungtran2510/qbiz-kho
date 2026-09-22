@@ -11,6 +11,7 @@ import { getProviderConfig, setProviderConfig, PROVIDER_MODES } from './provider
 import { executeAction, getSuggestedActions } from './registry.js';
 import { executeSkill } from './skills.js';
 import { levelFor } from '../engine.js';
+import { loadEntries, togglePinMemory, archiveMemory, deleteMemory, commitMemory, MEMORY_SCOPES } from './memory.js';
 
 let appStateRef = null;
 let currentEnvelope = null;
@@ -150,6 +151,7 @@ export function initAiUI(state) {
           </div>
           <div class="ai-head-actions">
             <button id="aiDevToggleBtn" class="ai-btn-sm ai-dev-btn" title="Xem thông số kỹ thuật (DEV Context Inspector)">DEV</button>
+            <button id="aiMemoryToggleBtn" class="ai-btn-sm" title="Quản lý Trí nhớ QBiz">🧠</button>
             <button id="aiSettingsToggleBtn" class="ai-btn-sm" title="Cấu hình Provider (Gemini / OpenAI)">⚙</button>
             <button id="aiCloseBtn" class="ai-close-btn" aria-label="Đóng trợ lý">×</button>
           </div>
@@ -184,6 +186,30 @@ export function initAiUI(state) {
               </label>
             </div>
             <button id="aiSaveProviderConfigBtn" class="primary-btn ai-btn-save">Lưu cấu hình phiên</button>
+          </div>
+        </div>
+
+        <!-- Collapsible QBiz Memory Drawer -->
+        <div id="aiMemoryDrawer" class="ai-provider-drawer" style="display:none; max-height:280px; overflow-y:auto;">
+          <div class="ai-drawer-head">
+            <b>Trí nhớ QBiz (Memory Foundation)</b>
+            <button id="aiCloseMemoryDrawer" class="ai-link-btn">Đóng</button>
+          </div>
+          <div class="ai-drawer-body">
+            <div id="aiMemoryItemsList"></div>
+            <div style="margin-top:10px; border-top:1px dashed #ccc; padding-top:8px;">
+              <small><b>Thêm ghi nhớ thủ công:</b></small>
+              <div style="display:flex; gap:4px; margin-top:4px;">
+                <select id="aiNewMemScope" style="width:100px; font-size:12px;">
+                  <option value="SHOP">Shop</option>
+                  <option value="PRODUCT">Sản phẩm</option>
+                  <option value="WAREHOUSE">Kho</option>
+                  <option value="SUPPLIER">NCC</option>
+                </select>
+                <input id="aiNewMemContent" type="text" placeholder="Nội dung ghi nhớ..." style="flex:1; font-size:12px;" />
+                <button id="aiAddMemBtn" class="primary-btn" style="padding:2px 8px; font-size:12px;">Lưu</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -513,6 +539,22 @@ function bindEvents() {
   document.getElementById('aiProviderModeSelect')?.addEventListener('change', updateProviderFormVisibility);
   document.getElementById('aiSaveProviderConfigBtn')?.addEventListener('click', saveProviderSettings);
 
+  const memBtn = document.getElementById('aiMemoryToggleBtn');
+  memBtn?.addEventListener('click', toggleMemoryDrawer);
+  document.getElementById('aiCloseMemoryDrawer')?.addEventListener('click', toggleMemoryDrawer);
+  document.getElementById('aiAddMemBtn')?.addEventListener('click', () => {
+    const scope = document.getElementById('aiNewMemScope')?.value || MEMORY_SCOPES.SHOP;
+    const content = document.getElementById('aiNewMemContent')?.value?.trim();
+    if (!content) return;
+    commitMemory({ scope, content, title: content.slice(0, 30) });
+    const contentInput = document.getElementById('aiNewMemContent');
+    if (contentInput) contentInput.value = '';
+    renderMemoryDrawer();
+    addAssistantMessage(`✓ Đã lưu vào Trí nhớ [${scope}]: "${content}".`);
+  });
+
+  window.addEventListener('qbiz:memory:changed', renderMemoryDrawer);
+
   const submitMessage = async () => {
     const text = input?.value?.trim();
     if (!text) return;
@@ -605,6 +647,59 @@ function saveProviderSettings() {
   toggleProviderDrawer();
   updateContextAndChips();
   addAssistantMessage(`Đã cập nhật chế độ Provider: **${mode}**.`);
+}
+
+function toggleMemoryDrawer() {
+  const drawer = document.getElementById('aiMemoryDrawer');
+  if (!drawer) return;
+  const isOpen = drawer.style.display !== 'none';
+  drawer.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    renderMemoryDrawer();
+  }
+}
+
+function renderMemoryDrawer() {
+  const list = document.getElementById('aiMemoryItemsList');
+  if (!list) return;
+  const entries = loadEntries();
+  if (!entries.length) {
+    list.innerHTML = '<div style="font-size:12px; color:#888; padding:8px 0;">Chưa có ghi nhớ nào được lưu.</div>';
+    return;
+  }
+  list.innerHTML = entries.map(e => `
+    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:6px; padding:6px 8px; margin-bottom:6px; font-size:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span><b style="color:#0284c7;">[${esc(e.scope)}]</b> ${e.pinned ? '📌' : ''} ${esc(e.title || 'Ghi nhớ')}</span>
+        <div style="display:flex; gap:4px;">
+          <button class="ai-link-btn" data-mem-pin="${esc(e.id)}" style="font-size:11px;">${e.pinned ? 'Bỏ ghim' : 'Ghim'}</button>
+          <button class="ai-link-btn" data-mem-archive="${esc(e.id)}" style="font-size:11px;">Lưu trữ</button>
+          <button class="ai-link-btn" data-mem-del="${esc(e.id)}" style="font-size:11px; color:#e11d48;">Xóa</button>
+        </div>
+      </div>
+      <div style="margin-top:2px; color:#334155;">${esc(e.content)}</div>
+      <div style="font-size:10px; color:#94a3b8; margin-top:2px;">Tạo: ${new Date(e.created_at).toLocaleDateString('vi-VN')}</div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-mem-pin]').forEach(b => {
+    b.onclick = () => {
+      togglePinMemory(b.dataset.memPin);
+      renderMemoryDrawer();
+    };
+  });
+  list.querySelectorAll('[data-mem-archive]').forEach(b => {
+    b.onclick = () => {
+      archiveMemory(b.dataset.memArchive);
+      renderMemoryDrawer();
+    };
+  });
+  list.querySelectorAll('[data-mem-del]').forEach(b => {
+    b.onclick = () => {
+      deleteMemory(b.dataset.memDel);
+      renderMemoryDrawer();
+    };
+  });
 }
 
 function getRouteLabel(route) {
@@ -1020,13 +1115,14 @@ function renderMessages() {
             </div>
             <div class="ai-prop-actions" id="propActions_${p.id}">
               ${p.status === PROPOSAL_STATUS.SUCCEEDED ? `
-                <div class="ai-prop-status-ok">✓ Đã thực thi thành công vào sổ kho (Succeeded & Reconciled)</div>
+                <div class="ai-prop-status-ok">✓ ${p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' : (p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' : 'Đã thực thi thành công vào sổ kho (Succeeded & Reconciled)')}</div>
+                ${p.intent !== 'propose_memory_save' && p.intent !== 'create_cart_draft' ? `
                 <div style="margin-top:8px;">
                   <button class="secondary-btn ai-btn-nav" data-action-id="open_warehouse">Xem tồn kho</button>
-                </div>
+                </div>` : ''}
               ` : p.status === PROPOSAL_STATUS.CONFIRMED ? `
                 <button class="primary-btn ai-btn-confirm" data-execute-proposal="${p.id}">Thực thi thao tác</button>
-                <button class="secondary-btn ai-btn-cancel" data-cancel-proposal="${p.id}">Hủy</button>
+                <button class="secondary-btn ai-btn-cancel" data-cancel-proposal="${p.id}">${p.intent === 'propose_memory_save' ? 'Không' : 'Hủy'}</button>
               ` : p.status === PROPOSAL_STATUS.FAILED ? `
                 <div class="ai-prop-status-cancel">⚠️ Thao tác không thể hoàn tất: ${esc(p.failure_reason || 'Lỗi thực thi')}</div>
               ` : p.status === PROPOSAL_STATUS.EXPIRED ? `
@@ -1034,8 +1130,8 @@ function renderMessages() {
               ` : p.status === PROPOSAL_STATUS.CANCELLED ? `
                 <div class="ai-prop-status-cancel">Đã hủy đề xuất.</div>
               ` : `
-                <button class="primary-btn ai-btn-confirm" data-confirm-proposal="${p.id}">Xác nhận đề xuất</button>
-                <button class="secondary-btn ai-btn-cancel" data-cancel-proposal="${p.id}">Hủy</button>
+                <button class="primary-btn ai-btn-confirm" data-confirm-proposal="${p.id}">${p.intent === 'propose_memory_save' ? 'Lưu' : 'Xác nhận'}</button>
+                <button class="secondary-btn ai-btn-cancel" data-cancel-proposal="${p.id}">${p.intent === 'propose_memory_save' ? 'Không' : 'Hủy'}</button>
               `}
             </div>
           </div>
@@ -1211,20 +1307,37 @@ function renderMessages() {
 
   // Bind proposal confirm/cancel/execute
   container.querySelectorAll('[data-confirm-proposal]').forEach(btn => {
-    btn.onclick = () => {
-      if (!activeProposal) return;
-      const res = confirmProposal(activeProposal, appStateRef, getCurrentActor());
+    btn.onclick = async () => {
+      const propId = btn.dataset.confirmProposal;
+      const prop = (activeProposal && activeProposal.id === propId) ? activeProposal : (messageHistory.find(m => m.proposal?.id === propId)?.proposal || activeProposal);
+      if (!prop) return;
+      btn.disabled = true;
+      btn.textContent = 'Đang xử lý…';
+      const confirmRes = confirmProposal(prop, appStateRef, getCurrentActor());
+      if (!confirmRes.success) {
+        renderMessages();
+        addAssistantMessage(`⚠️ Xác nhận không thành công: ${confirmRes.message}`);
+        return;
+      }
+      // Safe Actions Execution: Immediately execute upon user confirmation
+      const execRes = await executeProposal(prop, appStateRef, null, getCurrentActor());
       renderMessages();
-      addAssistantMessage(res.message);
+      if (execRes.success) {
+        addAssistantMessage(`✓ ${execRes.message || 'Thao tác đã được thực thi và đối soát thành công.'}`);
+      } else {
+        addAssistantMessage(`⚠️ Thực thi thất bại: ${execRes.error}`);
+      }
     };
   });
 
   container.querySelectorAll('[data-execute-proposal]').forEach(btn => {
     btn.onclick = async () => {
-      if (!activeProposal) return;
+      const propId = btn.dataset.executeProposal;
+      const prop = (activeProposal && activeProposal.id === propId) ? activeProposal : (messageHistory.find(m => m.proposal?.id === propId)?.proposal || activeProposal);
+      if (!prop) return;
       btn.disabled = true;
       btn.textContent = 'Đang thực thi…';
-      const res = await executeProposal(activeProposal, appStateRef, null, getCurrentActor());
+      const res = await executeProposal(prop, appStateRef, null, getCurrentActor());
       renderMessages();
       if (res.success) {
         addAssistantMessage(res.message);
@@ -1236,8 +1349,10 @@ function renderMessages() {
 
   container.querySelectorAll('[data-cancel-proposal]').forEach(btn => {
     btn.onclick = () => {
-      if (!activeProposal) return;
-      cancelProposal(activeProposal);
+      const propId = btn.dataset.cancelProposal;
+      const prop = (activeProposal && activeProposal.id === propId) ? activeProposal : (messageHistory.find(m => m.proposal?.id === propId)?.proposal || activeProposal);
+      if (!prop) return;
+      cancelProposal(prop);
       renderMessages();
       addAssistantMessage('Đã hủy đề xuất.');
     };

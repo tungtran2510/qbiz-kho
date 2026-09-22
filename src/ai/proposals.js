@@ -63,6 +63,37 @@ const ALLOWED_TRANSITIONS = {
 // Maps idempotency_key -> { proposalId, status, result, timestamp }
 const IDEMPOTENCY_CACHE = new Map();
 
+export function getIdempotencyRecord(key) {
+  if (IDEMPOTENCY_CACHE.has(key)) return IDEMPOTENCY_CACHE.get(key);
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const raw = sessionStorage.getItem('qbiz_ai_idempotency_records') || sessionStorage.getItem('qbiz_ai_idempotency_cache');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj[key]) {
+          IDEMPOTENCY_CACHE.set(key, obj[key]);
+          return obj[key];
+        }
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+export function setIdempotencyRecord(key, record) {
+  IDEMPOTENCY_CACHE.set(key, record);
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const raw = sessionStorage.getItem('qbiz_ai_idempotency_records') || sessionStorage.getItem('qbiz_ai_idempotency_cache');
+      const obj = raw ? JSON.parse(raw) : {};
+      obj[key] = record;
+      const str = JSON.stringify(obj);
+      sessionStorage.setItem('qbiz_ai_idempotency_cache', str);
+      sessionStorage.setItem('qbiz_ai_idempotency_records', str);
+    }
+  } catch (_) {}
+}
+
 // Section X: Write Gate Flag (Enabled for Batch 2 once all safety checks are active)
 let writeGateEnabled = true;
 
@@ -282,6 +313,13 @@ export function validateProposal(proposal, currentState, actor = { role: 'owner'
     // Section H: Warehouse Scope
     const scopeCheck = validateWarehouseScope(actor, null, parameters.fromWarehouseId, parameters.toWarehouseId, currentState);
     if (!scopeCheck.allowed) errors.push(scopeCheck.error);
+  } else if (intent === 'create_stocktake_proposal' || intent === 'STOCKTAKE_STOCK') {
+    if (!parameters.warehouseId) errors.push('Thiếu mã kho kiểm kê.');
+    if (parameters.counted === undefined && (!Array.isArray(parameters.lines) || !parameters.lines.length)) {
+      errors.push('Thiếu số lượng kiểm thực tế.');
+    }
+  } else if (intent === 'propose_memory_save') {
+    if (!parameters.content && !parameters.title) errors.push('Thiếu nội dung ghi nhớ.');
   }
 
   const isValid = errors.length === 0;
@@ -344,9 +382,10 @@ export function confirmProposal(proposal, currentState, actor = { id: 'owner_1',
         const curOnHand = Number(curLevel?.onHand || 0);
         const curAvailable = curLevel ? available(curLevel) : 0;
         const reqQty = Number(proposal.parameters?.qty || 0);
-        if (curOnHand !== Number(snap.onHand || 0) || (reqQty > 0 && curAvailable < reqQty)) {
+        const isDeduct = proposal.intent === 'create_transfer_proposal' || proposal.intent === 'TRANSFER_STOCK' || proposal.intent?.includes('issue');
+        if (curOnHand !== Number(snap.onHand || 0) || (isDeduct && reqQty > 0 && curAvailable < reqQty)) {
           isStale = true;
-          if (reqQty > 0 && curAvailable < reqQty) {
+          if (isDeduct && reqQty > 0 && curAvailable < reqQty) {
             staleReason = `Số lượng khả dụng đã thay đổi: còn ${curAvailable}, yêu cầu ${reqQty}`;
           } else {
             staleReason = `Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất (tồn ban đầu: ${snap.onHand}, hiện tại: ${curOnHand}).`;
@@ -488,8 +527,8 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
   const opKey = idempotencyKey || proposal.idempotency_key || `idem_${proposal.id}`;
 
   // 1. Section B: Business-Grade Idempotency Check
-  if (IDEMPOTENCY_CACHE.has(opKey)) {
-    const cached = IDEMPOTENCY_CACHE.get(opKey);
+  const cached = getIdempotencyRecord(opKey);
+  if (cached) {
     logAuditEvent('IDEMPOTENT_REPLAY_RETURNED', { opKey, proposalId: proposal.id });
     return {
       success: true,
@@ -619,42 +658,150 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
           };
         }
       }
-    } else if (proposal.intent === 'create_cart_draft') {
-      const items = proposal.parameters?.items || [];
-      if (!appState.cart) appState.cart = [];
-      for (const it of items) {
-        const prod = (appState.data?.products || []).find(p => p.id === it.productId);
-        const existing = appState.cart.find(c => (c.productId === it.productId || c.product?.id === it.productId));
-        if (existing) {
-          existing.qty = (existing.qty || 1) + (Number(it.qty) || 1);
-        } else {
-          appState.cart.push({
-            productId: it.productId,
-            product: prod || { id: it.productId },
-            qty: Number(it.qty) || 1,
-            unitPrice: Number(it.unitPrice || prod?.price || 0),
-          });
+
+    } else if (proposal.intent === 'create_stocktake_proposal' || proposal.intent === 'STOCKTAKE_STOCK') {
+      const { warehouseId, productId, counted, lines, reason } = proposal.parameters || {};
+      if (productId && counted !== undefined) {
+        // Single product adjustment via domain engine
+        executionResult = await engine.countAdjust({
+          productId,
+          warehouseId,
+          counted: Number(counted),
+          reason: reason || proposal.human_summary || 'Kiểm kho từ AI',
+          operationId: opKey,
+        });
+
+        const recon = await verifyLedgerReconciliation(productId, warehouseId);
+        if (!recon.pass) {
+          logAuditEvent('RECONCILIATION_FAILED', { productId, warehouseId, mismatch: recon.mismatch });
+          proposal.status = PROPOSAL_STATUS.FAILED;
+          return {
+            success: false,
+            error: `Kiểm kho đã ghi nhưng đối soát sổ kho thất bại (mismatch: ${recon.mismatch}). Yêu cầu kiểm tra sổ cái.`,
+          };
+        }
+      } else if (Array.isArray(lines) && lines.length) {
+        // Multi-line batch stocktake via domain engine
+        executionResult = await engine.applyWarehouseBatch({
+          kind: 'count',
+          warehouseId,
+          lines: lines.map(l => ({ productId: l.productId, qty: Number(l.counted ?? l.qty) })),
+          reference: reason || proposal.human_summary || 'Kiểm kho từ AI',
+          operationId: opKey,
+        });
+
+        for (const line of lines) {
+          const recon = await verifyLedgerReconciliation(line.productId, warehouseId);
+          if (!recon.pass) {
+            logAuditEvent('RECONCILIATION_FAILED', { productId: line.productId, warehouseId });
+            proposal.status = PROPOSAL_STATUS.FAILED;
+            return {
+              success: false,
+              error: `Kiểm kho đã ghi nhưng đối soát sổ kho thất bại. Yêu cầu kiểm tra sổ cái.`,
+            };
+          }
         }
       }
-      executionResult = { cartLength: appState.cart.length, addedItems: items.length };
+
+    } else if (proposal.intent === 'create_cart_draft') {
+      const items = proposal.parameters?.items || [];
+      if (!Array.isArray(appState.saleCart)) appState.saleCart = [];
+      if (!Array.isArray(appState.cart)) appState.cart = [];
+
+      for (const it of items) {
+        const prodId = it.itemId || it.productId;
+        const prod = (appState.data?.products || []).find(p => p.id === prodId);
+        const qty = Number(it.quantity || it.qty || 1);
+
+        if (it.remove || qty <= 0) {
+          appState.saleCart = appState.saleCart.filter(c => c.itemId !== prodId);
+          appState.cart = appState.cart.filter(c => (c.productId !== prodId && c.itemId !== prodId));
+        } else {
+          const existingSale = appState.saleCart.find(c => c.itemId === prodId);
+          if (existingSale) {
+            existingSale.quantity = (existingSale.quantity || 1) + qty;
+          } else {
+            appState.saleCart.push({
+              itemId: prodId,
+              quantity: qty,
+              unitPrice: Number(it.unitPrice || prod?.price || 0),
+              discount: 0,
+            });
+          }
+          const existingCart = appState.cart.find(c => (c.productId === prodId || c.itemId === prodId));
+          if (existingCart) {
+            existingCart.qty = (existingCart.qty || 1) + qty;
+          } else {
+            appState.cart.push({
+              productId: prodId,
+              product: prod || { id: prodId },
+              qty,
+              unitPrice: Number(it.unitPrice || prod?.price || 0),
+            });
+          }
+        }
+      }
+
+      if (typeof window !== 'undefined' && window.__qbiz_app__ && typeof window.__qbiz_app__.render === 'function') {
+        window.__qbiz_app__.render();
+      }
+
+      executionResult = {
+        saleCartLength: appState.saleCart.length,
+        itemsCount: appState.saleCart.reduce((acc, c) => acc + (c.quantity || 1), 0),
+      };
+
+    } else if (proposal.intent === 'propose_memory_save') {
+      const memoryModule = await import('./memory.js');
+      const memoryItem = memoryModule.commitMemory(proposal.parameters);
+      executionResult = { memoryItem };
     }
+
+    // Refresh application state snapshot so in-memory levels reflect committed DB writes
+    try {
+      if (typeof window !== 'undefined' && window.__qbiz_app__ && typeof window.__qbiz_app__.refresh === 'function') {
+        await window.__qbiz_app__.refresh();
+      } else if (appState && typeof engine.snapshot === 'function') {
+        appState.data = await engine.snapshot();
+      }
+    } catch (_) {}
 
     // Transition to SUCCEEDED (Section D)
     transitionProposal(proposal, PROPOSAL_STATUS.SUCCEEDED);
     proposal.execution_result = executionResult;
 
     // Cache in Idempotency Store (Section B)
-    IDEMPOTENCY_CACHE.set(opKey, {
+    setIdempotencyRecord(opKey, {
       proposalId: proposal.id,
       status: PROPOSAL_STATUS.SUCCEEDED,
       result: executionResult,
       timestamp: new Date().toISOString(),
     });
 
-    // Section S: Audit Decision Chain
+    // Section S & Section F: Audit Decision Chain
     logDecisionChain({
+      request_id: proposal.request_id || proposal.source_turn_id,
+      proposal_id: proposal.id,
+      operation_id: opKey,
+      idempotency_key: opKey,
+      actor: { id: actor.id, role: actor.role },
       who: actor.id,
       role: actor.role,
+      device: (typeof window !== 'undefined' && window.__qbiz_app__?.state?.deviceId) || 'device_local',
+      route: proposal.context_snapshot?.current_route || 'unknown',
+      context: {
+        current_route: proposal.context_snapshot?.current_route,
+        warehouse_id: proposal.warehouse_id,
+        context_version: proposal.context_version,
+      },
+      skill: proposal.skill_id,
+      tool: proposal.intent,
+      proposal_summary: proposal.human_summary,
+      confirmation_time: proposal.confirmed_at,
+      domain_result: executionResult,
+      result: 'SUCCEEDED',
+      success: true,
+      provider: proposal.context_snapshot?.provider_mode || 'DETERMINISTIC',
       askedWhat: proposal.human_summary,
       contextVersion: proposal.context_version,
       resolvedAction: proposal.intent,
@@ -664,7 +811,6 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
       revalidationResult: 'PASS',
       domainOperation: proposal.intent,
       operationId: opKey,
-      result: 'SUCCEEDED',
     });
 
     return {
@@ -683,13 +829,24 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
     }
 
     logDecisionChain({
+      request_id: proposal.request_id || proposal.source_turn_id,
+      proposal_id: proposal.id,
+      operation_id: opKey,
+      idempotency_key: opKey,
+      actor: { id: actor.id, role: actor.role },
       who: actor.id,
       role: actor.role,
+      device: (typeof window !== 'undefined' && window.__qbiz_app__?.state?.deviceId) || 'device_local',
+      route: proposal.context_snapshot?.current_route || 'unknown',
+      skill: proposal.skill_id,
+      tool: proposal.intent,
+      proposal_summary: proposal.human_summary,
+      result: 'FAILED',
+      success: false,
+      error: err.message,
       askedWhat: proposal.human_summary,
       resolvedAction: proposal.intent,
       operationId: opKey,
-      result: 'FAILED',
-      error: err.message,
     });
 
     return {

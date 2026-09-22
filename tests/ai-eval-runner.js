@@ -137,10 +137,17 @@ function evaluateCase(testCase) {
 export async function runAIEval(testCases) {
   if (!testCases) {
     try {
-      const response = await fetch('./tests/ai-intent-eval.json');
-      testCases = await response.json();
+      if (typeof window === 'undefined' && typeof process !== 'undefined') {
+        const fs = await import('fs');
+        const path = await import('path');
+        const filePath = path.resolve('tests/ai-intent-eval.json');
+        testCases = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      } else {
+        const response = await fetch('./tests/ai-intent-eval.json');
+        testCases = await response.json();
+      }
     } catch (e) {
-      console.error('Cannot load test cases. Pass them as argument or ensure file is accessible.');
+      console.error('Cannot load test cases:', e);
       return null;
     }
   }
@@ -202,3 +209,10 @@ export async function runAIEval(testCases) {
 }
 
 export { evaluateCase };
+
+if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes('ai-eval-runner')) {
+  runAIEval().then(r => {
+    if (r && r.summary.failed > 0) process.exit(1);
+    process.exit(0);
+  });
+}

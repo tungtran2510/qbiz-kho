@@ -25,7 +25,8 @@ import { hasCapability, PERMISSIONS, detectPromptInjection } from './policy.js';
 import { executeAction, lookupFeature, lookupAction, IMPLEMENTATION_STATE } from './registry.js';
 import { norm as dictNorm, classifyIntent, detectEntityType, isPronounReference, isConfirmation, isCancellation, isCorrection, parseTimeExpression, extractQuantityAndUnit } from './dictionary.js';
 import { findActionsByAlias, getSuggestedActions, ACTION_REGISTRY } from './registry.js';
-import { resolveProduct, resolveCustomer, autoDetectAndResolve } from './resolver.js';
+import { resolveProduct, resolveCustomer, resolveWarehouse, autoDetectAndResolve } from './resolver.js';
+import { MEMORY_SCOPES, queryMemory, proposeMemorySave } from './memory.js';
 
 function norm(str) {
   return String(str || '')
@@ -82,12 +83,27 @@ export function dictionaryRoute(rawPrompt, context, state) {
   const currRoute = context?.current_route || context?.route || 'dashboard';
   if (currRoute === 'sales' || context?.saleStep) {
     if (p.startsWith('chon khach') || p.startsWith('khach ')) {
-      return { type: 'ACTION', action_id: 'select_customer', action: ACTION_REGISTRY['select_customer'], confidence: 95, source: 'customer_select' };
+      const custPart = p.replace(/^(?:chon\s+khach(?:\s+hang)?|khach)\s*/i, '').trim();
+      if (!custPart) {
+        return { type: 'ACTION', action_id: 'select_customer', action: ACTION_REGISTRY['select_customer'], confidence: 95, source: 'customer_select' };
+      }
+      return null; // Fall through to real resolver
     }
     // "thêm 5" in sales -> fall through to sales cart handler
     if (/^(?:them|cong|tang|nhap them)\s+\d+/i.test(p)) {
       return null;
     }
+  }
+
+  // Fall through to real proposals for transfer, stocktake, and ambiguous actions
+  if (p.startsWith('chuyen ') && (/\d+/.test(p) || p.includes('sang kho') || p.includes('ve kho') || p.includes('nay'))) {
+    return null;
+  }
+  if (p.includes('thuc te') || (p.includes('kiem') && /\d+/.test(p))) {
+    return null;
+  }
+  if (p.includes('thanh toan') || p.includes('hoan thanh don') || p.includes('tinh tien') || p.includes('chot don')) {
+    return null;
   }
 
   if (currRoute === 'orders') {
@@ -249,30 +265,30 @@ export async function routeIntent(prompt, context, state) {
       try {
         const result = await dictResult.action.execute(dictResult.params || {}, state, context);
         const msg = result?.text || result?.message || dictResult.action.name;
-        return { text: msg, ...result, tier: 0, provider: 'dictionary' };
+        return { text: msg, ...result, tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
       } catch (e) {
         // Fall through to existing router on error
       }
     }
     if (dictResult.type === 'SUGGEST') {
-      return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `\u2022 ${s.label}`).join('\n'), tier: 0, provider: 'dictionary' };
+      return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `\u2022 ${s.label}`).join('\n'), tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
     }
     if (dictResult.type === 'CONFIRM_PENDING') {
       const pIntent = getPendingIntent() || dictResult.pending;
       clearPendingIntent();
       if (pIntent?.skillId) {
         const res = await executeSkill(pIntent.skillId, pIntent.params || {}, context, state);
-        return { ...res, text: `Đã xác nhận: ${res.text || 'thực hiện thao tác thành công.'}`, tier: 0, provider: 'dictionary' };
+        return { ...res, text: `Đã xác nhận: ${res.text || 'thực hiện thao tác thành công.'}`, tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
       }
-      return { text: 'Đã xác nhận thao tác.', tier: 0, provider: 'dictionary' };
+      return { text: 'Đã xác nhận thao tác.', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
     }
     if (dictResult.type === 'CANCEL_PENDING') {
       clearPendingIntent();
-      return { text: 'Đã hủy thao tác đang chờ.', tier: 0, provider: 'dictionary' };
+      return { text: 'Đã hủy thao tác đang chờ.', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
     }
     if (dictResult.type === 'CORRECT_PENDING') {
       clearPendingIntent();
-      return { text: 'Đã hủy lệnh trước. Vui lòng cho biết yêu cầu mới của bạn.', tier: 0, provider: 'dictionary' };
+      return { text: 'Đã hủy lệnh trước. Vui lòng cho biết yêu cầu mới của bạn.', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
     }
   }
 
@@ -300,22 +316,114 @@ export async function routeIntent(prompt, context, state) {
     }
   }
 
+  // POS Cart item removal ("bỏ món này khỏi giỏ", "xóa món này khỏi giỏ", "bỏ cái này khỏi giỏ", "bỏ lavie khỏi giỏ")
+  if (
+    dictNorm(rawPrompt).includes('khoi gio') ||
+    (context.current_route === 'sales' && (dictNorm(rawPrompt).startsWith('bo ') || dictNorm(rawPrompt).startsWith('xoa ') || dictNorm(rawPrompt).startsWith('bot ')))
+  ) {
+    let targetProdId = null;
+    const cleanRemoveQuery = rawPrompt
+      .replace(/^(?:bỏ|xóa|bớt)\s+/i, '')
+      .replace(/\s*(?:ra\s*)?khỏi\s+giỏ(?:\s+hàng)?/gi, '')
+      .replace(/(?:món\s+này|cái\s+này|sản\s+phẩm\s+này|món\s+vừa\s+chọn)/gi, '')
+      .trim();
+
+    if (cleanRemoveQuery && cleanRemoveQuery.length >= 2) {
+      const srch = resolveProduct(cleanRemoveQuery, state.data?.products || [], context);
+      if (srch.isExact || srch.candidates.length === 1 || (srch.bestMatch && !srch.isAmbiguous)) {
+        targetProdId = srch.bestMatch ? srch.bestMatch.id : srch.candidates[0].id;
+      }
+    }
+
+    if (!targetProdId) {
+      targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+    }
+
+    if (!targetProdId && Array.isArray(state.saleCart) && state.saleCart.length) {
+      targetProdId = state.saleCart[state.saleCart.length - 1].itemId;
+    }
+
+    if (targetProdId) {
+      const prodObj = (state.data?.products || []).find(p => p.id === targetProdId);
+      const res = await executeSkill('add-cart-draft', { items: [{ productId: targetProdId, qty: 0, remove: true }] }, context, state);
+      return {
+        ...res,
+        text: `Đã bỏ ${prodObj ? prodObj.name : 'sản phẩm'} khỏi giỏ hàng POS.`,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    } else {
+      return {
+        text: 'Giỏ hàng đang trống hoặc chưa chọn được sản phẩm cần bỏ khỏi giỏ.',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+  }
+
+  // POS Cart add item with named product (e.g. "thêm 2 Lavie", "cho 2 Lavie vào giỏ", "lấy 2 Lavie")
+  const namedAddMatch = dictNorm(rawPrompt).match(/^(?:them|cho|lay)\s+(\d+)\s+(.+?)(?:\s+vao\s+gio(?:\s+hang)?)?$/i);
+  if (namedAddMatch && !namedAddMatch[2].startsWith('cai') && !namedAddMatch[2].startsWith('mon') && !namedAddMatch[2].startsWith('chiec') && !namedAddMatch[2].startsWith('san pham') && !namedAddMatch[2].startsWith('sp')) {
+    const qty = parseInt(namedAddMatch[1], 10) || 1;
+    const prodQuery = namedAddMatch[2].trim();
+    const resolved = resolveProduct(prodQuery, state.data?.products || [], context);
+
+    if (resolved.isExact || resolved.candidates.length === 1 || (resolved.bestMatch && !resolved.isAmbiguous)) {
+      const prod = resolved.bestMatch || resolved.candidates[0];
+      setLastResolvedProduct(prod);
+      const res = await executeSkill('add-cart-draft', { items: [{ productId: prod.id, qty }] }, context, state);
+      return {
+        ...res,
+        text: `Đã đưa ${qty} ${prod.name} vào giỏ hàng POS.`,
+        product: prod,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    } else if (resolved.isAmbiguous || resolved.candidates.length > 1) {
+      return {
+        text: `Tìm thấy ${resolved.candidates.length} sản phẩm khớp với "${prodQuery}". Vui lòng chọn sản phẩm cần thêm vào giỏ:`,
+        candidates: resolved.candidates,
+        isAmbiguous: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+  }
+
   // Context-sensitive "thêm [số]" handling
-  const addMatch = dictNorm(rawPrompt).match(/^(?:them|cong|tang|nhap them)\s+(\d+)(?:\s*(?:cai|mon|chiec|san pham|sp))?(?:\s*(?:nay|cai nay))?$/i);
+  const addMatch = dictNorm(rawPrompt).match(/^(?:them|cong|tang|nhap them|cho|lay)\s+(\d+)(?:\s*(?:cai|mon|chiec|san pham|sp))?(?:\s*(?:nay|cai nay))?(?:\s+vao\s+gio(?:\s+hang)?)?$/i);
   if (addMatch) {
     const qty = parseInt(addMatch[1], 10) || 1;
+    const isExplicitCart = rawPrompt.toLowerCase().includes('vào giỏ') || rawPrompt.toLowerCase().includes('vao gio');
     // Context A: Sales / POS
-    if (context.current_route === 'sales') {
-      let targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
-      if (!targetProdId && state.data?.products?.length) {
+    if (context.current_route === 'sales' || isExplicitCart) {
+      const isGeneric = (dictNorm(rawPrompt).includes('san pham') || dictNorm(rawPrompt).includes('cai')) && !dictNorm(rawPrompt).includes('nay');
+      if (isGeneric && !context.current_product_id) {
+        return {
+          text: `Bạn muốn thêm ${qty} sản phẩm nào vào giỏ? Vui lòng chọn sản phẩm trên màn hình bán hàng hoặc nhập tên sản phẩm.`,
+          isAmbiguous: true,
+          candidates: state.data?.products?.slice(0, 5) || [],
+          tier: 0,
+          provider: PROVIDER_MODES.DETERMINISTIC,
+        };
+      }
+
+      let targetProdId = context.current_product_id || (isPronounReference(dictNorm(rawPrompt)) ? getLastResolvedProduct()?.id : null);
+      if (!targetProdId && state.data?.products?.length && (dictNorm(rawPrompt).includes('nay') || isPronounReference(dictNorm(rawPrompt)))) {
         targetProdId = state.data.products[0].id;
       }
       if (targetProdId) {
         const prodObj = (state.data?.products || []).find(p => p.id === targetProdId);
         const res = await executeSkill('add-cart-draft', { items: [{ productId: targetProdId, qty }] }, context, state);
-        return { ...res, text: `Đã đưa ${qty} ${prodObj ? prodObj.name : 'sản phẩm'} vào giỏ hàng POS.`, tier: 0, provider: 'contextual' };
+        return { ...res, text: `Đã đưa ${qty} ${prodObj ? prodObj.name : 'sản phẩm'} vào giỏ hàng POS.`, tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
       }
-      return { text: 'Vui lòng chọn sản phẩm trên màn hình bán hàng để thêm vào giỏ.', tier: 0, provider: 'contextual' };
+      return {
+        text: `Bạn muốn thêm ${qty} sản phẩm nào vào giỏ? Vui lòng chọn sản phẩm trên màn hình bán hàng hoặc nhập tên sản phẩm.`,
+        isAmbiguous: true,
+        candidates: state.data?.products?.slice(0, 5) || [],
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
     }
     // Context B: Product detail (bound product)
     if (context.current_product_id) {
@@ -343,6 +451,48 @@ export async function routeIntent(prompt, context, state) {
       tier: 0,
       provider: 'contextual',
     };
+  }
+
+  // Customer selection ("chọn khách Lan", "chọn khách hàng Lan", "chọn Lan")
+  const custSelectMatch = rawPrompt.match(/^(?:chọn|gán|đặt)\s+khách(?:\s+hàng)?\s+(.+)/i) ||
+                          (context.current_route === 'sales' && rawPrompt.match(/^(?:chọn|gán)\s+(.+)/i));
+  if (custSelectMatch) {
+    const custQuery = custSelectMatch[1].trim();
+    const customers = state.data?.customers || [];
+    const resolved = resolveCustomer(custQuery, customers, {
+      currentCustomerId: context.customer_id,
+      recentCustomerId: context.recentCustomerId,
+    });
+
+    if (resolved.isExact || (resolved.candidates.length === 1 && resolved.bestMatch) || (resolved.bestMatch && !resolved.isAmbiguous)) {
+      const c = resolved.bestMatch || resolved.candidates[0];
+      if (state) {
+        state.saleCustomer = c;
+        if (typeof window !== 'undefined' && window.__qbiz_app__?.render) {
+          window.__qbiz_app__.render();
+        }
+      }
+      return {
+        text: `Đã chọn khách hàng **${c.name}**${c.phone ? ' (' + c.phone + ')' : ''} cho đơn bán hàng.`,
+        customer: c,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    } else if (resolved.isAmbiguous || resolved.candidates.length > 1) {
+      return {
+        text: `Tìm thấy ${resolved.candidates.length} khách hàng phù hợp với "${custQuery}". Vui lòng chọn khách hàng chính xác:`,
+        candidates: resolved.candidates,
+        isAmbiguous: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    } else {
+      return {
+        text: `Không tìm thấy khách hàng nào khớp với "${custQuery}". Hệ thống không tự ý tạo mới khách hàng.`,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
   }
 
   // Customer search
@@ -555,8 +705,21 @@ export async function routeIntent(prompt, context, state) {
     let toWh = whs[1].id;
     let whCandidates = [];
 
-    // Check if destination warehouse is mentioned with ambiguity
-    if (p.includes('sang kho chi nhanh') || p.includes('ve kho chi nhanh') || p.includes('kho chi nhanh')) {
+    // Extract quantity if mentioned
+    const qtyMatch = p.match(/(\d+)\s*(cai|chiec|san pham|hop|thung|sp)?/);
+    const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 5;
+
+    // Check if destination warehouse is mentioned
+    const destMatch = rawPrompt.match(/(?:sang|về|đến|tới|vào)\s+kho\s+([^,.]+)/i) || rawPrompt.match(/kho\s+([^,.]+)/i);
+    if (destMatch) {
+      const destQuery = destMatch[1].trim();
+      const resWh = resolveWarehouse(destQuery, whs, { currentWarehouseId: fromWh });
+      if (resWh.isExact || (resWh.candidates.length === 1 && resWh.bestMatch)) {
+        toWh = resWh.bestMatch ? resWh.bestMatch.id : resWh.candidates[0].id;
+      } else if (resWh.isAmbiguous || resWh.candidates.length > 1) {
+        whCandidates = resWh.candidates;
+      }
+    } else if (p.includes('sang kho chi nhanh') || p.includes('ve kho chi nhanh') || p.includes('kho chi nhanh')) {
       const matching = whs.filter(w => norm(w.name).includes('chi nhanh'));
       if (matching.length === 1) toWh = matching[0].id;
       else if (matching.length > 1) whCandidates = matching;
@@ -566,14 +729,15 @@ export async function routeIntent(prompt, context, state) {
       else if (matching.length > 1) whCandidates = matching;
     }
 
+    if (toWh === fromWh) {
+      const other = whs.find(w => w.id !== fromWh);
+      if (other) toWh = other.id;
+    }
+
     let targetProdId = context.current_product_id;
     if (!targetProdId && state.data?.products?.length) {
       targetProdId = state.data.products[0].id;
     }
-
-    // Extract quantity if mentioned
-    const qtyMatch = p.match(/(\d+)\s*(cai|chiec|san pham)?/);
-    const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 5;
 
     if (whCandidates.length > 1) {
       setPendingIntent({
@@ -684,6 +848,95 @@ export async function routeIntent(prompt, context, state) {
 
     logAuditEvent('SKILL_EXECUTED', { skillId: 'receipt-proposal', tier: 0, proposalId: res.proposal?.id });
     return { ...res, skillId: 'receipt-proposal', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 3b. Stocktake Proposal (Section C / Slice 3: Thực tế cái này còn X)
+  const stocktakeMatch = p.match(/(?:thuc te|kiem kho|kiem ke|dem duoc|dem thuc te|kiem ton thuc te)(?:\s+(?:cai\s+nay|san pham\s+nay|nay))?\s+(?:con\s+)?(\d+)/i) ||
+                         p.match(/thuc te\s+(?:cai nay\s+)?(?:con\s+)?(\d+)/i) ||
+                         p.match(/con\s+(\d+)\s+(?:cai\s+)?thuc te/i);
+  if (stocktakeMatch) {
+    const counted = parseInt(stocktakeMatch[1], 10);
+    let targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+    if (!targetProdId && state.data?.products?.length) {
+      targetProdId = state.data.products[0].id;
+    }
+    const targetWh = context.warehouse_id || (state.data?.warehouses || [])[0]?.id;
+
+    const res = await executeSkill('stocktake-proposal', {
+      warehouseId: targetWh,
+      productId: targetProdId,
+      counted,
+      reason: `Kiểm kê thực tế từ trợ lý AI: "${rawPrompt}"`,
+    }, context, state);
+
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'stocktake-proposal', tier: 0, proposalId: res.proposal?.id });
+    return { ...res, skillId: 'stocktake-proposal', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 3c. Memory Save Proposal ("Kho chính không xuất hàng lỗi", "Lưu quy tắc...", "Ghi nhớ...")
+  if (
+    p.startsWith('ghi nho') ||
+    p.startsWith('luu quy tac') ||
+    p.startsWith('luu vao tri nho') ||
+    p.startsWith('nho rang') ||
+    p.includes('khong xuat hang loi') ||
+    p.includes('luu y kho')
+  ) {
+    let scope = MEMORY_SCOPES.SHOP;
+    let entityId = null;
+    if (p.includes('kho') || p.includes('kho chinh') || p.includes('kho phu')) {
+      scope = MEMORY_SCOPES.WAREHOUSE;
+      entityId = context.warehouse_id || (state.data?.warehouses || [])[0]?.id;
+    } else if (context.current_product_id) {
+      scope = MEMORY_SCOPES.PRODUCT;
+      entityId = context.current_product_id;
+    }
+
+    const res = await executeSkill('memory-save-proposal', {
+      scope,
+      entityId,
+      title: rawPrompt.slice(0, 30),
+      content: rawPrompt,
+      importance: 2,
+    }, context, state);
+
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'memory-save-proposal', tier: 0, proposalId: res.proposal?.id });
+    return { ...res, skillId: 'memory-save-proposal', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 3d. Memory Retrieval: "Có gì nên bán kèm?", "Bán kèm gì?"
+  if (p.includes('ban kem') || p.includes('kem theo') || p.includes('goi y ban')) {
+    const records = queryMemory({ query: 'bán kèm', scope: MEMORY_SCOPES.PRODUCT, entityId: context.current_product_id });
+    if (records.length) {
+      return {
+        text: `Gợi ý bán kèm theo kinh nghiệm cửa hàng:\n${records.map(r => `• **${r.title}**: ${r.content}`).join('\n')}\n*(Lưu ý: Đây là thông tin gợi ý tư vấn, AI không tự ý thêm vào giỏ hàng)*`,
+        memories: records,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+  }
+
+  // 3e. Memory Retrieval: "Xử lý cái này thế nào?", "Hàng lỗi xử lý thế nào?"
+  if (p.includes('xu ly the nao') || p.includes('hang loi') || p.includes('quy tac xu ly')) {
+    const records = queryMemory({ query: 'lỗi', scope: MEMORY_SCOPES.WAREHOUSE });
+    if (records.length) {
+      return {
+        text: `Quy tắc xử lý đã ghi nhớ của cửa hàng:\n${records.map(r => `• **${r.title}**: ${r.content}`).join('\n')}\n*(Thông tin quy ước dữ liệu — không thay thế thao tác quản lý)*`,
+        memories: records,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+  }
+
+  // 3f. Checkout Guard: Block AI auto-checkout
+  if (p.includes('thanh toan') || p.includes('hoan thanh don') || p.includes('tinh tien')) {
+    return {
+      text: 'Để đảm bảo an toàn tài chính, AI không tự ý hoàn tất thanh toán hoặc chốt đơn mà không có xác nhận trả tiền thật từ thu ngân.\nVui lòng bấm nút **Thanh toán** trên màn hình POS để chọn phương thức và in hóa đơn.',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
   }
 
   // 4. Order Diagnosis (Đơn này vì sao chưa xong?, Đơn đang vướng gì?)

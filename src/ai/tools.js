@@ -421,12 +421,15 @@ export const TOOLS = {
     for (const item of items) {
       const p = (state?.data?.products || []).find(x => x.id === item.productId);
       if (p) {
+        const q = item.qty !== undefined ? Number(item.qty) : (item.quantity !== undefined ? Number(item.quantity) : 1);
         validLines.push({
           itemId: p.id,
+          productId: p.id,
           name: p.name,
-          quantity: Number(item.qty || 1),
+          quantity: q,
           unitPrice: Number(p.price || 0),
           discount: 0,
+          remove: Boolean(item.remove || q <= 0),
         });
       }
     }
@@ -522,8 +525,49 @@ export const TOOLS = {
   /**
    * Create a stocktake proposal (NO stock mutation).
    */
-  create_stocktake_proposal({ warehouseId, lines = [], reason = 'Kiểm kho định kỳ' }, state, envelope) {
+  create_stocktake_proposal({ warehouseId, productId, counted, lines = [], reason = 'Kiểm kho định kỳ' }, state, envelope) {
     const wh = (state?.data?.warehouses || []).find(w => w.id === warehouseId) || (state?.data?.warehouses || [])[0];
+    const targetWhId = wh?.id || warehouseId;
+
+    if (productId && counted !== undefined) {
+      const p = (state?.data?.products || []).find(x => x.id === productId);
+      const curLevel = targetWhId ? levelFor(state?.data, productId, targetWhId) : null;
+      const expected = curLevel ? Number(curLevel.onHand || 0) : 0;
+      const nCounted = Number(counted);
+      const diff = nCounted - expected;
+
+      const inventorySnapshot = {
+        productId,
+        warehouseId: targetWhId,
+        onHand: expected,
+        reserved: curLevel ? Number(curLevel.reserved || 0) : 0,
+        available: curLevel ? available(curLevel) : 0,
+      };
+
+      const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
+      const humanSummary = `Kiểm kho sản phẩm "${p?.name || productId}": Sổ sách ${expected}, Thực kiểm ${nCounted} (Lệch: ${diffStr})`;
+
+      return createProposal({
+        requestId: envelope?.request_id,
+        skillId: 'stocktake-proposal',
+        intent: 'create_stocktake_proposal',
+        entities: {
+          product: p ? { id: p.id, name: p.name, sku: p.sku } : { id: productId },
+          warehouse: wh ? { id: wh.id, name: wh.name } : { id: targetWhId },
+        },
+        parameters: {
+          productId,
+          warehouseId: targetWhId,
+          expected,
+          counted: nCounted,
+          difference: diff,
+          reason,
+        },
+        inventorySnapshot,
+        humanSummary,
+        contextSnapshot: envelope,
+      });
+    }
 
     return createProposal({
       requestId: envelope?.request_id,
@@ -534,7 +578,7 @@ export const TOOLS = {
         linesCount: lines.length,
       },
       parameters: {
-        warehouseId: wh?.id || warehouseId,
+        warehouseId: targetWhId,
         lines,
         reason,
       },
