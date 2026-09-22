@@ -48,15 +48,17 @@ export function getProviderConfig() {
   return {
     mode,
     geminiKey: (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SESSION_KEY_GEMINI)) || '',
+    geminiModel: (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_session_gemini_model')) || 'gemini-flash-lite-latest',
     openaiKey: (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SESSION_KEY_OPENAI)) || '',
     openaiUrl: (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SESSION_URL_OPENAI)) || 'https://api.openai.com/v1/chat/completions',
   };
 }
 
-export function setProviderConfig({ mode, geminiKey, openaiKey, openaiUrl }) {
+export function setProviderConfig({ mode, geminiKey, geminiModel, openaiKey, openaiUrl }) {
   if (typeof sessionStorage === 'undefined') return;
   if (mode) sessionStorage.setItem('qbiz_ai_provider_mode', mode);
   if (geminiKey !== undefined) sessionStorage.setItem(SESSION_KEY_GEMINI, geminiKey);
+  if (geminiModel !== undefined) sessionStorage.setItem('qbiz_session_gemini_model', geminiModel);
   if (openaiKey !== undefined) sessionStorage.setItem(SESSION_KEY_OPENAI, openaiKey);
   if (openaiUrl !== undefined) sessionStorage.setItem(SESSION_URL_OPENAI, openaiUrl);
 }
@@ -351,16 +353,16 @@ export class AIProviderAdapter {
         modelName = 'mock-dev-parser';
         rawText = this._mockParseStructured(prompt, context, state);
       } else if (mode === PROVIDER_MODES.GEMINI) {
-        modelName = 'gemini-1.5-flash';
+        modelName = this.config.geminiModel || 'gemini-flash-lite-latest';
         const key = this.config.geminiKey;
         if (!key) throw new Error('PROVIDER_ERROR: Chưa cấu hình Gemini API Key (Session Key).');
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: payload.promptText }] }],
-            generationConfig: { temperature: 0.1 },
+            generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
           }),
         });
         if (!res.ok) {
@@ -417,6 +419,8 @@ export class AIProviderAdapter {
         tier: 1,
         latencyMs,
         approxInputSize: payload.inspection?.payloadSizeBytes || 0,
+        approxInputTokens: Math.ceil((payload.inspection?.payloadSizeBytes || 0) / 4),
+        approxOutputTokens: Math.ceil((rawText?.length || 0) / 4),
         success: true,
       });
 
@@ -754,7 +758,8 @@ export class AIProviderAdapter {
     }
 
     const safePayload = buildSafeProviderPayload({ prompt, systemPrompt, context });
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+    const modelName = this.config.geminiModel || 'gemini-flash-lite-latest';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
     const reqBody = {
       contents: [{ role: 'user', parts: [{ text: safePayload.promptText }] }],
       generationConfig: { temperature: 0.2 },

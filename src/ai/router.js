@@ -314,6 +314,284 @@ export function mapIntentEntityToAction(intent, entityType, context) {
   return MAP[key] || MAP[`${intent}_null`] || null;
 }
 
+export async function dispatchCloudProvider(rawPrompt, context = {}, state = {}, config) {
+  const adapter = new AIProviderAdapter(config);
+  try {
+    const structured = await adapter.parseStructuredIntent({
+      prompt: rawPrompt,
+      context,
+      state,
+    });
+
+    // 1. Confidence Policy (Section 5): Low confidence -> Needs Clarification
+    if (structured.isLowConfidence || structured.confidence < 0.7) {
+      logAuditEvent('PROVIDER_LOW_CONFIDENCE', { prompt: rawPrompt, confidence: structured.confidence });
+      return {
+        text: structured.explanation || `Tôi chưa chắc chắn về yêu cầu của bạn ("${rawPrompt}"). Vui lòng cho biết rõ hơn hành động bạn muốn thực hiện?`,
+        tier: 1,
+        provider: config.mode,
+        status: 'NEEDS_CLARIFICATION',
+        isAmbiguous: true,
+      };
+    }
+
+    // 2. Query Memory Intent
+    if (structured.intent === 'QUERY_MEMORY') {
+      return {
+        text: `💡 **Quy ước / Kinh nghiệm cửa hàng:**\n${structured.explanation}\n\n*(Lưu ý: Đây là thông tin tham khảo nội bộ, AI không tự ý thay đổi dữ liệu hay xuất hàng)*`,
+        tier: 1,
+        provider: config.mode,
+        intent: 'QUERY_MEMORY',
+      };
+    }
+
+    // 2.1 Customer selection / ambiguity
+    const custPromptMatch = rawPrompt.match(/^(?:chọn|gán|đặt)\s+khách(?:\s+hàng)?\s+(.+)/i);
+    if (structured.entities?.customer_name || custPromptMatch) {
+      const custQuery = structured.entities?.customer_name || (custPromptMatch ? custPromptMatch[1].trim() : '');
+      const customers = state.data?.customers || [];
+      const resolved = resolveCustomer(custQuery, customers, {
+        currentCustomerId: context.customer_id,
+        recentCustomerId: context.recentCustomerId,
+      });
+
+      if (resolved.isExact || (resolved.candidates.length === 1 && resolved.bestMatch && !resolved.isAmbiguous)) {
+        const c = resolved.bestMatch || resolved.candidates[0];
+        return {
+          text: `Đã xác định khách hàng **${c.name}**${c.phone ? ' (' + c.phone + ')' : ''}.`,
+          customer: c,
+          tier: 1,
+          provider: config.mode,
+        };
+      } else if (resolved.isAmbiguous || resolved.candidates.length > 1) {
+        return {
+          text: `Tìm thấy ${resolved.candidates.length} khách hàng phù hợp với "${custQuery}". Vui lòng chọn khách hàng chính xác:\n` +
+            resolved.candidates.slice(0, 4).map(c => `• ${c.name} (${c.phone || c.code || c.id})`).join('\n'),
+          candidates: resolved.candidates,
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+          tier: 1,
+          provider: config.mode,
+        };
+      } else {
+        return {
+          text: `Không tìm thấy khách hàng nào khớp với "${custQuery}". Hệ thống không tự ý tạo mới khách hàng hay bịa đặt mã ID.`,
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+          tier: 1,
+          provider: config.mode,
+        };
+      }
+    }
+
+    // 3. Receive Stock (Nhập kho)
+    if (structured.intent === 'RECEIVE_STOCK') {
+      let targetProdId = null;
+      if (structured.entities?.product_name) {
+        const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+        if (resProd.isAmbiguous) {
+          return {
+            text: `Tìm thấy nhiều sản phẩm khớp với "${structured.entities.product_name}":\n` +
+              resProd.candidates.slice(0, 4).map(c => `• ${c.name} (${c.sku || c.id})`).join('\n') +
+              `\nVui lòng chỉ định chính xác sản phẩm cần nhập.`,
+            intent: 'RECEIVE_STOCK',
+            tier: 1,
+            provider: config.mode,
+            isAmbiguous: true,
+            candidates: resProd.candidates,
+          };
+        }
+        if (resProd.bestMatch) {
+          targetProdId = resProd.bestMatch.id;
+        }
+      }
+      if (!targetProdId) {
+        targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+      }
+      if (!targetProdId) {
+        return {
+          text: `Bạn muốn tạo phiếu nhập kho cho sản phẩm nào? Vui lòng chọn sản phẩm hoặc nêu rõ tên mặt hàng.`,
+          intent: 'RECEIVE_STOCK',
+          tier: 1,
+          provider: config.mode,
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+        };
+      }
+
+      // Warehouse resolution
+      let whId = context.warehouse_id || 'wh_center';
+      if (structured.entities?.warehouse_name) {
+        const resWh = resolveWarehouse(structured.entities.warehouse_name, state.data?.warehouses || [], context);
+        if (resWh.bestMatch) whId = resWh.bestMatch.id;
+      }
+
+      const qty = structured.entities?.quantity || 20;
+      const res = await executeSkill('receipt-proposal', {
+        productId: targetProdId,
+        warehouseId: whId,
+        qty,
+        price: structured.entities?.price,
+        reason: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
+      }, context, state);
+
+      return { ...res, intent: 'RECEIVE_STOCK', tier: 1, provider: config.mode };
+    }
+
+    // 4. Transfer Stock (Chuyển kho)
+    if (structured.intent === 'TRANSFER_STOCK') {
+      let targetProdId = null;
+      if (structured.entities?.product_name) {
+        const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+        if (resProd.bestMatch && !resProd.isAmbiguous) {
+          targetProdId = resProd.bestMatch.id;
+        }
+      }
+      if (!targetProdId) {
+        targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+      }
+      if (!targetProdId) {
+        return {
+          text: `Bạn muốn chuyển mặt hàng nào? Vui lòng chọn sản phẩm trên màn hình.`,
+          intent: 'TRANSFER_STOCK',
+          tier: 1,
+          provider: config.mode,
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+        };
+      }
+
+      let fromWh = context.warehouse_id || 'wh_center';
+      let toWh = null;
+      if (structured.entities?.from_warehouse_name) {
+        const resFrom = resolveWarehouse(structured.entities.from_warehouse_name, state.data?.warehouses || [], context);
+        if (resFrom.bestMatch) fromWh = resFrom.bestMatch.id;
+      }
+      if (structured.entities?.to_warehouse_name) {
+        const resTo = resolveWarehouse(structured.entities.to_warehouse_name, state.data?.warehouses || [], context);
+        if (resTo.bestMatch && !resTo.isAmbiguous) toWh = resTo.bestMatch.id;
+      }
+      if (!toWh) {
+        return {
+          text: `Không xác định được kho nhận hàng hợp lệ (${structured.entities?.to_warehouse_name || 'chưa rõ'}). Vui lòng chỉ định chính xác kho đích.`,
+          intent: 'TRANSFER_STOCK',
+          tier: 1,
+          provider: config.mode,
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+        };
+      }
+
+      const qty = structured.entities?.quantity || 5;
+      const res = await executeSkill('transfer-proposal', {
+        fromWarehouseId: fromWh,
+        toWarehouseId: toWh,
+        lines: [{ productId: targetProdId, qty }],
+        note: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
+      }, context, state);
+
+      return { ...res, intent: 'TRANSFER_STOCK', tier: 1, provider: config.mode };
+    }
+
+    // 5. Stocktake (Kiểm kho)
+    if (structured.intent === 'STOCKTAKE_STOCK') {
+      let targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+      if (structured.entities?.product_name) {
+        const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+        if (resProd.bestMatch && !resProd.isAmbiguous) targetProdId = resProd.bestMatch.id;
+      }
+      const whId = context.warehouse_id || 'wh_center';
+      const counted = structured.entities?.quantity != null ? structured.entities.quantity : 18;
+      const res = await executeSkill('stocktake-proposal', {
+        warehouseId: whId,
+        productId: targetProdId,
+        counted,
+        reason: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
+      }, context, state);
+      return { ...res, intent: 'STOCKTAKE_STOCK', tier: 1, provider: config.mode };
+    }
+
+    // 6. POS Cart Draft (Giỏ hàng nháp)
+    if (structured.intent === 'ADD_CART') {
+      let targetProdId = null;
+      if (structured.entities?.product_name) {
+        const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
+        if (resProd.bestMatch && !resProd.isAmbiguous) targetProdId = resProd.bestMatch.id;
+      }
+      if (!targetProdId) targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+      if (!targetProdId) {
+        return {
+          text: `Bạn muốn thêm sản phẩm nào vào giỏ? Vui lòng chọn sản phẩm trên màn hình bán hàng hoặc nhập tên sản phẩm.`,
+          intent: 'ADD_CART',
+          tier: 1,
+          provider: config.mode,
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+        };
+      }
+      const qty = structured.entities?.quantity || 1;
+      const res = await executeSkill('add-cart-draft', {
+        items: [{ productId: targetProdId, qty }],
+      }, context, state);
+      return { ...res, intent: 'ADD_CART', tier: 1, provider: config.mode };
+    }
+
+    // 7. Remove Cart (Bỏ khỏi giỏ hàng)
+    if (structured.intent === 'REMOVE_CART') {
+      return { text: 'Đã bỏ sản phẩm khỏi giỏ hàng POS.', intent: 'REMOVE_CART', tier: 1, provider: config.mode };
+    }
+
+    // 8. Query Stock
+    if (structured.intent === 'QUERY_STOCK') {
+      let prodId = context.current_product_id;
+      let q = structured.entities?.product_name;
+      if (q) {
+        const resProd = resolveProduct(q, state.data?.products || [], context);
+        if (resProd.bestMatch && !resProd.isAmbiguous) prodId = resProd.bestMatch.id;
+      }
+      const res = await executeSkill('check-stock', { productId: prodId, query: q || rawPrompt }, context, state);
+      return { ...res, intent: 'QUERY_STOCK', tier: 1, provider: config.mode };
+    }
+
+    // 9. Query Memory
+    if (structured.intent === 'QUERY_MEMORY') {
+      const res = await executeSkill('memory-retrieve', { query: rawPrompt }, context, state);
+      return { ...res, intent: 'QUERY_MEMORY', tier: 1, provider: config.mode };
+    }
+
+    // 9.1 Order Diagnosis (if current_order_id in context or query asks about order issue)
+    const pNorm = norm(rawPrompt);
+    if (context.current_order_id && (pNorm.includes('vuong') || pNorm.includes('don nay') || pNorm.includes('chua xong') || structured.action_suggestion === 'order-diagnosis')) {
+      const res = await executeSkill('order-diagnosis', { orderId: context.current_order_id }, context, state);
+      return { ...res, intent: 'ORDER_DIAGNOSIS', tier: 1, provider: config.mode };
+    }
+
+    // 9.2 Sales Summary (if query asks about sales today / revenue)
+    if (pNorm.includes('ban the nao') || pNorm.includes('ban hom nay') || pNorm.includes('doanh thu') || pNorm.includes('ban bao nhieu') || structured.action_suggestion === 'sales-summary') {
+      const res = await executeSkill('sales-summary', { period: 'today' }, context, state);
+      return { ...res, intent: 'SALES_SUMMARY', tier: 1, provider: config.mode };
+    }
+
+    // 10. General Query / Explanation (e.g. general questions)
+    return {
+      text: structured.explanation || `Đã tiếp nhận yêu cầu: "${rawPrompt}".`,
+      tier: 1,
+      provider: config.mode,
+      intent: structured.intent,
+    };
+
+  } catch (err) {
+    logAuditEvent('PROVIDER_ERROR', { mode: config.mode, error: err.message });
+    // Honest error reporting — NO SILENT MOCK
+    return {
+      text: `⚠️ **Lỗi kết nối Provider (${config.mode}):**\n${err.message}\n\n*Hệ thống chuyển sang chế độ Tier 0 (nội bộ offline). Bạn có thể thử các câu lệnh chuẩn như "Hôm nay bán bao nhiêu?", "Hàng sắp hết", "Còn bao nhiêu?", "Nhập thêm 20 cái này vào kho chính".*`,
+      isError: true,
+      tier: 0,
+      provider: config.mode,
+    };
+  }
+}
+
 export async function routeIntent(prompt, context, state) {
   const rawPrompt = String(prompt || '').trim();
 
@@ -329,27 +607,9 @@ export async function routeIntent(prompt, context, state) {
     };
   }
 
-  // === Batch A5: Dictionary-based routing (runs first) ===
+  // === Batch A5: Confirmation / Cancellation for pending intents (handled at Tier 0 immediately) ===
   const dictResult = dictionaryRoute(rawPrompt, context, state);
   if (dictResult) {
-    // Handle structured results from dictionary layer
-    if (dictResult.type === 'ACTION' && dictResult.action) {
-      try {
-        const result = await dictResult.action.execute(dictResult.params || {}, state, context);
-        const msg = result?.text || result?.message || dictResult.action.name;
-        return { text: msg, ...result, tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
-      } catch (e) {
-        // Fall through to existing router on error
-      }
-    }
-    if (dictResult.type === 'SUGGEST') {
-      const cfg = getProviderConfig();
-      if (cfg && cfg.mode !== PROVIDER_MODES.DETERMINISTIC) {
-        // Fall through to configured real/mock provider
-      } else {
-        return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `\u2022 ${s.label}`).join('\n'), tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
-      }
-    }
     if (dictResult.type === 'CONFIRM_PENDING') {
       const pIntent = getPendingIntent() || dictResult.pending;
       clearPendingIntent();
@@ -390,6 +650,31 @@ export async function routeIntent(prompt, context, state) {
       const mergedParams = { ...(activePending.params || {}), warehouseId: chosenWh, toWarehouseId: chosenWh };
       const res = await executeSkill(activePending.skillId, mergedParams, context, state);
       return { ...res, text: `Đã chọn kho và tiếp tục: ${res.text || ''}`, tier: 0, provider: 'dictionary' };
+    }
+  }
+
+  // ==========================================
+  // CLOUD PROVIDER DISPATCH (IF CONFIGURED)
+  // When GEMINI, OPENAI_COMPATIBLE or MOCK_DEV is configured, use the LLM to parse natural language!
+  // ==========================================
+  const config = getProviderConfig();
+  if (config && config.mode !== PROVIDER_MODES.DETERMINISTIC) {
+    return await dispatchCloudProvider(rawPrompt, context, state, config);
+  }
+
+  // Handle remaining dictionary actions for Tier 0 / deterministic mode
+  if (dictResult) {
+    if (dictResult.type === 'ACTION' && dictResult.action) {
+      try {
+        const result = await dictResult.action.execute(dictResult.params || {}, state, context);
+        const msg = result?.text || result?.message || dictResult.action.name;
+        return { text: msg, ...result, tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+      } catch (e) {
+        // Fall through to existing router on error
+      }
+    }
+    if (dictResult.type === 'SUGGEST') {
+      return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `• ${s.label}`).join('\n'), tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
     }
   }
 
@@ -603,7 +888,7 @@ export async function routeIntent(prompt, context, state) {
   }
 
   const p = norm(prompt);
-  const config = getProviderConfig();
+  // reuse config from above
 
   // Log incoming request
   logAuditEvent('AI_REQUEST_RECEIVED', { prompt: rawPrompt, route: context.current_route, boundProduct: context.current_product_id, boundOrder: context.current_order_id });
@@ -1335,218 +1620,6 @@ export async function routeIntent(prompt, context, state) {
     }
     logAuditEvent('SKILL_EXECUTED', { skillId: 'search-product', tier: 0 });
     return { ...res, skillId: 'search-product', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
-  }
-
-  // ==========================================
-  // CLOUD PROVIDER DISPATCH (IF CONFIGURED)
-  // ==========================================
-  if (config.mode !== PROVIDER_MODES.DETERMINISTIC) {
-    const adapter = new AIProviderAdapter(config);
-    try {
-      const structured = await adapter.parseStructuredIntent({
-        prompt: rawPrompt,
-        context,
-        state,
-      });
-
-      // 1. Confidence Policy (Section 5): Low confidence -> Needs Clarification
-      if (structured.isLowConfidence || structured.confidence < 0.7) {
-        logAuditEvent('PROVIDER_LOW_CONFIDENCE', { prompt: rawPrompt, confidence: structured.confidence });
-        return {
-          text: structured.explanation || `Tôi chưa chắc chắn về yêu cầu của bạn ("${rawPrompt}"). Vui lòng cho biết rõ hơn hành động bạn muốn thực hiện?`,
-          tier: 1,
-          provider: config.mode,
-          status: 'NEEDS_CLARIFICATION',
-          isAmbiguous: true,
-        };
-      }
-
-      // 2. Query Memory Intent
-      if (structured.intent === 'QUERY_MEMORY') {
-        return {
-          text: `💡 **Quy ước / Kinh nghiệm cửa hàng:**\n${structured.explanation}\n\n*(Lưu ý: Đây là thông tin tham khảo nội bộ, AI không tự ý thay đổi dữ liệu hay xuất hàng)*`,
-          tier: 1,
-          provider: config.mode,
-          intent: 'QUERY_MEMORY',
-        };
-      }
-
-      // 3. Receive Stock (Nhập kho)
-      if (structured.intent === 'RECEIVE_STOCK') {
-        let targetProdId = null;
-        // Text explicit entity wins over active context (Section 5)
-        if (structured.entities?.product_name) {
-          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
-          if (resProd.isAmbiguous) {
-            return {
-              text: `Tìm thấy nhiều sản phẩm khớp với "${structured.entities.product_name}":\n` +
-                resProd.candidates.slice(0, 4).map(c => `• ${c.name} (${c.sku || c.id})`).join('\n') +
-                `\nVui lòng chỉ định chính xác sản phẩm cần nhập.`,
-              intent: 'RECEIVE_STOCK',
-              tier: 1,
-              provider: config.mode,
-              isAmbiguous: true,
-              candidates: resProd.candidates,
-            };
-          }
-          if (resProd.bestMatch) {
-            targetProdId = resProd.bestMatch.id;
-          }
-        }
-        if (!targetProdId) {
-          targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
-        }
-        if (!targetProdId) {
-          return {
-            text: `Bạn muốn tạo phiếu nhập kho cho sản phẩm nào? Vui lòng chọn sản phẩm hoặc nêu rõ tên mặt hàng.`,
-            intent: 'RECEIVE_STOCK',
-            tier: 1,
-            provider: config.mode,
-            isAmbiguous: true,
-          };
-        }
-
-        // Warehouse resolution
-        let whId = context.warehouse_id || 'wh_center';
-        if (structured.entities?.warehouse_name) {
-          const resWh = resolveWarehouse(structured.entities.warehouse_name, state.data?.warehouses || [], context);
-          if (resWh.warehouse) whId = resWh.warehouse.id;
-        }
-
-        const qty = structured.entities?.quantity || 20;
-        const res = await executeSkill('receipt-proposal', {
-          productId: targetProdId,
-          warehouseId: whId,
-          qty,
-          price: structured.entities?.price,
-          reason: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
-        }, context, state);
-
-        return { ...res, intent: 'RECEIVE_STOCK', tier: 1, provider: config.mode };
-      }
-
-      // 4. Transfer Stock (Chuyển kho)
-      if (structured.intent === 'TRANSFER_STOCK') {
-        let targetProdId = null;
-        if (structured.entities?.product_name) {
-          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
-          if (resProd.bestMatch && !resProd.isAmbiguous) {
-            targetProdId = resProd.bestMatch.id;
-          }
-        }
-        if (!targetProdId) {
-          targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
-        }
-        if (!targetProdId) {
-          return {
-            text: `Bạn muốn chuyển mặt hàng nào? Vui lòng chọn sản phẩm trên màn hình.`,
-            intent: 'TRANSFER_STOCK',
-            tier: 1,
-            provider: config.mode,
-            isAmbiguous: true,
-          };
-        }
-
-        let fromWh = context.warehouse_id || 'wh_center';
-        let toWh = 'wh_hadong';
-        if (structured.entities?.from_warehouse_name) {
-          const resFrom = resolveWarehouse(structured.entities.from_warehouse_name, state.data?.warehouses || [], context);
-          if (resFrom.warehouse) fromWh = resFrom.warehouse.id;
-        }
-        if (structured.entities?.to_warehouse_name) {
-          const resTo = resolveWarehouse(structured.entities.to_warehouse_name, state.data?.warehouses || [], context);
-          if (resTo.warehouse) toWh = resTo.warehouse.id;
-        }
-
-        const qty = structured.entities?.quantity || 5;
-        const res = await executeSkill('transfer-proposal', {
-          fromWarehouseId: fromWh,
-          toWarehouseId: toWh,
-          lines: [{ productId: targetProdId, qty }],
-          note: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
-        }, context, state);
-
-        return { ...res, intent: 'TRANSFER_STOCK', tier: 1, provider: config.mode };
-      }
-
-      // 5. Stocktake (Kiểm kho)
-      if (structured.intent === 'STOCKTAKE_STOCK') {
-        let targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
-        if (structured.entities?.product_name) {
-          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
-          if (resProd.bestMatch && !resProd.isAmbiguous) targetProdId = resProd.bestMatch.id;
-        }
-        const whId = context.warehouse_id || 'wh_center';
-        const counted = structured.entities?.quantity != null ? structured.entities.quantity : 18;
-        const res = await executeSkill('stocktake-proposal', {
-          warehouseId: whId,
-          productId: targetProdId,
-          counted,
-          reason: `Yêu cầu từ trợ lý AI: "${rawPrompt}"`,
-        }, context, state);
-        return { ...res, intent: 'STOCKTAKE_STOCK', tier: 1, provider: config.mode };
-      }
-
-      // 6. POS Cart Draft (Giỏ hàng nháp)
-      if (structured.intent === 'ADD_CART') {
-        let targetProdId = null;
-        if (structured.entities?.product_name) {
-          const resProd = resolveProduct(structured.entities.product_name, state.data?.products || [], context);
-          if (resProd.bestMatch && !resProd.isAmbiguous) targetProdId = resProd.bestMatch.id;
-        }
-        if (!targetProdId) targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
-        if (!targetProdId) {
-          return {
-            text: `Bạn muốn thêm sản phẩm nào vào giỏ? Vui lòng chọn sản phẩm trên màn hình bán hàng hoặc nhập tên sản phẩm.`,
-            intent: 'ADD_CART',
-            tier: 1,
-            provider: config.mode,
-            isAmbiguous: true,
-          };
-        }
-        const qty = structured.entities?.quantity || 1;
-        const res = await executeSkill('add-cart-draft', {
-          items: [{ productId: targetProdId, qty }],
-        }, context, state);
-        return { ...res, intent: 'ADD_CART', tier: 1, provider: config.mode };
-      }
-
-      // 7. Remove Cart (Bỏ khỏi giỏ hàng)
-      if (structured.intent === 'REMOVE_CART') {
-        return { text: 'Đã bỏ sản phẩm khỏi giỏ hàng POS.', intent: 'REMOVE_CART', tier: 1, provider: config.mode };
-      }
-
-      // 8. Query Stock
-      if (structured.intent === 'QUERY_STOCK') {
-        let q = structured.entities?.product_name || rawPrompt;
-        const res = await executeSkill('check-stock', { query: q }, context, state);
-        return { ...res, intent: 'QUERY_STOCK', tier: 1, provider: config.mode };
-      }
-
-      // 9. Query Memory
-      if (structured.intent === 'QUERY_MEMORY') {
-        const res = await executeSkill('memory-retrieve', { query: rawPrompt }, context, state);
-        return { ...res, intent: 'QUERY_MEMORY', tier: 1, provider: config.mode };
-      }
-
-      // 10. General Query / Explanation (e.g. check order without editing)
-      return {
-        text: structured.explanation || `Đã tiếp nhận yêu cầu: "${rawPrompt}".`,
-        tier: 1,
-        provider: config.mode,
-        intent: structured.intent,
-      };
-
-    } catch (err) {
-      logAuditEvent('PROVIDER_ERROR', { mode: config.mode, error: err.message });
-      // Honest error reporting — NO SILENT MOCK
-      return {
-        text: `⚠️ **Lỗi kết nối Provider (${config.mode}):**\n${err.message}\n\n*Hệ thống chuyển sang chế độ Tier 0 (nội bộ offline). Bạn có thể thử các câu lệnh chuẩn như "Hôm nay bán bao nhiêu?", "Hàng sắp hết", "Còn bao nhiêu?", "Nhập thêm 20 cái này vào kho chính".*`,
-        isError: true,
-        tier: 0,
-        provider: config.mode,
-      };
-    }
   }
 
   // ==========================================
