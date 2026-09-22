@@ -8,7 +8,7 @@ import { buildContextEnvelope, getCurrentActor, switchActor, setLastResolvedProd
 import { routeIntent } from './router.js';
 import { confirmProposal, cancelProposal, executeProposal, PROPOSAL_STATUS } from './proposals.js';
 import { getProviderConfig, setProviderConfig, PROVIDER_MODES } from './providers.js';
-import { executeAction } from './registry.js';
+import { executeAction, getSuggestedActions } from './registry.js';
 import { executeSkill } from './skills.js';
 import { levelFor } from '../engine.js';
 
@@ -46,6 +46,37 @@ const ROUTE_CHIPS = {
     'Nhập kho',
     'Chuyển kho',
     'Kiểm kho',
+  ],
+  customers: [
+    'Tìm khách hàng',
+    'Thêm khách mới',
+    'Lịch sử mua hàng',
+  ],
+  suppliers: [
+    'Tìm nhà cung cấp',
+    'Thêm NCC mới',
+  ],
+  settings: [
+    'Thông tin cửa hàng',
+    'Chế độ kinh doanh',
+    'Kiểu giao diện',
+    'Máy in & thiết bị',
+    'Sao lưu dữ liệu',
+  ],
+  reports: [
+    'Doanh thu hôm nay',
+    'Hàng bán chạy',
+    'Hàng sắp hết',
+  ],
+  shifts: [
+    'Mở ca',
+    'Đóng ca',
+    'Kiểm tra ca',
+  ],
+  cash: [
+    'Lập phiếu thu',
+    'Lập phiếu chi',
+    'Sổ quỹ',
   ],
 };
 
@@ -638,7 +669,11 @@ function renderChips() {
   if (!bar || !currentEnvelope) return;
 
   const route = currentEnvelope.current_route || 'dashboard';
-  let chips = ROUTE_CHIPS[route] || ROUTE_CHIPS.dashboard;
+  
+  let chips = getSuggestedActions(route);
+  if (!chips || chips.length === 0) {
+    chips = ROUTE_CHIPS[route] || ROUTE_CHIPS.dashboard;
+  }
 
   // If a product is actively bound, ensure product chips are prioritized
   if (currentEnvelope.current_product_id) {

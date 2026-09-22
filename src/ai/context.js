@@ -29,6 +29,7 @@ const sensitiveStateStore = new Map();
 let lastResolvedProduct = null;
 let lastResolvedWarehouse = null;
 let pendingIntent = null;
+let previousIntent = null;
 
 export function setLastResolvedProduct(prod) {
   lastResolvedProduct = prod ? { ...prod } : null;
@@ -47,15 +48,34 @@ export function getLastResolvedWarehouse() {
 }
 
 export function setPendingIntent(intent) {
-  pendingIntent = intent ? { ...intent } : null;
+  if (pendingIntent) previousIntent = { ...pendingIntent };
+  pendingIntent = intent ? {
+    ...intent,
+    created_at: intent.created_at || new Date().toISOString(),
+    missing_params: intent.missing_params || [],
+    resolved_entities: intent.resolved_entities || {},
+  } : null;
 }
 
 export function getPendingIntent() {
-  return pendingIntent ? { ...pendingIntent } : null;
+  if (!pendingIntent) return null;
+  // TTL: expire after 60 seconds
+  const age = Date.now() - new Date(pendingIntent.created_at).getTime();
+  if (age > 60000) { pendingIntent = null; return null; }
+  return { ...pendingIntent };
 }
 
 export function clearPendingIntent() {
+  if (pendingIntent) previousIntent = { ...pendingIntent };
   pendingIntent = null;
+}
+
+export function getPreviousIntent() {
+  return previousIntent ? { ...previousIntent } : null;
+}
+
+export function setPreviousIntent(intent) {
+  previousIntent = intent ? { ...intent } : null;
 }
 
 /**
@@ -88,6 +108,7 @@ export function switchActor(roleOrActor) {
   lastResolvedProduct = null;
   lastResolvedWarehouse = null;
   pendingIntent = null;
+  previousIntent = null;
 
   logAuditEvent('ACTOR_SWITCHED', {
     from: prevRole,
@@ -220,6 +241,15 @@ export function buildContextEnvelope(appState = {}, overrides = {}) {
     context_created_at: new Date().toISOString(),
     context_version: overrides.context_version || 1,
     entity_version: entityVersion,
+
+    // SPEC §4: Business profile & UI profile context
+    business_mode: shopSetting.business_mode || appState.business_mode || 'general',
+    ui_profile: appState.ui_profile || 'auto',
+
+    // SPEC §4: Multi-turn tracking
+    previous_intent: previousIntent ? { intent: previousIntent.intent, action_id: previousIntent.action_id } : null,
+    pending_intent: pendingIntent ? { intent: pendingIntent.intent, action_id: pendingIntent.action_id, missing_params: pendingIntent.missing_params } : null,
+    last_resolved_entity: lastResolvedProduct ? { type: 'product', id: lastResolvedProduct.id, name: lastResolvedProduct.name } : null,
   };
 }
 

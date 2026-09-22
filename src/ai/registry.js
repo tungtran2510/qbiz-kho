@@ -702,7 +702,332 @@ export const ACTION_REGISTRY = {
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
     },
   },
+
+  open_sales: {
+    id: 'open_sales', name: 'Mở bán hàng', feature_id: 'POS',
+    route: 'sales', screen: 'SalesPOS',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['ban hang', 'vao ban hang', 'mo pos', 'ban', 'vao pos'],
+    example_phrases: ['vào bán hàng', 'mở bán hàng', 'bán hàng'],
+    contexts: ['dashboard', 'products', 'orders', 'settings'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('sales'); return { success: true, message: 'Đã mở màn hình bán hàng.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_orders: {
+    id: 'open_orders', name: 'Mở đơn hàng', feature_id: 'ORDERS',
+    route: 'orders', screen: 'OrderList',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['don hang', 'mo don hang', 'xem don', 'danh sach don'],
+    example_phrases: ['mở đơn hàng', 'vào đơn hàng', 'xem đơn hàng'],
+    contexts: ['dashboard', 'products', 'sales', 'settings'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('orders'); return { success: true, message: 'Đã mở danh sách đơn hàng.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_customers: {
+    id: 'open_customers', name: 'Mở danh bạ khách hàng', feature_id: 'CUSTOMERS',
+    route: 'customers', screen: 'CustomerList',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['khach hang', 'mo khach hang', 'danh ba khach', 'xem khach'],
+    example_phrases: ['mở khách hàng', 'vào khách hàng', 'danh bạ khách'],
+    contexts: ['dashboard', 'sales', 'orders', 'settings'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('customers'); return { success: true, message: 'Đã mở danh bạ khách hàng.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_suppliers: {
+    id: 'open_suppliers', name: 'Mở nhà cung cấp', feature_id: 'SUPPLIERS',
+    route: 'suppliers', screen: 'SupplierList',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['nha cung cap', 'ncc', 'mo nha cung cap', 'nguon hang'],
+    example_phrases: ['mở nhà cung cấp', 'xem nhà cung cấp'],
+    contexts: ['dashboard', 'products', 'transfers'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('suppliers'); return { success: true, message: 'Đã mở danh sách nhà cung cấp.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_settings: {
+    id: 'open_settings', name: 'Mở cài đặt', feature_id: null,
+    route: 'settings', screen: 'Settings',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['cai dat', 'thiet lap', 'settings', 'cau hinh'],
+    example_phrases: ['vào cài đặt', 'mở cài đặt', 'thiết lập'],
+    contexts: ['dashboard', 'products', 'sales', 'orders'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('settings'); return { success: true, message: 'Đã mở trang cài đặt.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_transactions: {
+    id: 'open_transactions', name: 'Mở lịch sử giao dịch', feature_id: null,
+    route: 'transactions', screen: 'TransactionList',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['hoa don', 'lich su ban', 'giao dich', 'phieu ban'],
+    example_phrases: ['xem hóa đơn', 'lịch sử bán hàng', 'mở giao dịch'],
+    contexts: ['dashboard', 'sales', 'orders'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('transactions'); return { success: true, message: 'Đã mở lịch sử giao dịch.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_reports: {
+    id: 'open_reports', name: 'Mở báo cáo', feature_id: null,
+    route: 'reports', screen: 'Reports',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['bao cao', 'thong ke', 'tong hop', 'xem bao cao'],
+    example_phrases: ['mở báo cáo', 'xem thống kê', 'báo cáo doanh thu'],
+    contexts: ['dashboard', 'products', 'sales'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('reports'); return { success: true, message: 'Đã mở trang báo cáo.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_returns: {
+    id: 'open_returns', name: 'Mở đổi trả hàng', feature_id: null,
+    route: 'returns', screen: 'ReturnCenter',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['doi tra', 'tra hang', 'hoan hang', 'doi hang'],
+    example_phrases: ['mở đổi trả', 'trả hàng', 'đổi hàng'],
+    contexts: ['dashboard', 'sales', 'transactions'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('returns'); return { success: true, message: 'Đã mở trung tâm đổi trả hàng.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_store_info: {
+    id: 'open_store_info', name: 'Mở thông tin cửa hàng', feature_id: null,
+    route: 'settings', screen: 'BusinessProfile',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['thong tin cua hang', 'sua thong tin', 'ten cua hang', 'doi ten shop'],
+    example_phrases: ['sửa thông tin cửa hàng', 'đổi tên cửa hàng', 'mở hồ sơ shop'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('settings');
+        setTimeout(() => document.querySelector('[data-action="business-profile"]')?.click(), 100);
+        return { success: true, message: 'Đã mở thông tin cửa hàng.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_business_mode: {
+    id: 'open_business_mode', name: 'Mở chế độ kinh doanh', feature_id: null,
+    route: 'settings', screen: 'BusinessModeSelector',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['che do kinh doanh', 'doi che do', 'mo hinh kinh doanh', 'ban le', 'ban si', 'fnb', 'dich vu'],
+    example_phrases: ['đổi chế độ kinh doanh', 'chuyển sang bán lẻ', 'mở mô hình kinh doanh'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('settings');
+        setTimeout(() => document.querySelector('[data-action="business-mode-selector"]')?.click(), 100);
+        return { success: true, message: 'Đã mở chọn chế độ kinh doanh.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_ui_profile: {
+    id: 'open_ui_profile', name: 'Mở kiểu giao diện', feature_id: null,
+    route: 'settings', screen: 'UiProfileSelector',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['kieu giao dien', 'doi giao dien', 'giao dien', 'ui profile'],
+    example_phrases: ['đổi kiểu giao diện', 'chọn giao diện', 'mở kiểu giao diện'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('settings');
+        setTimeout(() => document.querySelector('[data-action="ui-profile-selector"]')?.click(), 100);
+        return { success: true, message: 'Đã mở chọn kiểu giao diện.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  new_product: {
+    id: 'new_product', name: 'Thêm hàng hóa mới', feature_id: 'PRODUCTS',
+    route: 'products', screen: 'NewProductForm',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['them san pham', 'them san pham moi', 'tao hang moi', 'them mat hang', 'them hang'],
+    example_phrases: ['thêm sản phẩm', 'thêm sản phẩm mới', 'tạo hàng mới', 'thêm mặt hàng'],
+    entity_types: ['PRODUCT'],
+    contexts: ['products', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('products');
+        setTimeout(() => document.querySelector('[data-action="new-product"]')?.click(), 100);
+        return { success: true, message: 'Đã mở form thêm hàng hóa mới.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  new_service: {
+    id: 'new_service', name: 'Thêm dịch vụ mới', feature_id: 'PRODUCTS',
+    route: 'products', screen: 'NewServiceForm',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['them dich vu', 'tao dich vu moi', 'them goi dich vu'],
+    example_phrases: ['thêm dịch vụ', 'tạo dịch vụ mới'],
+    entity_types: ['SERVICE'],
+    contexts: ['products', 'dashboard'],
+    async execute(params, state) {
+      // Navigate to products, then trigger new service form
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('products');
+        // The new-product action in app.js handles service creation too
+        return { success: true, message: 'Đã mở form thêm dịch vụ mới. Vui lòng chọn loại "Dịch vụ".' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  new_customer: {
+    id: 'new_customer', name: 'Thêm khách hàng mới', feature_id: 'CUSTOMERS',
+    route: 'customers', screen: 'NewCustomerForm',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['them khach', 'them khach hang', 'tao khach moi', 'khach moi'],
+    example_phrases: ['thêm khách hàng', 'tạo khách hàng mới', 'thêm khách mới'],
+    entity_types: ['CUSTOMER'],
+    contexts: ['customers', 'sales', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('customers');
+        setTimeout(() => document.querySelector('[data-action="new-customer"]')?.click(), 100);
+        return { success: true, message: 'Đã mở form thêm khách hàng mới.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  new_supplier: {
+    id: 'new_supplier', name: 'Thêm nhà cung cấp mới', feature_id: 'SUPPLIERS',
+    route: 'suppliers', screen: 'NewSupplierForm',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['them nha cung cap', 'tao ncc', 'them ncc moi'],
+    example_phrases: ['thêm nhà cung cấp', 'tạo NCC mới'],
+    entity_types: ['SUPPLIER'],
+    contexts: ['suppliers', 'products', 'transfers'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('suppliers');
+        setTimeout(() => document.querySelector('[data-action="new-supplier"]')?.click(), 100);
+        return { success: true, message: 'Đã mở form thêm nhà cung cấp mới.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  new_order: {
+    id: 'new_order', name: 'Tạo đơn đặt hàng mới', feature_id: 'ORDERS',
+    route: 'orders', screen: 'NewOrderForm',
+    required_capabilities: [PERMISSIONS.VIEW_SALES, PERMISSIONS.MANAGE_ORDERS],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['tao don', 'tao don hang', 'don hang moi', 'lap don'],
+    example_phrases: ['tạo đơn hàng', 'lập đơn mới', 'tạo đơn đặt hàng'],
+    entity_types: ['ORDER'],
+    contexts: ['orders', 'dashboard', 'products'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('orders');
+        setTimeout(() => document.querySelector('[data-action="new-order"]')?.click(), 100);
+        return { success: true, message: 'Đã mở form tạo đơn đặt hàng mới.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
 };
+
+/**
+ * Find actions matching a given alias (normalized).
+ * Returns array of {action, matchScore} sorted by relevance.
+ */
+export function findActionsByAlias(normalizedAlias) {
+  const results = [];
+  for (const [id, action] of Object.entries(ACTION_REGISTRY)) {
+    if (!action.aliases) continue;
+    for (const alias of action.aliases) {
+      if (alias === normalizedAlias) {
+        results.push({ action, matchScore: 100 });
+      } else if (normalizedAlias.startsWith(alias) || alias.startsWith(normalizedAlias)) {
+        results.push({ action, matchScore: 80 });
+      } else if (normalizedAlias.includes(alias) || alias.includes(normalizedAlias)) {
+        results.push({ action, matchScore: 60 });
+      }
+    }
+  }
+  return results.sort((a, b) => b.matchScore - a.matchScore);
+}
+
+/**
+ * Get actions relevant to a specific route/context.
+ */
+export function getActionsForContext(route) {
+  return Object.values(ACTION_REGISTRY).filter(a => {
+    if (!a.contexts) return true;
+    return a.contexts.includes(route);
+  });
+}
+
+/**
+ * Get suggested actions for a route (for dynamic chips).
+ * Returns max 5 actions that are AVAILABLE and have example_phrases.
+ */
+export function getSuggestedActions(route) {
+  return Object.values(ACTION_REGISTRY)
+    .filter(a => {
+      if (a.implementation_state !== IMPLEMENTATION_STATE.AVAILABLE) return false;
+      if (!a.example_phrases || a.example_phrases.length === 0) return false;
+      if (a.contexts && !a.contexts.includes(route)) return false;
+      return true;
+    })
+    .slice(0, 5)
+    .map(a => ({ id: a.id, phrase: a.example_phrases[0], name: a.name }));
+}
 
 /**
  * Lookup a feature in the Feature Registry.

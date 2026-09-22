@@ -23,6 +23,9 @@ import {
 } from './context.js';
 import { hasCapability, PERMISSIONS, detectPromptInjection } from './policy.js';
 import { executeAction, lookupFeature, lookupAction, IMPLEMENTATION_STATE } from './registry.js';
+import { norm as dictNorm, classifyIntent, detectEntityType, isPronounReference, isConfirmation, isCancellation, isCorrection, parseTimeExpression, extractQuantityAndUnit } from './dictionary.js';
+import { findActionsByAlias, getSuggestedActions, ACTION_REGISTRY } from './registry.js';
+import { resolveProduct, resolveCustomer, autoDetectAndResolve } from './resolver.js';
 
 function norm(str) {
   return String(str || '')
@@ -39,9 +42,156 @@ function norm(str) {
  * @param {Object} state Current application state
  * @returns {Promise<{ text: string, candidates?: Array, proposal?: Object, skillId?: string, tier: number, provider: string }>}
  */
+/**
+ * Dictionary-based intent routing layer (Batch A5).
+ * Returns structured result or null if no confident match.
+ */
+function dictionaryRoute(rawPrompt, context, state) {
+  const p = dictNorm(rawPrompt);
+  if (!p || p.length < 2) return null;
+
+  // 1. Handle confirm/cancel/correct for pending intents
+  const pending = context?.pending_intent;
+  if (pending) {
+    if (isConfirmation(p)) {
+      return { type: 'CONFIRM_PENDING', pending, confidence: 95 };
+    }
+    if (isCancellation(p)) {
+      return { type: 'CANCEL_PENDING', pending, confidence: 95 };
+    }
+    if (isCorrection(p)) {
+      return { type: 'CORRECT_PENDING', pending, confidence: 90 };
+    }
+  }
+
+  // 2. Try registry alias matching (most specific)
+  const aliasMatches = findActionsByAlias(p);
+  if (aliasMatches.length > 0 && aliasMatches[0].matchScore >= 80) {
+    const bestAction = aliasMatches[0].action;
+    return {
+      type: 'ACTION',
+      action_id: bestAction.id,
+      action: bestAction,
+      confidence: aliasMatches[0].matchScore,
+      source: 'registry_alias',
+    };
+  }
+
+  // 3. Classify intent + detect entity type
+  const intent = classifyIntent(p);
+  const entity = detectEntityType(p);
+
+  if (intent && entity) {
+    // Map intent+entity to specific action
+    const actionId = mapIntentEntityToAction(intent.intent, entity.entityType, context);
+    if (actionId && ACTION_REGISTRY[actionId]) {
+      return {
+        type: 'ACTION',
+        action_id: actionId,
+        action: ACTION_REGISTRY[actionId],
+        confidence: Math.min(intent.confidence, entity.confidence),
+        source: 'dictionary_classify',
+      };
+    }
+  }
+
+  // 4. If only intent detected but no entity, try to suggest
+  if (intent && intent.confidence >= 70 && !entity) {
+    const route = context?.current_route || 'dashboard';
+    const suggestions = getSuggestedActions(route);
+    if (suggestions.length > 0) {
+      return {
+        type: 'SUGGEST',
+        message: 'Tôi chưa chắc anh muốn làm việc nào:',
+        suggestions: suggestions.map(s => ({ id: s.id, label: s.phrase })),
+        confidence: 50,
+        source: 'dictionary_suggest',
+      };
+    }
+  }
+
+  return null; // fall through to existing router
+}
+
+/**
+ * Map intent + entity type to a specific action ID.
+ */
+function mapIntentEntityToAction(intent, entityType, context) {
+  const route = context?.current_route || 'dashboard';
+  const MAP = {
+    // OPEN + entity
+    'OPEN_PRODUCT': 'open_products',
+    'OPEN_SERVICE': 'open_products',
+    'OPEN_CUSTOMER': 'open_customers',
+    'OPEN_SUPPLIER': 'open_suppliers',
+    'OPEN_ORDER': 'open_orders',
+    'OPEN_WAREHOUSE': 'open_warehouse',
+    'OPEN_SALE': 'open_sales',
+    'OPEN_SETTINGS': 'open_settings',
+    'OPEN_PRINT': 'open_print_settings',
+    'OPEN_REPORT': 'open_reports',
+    // CREATE + entity
+    'CREATE_PRODUCT': 'new_product',
+    'CREATE_SERVICE': 'new_service',
+    'CREATE_CUSTOMER': 'new_customer',
+    'CREATE_SUPPLIER': 'new_supplier',
+    'CREATE_ORDER': 'new_order',
+    // SEARCH + entity (delegate to existing skills)
+    'SEARCH_PRODUCT': null,  // handled by existing router search logic
+    'SEARCH_CUSTOMER': null,
+    'SEARCH_ORDER': null,
+    // VIEW + entity
+    'VIEW_PRODUCT': 'open_products',
+    'VIEW_CUSTOMER': 'open_customers',
+    'VIEW_ORDER': 'open_orders',
+    'VIEW_WAREHOUSE': 'open_warehouse',
+    'VIEW_REPORT': 'open_reports',
+    // CONFIGURE
+    'CONFIGURE_SETTINGS': 'open_settings',
+    'CONFIGURE_PRINT': 'open_print_settings',
+    // BACKUP/RESTORE
+    'BACKUP_SETTINGS': 'open_backup',
+    'RESTORE_SETTINGS': 'open_backup',
+    // REPORT
+    'REPORT_REPORT': 'open_reports',
+    'REPORT_SALE': 'open_reports',
+    'SUMMARIZE_REPORT': 'open_reports',
+    'SUMMARIZE_SALE': 'open_reports',
+    // PAY
+    'PAY_SALE': null, // handled by existing POS flow
+    // MOVE
+    'MOVE_WAREHOUSE': 'open_transfer',
+    // COUNT
+    'COUNT_WAREHOUSE': 'open_stocktake',
+  };
+  const key = `${intent}_${entityType}`;
+  return MAP[key] || null;
+}
+
 export async function routeIntent(prompt, context, state) {
-  const p = norm(prompt);
   const rawPrompt = String(prompt || '').trim();
+
+  // === Batch A5: Dictionary-based routing (runs first) ===
+  const dictResult = dictionaryRoute(rawPrompt, context, state);
+  if (dictResult) {
+    // Handle structured results from dictionary layer
+    if (dictResult.type === 'ACTION' && dictResult.action) {
+      try {
+        const result = await dictResult.action.execute(dictResult.action.required_params ? {} : {}, state);
+        return { text: result?.message || dictResult.action.name, tier: 0, provider: 'dictionary' };
+      } catch (e) {
+        // Fall through to existing router on error
+      }
+    }
+    if (dictResult.type === 'SUGGEST') {
+      return { text: dictResult.message + '\n' + dictResult.suggestions.map(s => `\u2022 ${s.label}`).join('\n'), tier: 0, provider: 'dictionary' };
+    }
+    if (dictResult.type === 'CONFIRM_PENDING' || dictResult.type === 'CANCEL_PENDING') {
+      // These are handled by existing pending intent logic, fall through
+    }
+  }
+
+  const p = norm(prompt);
   const config = getProviderConfig();
 
   // Log incoming request

@@ -13,3 +13,5 @@ export * from './memory.js';
 export * from './audit.js';
 export * from './registry.js';
 export * from './ui.js';
+export * from './dictionary.js';
+export * from './resolver.js';
