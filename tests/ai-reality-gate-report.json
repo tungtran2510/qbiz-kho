@@ -1,0 +1,163 @@
+{
+  "provider": {
+    "status": "VERIFIED_REAL",
+    "pass_count": 10,
+    "failure_surfaced": true
+  },
+  "vision": {
+    "status": "VERIFIED_REAL",
+    "mock_dev": "MOCK_DEV (Local heuristic keyword parser available for offline development)"
+  },
+  "voice": {
+    "VOICE_UI": "VERIFIED_REAL",
+    "VOICE_SPEECH_API": "IMPLEMENTED_NOT_E2E_VERIFIED",
+    "VOICE_REAL_MIC_CAPTURE": "IMPLEMENTED_NOT_E2E_VERIFIED"
+  },
+  "barcode": {
+    "BARCODE_NATIVE_API": "PARTIAL_BY_PLATFORM",
+    "BARCODE_REAL_IMAGE_SCAN": "PARTIAL_BY_PLATFORM",
+    "BARCODE_MANUAL_FALLBACK": "VERIFIED_REAL"
+  },
+  "sheet_open": {
+    "Mobile iPhone": {
+      "pass": true,
+      "sheet_visible": true,
+      "proposal_rendered": true,
+      "horizontal_overflow": 0,
+      "panel_overflow": false,
+      "buttons_reachable": true,
+      "input_focused": true,
+      "screenshot": "tests/evidence/ai_sheet_open_390x844.png"
+    },
+    "Mobile Android": {
+      "pass": true,
+      "sheet_visible": true,
+      "proposal_rendered": true,
+      "horizontal_overflow": 0,
+      "panel_overflow": false,
+      "buttons_reachable": true,
+      "input_focused": true,
+      "screenshot": "tests/evidence/ai_sheet_open_412x915.png"
+    },
+    "Desktop Large": {
+      "pass": true,
+      "sheet_visible": true,
+      "proposal_rendered": true,
+      "horizontal_overflow": 0,
+      "panel_overflow": false,
+      "buttons_reachable": true,
+      "input_focused": true,
+      "screenshot": "tests/evidence/ai_sheet_open_1440x900.png"
+    }
+  },
+  "safe_writes": {
+    "RECEIPT": {
+      "STATUS": "VERIFIED_REAL",
+      "PROPOSAL": "VERIFIED_REAL",
+      "CONFIRMATION": "VERIFIED_REAL",
+      "REVALIDATION": "VERIFIED_REAL",
+      "TOOL": "VERIFIED_REAL",
+      "DOMAIN_ENGINE": "VERIFIED_REAL",
+      "LEDGER": "VERIFIED_REAL",
+      "AUDIT": "VERIFIED_REAL",
+      "IDEMPOTENCY": "VERIFIED_REAL"
+    },
+    "TRANSFER": {
+      "STATUS": "VERIFIED_REAL",
+      "PROPOSAL": "VERIFIED_REAL",
+      "CONFIRMATION": "VERIFIED_REAL",
+      "REVALIDATION": "VERIFIED_REAL",
+      "TOOL": "VERIFIED_REAL",
+      "DOMAIN_ENGINE": "VERIFIED_REAL",
+      "LEDGER": "VERIFIED_REAL",
+      "AUDIT": "VERIFIED_REAL",
+      "IDEMPOTENCY": "VERIFIED_REAL"
+    },
+    "STOCKTAKE": {
+      "STATUS": "VERIFIED_REAL",
+      "PROPOSAL": "VERIFIED_REAL",
+      "CONFIRMATION": "VERIFIED_REAL",
+      "REVALIDATION": "VERIFIED_REAL",
+      "TOOL": "VERIFIED_REAL",
+      "DOMAIN_ENGINE": "VERIFIED_REAL",
+      "LEDGER": "VERIFIED_REAL",
+      "AUDIT": "VERIFIED_REAL",
+      "IDEMPOTENCY": "VERIFIED_REAL"
+    },
+    "ADD_TO_CART": {
+      "STATUS": "VERIFIED_REAL",
+      "PROPOSAL": "VERIFIED_REAL",
+      "CONFIRMATION": "VERIFIED_REAL",
+      "REVALIDATION": "VERIFIED_REAL",
+      "TOOL": "VERIFIED_REAL",
+      "DOMAIN_ENGINE": "VERIFIED_REAL",
+      "LEDGER": "PREPARED",
+      "AUDIT": "VERIFIED_REAL",
+      "IDEMPOTENCY": "VERIFIED_REAL"
+    },
+    "CUSTOMER_SELECT": {
+      "STATUS": "PREPARED",
+      "PROPOSAL": "NOT_IMPLEMENTED",
+      "CONFIRMATION": "NOT_IMPLEMENTED",
+      "REVALIDATION": "NOT_IMPLEMENTED",
+      "TOOL": "NOT_IMPLEMENTED",
+      "DOMAIN_ENGINE": "PREPARED",
+      "LEDGER": "NOT_IMPLEMENTED",
+      "AUDIT": "NOT_IMPLEMENTED",
+      "IDEMPOTENCY": "NOT_IMPLEMENTED"
+    }
+  },
+  "memory": {
+    "SHOP_MEMORY": {
+      "CRUD": "VERIFIED_REAL",
+      "PERSISTENCE": "VERIFIED_REAL",
+      "CONFIRM_BEFORE_SAVE": "VERIFIED_REAL",
+      "RETRIEVAL": "VERIFIED_REAL",
+      "SUPERSEDES": "VERIFIED_REAL",
+      "INJECTION_SAFETY": "VERIFIED_REAL"
+    },
+    "PRODUCT_MEMORY": {
+      "CRUD": "VERIFIED_REAL",
+      "PERSISTENCE": "VERIFIED_REAL",
+      "CONFIRM_BEFORE_SAVE": "VERIFIED_REAL",
+      "RETRIEVAL": "VERIFIED_REAL",
+      "SUPERSEDES": "VERIFIED_REAL",
+      "INJECTION_SAFETY": "VERIFIED_REAL"
+    },
+    "WAREHOUSE_MEMORY": {
+      "CRUD": "VERIFIED_REAL",
+      "PERSISTENCE": "VERIFIED_REAL",
+      "CONFIRM_BEFORE_SAVE": "VERIFIED_REAL",
+      "RETRIEVAL": "VERIFIED_REAL",
+      "SUPERSEDES": "VERIFIED_REAL",
+      "INJECTION_SAFETY": "VERIFIED_REAL"
+    },
+    "SUPPLIER_MEMORY": {
+      "CRUD": "VERIFIED_REAL",
+      "PERSISTENCE": "VERIFIED_REAL",
+      "CONFIRM_BEFORE_SAVE": "VERIFIED_REAL",
+      "RETRIEVAL": "VERIFIED_REAL",
+      "SUPERSEDES": "VERIFIED_REAL",
+      "INJECTION_SAFETY": "VERIFIED_REAL"
+    },
+    "CUSTOMER_MEMORY": {
+      "CRUD": "PREPARED",
+      "PERSISTENCE": "PREPARED",
+      "CONFIRM_BEFORE_SAVE": "PREPARED",
+      "RETRIEVAL": "PREPARED",
+      "SUPERSEDES": "PREPARED",
+      "INJECTION_SAFETY": "VERIFIED_REAL"
+    }
+  },
+  "core_safety": {
+    "DIRECT_AI_DB_WRITE": 0,
+    "LEDGER_MISMATCH": 0,
+    "P0": 0,
+    "P1": 0,
+    "CONSOLE_ERRORS": 1,
+    "READY_FOR_SYNC_01": "NO"
+  },
+  "console_errors": [
+    "[error] Failed to load resource: the server responded with a status of 400 ()"
+  ]
+}

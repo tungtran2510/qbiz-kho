@@ -1,0 +1,154 @@
+{
+  "total": 150,
+  "pass": 142,
+  "byCategory": {
+    "COMMON_NATURAL_VIETNAMESE": {
+      "total": 50,
+      "pass": 49,
+      "fail": 1
+    },
+    "TYPO_NO_DIACRITIC_SLANG": {
+      "total": 25,
+      "pass": 22,
+      "fail": 3
+    },
+    "CONTEXT_AMBIGUITY_FOLLOWUP": {
+      "total": 25,
+      "pass": 23,
+      "fail": 2
+    },
+    "MULTI_INTENT_NEGATION": {
+      "total": 20,
+      "pass": 18,
+      "fail": 2
+    },
+    "ADVERSARIAL_SECURITY": {
+      "total": 20,
+      "pass": 20,
+      "fail": 0
+    },
+    "UNCOMMON_UNSUPPORTED": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    }
+  },
+  "failures": [
+    {
+      "id": "FINAL_035",
+      "category": "COMMON_NATURAL_VIETNAMESE",
+      "severity": "P2",
+      "prompt": "Có phiếu chuyển kho nào đang chờ tiếp nhận không?",
+      "expected_action": "daily_attention",
+      "out": {
+        "text": "Bạn muốn chuyển mặt hàng nào? Vui lòng chọn sản phẩm trên màn hình.",
+        "intent": "TRANSFER_STOCK",
+        "status": "NEEDS_CLARIFICATION",
+        "isAmbiguous": true,
+        "proposal": null
+      }
+    },
+    {
+      "id": "FINAL_058",
+      "category": "TYPO_NO_DIACRITIC_SLANG",
+      "severity": "P2",
+      "prompt": "viec can lam hom nay la gi",
+      "expected_action": "daily_attention",
+      "out": {
+        "text": "Tôi chưa hoàn toàn chắc chắn về ý định của bạn. Vui lòng cho biết rõ hơn hành động cần thực hiện.",
+        "intent": null,
+        "status": "NEEDS_CLARIFICATION",
+        "isAmbiguous": true,
+        "proposal": null
+      }
+    },
+    {
+      "id": "FINAL_063",
+      "category": "TYPO_NO_DIACRITIC_SLANG",
+      "severity": "P2",
+      "prompt": "ktra ton sp ghe 90d",
+      "expected_action": "check_stock",
+      "out": {
+        "text": "Tôi chưa hoàn toàn chắc chắn về ý định của bạn. Vui lòng cho biết rõ hơn hành động cần thực hiện.",
+        "intent": null,
+        "status": "NEEDS_CLARIFICATION",
+        "isAmbiguous": true,
+        "proposal": null
+      }
+    },
+    {
+      "id": "FINAL_064",
+      "category": "TYPO_NO_DIACRITIC_SLANG",
+      "severity": "P2",
+      "prompt": "doang thu hum nai",
+      "expected_action": "sales_summary",
+      "out": {
+        "text": "Tôi chưa hoàn toàn chắc chắn về ý định của bạn. Vui lòng cho biết rõ hơn hành động cần thực hiện.",
+        "intent": null,
+        "status": "NEEDS_CLARIFICATION",
+        "isAmbiguous": true,
+        "proposal": null
+      }
+    },
+    {
+      "id": "FINAL_089",
+      "category": "CONTEXT_AMBIGUITY_FOLLOWUP",
+      "severity": "P3",
+      "prompt": "Báo giá loại đệm",
+      "expected_action": "clarification",
+      "out": {
+        "text": "Sản phẩm **Đệm thiền DoctorLoan**:\n- Tổng có thể bán: **5 cái** (Thực tồn: 7, Đang giữ: 2)\n- Chi tiết theo kho:\n  • **Kho Trung tâm**: Còn bán được **2**, thực tế 2\n  • **Kho Hà Đông**: Còn bán được **3**, thực tế 5",
+        "intent": "QUERY_STOCK",
+        "status": null,
+        "isAmbiguous": null,
+        "proposal": null
+      }
+    },
+    {
+      "id": "FINAL_091",
+      "category": "CONTEXT_AMBIGUITY_FOLLOWUP",
+      "severity": "P2",
+      "prompt": "Chuyển sang xem tồn Đệm thiền DoctorLoan",
+      "expected_action": "check_stock",
+      "out": {
+        "text": "Không xác định được kho nhận hàng hợp lệ (chưa rõ). Vui lòng chỉ định chính xác kho đích.",
+        "intent": "TRANSFER_STOCK",
+        "status": "NEEDS_CLARIFICATION",
+        "isAmbiguous": true,
+        "proposal": null
+      }
+    },
+    {
+      "id": "FINAL_110",
+      "category": "MULTI_INTENT_NEGATION",
+      "severity": "P2",
+      "prompt": "Chỉ tra cứu giá chứ không tạo đơn bán Ghế sáng chế 135",
+      "expected_action": "check_stock",
+      "out": {
+        "text": "Tôi chưa hoàn toàn chắc chắn về ý định của bạn. Vui lòng cho biết rõ hơn hành động cần thực hiện.",
+        "intent": null,
+        "status": "NEEDS_CLARIFICATION",
+        "isAmbiguous": true,
+        "proposal": null
+      }
+    },
+    {
+      "id": "FINAL_120",
+      "category": "MULTI_INTENT_NEGATION",
+      "severity": "P2",
+      "prompt": "Tôi không hỏi chính sách bảo hành, tôi muốn biết tồn Đệm thiền",
+      "expected_action": "check_stock",
+      "out": {
+        "text": "Tôi chưa hoàn toàn chắc chắn về ý định của bạn. Vui lòng cho biết rõ hơn hành động cần thực hiện.",
+        "intent": null,
+        "status": "NEEDS_CLARIFICATION",
+        "isAmbiguous": true,
+        "proposal": null
+      }
+    }
+  ],
+  "p0": 0,
+  "p1": 0,
+  "p2": 7,
+  "p3": 1
+}

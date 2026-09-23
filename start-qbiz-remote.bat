@@ -18,15 +18,27 @@ if %errorlevel% neq 0 (
 
 :: 2. Khoi dong Localtunnel co dinh subdomain (qbiz-kho-2026.loca.lt)
 echo [2/3] Dang ket noi Backup Tunnel (loca.lt)...
-start /b "" "C:\Users\Admin\.agent-reach\tools\node\node-v24.21.0-win-x64\npx.cmd" --yes localtunnel --port 4180 --subdomain qbiz-kho-2026 > "%~dp0localtunnel.log" 2>&1
+taskkill /f /im node.exe /fi "WINDOWTITLE eq localtunnel*" >nul 2>&1
+start "localtunnel" "C:\Users\Admin\.agent-reach\tools\node\node-v24.21.0-win-x64\npx.cmd" --yes localtunnel --port 4180 --subdomain qbiz-kho-2026
 
 :: 3. Khoi dong Cloudflare Tunnel
 echo [3/3] Dang ket noi Primary Tunnel (Cloudflare)...
-start /b "" "D:\google driver\Codex PC\QBiz Connect (Quản lý & Kết nối Quan hệ)\cloudflared.exe" tunnel --url http://127.0.0.1:4180 > "%~dp0cloudflare.log" 2>&1
+taskkill /f /im cloudflared.exe /fi "WINDOWTITLE eq cloudflared-tunnel*" >nul 2>&1
+start "cloudflared-tunnel" "D:\google driver\Codex PC\QBiz Connect (Quản lý & Kết nối Quan hệ)\cloudflared.exe" tunnel --url http://127.0.0.1:4180
 
 echo.
 echo ===================================================
 echo DA KHOI DONG THANH CONG CAC DUONG TRUY CAP:
-echo 1. Cloudflare: Xem link moi nhat trong cloudflare.log
-echo 2. Localtunnel: https://qbiz-kho-2026.loca.lt
+echo.
+echo [1] KET NOI HTTPS QUA LOCALTUNNEL (Co dinh):
+echo     Link: https://qbiz-kho-2026.loca.lt
+echo     * Neu trinh duyet hoi mat khau / IP: Nhap IP mang cua ban
+echo.
+echo [2] KET NOI MANG LAN WIFI (Nhanh nhat - khong can mang ngoai):
+echo     Link: http://192.168.1.10:4180
 echo ===================================================
+echo.
+echo LUU Y: Vui long GIU NGUYEN cua so nay trong suot qua trinh su dung.
+echo (Dong cua so nay se ngat ket noi tu xa).
+echo.
+pause

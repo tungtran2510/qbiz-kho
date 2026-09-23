@@ -268,7 +268,7 @@ export const SKILL_REGISTRY = {
     name: 'Đề xuất nhập hàng',
     description: 'Tạo Structured Proposal để nhập hàng vào kho (không tự ý ghi DB)',
     async execute({ productId, warehouseId, qty = 20, reason }, context, state) {
-      const targetId = productId || context?.current_product_id;
+      const targetId = productId || context?.current_product_id || (state?.data?.products || [])[0]?.id;
       if (!targetId) {
         return {
           text: 'Vui lòng mở một sản phẩm hoặc chỉ định sản phẩm cần nhập thêm hàng.',
@@ -297,10 +297,32 @@ export const SKILL_REGISTRY = {
     id: 'transfer-proposal',
     name: 'Đề xuất chuyển kho',
     description: 'Tạo Structured Proposal để điều chuyển hàng giữa các kho',
-    async execute({ fromWarehouseId, toWarehouseId, lines = [], note }, context, state) {
+    async execute({ fromWarehouseId, toWarehouseId, lines = [], note, qty, productId }, context, state) {
+      if (!toWarehouseId) {
+        return {
+          text: 'Bạn muốn chuyển hàng đến kho nào? Vui lòng chọn kho đích cụ thể.',
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+          tier: 0,
+        };
+      }
+      if ((!lines || !lines.length) && qty) {
+        const pId = productId || context?.current_product_id;
+        if (!pId) {
+          return {
+            text: 'Bạn muốn chuyển mặt hàng nào? Vui lòng chọn sản phẩm cần chuyển.',
+            isAmbiguous: true,
+            status: 'NEEDS_CLARIFICATION',
+            tier: 0,
+          };
+        }
+        lines = [{ productId: pId, qty: Number(qty) || 5 }];
+      }
+      const fromWh = fromWarehouseId || context?.warehouse_id || (state?.data?.warehouses || [])[0]?.id || 'wh_center';
+      const toWh = toWarehouseId;
       const proposal = executeTool('create_transfer_proposal', {
-        fromWarehouseId,
-        toWarehouseId,
+        fromWarehouseId: fromWh,
+        toWarehouseId: toWh,
         lines,
         note,
       }, state, context);
@@ -320,6 +342,14 @@ export const SKILL_REGISTRY = {
     description: 'Tạo Structured Proposal để kiểm kê và đối soát tồn kho',
     async execute({ warehouseId, productId, counted, lines = [], reason }, context, state) {
       const targetProdId = productId || context?.current_product_id;
+      if (!targetProdId && (!lines || !lines.length)) {
+        return {
+          text: 'Bạn muốn kiểm kê sản phẩm nào? Vui lòng chọn sản phẩm và cung cấp số lượng kiểm đếm cụ thể.',
+          isAmbiguous: true,
+          status: 'NEEDS_CLARIFICATION',
+          tier: 0,
+        };
+      }
       const targetWh = warehouseId || context?.warehouse_id || (state?.data?.warehouses || [])[0]?.id;
       const proposal = executeTool('create_stocktake_proposal', {
         warehouseId: targetWh,

@@ -62,7 +62,7 @@ export const PRONOUN_MAP = [
 ];
 
 export const CORRECTION_PHRASES = [
-  'khong phai cai do', 'y toi la', 'nham', 'sua lai', 'quay lai', 'cai kia co', 'khong la'
+  'khong phai cai do', 'y toi la', 'nham', 'sua lai', 'quay lai', 'cai kia co', 'khong phai la'
 ];
 
 export const TIME_EXPRESSIONS = {
@@ -273,6 +273,12 @@ export function isPronounReference(normalizedText) {
 
 export function isConfirmation(normalizedText) {
   if (!normalizedText) return false;
+  // If it starts with "đúng", it must be followed by affirmative particles.
+  // Any "dung" followed by an action verb or other word (e.g. "dung nhap", "dung kiem", "dung chuyen") is "đừng" (prohibition), NOT confirmation!
+  if (/^dung\s+/i.test(normalizedText)) {
+    const isAffirmation = /^dung\s+(?:roi|vay|day|do|the|chuan|chinh\s+xac|nhe|nha)\b/i.test(normalizedText);
+    if (!isAffirmation) return false;
+  }
   return INTENT_TAXONOMY.CONFIRM.triggers.some(t => {
       let rx = new RegExp(`^${t}\\b`, 'i');
       return rx.test(normalizedText) || normalizedText === t;
@@ -281,6 +287,10 @@ export function isConfirmation(normalizedText) {
 
 export function isCancellation(normalizedText) {
   if (!normalizedText) return false;
+  // If it starts with "bỏ vào", "bỏ vô", "bỏ thêm", "bỏ qua", "bỏ ra", "bỏ khỏi", it is NOT a session cancellation!
+  if (/^bo\s+(?:vao|vo|them|qua|ra|khoi|bot)\b/i.test(normalizedText)) {
+    return false;
+  }
   return INTENT_TAXONOMY.CANCEL.triggers.some(t => {
       let rx = new RegExp(`^${t}\\b`, 'i');
       return rx.test(normalizedText) || normalizedText === t;

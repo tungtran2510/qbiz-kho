@@ -353,6 +353,51 @@ export function validateProposal(proposal, currentState, actor = { role: 'owner'
 }
 
 /**
+ * Check if a proposal's inventory snapshot has become stale compared to current state.
+ * @param {Object} proposal
+ * @param {Object} currentState
+ * @returns {{ isStale: boolean, reason?: string }}
+ */
+export function isProposalStale(proposal, currentState) {
+  if (!proposal || !proposal.inventory_snapshot || !currentState?.data) {
+    return { isStale: false };
+  }
+  const snap = proposal.inventory_snapshot;
+  if (Array.isArray(snap.lines)) {
+    const whId = snap.fromWarehouseId || proposal.parameters?.fromWarehouseId;
+    for (const snapLine of snap.lines) {
+      const curLevel = levelFor(currentState.data, snapLine.productId, whId);
+      const curOnHand = Number(curLevel?.onHand || 0);
+      const curAvailable = curLevel ? available(curLevel) : 0;
+      const reqQty = Number((proposal.parameters?.lines || []).find(l => l.productId === snapLine.productId)?.qty || 0);
+      if (curOnHand !== Number(snapLine.onHand || 0) || (reqQty > 0 && curAvailable < reqQty)) {
+        const reason = (reqQty > 0 && curAvailable < reqQty)
+          ? `Số lượng khả dụng đã thay đổi: còn ${curAvailable}, yêu cầu ${reqQty}`
+          : `Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất (tồn ban đầu: ${snapLine.onHand}, hiện tại: ${curOnHand}).`;
+        return { isStale: true, reason };
+      }
+    }
+  } else if (snap.onHand !== undefined) {
+    const prodId = snap.productId || proposal.parameters?.productId;
+    const whId = snap.warehouseId || proposal.parameters?.warehouseId;
+    if (prodId && whId) {
+      const curLevel = levelFor(currentState.data, prodId, whId);
+      const curOnHand = Number(curLevel?.onHand || 0);
+      const curAvailable = curLevel ? available(curLevel) : 0;
+      const reqQty = Number(proposal.parameters?.qty || 0);
+      const isDeduct = proposal.intent === 'create_transfer_proposal' || proposal.intent === 'TRANSFER_STOCK' || proposal.intent?.includes('issue');
+      if (curOnHand !== Number(snap.onHand || 0) || (isDeduct && reqQty > 0 && curAvailable < reqQty)) {
+        const reason = (isDeduct && reqQty > 0 && curAvailable < reqQty)
+          ? `Số lượng khả dụng đã thay đổi: còn ${curAvailable}, yêu cầu ${reqQty}`
+          : `Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất (tồn ban đầu: ${snap.onHand}, hiện tại: ${curOnHand}).`;
+        return { isStale: true, reason };
+      }
+    }
+  }
+  return { isStale: false };
+}
+
+/**
  * Section C: Confirm a StructuredProposal and bind immutable execution fingerprint.
  * @param {Object} proposal
  * @param {Object} currentState
@@ -374,60 +419,19 @@ export function confirmProposal(proposal, currentState, actor = { id: 'owner_1',
   }
 
   // Step 8: Stale Detection check before confirmation
-  if (proposal.inventory_snapshot && currentState?.data) {
-    let isStale = false;
-    let staleReason = '';
-    const snap = proposal.inventory_snapshot;
-    if (Array.isArray(snap.lines)) {
-      const whId = snap.fromWarehouseId || proposal.parameters?.fromWarehouseId;
-      for (const snapLine of snap.lines) {
-        const curLevel = levelFor(currentState.data, snapLine.productId, whId);
-        const curOnHand = Number(curLevel?.onHand || 0);
-        const curAvailable = curLevel ? available(curLevel) : 0;
-        const reqQty = Number((proposal.parameters?.lines || []).find(l => l.productId === snapLine.productId)?.qty || 0);
-        if (curOnHand !== Number(snapLine.onHand || 0) || (reqQty > 0 && curAvailable < reqQty)) {
-          isStale = true;
-          if (reqQty > 0 && curAvailable < reqQty) {
-            staleReason = `Số lượng khả dụng đã thay đổi: còn ${curAvailable}, yêu cầu ${reqQty}`;
-          } else {
-            staleReason = `Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất (tồn ban đầu: ${snapLine.onHand}, hiện tại: ${curOnHand}).`;
-          }
-          break;
-        }
-      }
-    } else if (snap.onHand !== undefined) {
-      const prodId = snap.productId || proposal.parameters?.productId;
-      const whId = snap.warehouseId || proposal.parameters?.warehouseId;
-      if (prodId && whId) {
-        const curLevel = levelFor(currentState.data, prodId, whId);
-        const curOnHand = Number(curLevel?.onHand || 0);
-        const curAvailable = curLevel ? available(curLevel) : 0;
-        const reqQty = Number(proposal.parameters?.qty || 0);
-        const isDeduct = proposal.intent === 'create_transfer_proposal' || proposal.intent === 'TRANSFER_STOCK' || proposal.intent?.includes('issue');
-        if (curOnHand !== Number(snap.onHand || 0) || (isDeduct && reqQty > 0 && curAvailable < reqQty)) {
-          isStale = true;
-          if (isDeduct && reqQty > 0 && curAvailable < reqQty) {
-            staleReason = `Số lượng khả dụng đã thay đổi: còn ${curAvailable}, yêu cầu ${reqQty}`;
-          } else {
-            staleReason = `Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất (tồn ban đầu: ${snap.onHand}, hiện tại: ${curOnHand}).`;
-          }
-        }
-      }
-    }
-
-    if (isStale) {
-      proposal.isStale = true;
-      proposal.status = PROPOSAL_STATUS.READY;
-      proposal.confirmation_fingerprint = null;
-      proposal.confirmed_by = null;
-      proposal.confirmed_at = null;
-      return {
-        success: false,
-        isStale: true,
-        proposal,
-        message: staleReason || 'Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất.',
-      };
-    }
+  const staleCheck = isProposalStale(proposal, currentState);
+  if (staleCheck.isStale) {
+    proposal.isStale = true;
+    proposal.status = PROPOSAL_STATUS.READY;
+    proposal.confirmation_fingerprint = null;
+    proposal.confirmed_by = null;
+    proposal.confirmed_at = null;
+    return {
+      success: false,
+      isStale: true,
+      proposal,
+      message: staleCheck.reason || 'Dữ liệu tồn kho đã thay đổi từ lúc tạo đề xuất.',
+    };
   }
 
   // Section D: Transition READY -> CONFIRMED

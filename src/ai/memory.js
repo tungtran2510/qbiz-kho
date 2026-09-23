@@ -37,6 +37,8 @@ export function loadEntries() {
   }
 }
 
+export const getMemories = loadEntries;
+
 /**
  * Persist memory entries to storage.
  * @param {Array} entries

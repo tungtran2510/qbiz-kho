@@ -12,6 +12,7 @@ import { executeAction, getSuggestedActions } from './registry.js';
 import { executeSkill } from './skills.js';
 import { levelFor } from '../engine.js';
 import { loadEntries, togglePinMemory, archiveMemory, deleteMemory, commitMemory, MEMORY_SCOPES } from './memory.js';
+import { createAttachmentFromFile, ATTACHMENT_TYPES, INPUT_TYPES } from './multimodal.js';
 
 let appStateRef = null;
 let currentEnvelope = null;
@@ -19,6 +20,7 @@ let activeProposal = null;
 let lastResult = null;
 let devInspectorOpen = false;
 let messageHistory = [];
+let activeAttachments = [];
 
 const ROUTE_CHIPS = {
   dashboard: [
@@ -234,8 +236,42 @@ export function initAiUI(state) {
           <!-- Rendered dynamically according to current route -->
         </div>
 
-        <!-- Input Box -->
+        <!-- Voice Status Bar -->
+        <div id="aiVoiceStatus" class="ai-voice-status" style="display:none;"></div>
+
+        <!-- Attachment Preview Tray -->
+        <div id="aiAttachmentTray" class="ai-attachment-tray" style="display:none;"></div>
+
+        <!-- Input Box: [ + ] [ Nhập yêu cầu... ] [ Mic ] [ Gửi ] -->
         <form id="aiInputForm" class="ai-input-form" onsubmit="return false;">
+          <div class="ai-attach-wrap">
+            <button id="aiAttachBtn" type="button" class="ai-attach-btn" aria-label="Đính kèm ảnh hoặc tệp" title="Đính kèm ảnh chụp, ảnh thư viện hoặc tệp">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            <div id="aiAttachMenu" class="ai-attach-menu" style="display:none;">
+              <button type="button" id="aiAttachCameraBtn" class="ai-attach-menu-item">
+                <span class="ai-attach-item-icon">📷</span>
+                <span>Chụp ảnh</span>
+              </button>
+              <button type="button" id="aiAttachGalleryBtn" class="ai-attach-menu-item">
+                <span class="ai-attach-item-icon">🖼️</span>
+                <span>Chọn ảnh</span>
+              </button>
+              <button type="button" id="aiAttachFileBtn" class="ai-attach-menu-item">
+                <span class="ai-attach-item-icon">📁</span>
+                <span>Chọn tệp</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Hidden inputs for file selection -->
+          <input id="aiCameraInput" type="file" accept="image/*" capture="environment" style="display:none;" />
+          <input id="aiGalleryInput" type="file" accept="image/jpeg,image/png,image/webp" style="display:none;" />
+          <input id="aiFileInput" type="file" accept=".csv,.xlsx,.json,.pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json,application/pdf" style="display:none;" />
+
           <input
             id="aiTextInput"
             type="text"
@@ -277,38 +313,139 @@ let recognitionInstance = null;
 /**
  * Initialize Web Speech API Voice Input
  */
+/**
+ * Render active attachment tray chips above input box
+ */
+function renderAttachmentTray() {
+  const tray = document.getElementById('aiAttachmentTray');
+  if (!tray) return;
+  if (!activeAttachments || !activeAttachments.length) {
+    tray.style.display = 'none';
+    tray.innerHTML = '';
+    return;
+  }
+  tray.style.display = 'flex';
+  tray.innerHTML = activeAttachments.map((att, idx) => `
+    <div class="ai-attach-chip" data-idx="${idx}">
+      <span class="ai-chip-icon">${att.type === 'image' ? '🖼️' : '📁'}</span>
+      <span class="ai-chip-name" title="${esc(att.name)}">${esc(att.name)}</span>
+      <span class="ai-chip-size">(${Math.round((att.size || 0) / 1024)} KB)</span>
+      <button type="button" class="ai-chip-remove" data-idx="${idx}" title="Xóa đính kèm">×</button>
+    </div>
+  `).join('');
+
+  tray.querySelectorAll('.ai-chip-remove').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = Number(e.currentTarget.getAttribute('data-idx'));
+      activeAttachments.splice(idx, 1);
+      renderAttachmentTray();
+    });
+  });
+}
+
+/**
+ * Initialize Web Speech API Voice Input
+ */
 function initVoiceInput() {
   const micBtn = document.getElementById('aiMicBtn');
   const input = document.getElementById('aiTextInput');
+  const statusEl = document.getElementById('aiVoiceStatus');
   if (!micBtn || !input) return;
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  const isSecure = Boolean(window.isSecureContext || isLocalhost);
+
+  const showInsecureContextGuide = () => {
+    addAssistantMessage(
+      `⚠️ **Không thể bật Micro qua kết nối HTTP mạng LAN (\`${location.origin}\`)**\n\n` +
+      `Trình duyệt Chrome trên điện thoại yêu cầu kết nối bảo mật (HTTPS) hoặc localhost mới cho phép truy cập Micro.\n\n` +
+      `👉 **Cách mở Micro trên điện thoại (Không cần cắm cáp):**\n` +
+      `• **Bước 1:** Mở tab mới trên Chrome điện thoại, dán liên kết cấu hình:\n` +
+      `  \`chrome://flags/#unsafely-treat-insecure-origin-as-secure\`\n` +
+      `• **Bước 2:** Nhập chính xác địa chỉ: \`http://${location.host}\`\n` +
+      `• **Bước 3:** Chuyển sang **Enabled** và bấm nút **Relaunch** (Khởi động lại Chrome) ở góc dưới cùng.\n\n` +
+      `💡 *Hoặc chạy file \`start-qbiz-remote.bat\` trong thư mục \`app\` trên máy tính để lấy link HTTPS (Cloudflare / Localtunnel) mở trên điện thoại.*`
+    );
+  };
+
+  const showPermissionBlockedGuide = () => {
+    addAssistantMessage(
+      `⚠️ **Bạn cần cấp quyền truy cập Micro trên trình duyệt để sử dụng tính năng này.**\n\n` +
+      `👉 **Cách bật lại Micro:**\n` +
+      `• Bấm vào biểu tượng **Cài đặt trang** (icon ổ khóa hoặc nút gạt bên trái thanh địa chỉ URL).\n` +
+      `• Tìm mục **Microphone (Micro)** và chọn **Cho phép (Allow)**.\n` +
+      `• Tải lại trang (F5) và bấm lại vào biểu tượng Micro.`
+    );
+  };
 
   if (!SpeechRecognition) {
     micBtn.classList.add('ai-mic-unsupported');
     micBtn.title = 'Thiết bị này chưa hỗ trợ nhận dạng giọng nói';
     micBtn.addEventListener('click', () => {
-      addAssistantMessage('⚠️ Thiết bị này chưa hỗ trợ nhận dạng giọng nói.');
-      renderMessages();
+      if (!isSecure) {
+        showInsecureContextGuide();
+      } else {
+        addAssistantMessage('⚠️ Trình duyệt này chưa hỗ trợ Web Speech API. Vui lòng sử dụng bàn phím hoặc mở bằng Google Chrome.');
+      }
     });
     return;
   }
 
-  const setMicState = (state) => {
+  const setMicState = (state, text = '') => {
     micState = state;
     micBtn.classList.remove('is-listening', 'is-processing');
+    if (!statusEl) return;
+
     if (state === 'listening') {
       micBtn.classList.add('is-listening');
-      micBtn.title = 'Đang nghe tiếng Việt... Nhấn để dừng';
-      input.placeholder = 'Đang nghe tiếng Việt... hãy nói nội dung';
+      statusEl.style.display = 'flex';
+      statusEl.className = 'ai-voice-status state-listening';
+      statusEl.innerHTML = `
+        <span class="ai-voice-dot"></span>
+        <span class="ai-voice-text">Đang nghe tiếng Việt... hãy nói yêu cầu</span>
+        <button type="button" class="ai-voice-cancel-btn" id="aiVoiceCancelBtn">Dừng</button>
+      `;
     } else if (state === 'processing') {
       micBtn.classList.add('is-processing');
-      micBtn.title = 'Đang xử lý giọng nói...';
-      input.placeholder = 'Đang xử lý câu nói...';
+      statusEl.style.display = 'flex';
+      statusEl.className = 'ai-voice-status state-processing';
+      statusEl.innerHTML = `
+        <span class="ai-voice-text">Đang nhận dạng...</span>
+      `;
+    } else if (state === 'recognized') {
+      statusEl.style.display = 'flex';
+      statusEl.className = 'ai-voice-status state-recognized';
+      statusEl.innerHTML = `
+        <span class="ai-voice-text">Đã nhận dạng — Bạn có thể kiểm tra hoặc sửa câu lệnh trước khi bấm Gửi</span>
+        <button type="button" class="ai-voice-clear-btn" id="aiVoiceClearBtn" title="Xóa">✕</button>
+      `;
+      setTimeout(() => {
+        if (statusEl.classList.contains('state-recognized')) statusEl.style.display = 'none';
+      }, 7000);
+    } else if (state === 'no-speech') {
+      statusEl.style.display = 'flex';
+      statusEl.className = 'ai-voice-status state-error';
+      statusEl.innerHTML = `
+        <span class="ai-voice-text">Không nghe rõ — Vui lòng thử nói lại</span>
+      `;
+      setTimeout(() => {
+        if (statusEl.classList.contains('state-error')) statusEl.style.display = 'none';
+      }, 4000);
     } else {
-      micBtn.title = 'Nhập bằng giọng nói (vi-VN)';
-      input.placeholder = 'Hỏi hoặc ra lệnh cho trợ lý...';
+      statusEl.style.display = 'none';
+      statusEl.innerHTML = '';
     }
+
+    document.getElementById('aiVoiceCancelBtn')?.addEventListener('click', () => {
+      try { recognitionInstance?.stop(); } catch (_) {}
+      setMicState('idle');
+    });
+    document.getElementById('aiVoiceClearBtn')?.addEventListener('click', () => {
+      if (input) input.value = '';
+      setMicState('idle');
+    });
   };
 
   micBtn.addEventListener('click', async () => {
@@ -332,18 +469,29 @@ function initVoiceInput() {
       };
 
       recognitionInstance.onresult = (event) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
+        let sessionFinal = '';
+        let sessionInterim = '';
+
+        for (let i = 0; i < event.results.length; ++i) {
+          const item = event.results[i];
+          if (item && item[0]) {
+            const chunk = item[0].transcript.trim();
+            if (!chunk) continue;
+            if (item.isFinal) {
+              sessionFinal = sessionFinal ? `${sessionFinal} ${chunk}` : chunk;
+            } else {
+              sessionInterim = sessionInterim ? `${sessionInterim} ${chunk}` : chunk;
+            }
           }
         }
-        const text = (finalTranscript || interimTranscript).trim();
-        if (text) {
-          input.value = text;
+
+        const fullText = (
+          sessionFinal +
+          (sessionInterim ? (sessionFinal ? ' ' : '') + sessionInterim : '')
+        ).trim();
+
+        if (fullText) {
+          input.value = fullText;
         }
       };
 
@@ -351,22 +499,31 @@ function initVoiceInput() {
         setMicState('processing');
       };
 
-      recognitionInstance.onend = async () => {
+      recognitionInstance.onend = () => {
         const text = input.value.trim();
-        setMicState('idle');
         if (text) {
-          input.value = '';
-          // Dispatches into the standard AI intent router (permissions & proposals respected!)
-          await handleUserMessage(text);
+          // Keep transcript in input box so user can edit, review, or submit!
+          setMicState('recognized', text);
+        } else {
+          setMicState('idle');
         }
       };
 
       recognitionInstance.onerror = (event) => {
         setMicState('idle');
         if (event.error === 'not-allowed') {
-          addAssistantMessage('⚠️ Bạn cần cấp quyền truy cập Micro trên trình duyệt để sử dụng tính năng này.');
-          renderMessages();
-        } else if (event.error !== 'no-speech') {
+          if (!isSecure) {
+            showInsecureContextGuide();
+          } else {
+            showPermissionBlockedGuide();
+          }
+        } else if (event.error === 'no-speech') {
+          setMicState('no-speech');
+        } else if (event.error === 'audio-capture') {
+          addAssistantMessage('⚠️ **Không tìm thấy thiết bị Microphone** hoặc Micro đang bị ứng dụng khác chiếm dụng.');
+        } else if (event.error === 'network') {
+          addAssistantMessage('⚠️ **Lỗi kết nối mạng dịch vụ giọng nói.** Vui lòng kiểm tra lại kết nối Internet.');
+        } else if (event.error !== 'aborted') {
           console.warn('Speech recognition error:', event.error);
         }
       };
@@ -375,6 +532,13 @@ function initVoiceInput() {
     } catch (err) {
       setMicState('idle');
       console.warn('Speech recognition exception:', err);
+      if (err.name === 'NotAllowedError' || String(err).includes('not-allowed')) {
+        if (!isSecure) {
+          showInsecureContextGuide();
+        } else {
+          showPermissionBlockedGuide();
+        }
+      }
     }
   });
 }
@@ -555,10 +719,62 @@ function bindEvents() {
 
   window.addEventListener('qbiz:memory:changed', renderMemoryDrawer);
 
+  // Attachment Button and Menu Handlers
+  const attachBtn = document.getElementById('aiAttachBtn');
+  const attachMenu = document.getElementById('aiAttachMenu');
+  const cameraInput = document.getElementById('aiCameraInput');
+  const galleryInput = document.getElementById('aiGalleryInput');
+  const fileInput = document.getElementById('aiFileInput');
+
+  attachBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (attachMenu) {
+      attachMenu.style.display = attachMenu.style.display === 'none' ? 'flex' : 'none';
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (attachMenu && !attachBtn?.contains(e.target) && !attachMenu.contains(e.target)) {
+      attachMenu.style.display = 'none';
+    }
+  });
+
+  document.getElementById('aiAttachCameraBtn')?.addEventListener('click', () => {
+    if (attachMenu) attachMenu.style.display = 'none';
+    cameraInput?.click();
+  });
+
+  document.getElementById('aiAttachGalleryBtn')?.addEventListener('click', () => {
+    if (attachMenu) attachMenu.style.display = 'none';
+    galleryInput?.click();
+  });
+
+  document.getElementById('aiAttachFileBtn')?.addEventListener('click', () => {
+    if (attachMenu) attachMenu.style.display = 'none';
+    fileInput?.click();
+  });
+
+  const onFileInputChanged = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    try {
+      const att = await createAttachmentFromFile(file);
+      activeAttachments.push(att);
+      renderAttachmentTray();
+    } catch (err) {
+      addAssistantMessage(`⚠️ **Lỗi đính kèm tệp:** ${err.message}`);
+    }
+  };
+
+  cameraInput?.addEventListener('change', onFileInputChanged);
+  galleryInput?.addEventListener('change', onFileInputChanged);
+  fileInput?.addEventListener('change', onFileInputChanged);
+
   const submitMessage = async () => {
-    const text = input?.value?.trim();
-    if (!text) return;
-    input.value = '';
+    const text = input?.value?.trim() || '';
+    if (!text && activeAttachments.length === 0) return;
+    if (input) input.value = '';
     await handleUserMessage(text);
   };
 
@@ -806,8 +1022,26 @@ function renderChips() {
  * Handle incoming user query.
  */
 async function handleUserMessage(query) {
+  const currentAttachments = [...activeAttachments];
+  activeAttachments = [];
+  renderAttachmentTray();
+
+  const isVoiceTranscript = micState === 'recognized';
+  const inputType = currentAttachments.length > 0
+    ? (query ? 'mixed' : currentAttachments[0].type)
+    : (isVoiceTranscript ? 'voice_transcript' : 'text');
+
+  micState = 'idle';
+  const statusEl = document.getElementById('aiVoiceStatus');
+  if (statusEl) statusEl.style.display = 'none';
+
   // Add user bubble
-  messageHistory.push({ role: 'user', text: query, time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) });
+  messageHistory.push({
+    role: 'user',
+    text: query,
+    attachments: currentAttachments,
+    time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+  });
   renderMessages();
 
   // Scroll to bottom
@@ -817,7 +1051,10 @@ async function handleUserMessage(query) {
   currentEnvelope = buildContextEnvelope(appStateRef);
 
   try {
-    const res = await routeIntent(query, currentEnvelope, appStateRef);
+    const res = await routeIntent(query, currentEnvelope, appStateRef, {
+      inputType,
+      attachments: currentAttachments,
+    });
     lastResult = res;
 
     // Handle proposal if generated
@@ -828,6 +1065,8 @@ async function handleUserMessage(query) {
     messageHistory.push({
       role: 'assistant',
       text: res.text,
+      reviewCard: res.reviewCard || null,
+      importAssistant: res.importAssistant || null,
       candidates: res.candidates || null,
       warehouseCandidates: res.warehouseCandidates || null,
       actions: res.actions || null,
@@ -858,6 +1097,10 @@ async function handleUserMessage(query) {
 }
 
 function addAssistantMessage(text) {
+  const last = messageHistory[messageHistory.length - 1];
+  if (last && last.role === 'assistant' && last.text === text) {
+    return;
+  }
   messageHistory.push({
     role: 'assistant',
     text,
@@ -873,9 +1116,22 @@ function renderMessages() {
 
   container.innerHTML = messageHistory.map((m, idx) => {
     if (m.role === 'user') {
+      let attachmentMarkup = '';
+      if (m.attachments && m.attachments.length > 0) {
+        attachmentMarkup = m.attachments.map(att => {
+          if (att.type === 'image' && att.data_url) {
+            return `<div class="user-attachment-thumb"><img src="${att.data_url}" alt="${esc(att.name)}"/></div>`;
+          }
+          return `<div class="user-attachment-file">📁 ${esc(att.name)} (${Math.round((att.size || 0) / 1024)} KB)</div>`;
+        }).join('');
+      }
+
       return `
         <div class="ai-msg user">
-          <div class="ai-bubble user-bubble">${esc(m.text)}</div>
+          <div class="ai-bubble user-bubble">
+            ${attachmentMarkup}
+            ${m.text ? `<div>${esc(m.text)}</div>` : ''}
+          </div>
           <small class="ai-msg-time">${m.time}</small>
         </div>
       `;
@@ -933,7 +1189,7 @@ function renderMessages() {
       actionsHtml = `
         <div class="ai-diag-actions" style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
           ${m.actions.map(act => `
-            <button class="primary-btn ai-action-btn" data-action-id="${esc(act.actionId)}" ${act.params ? `data-action-params='${esc(JSON.stringify(act.params))}'` : ''}>
+            <button class="primary-btn ai-action-btn" data-action-id="${esc(act.actionId || act.id)}" ${act.params ? `data-action-params='${esc(JSON.stringify(act.params))}'` : ''}>
               ${esc(act.label)}
             </button>
           `).join('')}
@@ -1143,6 +1399,99 @@ function renderMessages() {
       }
     }
 
+    // Batch 3: Document Review Card (Receipts / Stocktake)
+    let reviewCardHtml = '';
+    if (m.reviewCard) {
+      const rc = m.reviewCard;
+      reviewCardHtml = `
+        <div class="ai-review-card">
+          <div class="ai-review-head">
+            <strong>📋 ${rc.type === 'PURCHASE_RECEIPT' ? 'Chứng từ nhập hàng' : 'Biên bản kiểm kê'}</strong>
+            <span class="ai-prop-tag warn">${esc(rc.warehouse || 'Kho')}</span>
+          </div>
+          ${rc.warnings && rc.warnings.length ? `
+            <div class="ai-warning-box">
+              <b>⚠️ Cần rà soát (${rc.warnings.length}):</b>
+              <ul>
+                ${rc.warnings.map(w => `<li>${esc(w)}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+          <table class="ai-review-table">
+            <thead>
+              <tr>
+                <th>Mặt hàng</th>
+                <th style="text-align:right;">SL</th>
+                ${rc.type === 'PURCHASE_RECEIPT' ? '<th style="text-align:right;">Đơn giá</th>' : ''}
+                <th style="text-align:center;">Độ tin cậy</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(rc.items || []).map(item => `
+                <tr>
+                  <td>
+                    <strong>${esc(item.matched_product_name || item.product_name)}</strong>
+                    ${item.isUnresolved ? `<div style="color:#b45309; font-size:10.5px;">(Chưa khớp mã SP)</div>` : ''}
+                  </td>
+                  <td style="text-align:right;"><b>${item.quantity}</b> ${esc(item.unit || 'cái')}</td>
+                  ${rc.type === 'PURCHASE_RECEIPT' ? `<td style="text-align:right;">${item.price ? Number(item.price).toLocaleString('vi-VN') + ' đ' : '—'}</td>` : ''}
+                  <td style="text-align:center;">
+                    <span class="ai-conf-badge ${item.isLowConfidence ? 'ai-conf-low' : 'ai-conf-high'}">
+                      ${Math.round((item.confidence || 0.85) * 100)}%
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="font-size:11.5px; color:#64748b; margin-top:4px;">
+            Tổng số lượng: <b>${rc.totalQty || 0}</b>
+            ${rc.totalAmount ? ` · Tổng tiền: <b>${Number(rc.totalAmount).toLocaleString('vi-VN')} đ</b>` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Batch 3: Import Assistant Card (Spreadsheet Analysis)
+    let importAssistantHtml = '';
+    if (m.importAssistant) {
+      const ia = m.importAssistant;
+      const an = ia.analysis || {};
+      importAssistantHtml = `
+        <div class="ai-import-card">
+          <div class="ai-review-head">
+            <strong>📊 Phân tích tệp: ${esc(ia.fileName || 'Bảng tính')}</strong>
+            <span class="ai-prop-tag success">${an.totalRows || 0} dòng</span>
+          </div>
+          ${an.duplicates && an.duplicates.length ? `
+            <div class="ai-warning-box">
+              <b>⚠️ Trùng lặp mã hàng (${an.duplicateCount || an.duplicates.length}):</b>
+              <ul>
+                ${an.duplicates.slice(0, 3).map(d => `<li>Dòng ${d.row}: Mã "${esc(d.code)}" trùng lặp</li>`).join('')}
+                ${an.duplicates.length > 3 ? `<li>... và ${an.duplicates.length - 3} dòng khác</li>` : ''}
+              </ul>
+            </div>
+          ` : ''}
+          ${an.missingFields && an.missingFields.length ? `
+            <div class="ai-warning-box">
+              <b>⚠️ Thiếu trường dữ liệu:</b> ${esc(an.missingFields.join(', '))}
+            </div>
+          ` : ''}
+          <div style="font-size:12px; font-weight:600; margin:6px 0 2px;">Ánh xạ cột đề xuất:</div>
+          <table class="ai-mapping-table">
+            <tbody>
+              ${Object.entries(an.columnMap || {}).map(([field, col]) => `
+                <tr>
+                  <td style="color:#64748b; width:40%;"><b>${esc(field)}:</b></td>
+                  <td><code>${esc(col)}</code></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
     return `
       <div class="ai-msg assistant">
         <div class="ai-bubble assistant-bubble">
@@ -1154,6 +1503,8 @@ function renderMessages() {
           ${replenishmentHtml}
           ${healthHtml}
           ${diagnosisHtml}
+          ${reviewCardHtml}
+          ${importAssistantHtml}
           ${proposalHtml}
         </div>
         <small class="ai-msg-time">${m.time} ${m.tier !== undefined ? `· Tier ${m.tier}` : ''}</small>

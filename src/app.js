@@ -2277,7 +2277,12 @@ function renderOrdersLegacy(){
 function renderOrders(){
   setTitle('Đơn hàng','QBiz');
   const all=state.data.orders||[],q=state.orderSearch.toLowerCase();
-  const now=new Date(),start=new Date(now); if(state.orderRange==='today')start.setHours(0,0,0,0);else if(state.orderRange==='7d')start.setDate(now.getDate()-6),start.setHours(0,0,0,0);else if(state.orderRange==='month')start.setDate(1),start.setHours(0,0,0,0);else start.setFullYear(2000);
+  const now=new Date(),start=new Date(now),end=new Date(now);
+  end.setHours(23,59,59,999);
+  if(state.orderRange==='today')start.setHours(0,0,0,0);
+  else if(state.orderRange==='7d')start.setDate(now.getDate()-6),start.setHours(0,0,0,0);
+  else if(state.orderRange==='month')start.setDate(1),start.setHours(0,0,0,0);
+  else start.setFullYear(2000),end.setFullYear(2100);
   const orders=all.filter(o=>{const date=new Date(o.created_at||o.createdAt||0);return (state.orderFilter==='all'||state.orderFilter==='active'&&['NEW','CONFIRMED','PROCESSING'].includes(o.status)||o.status===state.orderFilter)&&date>=start&&date<=end&&(!q||[o.code,o.customer_label].some(v=>String(v||'').toLowerCase().includes(q)||norm(v).includes(norm(q))))});
   $('#content').innerHTML=`<section class="orders-screen"><div class="orders-toolbar"><div class="orders-search"><input id="orderSearch" value="${esc(state.orderSearch)}" placeholder="Tìm mã đơn, khách hàng..."/>${icon('package-search')}</div><button class="primary-btn" data-action="new-order">+ Tạo đơn</button></div><div class="order-filters">${[['active','Cần xử lý'],['all','Tất cả'],['COMPLETED','Hoàn tất'],['CANCELLED','Đã hủy']].map(([v,l])=>`<button class="${state.orderFilter===v?'active':''}" data-order-filter="${v}">${l}</button>`).join('')}</div><label class="orders-range"><span>Thời gian</span><select id="orderRange"><option value="all">Tất cả thời gian</option><option value="today">Hôm nay</option><option value="7d">7 ngày qua</option><option value="month">Tháng này</option></select></label><div class="modern-order-list">${orders.map(o=>`<article class="modern-order-row" data-order-open="${o.id}"><div class="order-primary"><strong>${esc(o.code)}</strong><b>${fmt(o.grand_total)} ₫</b></div><div class="order-secondary"><span>${esc(o.customer_label||'Khách lẻ')}</span><time>${dt(o.created_at||o.createdAt)}</time></div><div class="order-tags"><span class="badge ${o.payment_status==='PAID'?'ok':'warn'}">${o.payment_status==='PAID'?'Đã thanh toán':'Chờ thanh toán'}</span><span class="badge ${o.status==='CANCELLED'?'danger':o.status==='COMPLETED'?'ok':'info'}">${orderStatusLabel(o.status)}</span><small>HĐĐT: chưa kết nối</small></div></article>`).join('')||'<div class="empty"><strong>Không có đơn phù hợp</strong></div>'}</div></section>`;
   $('#orderRange').value=state.orderRange;$('#orderSearch').oninput=e=>{state.orderSearch=e.target.value;keepFocus('#orderSearch',renderOrders)};$('#orderRange').onchange=e=>{state.orderRange=e.target.value;renderOrders()};$$('[data-order-filter]').forEach(b=>b.onclick=()=>{state.orderFilter=b.dataset.orderFilter;renderOrders()});$$('[data-order-open]').forEach(r=>r.onclick=e=>{if(e.target.closest('[data-order-action]'))return;openOrderDetail(r.dataset.orderOpen)});
@@ -2286,13 +2291,73 @@ function openOrderDetail(id){state.currentOrderId=id;updateContextAndChips();con
 function openOrderDocuments(id){const o=(state.data.orders||[]).find(x=>x.id===id);if(!o)return;openModal({title:'Hóa đơn & chứng từ',sub:o.code,hideSubmit:true,body:`<div class="document-list"><div><span>${icon('file-text')}<b>Phiếu bán hàng<small>Chứng từ bán nội bộ</small></b></span><button data-action="print-receipt">In</button></div>${o.fulfillment==='delivery'?`<div><span>${icon('package-search')}<b>Phiếu giao hàng<small>Thông tin giao nhận của đơn</small></b></span><button data-action="print-receipt">In</button></div>`:''}<div><span>${icon('qr-code')}<b>Tem sản phẩm<small>${(o.items||[]).length} dòng hàng</small></b></span><button data-action="print-receipt">In</button></div><button class="document-einvoice" data-action="invoice-info"><span>${icon('file-text')}<b>Hóa đơn điện tử<small>Chưa kết nối nhà cung cấp</small></b></span>${icon('chevron-right')}</button></div>`});}
 function openNewOrder(){
   const products=state.data.products.filter(p=>p.active!==false);const warehouses=state.data.warehouses;
-  openModal({title:'Đơn mới',sub:'Chọn sản phẩm hoặc dịch vụ cần xử lý.',submitText:'Tạo đơn',body:`<div class="form-grid"><div class="field"><label>Kho</label><select id="orderWarehouse">${warehouses.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('')}</select></div><div class="field"><label>Khách hàng</label><input id="orderCustomer" value="Khách lẻ" /></div><div class="field full-span"><label>Sản phẩm / Dịch vụ</label><div class="order-picker">${products.map(p=>`<label class="order-option"><input type="checkbox" data-order-item="${p.id}" /><span><strong>${esc(p.name)}</strong><small>${p.type==='SERVICE'?'Dịch vụ':'Sản phẩm'} · ${money(p.price)||'Chưa có giá'}</small></span><input type="number" min="1" value="1" data-order-qty="${p.id}" /></label>`).join('')}</div></div><div class="field full-span"><label>Ghi chú</label><input id="orderNote" placeholder="Ghi chú cho đơn..." /></div></div>`,onSubmit:async root=>{const items=$$('[data-order-item]:checked',root).map(input=>({itemId:input.dataset.orderItem,quantity:Number($(`[data-order-qty="${input.dataset.orderItem}"]`,root)?.value||1)}));if(!items.length)throw new Error('Hãy chọn ít nhất một sản phẩm hoặc dịch vụ.');await createOrder({items,warehouseId:$('#orderWarehouse',root).value,customerLabel:$('#orderCustomer',root).value,note:$('#orderNote',root).value});state.page='orders';await refresh();toast('Đã tạo đơn hàng.','ok');}});
+  const customers=(state.data.customers||[]).filter(c=>c.active!==false);
+  openModal({
+    title:'Đơn mới',
+    sub:'Chọn sản phẩm hoặc dịch vụ cần xử lý.',
+    submitText:'Tạo đơn',
+    body:`<div class="form-grid"><div class="field"><label>Kho</label><select id="orderWarehouse">${warehouses.map(w=>`<option value="${w.id}">${esc(w.name)}</option>`).join('')}</select></div><div class="field"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><label style="margin-bottom:0;">Khách hàng</label><button type="button" id="btnToggleCustomerMode" class="link-btn" style="font-size:12px;padding:0;color:var(--primary,#1a73e8);background:none;border:none;cursor:pointer;">Tự nhập tên</button></div><select id="orderCustomer"><option value="Khách lẻ" selected>Khách lẻ</option>${customers.map(c=>`<option value="${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}">${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</option>`).join('')}<option value="__custom__">+ Nhập tên khác...</option></select><input id="orderCustomerCustom" placeholder="Nhập tên khách hàng mới..." style="display:none;margin-top:6px;" /></div><div class="field full-span"><label>Sản phẩm / Dịch vụ</label><div class="orders-search" style="margin-bottom:8px;"><input id="orderItemSearch" placeholder="Tìm tên sản phẩm, mã SKU..." autocomplete="off" />${icon('package-search')}</div><div class="order-picker">${products.map(p=>`<label class="order-option" data-search-text="${esc((p.name+' '+(p.sku||'')+' '+(p.barcode||'')).toLowerCase())}"><input type="checkbox" data-order-item="${p.id}" /><span><strong>${esc(p.name)}</strong><small>${p.type==='SERVICE'?'Dịch vụ':'Sản phẩm'} · ${money(p.price)||'Chưa có giá'}${p.sku ? ` · ${esc(p.sku)}` : ''}</small></span><input type="number" min="1" value="1" data-order-qty="${p.id}" /></label>`).join('')}<div id="orderPickerEmpty" class="empty" style="display:none;padding:16px;text-align:center;"><strong>Không tìm thấy sản phẩm phù hợp.</strong></div></div></div><div class="field full-span"><label>Ghi chú</label><input id="orderNote" placeholder="Ghi chú cho đơn..." /></div></div>`,
+    onSubmit:async root=>{
+      const items=$$('[data-order-item]:checked',root).map(input=>({itemId:input.dataset.orderItem,quantity:Number($(`[data-order-qty="${input.dataset.orderItem}"]`,root)?.value||1)}));
+      if(!items.length)throw new Error('Hãy chọn ít nhất một sản phẩm hoặc dịch vụ.');
+      const customInp=$('#orderCustomerCustom',root), selCust=$('#orderCustomer',root);
+      let customerLabel='Khách lẻ';
+      if(customInp&&customInp.style.display!=='none'&&customInp.value.trim()){
+        customerLabel=customInp.value.trim();
+      }else if(selCust&&selCust.value!=='__custom__'&&selCust.value.trim()){
+        customerLabel=selCust.value.trim();
+      }
+      await createOrder({items,warehouseId:$('#orderWarehouse',root).value,customerLabel,note:$('#orderNote',root).value});
+      state.page='orders';
+      await refresh();
+      toast('Đã tạo đơn hàng.','ok');
+    }
+  });
+  const root=$('#modalRoot');
+  const selCustomer=$('#orderCustomer',root), customCustomer=$('#orderCustomerCustom',root), toggleBtn=$('#btnToggleCustomerMode',root);
+  let isCustom=false;
+  const setCustomMode=custom=>{
+    isCustom=custom;
+    if(custom){
+      selCustomer.style.display='none';
+      customCustomer.style.display='block';
+      if(toggleBtn)toggleBtn.textContent='Chọn từ danh sách';
+      customCustomer.focus();
+    }else{
+      selCustomer.style.display='';
+      customCustomer.style.display='none';
+      if(toggleBtn)toggleBtn.textContent='Tự nhập tên';
+      if(selCustomer.value==='__custom__')selCustomer.value='Khách lẻ';
+    }
+  };
+  if(toggleBtn)toggleBtn.onclick=()=>setCustomMode(!isCustom);
+  if(selCustomer)selCustomer.onchange=()=>{if(selCustomer.value==='__custom__')setCustomMode(true);};
+  const searchInput=$('#orderItemSearch',root);
+  if(searchInput){
+    searchInput.oninput=()=>{
+      const q=norm(searchInput.value).trim();
+      let visible=0;
+      $$('.order-option',root).forEach(opt=>{
+        const isChecked=$('input[type="checkbox"]',opt)?.checked;
+        const haystack=norm(opt.dataset.searchText||'');
+        const match=!q||haystack.includes(q);
+        const show=match||isChecked;
+        opt.style.display=show?'':'none';
+        if(show)visible++;
+      });
+      const emptyEl=$('#orderPickerEmpty',root);
+      if(emptyEl)emptyEl.style.display=visible===0?'block':'none';
+    };
+  }
 }
 
 function openModal({title='',sub='',body='',submitText='Lưu',hideSubmit=false,footer='',fullScreen=false,onSubmit}={}){
   const root=$('#modalRoot');
   root.innerHTML=`<div class="modal-backdrop"><div class="modal ${fullScreen?'full-screen-sheet':''}"><div class="modal-head"><div><h3>${esc(title)}</h3>${sub?`<p>${sub}</p>`:''}</div><button class="close-btn" data-close>×</button></div><div class="modal-body">${body}</div><div class="modal-foot">${footer||`<button class="secondary-btn" data-close>Đóng</button>${hideSubmit?'':`<button class="primary-btn" id="modalSubmit">${submitText}</button>`}`}</div></div></div>`;
-  $$('[data-close]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();root.innerHTML='';state.currentProductId=null;state.currentOrderId=null;state.currentSaleId=null;updateContextAndChips();render();});
+  const closeModal=()=>{root.innerHTML='';state.currentProductId=null;state.currentOrderId=null;state.currentSaleId=null;updateContextAndChips();render();};
+  $$('[data-close]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();closeModal();});
+  const backdrop=root.querySelector('.modal-backdrop');
+  if(backdrop) backdrop.onclick=e=>{if(e.target===backdrop){closeModal();}};
   if(onSubmit) $('#modalSubmit',root).onclick=async()=>{ try{ await onSubmit(root); root.innerHTML=''; state.currentProductId=null;state.currentOrderId=null;state.currentSaleId=null;updateContextAndChips(); await refresh(); toast('Đã cập nhật.', 'ok'); } catch(e){ toast(e.message,'error'); } };
 }
 
@@ -2616,7 +2681,7 @@ async function boot(){
   state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, state.businessProfile?.profile_id);
   history.replaceState(historyState(),'');render();
   initAiUI(state);
-  window.__qbiz_app__ = { state, navigate, render, openQuick, openProduct, openOrderDetail, openTransaction, refresh, closeModal: () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; updateContextAndChips(); }, ai: aiModule, businessProfile: businessProfileModule, uiProfile: uiProfileModule };
+  window.__qbiz_app__ = { state, navigate, render, openQuick, openProduct, openOrderDetail, openTransaction, openWarehouseManagement, refresh, closeModal: () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; updateContextAndChips(); }, ai: aiModule, businessProfile: businessProfileModule, uiProfile: uiProfileModule };
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
   const params=new URLSearchParams(location.search);
   const action=params.get('action');
@@ -2633,5 +2698,13 @@ window.addEventListener('popstate',e=>{
   if(state.page==='sales'&&state.saleTrail.length){state.saleStep=state.saleTrail.pop();history.pushState(historyState(),'');render();return;}
   if(e.state?.qbiz){state.page=e.state.page||'dashboard';state.saleStep=e.state.saleStep||'browse';render();return;}
   history.pushState(historyState(),'');
+});
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&$('#modalRoot')?.innerHTML){
+    $('#modalRoot').innerHTML='';
+    state.currentProductId=null;state.currentOrderId=null;state.currentSaleId=null;
+    updateContextAndChips();
+    render();
+  }
 });
 boot();

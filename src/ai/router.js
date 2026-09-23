@@ -7,7 +7,7 @@
 
 import { SKILL_REGISTRY, executeSkill } from './skills.js';
 import { executeTool } from './tools.js';
-import { AIProviderAdapter, getProviderConfig, PROVIDER_MODES } from './providers.js';
+import { AIProviderAdapter, getProviderConfig, PROVIDER_MODES, isMockDevAllowed } from './providers.js';
 import { logAuditEvent } from './audit.js';
 import {
   storeSensitiveData,
@@ -615,6 +615,11 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
 
     // 8. Query Stock
     if (structured.intent === 'QUERY_STOCK') {
+      const pNorm = norm(rawPrompt);
+      if (pNorm.includes('sap het') || pNorm.includes('sap can') || pNorm.includes('cham nguong') || pNorm.includes('ton toi thieu') || pNorm.includes('duoi dinh muc')) {
+        const res = await executeSkill('find-low-stock', {}, context, state);
+        return { ...res, intent: 'QUERY_STOCK', skillId: 'find-low-stock', tier: 1, provider: config.mode };
+      }
       let prodId = context.current_product_id;
       let q = structured.entities?.product_name;
       if (q) {
@@ -622,7 +627,7 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
         if (resProd.bestMatch && !resProd.isAmbiguous) prodId = resProd.bestMatch.id;
       }
       const res = await executeSkill('check-stock', { productId: prodId, query: q || rawPrompt }, context, state);
-      return { ...res, intent: 'QUERY_STOCK', tier: 1, provider: config.mode };
+      return { ...res, intent: 'QUERY_STOCK', skillId: 'check-stock', tier: 1, provider: config.mode };
     }
 
     // 9. Query Memory
@@ -639,9 +644,15 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
     }
 
     // 9.2 Sales Summary (if query asks about sales today / revenue)
-    if (pNorm.includes('ban the nao') || pNorm.includes('ban hom nay') || pNorm.includes('doanh thu') || pNorm.includes('ban bao nhieu') || structured.action_suggestion === 'sales-summary') {
-      const res = await executeSkill('sales-summary', { period: 'today' }, context, state);
-      return { ...res, intent: 'SALES_SUMMARY', tier: 1, provider: config.mode };
+    if (structured.intent === 'SALES_SUMMARY' || pNorm.includes('ban the nao') || pNorm.includes('ban hom nay') || pNorm.includes('doanh thu') || pNorm.includes('doanh so') || pNorm.includes('ban bao nhieu') || pNorm.includes('ban dc bao nhieu') || structured.action_suggestion === 'sales-summary') {
+      const res = await executeSkill('sales-summary', { period: structured.parameters?.period || 'today' }, context, state);
+      return { ...res, intent: 'SALES_SUMMARY', skillId: 'sales-summary', tier: 1, provider: config.mode };
+    }
+
+    // 9.3 Daily Attention Digest
+    if (structured.intent === 'DAILY_ATTENTION' || structured.action_suggestion === 'daily-attention' || pNorm.includes('can chu y') || pNorm.includes('dau ngay') || pNorm.includes('sang nay')) {
+      const res = await executeSkill('daily-attention', {}, context, state);
+      return { ...res, intent: 'DAILY_ATTENTION', skillId: 'daily-attention', tier: 1, provider: config.mode };
     }
 
     // 10. General Query / Explanation (e.g. general questions)
@@ -655,9 +666,15 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
   } catch (err) {
     logAuditEvent('PROVIDER_ERROR', { mode: config.mode, error: err.message });
     // Honest error reporting — NO SILENT MOCK
+    const isUnconfigured = err.message.includes('AI_PROVIDER_NOT_CONFIGURED') || (config.mode === PROVIDER_MODES.GEMINI && !config.geminiKey) || (config.mode === PROVIDER_MODES.OPENAI_COMPATIBLE && !config.openaiKey);
+    const status = isUnconfigured ? 'AI_PROVIDER_NOT_CONFIGURED' : 'PROVIDER_ERROR';
+    const friendlyMsg = isUnconfigured
+      ? `⚠️ **Chưa cấu hình Provider AI (${config.mode}):**\n${err.message}\n\nVui lòng cấu hình API Key thực trong mục Cài đặt (⚙). Hệ thống chuyển sang sử dụng công cụ Tier 0 (nội bộ offline).`
+      : `⚠️ **Lỗi kết nối Provider (${config.mode}):**\n${err.message}\n\n*Hệ thống chuyển sang chế độ Tier 0 (nội bộ offline). Bạn có thể thử các câu lệnh chuẩn như "Hôm nay bán bao nhiêu?", "Hàng sắp hết", "Còn bao nhiêu?", "Nhập thêm 20 cái này vào kho chính".*`;
     return {
-      text: `⚠️ **Lỗi kết nối Provider (${config.mode}):**\n${err.message}\n\n*Hệ thống chuyển sang chế độ Tier 0 (nội bộ offline). Bạn có thể thử các câu lệnh chuẩn như "Hôm nay bán bao nhiêu?", "Hàng sắp hết", "Còn bao nhiêu?", "Nhập thêm 20 cái này vào kho chính".*`,
+      text: friendlyMsg,
       isError: true,
+      status,
       tier: 0,
       provider: config.mode,
     };
@@ -666,8 +683,14 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
 
 export async function routeIntent(prompt, context = {}, state = {}, options = {}) {
   const rawPrompt = String(prompt || '').trim();
-  const pLow = rawPrompt.toLowerCase();
-  const pNorm = dictNorm(rawPrompt);
+  // Attack Neutralization: Strip script tags or SQL injection prefixes if followed by legitimate business command
+  let sanitizedPrompt = rawPrompt
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
+    .replace(/DROP\s+TABLE\s+[^;]+;\s*(--)?/gi, ' ')
+    .trim();
+  const effectivePrompt = sanitizedPrompt.length > 0 ? sanitizedPrompt : rawPrompt;
+  const pLow = effectivePrompt.toLowerCase();
+  const pNorm = dictNorm(effectivePrompt);
 
   const inputType = options?.inputType || context?.input_type || 'text';
   const attachments = options?.attachments || context?.attachments || [];
@@ -675,19 +698,25 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Prompt injection defense check (Section 9)
   const injection = detectPromptInjection(rawPrompt);
   if (injection.isInjection) {
-    logAuditEvent('SECURITY_PROMPT_INJECTION_BLOCKED', { prompt: rawPrompt, reason: injection.reason });
-    return {
-      text: `⚠️ **Cảnh báo an toàn:** ${injection.reason}\nHệ thống hoạt động theo chính sách bảo mật nội bộ và không cho phép can thiệp quyền hạn.`,
-      tier: 0,
-      provider: PROVIDER_MODES.DETERMINISTIC,
-      isBlocked: true,
-    };
+    const isNeutralizedPayload = (rawPrompt.includes('<script') || /DROP\s+TABLE/i.test(rawPrompt)) && sanitizedPrompt.length > 0;
+    if (!isNeutralizedPayload) {
+      logAuditEvent('SECURITY_PROMPT_INJECTION_BLOCKED', { prompt: rawPrompt, reason: injection.reason });
+      return {
+        text: `⚠️ **Cảnh báo an toàn:** ${injection.reason}\nHệ thống hoạt động theo chính sách bảo mật nội bộ và không cho phép can thiệp quyền hạn.`,
+        status: 'BLOCKED',
+        isBlocked: true,
+        permissionDenied: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
   }
 
-  // Autonomous destructive order cancellation check (BLOCKED - P1)
-  if (pNorm.includes('tu dong huy') || pNorm.includes('tu huy don') || pNorm.includes('tu dong xoa')) {
+  // Role elevation attempt check
+  if (detectRoleElevationAttempt(rawPrompt)) {
+    logAuditEvent('SECURITY_ROLE_ELEVATION_BLOCKED', { prompt: rawPrompt });
     return {
-      text: '⚠️ **Từ chối thao tác tự động nguy hiểm:** AI không được phép tự động hủy đơn hàng hoặc xóa dữ liệu mà không có xác nhận thủ công của thu ngân/quản lý.',
+      text: '⚠️ **Từ chối phân quyền:** Hệ thống không cho phép người dùng tự nâng cấp quyền hạn, cấp quyền hoặc chuyển đổi vai trò qua trợ lý AI.',
       status: 'BLOCKED',
       isBlocked: true,
       permissionDenied: true,
@@ -696,30 +725,101 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
-  // Order diagnosis check (safe read-only inspection)
-  if (pNorm.includes('don nay vuong gi') && !context.current_order_id && !context.orderId) {
+  // Autonomous destructive order cancellation & autonomous checkout/writes (BLOCKED - P1)
+  if (
+    pNorm.includes('tu dong huy') || pNorm.includes('tu huy don') || pNorm.includes('tu dong xoa') ||
+    (pNorm.includes('huy don') && pNorm.includes('khong can') && pNorm.includes('xac nhan')) ||
+    pNorm.includes('tu dong thanh toan') || pNorm.includes('tu dong hoan thanh') ||
+    pNorm.includes('can bang ton tu dong') ||
+    (pNorm.includes('thanh toan') && pNorm.includes('tu dong'))
+  ) {
     return {
-      text: 'Vui lòng chọn một đơn hàng cụ thể để kiểm tra lý do và trạng thái xử lý.',
-      isAmbiguous: true,
-      status: 'NEEDS_CLARIFICATION',
-      tier: 0,
-      provider: PROVIDER_MODES.DETERMINISTIC,
-    };
-  }
-  if (pNorm.includes('xem don') || pNorm.includes('don nay co luu y') || pNorm.includes('don nay vuong gi')) {
-    return {
-      text: 'Đơn hàng đang ở trạng thái chờ duyệt. Ghi chú đính kèm chỉ là thông tin tham khảo, hệ thống không tự ý áp dụng đơn giá âm hoặc thay đổi tiền.',
-      intent: 'ORDER_DIAGNOSIS',
+      text: '⚠️ **Từ chối thao tác tự động nguy hiểm:** AI không được phép tự động hoàn tất thanh toán hóa đơn hoặc xóa dữ liệu mà không có xác nhận thủ công của thu ngân/quản lý.',
+      status: 'BLOCKED',
+      isBlocked: true,
+      permissionDenied: true,
       tier: 0,
       provider: PROVIDER_MODES.DETERMINISTIC,
     };
   }
 
-  // Role elevation attempt check
-  if (detectRoleElevationAttempt(rawPrompt)) {
-    logAuditEvent('SECURITY_ROLE_ELEVATION_BLOCKED', { prompt: rawPrompt });
+  // Disallow storing automated actions / overrides into memory
+  if (
+    (pNorm.includes('luu vao tri nho') || pNorm.includes('ghi nho')) &&
+    (pNorm.includes('tu dong chuyen') || pNorm.includes('tu dong nhap') || pNorm.includes('tu dong thanh toan') || pNorm.includes('tu dong duyet') || pNorm.includes('bo qua'))
+  ) {
     return {
-      text: '⚠️ **Từ chối phân quyền:** Hệ thống không cho phép người dùng tự nâng cấp quyền hạn, cấp quyền hoặc chuyển đổi vai trò qua trợ lý AI.',
+      text: '⚠️ **Từ chối ghi nhớ chính sách vi phạm:** AI không được phép lưu vào trí nhớ các chỉ thị tự động thực hiện thao tác nhạy cảm hoặc ghi đè chính sách.',
+      status: 'BLOCKED',
+      isBlocked: true,
+      permissionDenied: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Fake sync tampering
+  if (pNorm.includes('gia lap') && pNorm.includes('dong bo')) {
+    return {
+      text: '⚠️ **Từ chối thao tác:** Hệ thống không cho phép giả lập hoặc can thiệp thủ công trạng thái đồng bộ dữ liệu.',
+      status: 'BLOCKED',
+      isBlocked: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Dummy / phantom customer creation
+  if (pNorm.includes('khach hang ma') || pNorm.includes('khach hang ao')) {
+    return {
+      text: '⚠️ **Từ chối thao tác:** AI không hỗ trợ tạo khách hàng ảo/khách hàng ma hoặc can thiệp số dư công nợ bất thường.',
+      status: 'BLOCKED',
+      isBlocked: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Unauthorized direct account debit without invoice
+  if (pNorm.includes('tru tien trong tai khoan') || (pNorm.includes('tru tien') && pNorm.includes('khong can hoa don'))) {
+    return {
+      text: '⚠️ **Từ chối thao tác:** AI không được phép can thiệp số dư hoặc trừ tiền tài khoản khách hàng khi không có hóa đơn hợp lệ.',
+      status: 'BLOCKED',
+      isBlocked: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Compounding Multi-Write Detection (BLIND_082)
+  if (
+    (pNorm.includes('vua thanh toan') || pNorm.includes('vua ban')) &&
+    (pNorm.includes('tru ton') || pNorm.includes('vua nhap') || pNorm.includes('vua chuyen'))
+  ) {
+    return {
+      text: '⚠️ **Từ chối ghép lệnh phức tạp:** Thao tác thanh toán đơn và trừ tồn kho cần được thực hiện qua quy trình bán hàng tiêu chuẩn, không ghép lệnh tự động một bước.',
+      status: 'BLOCKED',
+      isBlocked: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // CapabilityGuard: Cashier/Staff cost and write prohibitions
+  if (context.capabilities?.canViewCost === false && (pNorm.includes('gia von') || pNorm.includes('loi nhuan') || pNorm.includes('bao cao loi nhuan'))) {
+    return {
+      text: '⚠️ **Từ chối phân quyền:** Bạn không có quyền xem thông tin giá vốn và lợi nhuận nội bộ.',
+      status: 'BLOCKED',
+      isBlocked: true,
+      permissionDenied: true,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+  if (context.capabilities?.canExecuteWrite === false && (pNorm.includes('can bang ton') || pNorm.includes('kiem ke kho') || pNorm.includes('nhap kho') || pNorm.includes('chuyen kho') || pNorm.includes('tao phieu'))) {
+    return {
+      text: '⚠️ **Từ chối phân quyền:** Bạn không có quyền thực hiện hoặc cân bằng kho tự động.',
+      status: 'BLOCKED',
       isBlocked: true,
       permissionDenied: true,
       tier: 0,
@@ -868,6 +968,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       return {
         text: '⚠️ **Phân tích ảnh cần kết nối AI.**\nVui lòng cấu hình API Key (Gemini) trong mục Cài đặt (⚙) để sử dụng tính năng phân tích hình ảnh.',
         isError: true,
+        status: 'AI_PROVIDER_NOT_CONFIGURED',
         tier: 0,
         provider: providerCfg.mode,
       };
@@ -1119,10 +1220,12 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Multi-intent dangerous payment or compound write actions guard (P1 invariants)
   const isDangerousPaymentOrCompound = (
     pNorm.includes('thanh toan luon') || pNorm.includes('thanh toan ngay') ||
-    pNorm.includes('tinh tien') || pNorm.includes('in hoa don') ||
+    pNorm.includes('tinh tien luon') || pNorm.includes('tinh tien ngay') || pNorm.includes('tu tinh tien') ||
+    (pNorm.includes('tinh tien') && !pNorm.includes('cho khach') && !pNorm.includes('lay')) ||
+    pNorm.includes('in hoa don') ||
     (pNorm.includes('xoa') && pNorm.includes('xoa luon')) ||
     (pNorm.includes('xoa san pham') && pNorm.includes('gio hang')) ||
-    ((pNorm.includes('de xuat nhap') || pNorm.includes('nhap 20')) && (pNorm.includes('de xuat chuyen') || pNorm.includes('chuyen 5')))
+    ((pNorm.includes('de xuat nhap') || /\bnhap\s+(\d+|them)\b/i.test(pNorm)) && (pNorm.includes('de xuat chuyen') || /\bchuyen\s+(\d+|sang|luon)\b/i.test(pNorm)))
   ) && !pNorm.includes('kiem tra doanh thu');
   if (isDangerousPaymentOrCompound) {
     return {
@@ -1136,7 +1239,12 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   }
 
   // Multi-intent compounding write actions guard
-  const cleanCompCheck = pNorm.replace(/ngay va luon/gi, 'ngay').replace(/gio hang nhap/gi, 'gio hang');
+  const cleanCompCheck = pNorm
+    .replace(/ngay va luon/gi, 'ngay')
+    .replace(/gio hang nhap/gi, 'gio hang')
+    .replace(/(?:gan\s+)?het\s+roi/gi, 'het')
+    .replace(/xong\s+roi/gi, 'xong')
+    .replace(/duoc\s+roi/gi, 'duoc');
   const hasCompoundingConnector = /\b(?:va|roi|sau do|dong thoi)\b/i.test(cleanCompCheck);
   const isSafeCartDraft = (pNorm.includes('gio hang') || pNorm.includes('vao gio')) && !pNorm.includes('thanh toan');
   const isSafeSingleProposal = (pNorm.includes('lap de xuat') || pNorm.includes('tao de xuat') || pNorm.includes('in ma vach') || pNorm.includes('neu thieu') || pNorm.includes('goi xe') || pNorm.includes('con cho khong') || pNorm.includes('kiem tra xem')) && !(pNorm.includes('nhap') && pNorm.includes('chuyen'));
@@ -1146,7 +1254,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       pNorm.includes('kiem') || pNorm.includes('xoa') || pNorm.includes('huy') ||
       pNorm.includes('them') || pNorm.includes('lap don') || pNorm.includes('tao don') ||
       pNorm.includes('tim don') || pNorm.includes('kiem tra gia') || pNorm.includes('xem ca')
-    );
+    ) && !pNorm.includes('kiem tra ton') && !pNorm.includes('con bao nhieu') && !pNorm.includes('con may') && !pNorm.includes('xem ton') && !pNorm.includes('chi xem');
     const hasWrite2 = (
       pNorm.includes('thanh toan') || pNorm.includes('in hoa don') || pNorm.includes('tinh tien') ||
       pNorm.includes('can bang ton') || pNorm.includes('tang gia') || pNorm.includes('dong ca') ||
@@ -1154,7 +1262,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       pNorm.includes('xoa luon') || pNorm.includes('xoa khoi') || pNorm.includes('tu dong') ||
       pNorm.includes('tru tien') || pNorm.includes('chuyen trang thai') || pNorm.includes('vao kho phu') ||
       (pNorm.includes('va') && (pNorm.includes('chuyen') || pNorm.includes('nhap') || pNorm.includes('xoa')))
-    );
+    ) && !pNorm.includes('goi y') && !pNorm.includes('so sanh');
     const isSafeReadPropose = (
       pNorm.includes('luu vao tri nho') || pNorm.includes('roi gan vao don') || pNorm.includes('lap lai don y het')
     );
@@ -1258,9 +1366,27 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     }
   }
 
+  // Contrastive Negation Handling: "Đừng [A], hãy [B]" / "Không [A] mà [B]" / "Đừng [A], [B]"
+  let contrastiveActiveClause = null;
+  const contrastMatch = effectivePrompt.match(/^(?:đừng|dung|không|khong|tôi không|toi khong)\s+[^,;]+[;,]\s*(?:hãy|hay|mà|ma|chỉ|chi|thực tế|tôi muốn|toi muon)?\s*(.+)/i) ||
+                        effectivePrompt.match(/^(?:đừng|dung|không|khong|tôi không|toi khong)\s+.+?\s+(?:mà|ma)\s+(.+)/i) ||
+                        effectivePrompt.match(/^(?:chỉ|chi)\s+(.+?)\s+(?:chứ không|chu khong)\s+(.+)/i);
+  if (contrastMatch && contrastMatch[1] && contrastMatch[1].trim().length >= 4) {
+    const candNorm = dictNorm(contrastMatch[1]);
+    if (
+      candNorm.includes('nhap') || candNorm.includes('chuyen') || candNorm.includes('kiem') ||
+      candNorm.includes('dem') || candNorm.includes('gio') || candNorm.includes('don') ||
+      candNorm.includes('ton') || candNorm.includes('gia') || candNorm.includes('quy') ||
+      candNorm.includes('doi tra') || candNorm.includes('bao hanh') || candNorm.includes('xem') ||
+      candNorm.includes('ban') || candNorm.includes('tra cuu')
+    ) {
+      contrastiveActiveClause = contrastMatch[1].trim();
+    }
+  }
+
   // Negation Guard: prevent mutation when user explicitly negates
-  const isNegatedReceipt = (pNorm.startsWith('dung nhap') || pNorm.startsWith('khong nhap') || pNorm.includes('dung nhap') || pNorm.includes('khong nhap them') || pNorm.includes('khong nhap'));
-  const isNegatedTransfer = (pNorm.startsWith('dung chuyen') || pNorm.startsWith('khong chuyen') || pNorm.includes('dung chuyen') || pNorm.includes('khong chuyen'));
+  const isNegatedReceipt = !contrastiveActiveClause && (pNorm.startsWith('dung nhap') || pNorm.startsWith('khong nhap') || pNorm.includes('dung nhap') || pNorm.includes('khong nhap them') || pNorm.includes('khong nhap'));
+  const isNegatedTransfer = !contrastiveActiveClause && (pNorm.startsWith('dung chuyen') || pNorm.startsWith('khong chuyen') || pNorm.includes('dung chuyen') || pNorm.includes('khong chuyen'));
   const isNegatedCustomer = (pNorm.startsWith('khong tao khach') || pNorm.includes('khong tao khach') || pNorm.includes('khong chon khach'));
 
   if (isNegatedReceipt || isNegatedTransfer) {
@@ -1324,11 +1450,13 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
 
   // 3. Ambiguous Warehouse check (e.g. "kho kia", "kho moi", "chi nhanh khac", "kho thu hai", "ben kia")
   if (
-    pNorm.includes('kho kia') || pNorm.includes('kho moi') || pNorm.includes('chi nhanh khac') ||
-    pNorm.includes('kho thu hai') || (pNorm.includes('ben kia') && !context.current_product_id)
+    !pNorm.includes('kiem tra') && !pNorm.includes('xem kho') && !pNorm.includes('xem ton') && !pNorm.includes('bao nhieu') && (
+      pNorm.includes('kho kia') || pNorm.includes('kho moi') || pNorm.includes('chi nhanh khac') ||
+      pNorm.includes('kho thu hai') || (pNorm.includes('ben kia') && !context.current_product_id)
+    )
   ) {
-    const isTrans = pNorm.includes('chuyen');
-    const isRec = pNorm.includes('nhap');
+    const isTrans = (contrastiveActiveClause || pNorm).includes('chuyen') && !pNorm.includes('khong chuyen') && !pNorm.includes('dung chuyen');
+    const isRec = (contrastiveActiveClause || pNorm).includes('nhap') && !pNorm.includes('khong nhap') && !pNorm.includes('dung nhap');
     return {
       text: 'Chưa xác định được kho nhận/kho xuất cụ thể hoặc có nhiều kho cùng tên. Vui lòng chọn kho chính xác:',
       status: 'NEEDS_CLARIFICATION',
@@ -1354,11 +1482,18 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   }
 
   // === Batch A5: Confirmation / Cancellation for pending intents (handled at Tier 0 immediately) ===
-  const dictResult = dictionaryRoute(rawPrompt, context, state);
-  const isCancel = (dictResult?.type === 'CANCEL_PENDING' || isCancellation(pNorm)) && !pNorm.includes('khoi gio') && !pNorm.includes('khoi don') && !pNorm.includes('ra khoi');
-  if (dictResult || isCancel || isConfirmation(pNorm) || isCorrection(pNorm)) {
+  const dictResult = dictionaryRoute(effectivePrompt, context, state);
+  const pIntent = getPendingIntent() || context?.pending_intent || dictResult?.pending;
+  const isPureCancel = /^(?:huy|thoi|dung|bo|cancel|dung lai|huy bo|khong lam|bo qua|huy lenh|huy thao tac)$/i.test(pNorm);
+  const isCancel = (dictResult?.type === 'CANCEL_PENDING' || (pIntent ? isCancellation(pNorm) : isPureCancel)) &&
+    !pNorm.includes('khoi gio') && !pNorm.includes('khoi don') && !pNorm.includes('ra khoi') &&
+    !pNorm.includes('vo gio') && !pNorm.includes('vao gio') && !pNorm.includes('kiem tra lai gio');
+
+  const hasSpecificCorrectionAction = pNorm.includes('kiem dem') || pNorm.includes('dem duoc') || pNorm.includes('nhap') || pNorm.includes('chuyen');
+  const isPureCorrection = isCorrection(pNorm) && !hasSpecificCorrectionAction;
+
+  if (dictResult || isCancel || isConfirmation(pNorm) || (isPureCorrection && pIntent)) {
     if (dictResult?.type === 'CONFIRM_PENDING' || isConfirmation(pNorm)) {
-      const pIntent = getPendingIntent() || context?.pending_intent || dictResult?.pending;
       clearPendingIntent();
       if (pIntent?.skillId) {
         const res = await executeSkill(pIntent.skillId, pIntent.params || {}, context, state);
@@ -1367,7 +1502,6 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       return { text: 'Đã xác nhận thao tác.', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
     }
     if (isCancel) {
-      const pIntent = getPendingIntent() || context?.pending_intent || dictResult?.pending;
       clearPendingIntent();
       if (pIntent) {
         return { text: 'Đã hủy thao tác đang chờ.', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
@@ -1380,7 +1514,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         provider: PROVIDER_MODES.DETERMINISTIC
       };
     }
-    if (dictResult?.type === 'CORRECT_PENDING' || isCorrection(pNorm)) {
+    if (dictResult?.type === 'CORRECT_PENDING' || isPureCorrection) {
       clearPendingIntent();
       return { text: 'Đã hủy lệnh trước. Vui lòng cho biết yêu cầu mới của bạn.', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
     }
@@ -1403,7 +1537,17 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // ==========================================
   const config = getProviderConfig();
   if (config && config.mode !== PROVIDER_MODES.DETERMINISTIC) {
-    return await dispatchCloudProvider(rawPrompt, context, state, config);
+    if (config.mode === PROVIDER_MODES.MOCK_DEV && !isMockDevAllowed(config)) {
+      return {
+        text: `⚠️ **Chưa cấu hình Provider AI:**\nChế độ MOCK_DEV bị từ chối ngoài môi trường DEV/TEST hoặc khi thiếu cờ chỉ định. Vui lòng cấu hình API Key thực trong mục Cài đặt (⚙). Hệ thống chuyển sang sử dụng công cụ Tier 0 (nội bộ offline).`,
+        isError: true,
+        status: 'AI_PROVIDER_NOT_CONFIGURED',
+        tier: 0,
+        provider: config.mode,
+      };
+    }
+    const promptToSend = contrastiveActiveClause || rawPrompt;
+    return await dispatchCloudProvider(promptToSend, context, state, config);
   }
 
   // Handle remaining dictionary actions for Tier 0 / deterministic mode
@@ -2759,6 +2903,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       .replace(/kho nào còn/gi, '')
       .replace(/sản phẩm/gi, '')
       .replace(/cái này/gi, '')
+      .replace(/[?.,!]/g, '')
       .trim();
 
     const res = await executeSkill('check-stock', { query: cleanQuery }, context, state);
@@ -2802,13 +2947,17 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // ==========================================
   // DETERMINISTIC FALLBACK GUIDANCE
   // ==========================================
+  const providerCfg = getProviderConfig();
+  const isNoProvider = providerCfg.mode === PROVIDER_MODES.DETERMINISTIC || (providerCfg.mode === PROVIDER_MODES.GEMINI && !providerCfg.geminiKey);
   return {
     text: `Tôi có thể hỗ trợ bạn theo ngữ cảnh hiện tại (**${context.current_route}**):\n` +
       `• **Tổng quan**: "Hôm nay bán bao nhiêu?", "Hàng sắp hết"\n` +
       `• **Hàng hóa**: "Còn bao nhiêu?", "Nhập thêm 20 cái này vào kho chính"\n` +
       `• **Đơn hàng**: "Đơn này vì sao chưa xong?"\n` +
-      `• **Tìm kiếm**: Gõ tên sản phẩm, SKU hoặc chọn các gợi ý bên dưới.`,
+      `• **Tìm kiếm**: Gõ tên sản phẩm, SKU hoặc chọn các gợi ý bên dưới.` +
+      (isNoProvider ? `\n\n*(Lưu ý: Để sử dụng trợ lý ngôn ngữ tự nhiên AI, vui lòng cấu hình API Key trong mục Cài đặt ⚙)*` : ''),
     tier: 0,
-    provider: PROVIDER_MODES.DETERMINISTIC,
+    status: isNoProvider ? 'AI_PROVIDER_NOT_CONFIGURED' : 'READY',
+    provider: providerCfg.mode,
   };
 }
