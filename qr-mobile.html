@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QBiz Kho - Quét mã kết nối Điện thoại</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    .card {
+      background: #ffffff;
+      max-width: 520px;
+      width: 100%;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      padding: 32px 28px;
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: #dcfce7;
+      color: #166534;
+      font-weight: 600;
+      font-size: 13px;
+      border-radius: 999px;
+      margin-bottom: 16px;
+    }
+    .badge .dot {
+      width: 8px;
+      height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f274a;
+      margin-bottom: 8px;
+    }
+    p.desc {
+      font-size: 15px;
+      color: #64748b;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .qr-container {
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
+      border-radius: 16px;
+      padding: 20px;
+      display: inline-block;
+      margin-bottom: 24px;
+    }
+    .qr-img {
+      width: 240px;
+      height: 240px;
+      display: block;
+      border-radius: 8px;
+    }
+    .instruction-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #1e40af;
+      font-weight: 500;
+    }
+    .link-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .link-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .link-value {
+      font-family: monospace;
+      font-size: 14px;
+      word-break: break-all;
+      color: #2563eb;
+      text-decoration: underline;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: #2563eb;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+    .btn.secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .footer-note {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">
+      <span class="dot"></span>
+      Dịch vụ đang hoạt động
+    </div>
+    <h1>Mở QBiz Kho trên Điện thoại</h1>
+    <p class="desc">Chỉ cần dùng camera điện thoại quét mã QR bên dưới để mở ngay lập tức, không cần nhập link!</p>
+
+    <div class="instruction-step">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      <div><strong>Bước 1:</strong> Mở ứng dụng <strong>Camera</strong> trên điện thoại và rọi vào mã QR này.</div>
+    </div>
+
+    <div class="qr-container">
+      <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=https%3A%2F%2Ffrontpage-functional-ext-dim.trycloudflare.com" alt="QR Code QBiz Kho" />
+    </div>
+
+    <div class="link-box">
+      <div class="link-title">
+        <span>Link truy cập từ xa (4G/5G/ngoài đường):</span>
+        <span style="color:#16a34a; font-weight:700;">Khuyên dùng</span>
+      </div>
+      <a class="link-value" href="https://frontpage-functional-ext-dim.trycloudflare.com" target="_blank">https://frontpage-functional-ext-dim.trycloudflare.com</a>
+      <div class="btn-row">
+        <button class="btn secondary" onclick="copyLink('https://frontpage-functional-ext-dim.trycloudflare.com', this)">Sao chép link</button>
+        <a class="btn" href="https://frontpage-functional-ext-dim.trycloudflare.com" target="_blank">Mở trực tiếp</a>
+      </div>
+    </div>
+
+    <div class="link-box">
+      <div class="link-title">
+        <span>Link mạng nội bộ Wi-Fi (nếu cùng bắt Wi-Fi máy tính):</span>
+      </div>
+      <a class="link-value" href="http://192.168.1.10:4180" target="_blank">http://192.168.1.10:4180</a>
+      <div class="btn-row">
+        <button class="btn secondary" onclick="copyLink('http://192.168.1.10:4180', this)">Sao chép link</button>
+        <a class="btn secondary" href="http://192.168.1.10:4180" target="_blank">Mở trực tiếp</a>
+      </div>
+    </div>
+
+    <p class="footer-note">QBiz Kho &bull; Máy chủ chạy ngầm ổn định &bull; Phiên bản v2</p>
+  </div>
+
+  <script>
+    function copyLink(url, btn) {
+      navigator.clipboard.writeText(url).then(() => {
+        const old = btn.innerText;
+        btn.innerText = "Đã chép!";
+        btn.style.background = "#dcfce7";
+        btn.style.color = "#166534";
+        setTimeout(() => {
+          btn.innerText = old;
+          btn.style.background = "";
+          btn.style.color = "";
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>

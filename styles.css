@@ -2547,3 +2547,106 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   min-height: 32px;
   font-weight: 800;
 }
+
+/* ==============================================================================
+   QBIZ KHO PRODUCTION V1 — GATE 1 AUTH & SHOP STYLES
+   ============================================================================== */
+.user-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(31, 86, 166, 0.08);
+  border: 1px solid rgba(31, 86, 166, 0.2);
+  color: #1f56a6;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .16s ease;
+}
+.user-badge-btn:hover {
+  background: rgba(31, 86, 166, 0.16);
+}
+.local-data-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #f0f7ff;
+  border: 1px solid #c7dffc;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.local-data-banner .banner-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.local-data-banner .banner-body strong {
+  font-size: 13px;
+  color: #1a427a;
+}
+.local-data-banner .banner-body span {
+  font-size: 12px;
+  color: #557199;
+}
+.local-data-banner .banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+.auth-tab.active {
+  color: #1f56a6;
+  border-bottom-color: #1f56a6;
+}
+.capability-table-wrap {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+.capability-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.capability-table th, .capability-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef2f6;
+  text-align: center;
+}
+.capability-table th:first-child, .capability-table td:first-child {
+  text-align: left;
+}
+.capability-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #334155;
+}
+.capability-table tr:hover td {
+  background: #f8fbff;
+}
+.cap-yes {
+  color: #16a34a;
+  font-weight: 700;
+}
+.cap-no {
+  color: #94a3b8;
+}

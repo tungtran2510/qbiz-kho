@@ -1,0 +1,11 @@
+tests/
+evidence/
+*.bat
+*.log
+*.vbs
+*.py
+*.ps1
+*.md
+remote-links.txt
+qr-mobile.html
+cloudflared.exe

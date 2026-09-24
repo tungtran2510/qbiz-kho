@@ -69,6 +69,9 @@ export const ROLES = {
   },
 };
 
+ROLES.WAREHOUSE = ROLES.WAREHOUSE_STAFF;
+ROLES.MANAGER = ROLES.OWNER;
+
 /**
  * Check if an actor possesses a specific capability.
  */
@@ -420,19 +423,26 @@ const INJECTION_PATTERNS = [
   /<script[\s>]/i,
   /javascript:/i,
   /eval\s*\(/i,
-  /bạn\s+là\s+(admin|root|chủ\s+hệ\s+thống|siêu\s+quản\s+trị|chủ\s+sở\s+hữu\s+tối\s+cao)/i,
-  /ban\s+la\s+(admin|root)/i,
+  /bạn\s+là\s+(?:trợ\s+lý\s+(?:ai\s+)?)?(?:tự\s+do|admin|root|chủ\s+hệ\s+thống|siêu\s+quản\s+trị|chủ\s+sở\s+hữu\s+tối\s+cao)/i,
+  /ban\s+la\s+(?:tro\s+ly\s+(?:ai\s+)?)?(?:tu\s+do|admin|root)/i,
+  /bỏ\s+qua\s+(?:mọi\s+)?chỉ\s+dẫn/i,
+  /bo\s+qua\s+(?:moi\s+)?chi\s+dan/i,
+  /ignore\s+previous/i,
+  /output\s+all\s+(?:secret|api\s+key|password)/i,
   /admin\s+root/i,
   /root\s+admin/i,
   /hack\s+hệ\s+thống|hack\s+he\s+thong/i,
-  /xóa\s+bảng\s+(movements|levels|products|customers|sales|orders)/i,
+  /xóa\s+(?:toàn\s+bộ\s+)?bảng\s+(movements|levels|products|customers|sales|orders)/i,
+  /xoa\s+(?:toan\s+bo\s+)?bang\s+(movements|levels|products|customers|sales|orders)/i,
   /drop\s+table/i,
   /xóa\s+sạch\s+(kho|dữ\s+liệu|data|db|cơ\s+sở)/i,
   /xoa\s+sach\s+(kho|du\s+lieu|data|db)/i,
   /purge\s+(all\s+)?audit\s+logs/i,
   /(chuyển|chuyen)\s+toàn\s+bộ\s+tiền\s+quỹ/i,
   /tự\s+động\s+xác\s+nhận\s+tất\s+cả/i,
-  /cấp\s+quyền\s+owner/i,
+  /cấp\s+quyền\s+owner|cap\s+quyen\s+owner/i,
+  /override\s+(?:permissions?|rules?|system|session)/i,
+  /cập\s+nhật\s+tồn\s+kho\s+.*mà\s+không\s+cần/i,
   /(?:tu\s+dong\s+ghi\s+de|ghi\s+de\s+ton).*(?:khong\s+qua|khong\s+can\s+duyet)/i,
   /(?:tự\s+động\s+ghi\s+đè|ghi\s+đè\s+tồn).*(?:không\s+qua|không\s+cần\s+duyệt)/i,
   /(?:tu\s+y|tu\s+dong|tự\s+ý|tự\s+động)\s+(?:can\s+bang|cân\s+bằng|ghi\s+de|ghi\s+đè|duyet|duyệt)/i,
@@ -444,6 +454,7 @@ const INJECTION_PATTERNS = [
   /(?:thay\s+doi|doi|reset|thay\s+đổi|đổi)\s+mat\s+khau|mật\s+khẩu/i,
   /(?:lenh\s+ngam|lệnh\s+ngầm|doanh\s+so\s+ao|doanh\s+số\s+ảo)/i,
   /<(?:img|iframe|svg|body|input|embed)\b|onerror\s*=|onload\s*=/i,
+  /(?:cua\s+hang\s+khac|cửa\s+hàng\s+khác|chi\s+nhanh\s+khac|chi\s+nhánh\s+khác|shop\s+khac|shop\s+khác)/i,
 ];
 
 /**

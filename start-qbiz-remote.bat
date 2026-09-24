@@ -1,44 +1,52 @@
 @echo off
-title QBiz Kho - Remote Access Tunnel
+title QBiz Kho - Khoi dong dich vu tu xa
 cd /d "%~dp0"
 
-echo ===================================================
-echo   QBIZ KHO - DICH VU TRUY CAP TU XA CO DINH
-echo ===================================================
+echo ===================================================================
+echo             QBIZ KHO - HE THONG KET NOI DIEN THOAI TU XA
+echo ===================================================================
+echo.
 
-:: 1. Kiem tra va khoi dong Local Web Server neu chua co
+:: 1. Kiem tra va khoi dong Local Server chay ngam
 netstat -ano | findstr :4180 | findstr LISTENING >nul
 if %errorlevel% neq 0 (
-    echo [1/3] Dang khoi dong Local Server tai port 4180...
-    start /b "" "C:\Users\Admin\AppData\Local\Programs\Python\Python313\python.exe" -m http.server 4180 --bind 0.0.0.0
-    timeout /t 2 /nobreak >nul
+    echo [*] Dang khoi dong may chu ngam tai port 4180...
+    start "" /b "C:\Users\Admin\AppData\Local\Programs\Python\Python313\pythonw.exe" server.py
+    ping 127.0.0.1 -n 3 >nul
 ) else (
-    echo [1/3] Local Server port 4180 da san sang.
+    echo [OK] May chu Web noi bo (Port 4180) dang hoat dong.
 )
 
-:: 2. Khoi dong Localtunnel co dinh subdomain (qbiz-kho-2026.loca.lt)
-echo [2/3] Dang ket noi Backup Tunnel (loca.lt)...
-taskkill /f /im node.exe /fi "WINDOWTITLE eq localtunnel*" >nul 2>&1
-start "localtunnel" "C:\Users\Admin\.agent-reach\tools\node\node-v24.21.0-win-x64\npx.cmd" --yes localtunnel --port 4180 --subdomain qbiz-kho-2026
+:: 2. Kiem tra va khoi dong Cloudflare Tunnel chay ngam
+tasklist /fi "imagename eq cloudflared.exe" 2>nul | findstr /i "cloudflared.exe" >nul
+if %errorlevel% neq 0 (
+    echo [*] Dang khoi dong ket noi Cloudflare Tunnel...
+    start "" /b cloudflared.exe tunnel --url http://127.0.0.1:4180
+    ping 127.0.0.1 -n 4 >nul
+) else (
+    echo [OK] Ket noi Cloudflare Tunnel tu xa dang hoat dong.
+)
 
-:: 3. Khoi dong Cloudflare Tunnel
-echo [3/3] Dang ket noi Primary Tunnel (Cloudflare)...
-taskkill /f /im cloudflared.exe /fi "WINDOWTITLE eq cloudflared-tunnel*" >nul 2>&1
-start "cloudflared-tunnel" "D:\google driver\Codex PC\QBiz Connect (Quản lý & Kết nối Quan hệ)\cloudflared.exe" tunnel --url http://127.0.0.1:4180
+:: 3. Tu dong mo trang ma QR tren man hinh may tinh de dien thoai quet
+start "" "http://localhost:4180/qr-mobile.html"
 
 echo.
-echo ===================================================
-echo DA KHOI DONG THANH CONG CAC DUONG TRUY CAP:
+echo ===================================================================
+echo   DA KHOI DONG THANH CONG! MAY CHU DANG CHAY NGAM LIEN TUC.
+echo ===================================================================
 echo.
-echo [1] KET NOI HTTPS QUA LOCALTUNNEL (Co dinh):
-echo     Link: https://qbiz-kho-2026.loca.lt
-echo     * Neu trinh duyet hoi mat khau / IP: Nhap IP mang cua ban
+echo 1. DUONG LINK MO TREN DIEN THOAI (4G / 5G / NGOAI DUONG):
+echo    https://frontpage-functional-ext-dim.trycloudflare.com
 echo.
-echo [2] KET NOI MANG LAN WIFI (Nhanh nhat - khong can mang ngoai):
-echo     Link: http://192.168.1.10:4180
-echo ===================================================
+echo 2. QUET MA QR NHANH:
+echo    Trang ma QR da duoc tu dong mo tren trinh duyet may tinh!
+echo    Chi can lay dien thoai, bat Camera roi vao ma QR tren man hinh.
 echo.
-echo LUU Y: Vui long GIU NGUYEN cua so nay trong suot qua trinh su dung.
-echo (Dong cua so nay se ngat ket noi tu xa).
+echo ===================================================================
+echo LUU Y:
+echo - Cac tien trinh da duoc chay ngam tren he thong.
+echo - Ban co the DONG (tat) cua so nay hoac thu nho lai tuy y.
+echo - He thong van se tiep tuc chay ngam phuc vu cho dien thoai!
+echo ===================================================================
 echo.
 pause

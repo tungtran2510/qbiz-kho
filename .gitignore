@@ -21,3 +21,16 @@ __pycache__/
 error.txt
 output.txt
 x)
+
+.vercel
+
+# Local Netlify folder
+.netlify
+
+# Secrets & Local Backups
+.env
+backups/
+remote-links.txt
+*.zip
+*.exe
+tests/diag_out.txt

@@ -60,6 +60,13 @@ def run_stress_suite():
         print(f"P1_FAIL:            {report['P1_FAIL']}")
         print(f"P2_FAIL:            {report['P2_FAIL']}")
         print(f"P3_FAIL:            {report['P3_FAIL']}")
+        if "CONFIRMATION_UX" in report:
+            cux = report["CONFIRMATION_UX"]
+            print("-------------------------------------------------------")
+            print(f"ROUTINE CONFIRMATIONS: {cux['total_routine_confirmations']}")
+            print(f"VERBOSE COUNT:         {cux['verbose_count']} (>90 chars or >2 lines)")
+            print(f"VERBOSE RATE:          {cux['verbose_rate']} (Target: < 5.0%)")
+            print(f"TARGET MET:            {'PASS' if cux.get('target_met') else 'FAIL'}")
         print("-------------------------------------------------------")
         print("BY_CATEGORY:")
         for cat, stats in report.get("BY_CATEGORY", {}).items():

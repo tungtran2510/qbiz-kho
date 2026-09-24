@@ -1,26 +1,150 @@
 {
-  "TOTAL": 1129,
-  "PASS": 1129,
-  "FAIL": 0,
-  "PASS_RATE": "100.0%",
+  "TOTAL": 10039,
+  "PASS": 10012,
+  "FAIL": 27,
+  "PASS_RATE": "99.7%",
   "P0_FAIL": 0,
   "P1_FAIL": 0,
-  "P2_FAIL": 0,
+  "P2_FAIL": 27,
   "P3_FAIL": 0,
+  "CONFIRMATION_UX": {
+    "total_routine_confirmations": 2038,
+    "verbose_count": 1,
+    "verbose_rate": "0.05%",
+    "verbose_rate_numeric": 0.04906771344455348,
+    "target_met": true,
+    "sample_confirmations": [
+      {
+        "id": "STR_00001",
+        "summary": "Nhập thêm 10 cái \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "charLen": 59,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00002",
+        "summary": "Nhập thêm 10 cái \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "charLen": 59,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00003",
+        "summary": "Nhập thêm 20 cái \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "charLen": 59,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00004",
+        "summary": "Nhập thêm 20 cái \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "charLen": 59,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00005",
+        "summary": "Nhập thêm 10 cái \"Nước khoáng Lavie 500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 66,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00006",
+        "summary": "Nhập thêm 10 cái \"Nước khoáng Lavie 500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 66,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00007",
+        "summary": "Nhập thêm 20 cái \"Nước khoáng Lavie 500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 66,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00008",
+        "summary": "Nhập thêm 20 cái \"Nước khoáng Lavie 500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 66,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00009",
+        "summary": "Nhập thêm 10 cái \"Nước khoáng Lavie 1500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 67,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00010",
+        "summary": "Nhập thêm 10 cái \"Nước khoáng Lavie 1500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 67,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00011",
+        "summary": "Nhập thêm 20 cái \"Nước khoáng Lavie 1500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 67,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00012",
+        "summary": "Nhập thêm 20 cái \"Nước khoáng Lavie 1500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 67,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00013",
+        "summary": "Nhập thêm 10 cái \"Ghế 90T Trắng\" vào kho \"Kho Trung tâm\"",
+        "charLen": 56,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00014",
+        "summary": "Nhập thêm 10 cái \"Ghế 90T Trắng\" vào kho \"Kho Trung tâm\"",
+        "charLen": 56,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00015",
+        "summary": "Nhập thêm 20 cái \"Ghế 90T Trắng\" vào kho \"Kho Trung tâm\"",
+        "charLen": 56,
+        "lineCount": 1,
+        "isVerbose": false
+      }
+    ]
+  },
   "BY_CATEGORY": {
     "COMMON_REAL_USE": {
-      "total": 349,
-      "pass": 349,
+      "total": 7639,
+      "pass": 7617,
+      "fail": 22
+    },
+    "ADVERSARIAL": {
+      "total": 428,
+      "pass": 428,
       "fail": 0
     },
     "EDGE_UNCOMMON": {
-      "total": 445,
-      "pass": 445,
+      "total": 1179,
+      "pass": 1174,
+      "fail": 5
+    },
+    "SAFETY_SECURITY": {
+      "total": 696,
+      "pass": 696,
       "fail": 0
     },
-    "ADVERSARIAL": {
-      "total": 250,
-      "pass": 250,
+    "ADVERSARIAL_ATTACK": {
+      "total": 12,
+      "pass": 12,
       "fail": 0
     },
     "INVALID_UNSUPPORTED": {
@@ -29,9 +153,41 @@
       "fail": 0
     }
   },
-  "FAILED_CASE_IDS": [],
-  "ROOT_CAUSE_HINT": {},
+  "FAILED_CASE_IDS": [
+    "STR_00958",
+    "STR_00959",
+    "STR_00960",
+    "STR_01024",
+    "STR_01025",
+    "STR_01026",
+    "STR_01090",
+    "STR_01091",
+    "STR_01092",
+    "STR_01156",
+    "STR_01157",
+    "STR_01158",
+    "STR_01222",
+    "STR_01223",
+    "STR_01224",
+    "STR_09064",
+    "STR_09071",
+    "STR_09133",
+    "STR_09207",
+    "STR_09311",
+    "STR_09316",
+    "STR_09331",
+    "STR_09333",
+    "STR_09443",
+    "STR_09514",
+    "STR_09528",
+    "STR_09632"
+  ],
+  "ROOT_CAUSE_HINT": {
+    "UNWANTED_PROPOSAL": 16,
+    "MISSING_PROPOSAL": 9,
+    "INVENTED_ID": 2
+  },
   "P0_DETAILS": [],
   "P1_DETAILS": [],
-  "DURATION_MS": 1883
+  "DURATION_MS": 13718
 }

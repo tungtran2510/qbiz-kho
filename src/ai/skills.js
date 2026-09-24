@@ -668,5 +668,20 @@ export async function executeSkill(skillId, params = {}, context = {}, state = {
   if (!skill) {
     throw new Error(`Kỹ năng "${skillId}" chưa được đăng ký trong hệ thống.`);
   }
-  return skill.execute(params, context, state);
+  try {
+    return await skill.execute(params, context, state);
+  } catch (err) {
+    if (err.message && (err.message.includes('HARD DENY') || err.message.includes('không được phép'))) {
+      return {
+        text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** ${err.message}`,
+        status: 'BLOCKED',
+        isBlocked: true,
+        permissionDenied: true,
+        isSecurityRejection: true,
+        tier: 0,
+        provider: 'deterministic'
+      };
+    }
+    throw err;
+  }
 }

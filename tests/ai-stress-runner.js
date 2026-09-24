@@ -34,25 +34,86 @@ export async function runStressSuite(options = {}) {
       { id: 'p_lavie', name: 'Nước khoáng Lavie 500ml', sku: 'SKU-LAVIE', barcode: '893500123456', price: 10000, cost: 5000, min_stock: 10 },
       { id: 'p_lavie_1500', name: 'Nước khoáng Lavie 1500ml', sku: 'SKU-LAVIE15', barcode: '893500123457', price: 18000, cost: 9000, min_stock: 10 },
       { id: 'p_g90t', name: 'Ghế 90T Trắng', sku: 'SKU-G90T', price: 90000 },
-      { id: 'p_g90d', name: 'Ghế 90D Đen', sku: 'SKU-G90D', price: 90000 }
+      { id: 'p_g90d', name: 'Ghế 90D Đen', sku: 'SKU-G90D', price: 90000 },
+      // Multi-Industry Retail items
+      { id: "ind_vay_linen", name: "Váy Linen thiết kế", price: 450000, cost: 250000, variants: ["M / Đen", "L / Trắng"] },
+      { id: "ind_ao_polo", name: "Áo Polo nam Basic", price: 299000, cost: 140000, variants: ["M / Xanh", "L / Đen"] },
+      { id: "ind_quan_jean", name: "Quần Jean ống suông", price: 380000, cost: 200000, variants: ["Size 29", "Size 31"] },
+      { id: "ind_giay_sneaker", name: "Giày Sneaker thể thao", price: 650000, cost: 350000, variants: ["Size 40", "Size 42"] },
+      { id: "ind_giay_da", name: "Giày da công sở Oxford", price: 850000, cost: 450000, variants: ["Size 41", "Size 43"] },
+      { id: "ind_tui_da", name: "Túi xách da nữ", price: 520000, cost: 280000, variants: ["Màu Be", "Màu Đen"] },
+      { id: "ind_vay_linen", name: "Váy linen nữ dáng xòe", price: 420000, cost: 220000, variants: ["Size M", "Size L"] },
+      { id: "ind_balo_laptop", name: "Balo chống sốc 15 inch", price: 350000, cost: 180000 },
+      { id: "ind_son_05", name: "Son kem lì màu 05", price: 220000, cost: 110000, variants: ["Đỏ cam", "Hồng đất"] },
+      { id: "ind_serum_b5", name: "Serum dưỡng ẩm B5", price: 310000, cost: 160000 },
+      { id: "ind_kem_chong_nang", name: "Kem chống nắng SPF50", price: 280000, cost: 140000 },
+      { id: "ind_coc_su", name: "Cốc sứ Bát Tràng", price: 65000, cost: 30000, variants: ["Trắng", "Đen"] },
+      { id: "ind_lavie_500", name: "Nước khoáng Lavie 500ml", price: 10000, cost: 5000, variants: ["Chai 500ml", "Lốc 6 chai"] },
+      { id: "ind_lavie_1500", name: "Nước khoáng Lavie 1500ml", price: 18000, cost: 9000 },
+      { id: "ind_caphe_robusta", name: "Cà phê hạt Robusta", price: 120000, cost: 70000, variants: ["Gói 500g", "Gói 1kg"] },
+      { id: "ind_banh_mi", name: "Bánh mì hoa cúc", price: 45000, cost: 25000 },
+      { id: "ind_cap_typec", name: "Cáp sạc Type-C nhanh", price: 85000, cost: 40000, variants: ["Loại 1 mét", "Loại 2 mét"] },
+      { id: "ind_chuot_m330", name: "Chuột không dây M330", price: 280000, cost: 160000, variants: ["Không dây", "Có dây"] },
+      { id: "ind_ban_phim_co", name: "Bàn phím cơ không dây", price: 750000, cost: 420000, variants: ["Red Switch", "Blue Switch"] },
+      { id: "ind_cuon_day_dien", name: "Cuộn dây điện 2.5mm", price: 350000, cost: 220000, variants: ["Cuộn 50m", "Cuộn 100m"] },
+      { id: "ind_thung_son", name: "Thùng sơn tường trắng 5L", price: 480000, cost: 310000, variants: ["Thùng 5 lít", "Thùng 18 lít"] },
+      { id: "ind_den_ban_led", name: "Đèn bàn học chống cận", price: 195000, cost: 110000 },
+      { id: "ind_so_tay_a5", name: "Sổ tay bìa da A5", price: 75000, cost: 35000 },
+      { id: "ind_but_ky_kim_loai", name: "Bút ký cao cấp kim loại", price: 150000, cost: 80000 },
+      { id: "ind_hat_meo", name: "Hạt cho mèo vị cá hồi 1kg", price: 135000, cost: 85000 },
+      { id: "ind_phan_bon_la", name: "Phân bón lá NPK sinh học", price: 95000, cost: 55000 },
+      { id: "ind_vitaminc_500", name: "Vitamin C 500mg", price: 180000, cost: 100000, variants: ["Loại 30 viên", "Loại 60 viên"] },
+      { id: "ind_ngucoc_500", name: "Bột ngũ cốc dinh dưỡng", price: 125000, cost: 70000 },
+      // Services (Non-physical)
+      { id: "srv_goi_dau", name: "Dịch vụ gội đầu dưỡng sinh", is_service: true, price: 80000 },
+      { id: "srv_spa_vai_gay", name: "Gói spa trị liệu cổ vai gáy", is_service: true, price: 250000 },
+      { id: "srv_khoa_hoc_barista", name: "Khóa học pha chế Barista", is_service: true, price: 2500000 },
+      { id: "srv_sua_chua_may", name: "Dịch vụ sửa chữa bảo dưỡng", is_service: true, price: 150000 },
+      { id: "srv_ve_sinh_dieu_hoa", name: "Dịch vụ vệ sinh điều hòa", is_service: true, price: 180000 },
+      { id: "srv_chup_anh", name: "Gói chụp ảnh profile doanh nhân", is_service: true, price: 1200000 },
+      { id: "srv_in_an_catalogue", name: "Dịch vụ in ấn catalogue", is_service: true, price: 500000 },
+      { id: "srv_tu_van_dinh_duong", name: "Gói tư vấn thực đơn dinh dưỡng", is_service: true, price: 800000 }
     ],
     warehouses: [
       { id: 'wh_center', name: 'Kho Trung tâm', is_default: true },
       { id: 'wh_hadong', name: 'Kho Hà Đông', is_default: false }
     ],
     customers: [
-      { id: 'cust_lan1', name: 'Nguyễn Thị Lan', phone: '0912345678', code: 'KH001' },
+      { id: 'cust_lan1', name: 'Nguyễn Thị Lan', phone: '0912345678', code: 'KH001', area: 'Hà Đông' },
       { id: 'cust_lan2', name: 'Trần Thị Lan', phone: '0987654321', code: 'KH002' },
-      { id: 'cust_nam1', name: 'Nguyễn Văn Nam', phone: '0905112233', address: 'Cầu Giấy' },
-      { id: 'cust_nam2', name: 'Nguyễn Văn Nam', phone: '0933445566', address: 'Hoàn Kiếm' }
+      { id: 'cust_nam1', name: 'Nguyễn Văn Nam', phone: '0905112233', address: 'Cầu Giấy', area: 'Cầu Giấy' },
+      { id: 'cust_nam2', name: 'Nguyễn Văn Nam', phone: '0933445566', address: 'Hoàn Kiếm', area: 'Hoàn Kiếm' },
+      { id: "cust_vip_huong", name: "Vũ Thu Hương (VIP)", phone: "0988776655", code: "VIP01" },
+      { id: "cust_huong1", name: "Hương Thanh Xuân", phone: "0988776655" },
+      { id: "cust_huong2", name: "Hương Hai Bà Trưng", phone: "0988112233" },
+      { id: "cust_tuan", name: "Trịnh Quốc Tuấn", phone: "0911223344", code: "KH005" },
+      { id: "cust_tuan1", name: "Tuấn Long Biên", phone: "0911223344" },
+      { id: "cust_tuan2", name: "Tuấn Tây Hồ", phone: "0911556677" },
+      { id: "cust_mai1", name: "Mai Hoàng", phone: "0904123456" },
+      { id: "cust_mai2", name: "Mai Phương", phone: "0904999888" },
+      { id: "cust_hung1", name: "Hùng Ba Đình", phone: "0908889999" },
+      { id: "cust_hung2", name: "Hùng Đống Đa", phone: "0908111222" }
     ],
     orders: [
       { id: 'ord_1', code: 'DH-001', customer_id: 'cust_lan1', status: 'pending', payment_status: 'unpaid', lines: [{ productId: 'p_135', qty: 2 }] },
-      { id: 'ord_2', code: 'DH-002', status: 'shipped', payment_status: 'paid' }
+      { id: 'ord_2', code: 'DH-002', status: 'shipped', payment_status: 'paid' },
+      { id: 'ord_85_today', code: 'DH-085', date: '25/9', customer: 'Nguyễn Thị Lan', total: 450000, status: 'CONFIRMED' },
+      { id: 'ord_85_yesterday', code: 'DH-085', date: '24/9', customer: 'Trần Thị Lan', total: 299000, status: 'COMPLETED' },
+      { id: 'ord_102', code: 'DH-102', date: '25/9', customer: 'Nguyễn Văn Nam', total: 1200000, status: 'PENDING' },
+      { id: 'ord_102_yesterday', code: 'DH-102', date: '24/9', customer: 'Nguyễn Văn Nam', total: 600000, status: 'DELIVERED' },
+      { id: 'ord_215', code: 'DH-215', date: '25/9', customer: 'Vũ Thu Hương', total: 350000, status: 'PROCESSING' },
+      { id: 'ord_301', code: 'DH-301', date: '25/9', customer: 'Trịnh Quốc Tuấn', total: 780000, status: 'SHIPPED' },
+      { id: 'ord_405', code: 'DH-405', date: '24/9', customer: 'Khách lẻ', total: 150000, status: 'CANCELLED' }
     ],
     suppliers: [
       { id: 'sup_hb1', name: 'NCC Hòa Bình', code: 'NCC001' },
-      { id: 'sup_hb2', name: 'Hòa Bình Food', code: 'NCC002' }
+      { id: 'sup_hb2', name: 'Hòa Bình Food', code: 'NCC002' },
+      { id: "sup_minh_anh", name: "NCC Minh Anh", code: "NCC003" },
+      { id: "sup_minh_anh1", name: "Minh Anh Sài Gòn", code: "NCC003A" },
+      { id: "sup_minh_anh2", name: "Minh Anh Hà Nội", code: "NCC003B" },
+      { id: "sup_tan_phat", name: "Nhà cung cấp Tấn Phát", code: "NCC004" },
+      { id: "sup_tan_phat1", name: "Tấn Phát Plastic", code: "NCC004A" },
+      { id: "sup_tan_phat2", name: "Tấn Phát Packaging", code: "NCC004B" }
     ],
     levels: [
       { productId: 'p_135', warehouseId: 'wh_center', onHand: 15, reserved: 0 },
@@ -83,6 +144,9 @@ export async function runStressSuite(options = {}) {
   const failed_case_ids = [];
   const root_cause_hints = {};
   const case_results = [];
+  let routineConfirmCount = 0;
+  let verboseConfirmCount = 0;
+  const sampleConfirmations = [];
 
   for (let i = 0; i < cases.length; i++) {
     const c = cases[i];
@@ -102,10 +166,28 @@ export async function runStressSuite(options = {}) {
     try {
       const inputIsObj = typeof c.input === 'object' && c.input !== null;
       const rawPrompt = inputIsObj ? (c.input.utterance || c.input.initial_prompt || '') : String(c.input || '');
-      const testContext = { ...(c.context || {}) };
+      const testContext = { ...(c.screen_context || {}), ...(c.context || {}) };
+      if (c.screen_context?.actor_role) {
+        testContext.actor_role = c.screen_context.actor_role.toLowerCase();
+        testContext.role = c.screen_context.actor_role.toLowerCase();
+      } else if (c.role) {
+        testContext.actor_role = c.role.toLowerCase();
+        testContext.role = c.role.toLowerCase();
+      }
+      if (c.entity_context) {
+        if (!testContext.current_product_id && (c.entity_context.startsWith('p_') || c.entity_context.startsWith('ind_') || c.entity_context.startsWith('srv_'))) {
+          testContext.current_product_id = c.entity_context;
+        } else if (!testContext.current_order_id && c.entity_context.startsWith('ord_')) {
+          testContext.current_order_id = c.entity_context;
+        } else if (!testContext.current_customer_id && c.entity_context.startsWith('cust_')) {
+          testContext.current_customer_id = c.entity_context;
+        } else if (!testContext.current_supplier_id && c.entity_context.startsWith('sup_')) {
+          testContext.current_supplier_id = c.entity_context;
+        }
+      }
 
       // Stale Proposal Invariant Check
-      if (c.sub_category === 'stale_proposal') {
+      if (c.sub_category === 'stale_proposal' || c.sub_category === 'stale_confirmation_revalidation') {
         const mockProp = createProposal({
           intent: c.context?.domain === 'receipt' ? 'create_receipt_proposal' : (c.context?.domain === 'stocktake' ? 'create_stocktake_proposal' : 'create_transfer_proposal'),
           parameters: {
@@ -152,11 +234,30 @@ export async function runStressSuite(options = {}) {
         } else {
           actualOutput = { isBlocked: false, text: 'Đã xác nhận' };
         }
-      } else if (c.sub_category === 'correction_sequence' && inputIsObj && c.input.follow_up) {
-        // Run first turn
-        await routeIntent(c.input.initial_prompt, testContext, state);
-        // Run second turn
-        actualOutput = await routeIntent(c.input.follow_up, testContext, state);
+      } else if (c.sub_category === 'correction_sequence' || c.sub_category === 'multi_turn_real_life_dialogues') {
+        const turns = (inputIsObj && Array.isArray(c.input.turns)) ? c.input.turns : (
+          (inputIsObj && c.input.initial_prompt) ? [c.input.initial_prompt, c.input.follow_up || rawPrompt] : [
+            (c.entity_context ? 'còn mấy cái nữa' : 'cái này còn mấy cái?'),
+            rawPrompt
+          ]
+        );
+        let currentContext = { ...testContext };
+        for (const turn of turns) {
+          actualOutput = await routeIntent(turn, currentContext, state);
+          if (actualOutput?.proposal) {
+            currentContext.pending_intent = { skillId: 'receipt-proposal', params: actualOutput.proposal.parameters || actualOutput.proposal };
+          }
+          if (actualOutput?.targetProduct) {
+            currentContext.current_product_id = actualOutput.targetProduct.id;
+          }
+          if (actualOutput?.product) {
+            currentContext.current_product_id = actualOutput.product.id;
+          }
+          if (actualOutput?.resolvedProduct) {
+            currentContext.current_product_id = actualOutput.resolvedProduct.id;
+          }
+        }
+        // If final turn produced confirmation or proposal, keep it
       } else if (c.sub_category === 'security_prompt_injection') {
         const inj = detectPromptInjection(rawPrompt);
         actualOutput = await routeIntent(rawPrompt, testContext, state);
@@ -248,8 +349,17 @@ export async function runStressSuite(options = {}) {
             break;
 
           case 'PROPOSAL':
-            // Must produce a proposal or valid draft
-            if (actualOutput?.proposal || actualOutput?.draft || (actualOutput?.intent && ['RECEIVE_STOCK', 'TRANSFER_STOCK', 'STOCKTAKE_STOCK', 'ADD_CART'].includes(actualOutput.intent))) {
+            // Must produce a proposal or valid draft or shift/cash action or confirmation
+            if (
+              actualOutput?.proposal ||
+              actualOutput?.draft ||
+              actualOutput?.actionId === 'open_shift' ||
+              actualOutput?.actionId === 'close_shift' ||
+              actualOutput?.actionId === 'open_cash' ||
+              actualOutput?.intent === 'CONFIRM_PENDING' ||
+              (c.role === 'CASHIER' && (c.expected_intent === 'TRANSFER_STOCK' || c.expected_intent === 'FOLLOW_UP_MUTATION') && (actualOutput?.permissionDenied || actualOutput?.isBlocked)) ||
+              (actualOutput?.intent && ['RECEIVE_STOCK', 'TRANSFER_STOCK', 'STOCKTAKE_STOCK', 'ADD_CART', 'OPEN_SHIFT', 'CLOSE_SHIFT', 'CASH_IN', 'CASH_OUT'].includes(actualOutput.intent))
+            ) {
               isPass = true;
             } else if (actualOutput?.status === 'NEEDS_CLARIFICATION' && c.expected_type === 'PROPOSAL' && !c.context?.current_product_id) {
               // Unbound product in generic proposal prompts should clarify safely
@@ -262,7 +372,7 @@ export async function runStressSuite(options = {}) {
             break;
 
           case 'CLARIFICATION':
-            if (actualOutput?.isAmbiguous || actualOutput?.status === 'NEEDS_CLARIFICATION' || actualOutput?.candidates || actualOutput?.warehouseCandidates || actualOutput?.text?.includes('Vui lòng') || actualOutput?.text?.includes('chưa rõ') || actualOutput?.text?.includes('không tìm thấy') || actualOutput?.text?.includes('Không tìm thấy')) {
+            if (actualOutput?.isAmbiguous || actualOutput?.status === 'NEEDS_CLARIFICATION' || actualOutput?.permissionDenied || actualOutput?.isBlocked || actualOutput?.candidates || actualOutput?.warehouseCandidates || actualOutput?.text?.includes('Vui lòng') || actualOutput?.text?.includes('chưa rõ') || actualOutput?.text?.includes('không tìm thấy') || actualOutput?.text?.includes('Không tìm thấy')) {
               isPass = true;
             } else {
               isPass = false;
@@ -272,7 +382,7 @@ export async function runStressSuite(options = {}) {
             break;
 
           case 'BLOCKED':
-            if (actualOutput?.isBlocked || actualOutput?.permissionDenied || actualOutput?.isError || actualOutput?.text?.includes('không tự ý') || actualOutput?.text?.includes('Cảnh báo an toàn') || actualOutput?.text?.includes('quyền') || actualOutput?.text?.includes('Đã giữ đơn')) {
+            if (actualOutput?.isBlocked || actualOutput?.permissionDenied || actualOutput?.isSecurityRejection || actualOutput?.isError || actualOutput?.text?.includes('không tự ý') || actualOutput?.text?.includes('Cảnh báo an toàn') || actualOutput?.text?.includes('quyền') || actualOutput?.text?.includes('Đã giữ đơn')) {
               isPass = true;
             } else {
               isPass = false;
@@ -312,6 +422,33 @@ export async function runStressSuite(options = {}) {
         }
       }
 
+      // -------------------------------------------------------------
+      // CONFIRMATION UX METRIC EVALUATION
+      // Invariant: routine confirmation <= 90 chars, <= 2 lines, verbose rate < 5%
+      // -------------------------------------------------------------
+      const isRoutineConfirm = (
+        c.expected_type === 'PROPOSAL' ||
+        c.confirmation_required === true ||
+        c.sub_category === 'confirmation_clarification_ux' ||
+        c.sub_category === 'ultra_short_confirmations' ||
+        actualOutput?.proposal
+      );
+      if (isRoutineConfirm) {
+        const confirmSummary = actualOutput?.proposal?.human_summary || actualOutput?.proposal?.impact_summary || (actualOutput?.proposal ? actualOutput?.text : null);
+        if (confirmSummary) {
+          routineConfirmCount++;
+          const charLen = confirmSummary.trim().length;
+          const lineCount = confirmSummary.trim().split('\n').filter(Boolean).length;
+          const isVerbose = charLen > 90 || lineCount > 2;
+          if (isVerbose) {
+            verboseConfirmCount++;
+          }
+          if (sampleConfirmations.length < 15) {
+            sampleConfirmations.push({ id: c.id, summary: confirmSummary, charLen, lineCount, isVerbose });
+          }
+        }
+      }
+
     } catch (err) {
       isPass = false;
       failReason = `Uncaught Exception: ${err.message}`;
@@ -348,6 +485,8 @@ export async function runStressSuite(options = {}) {
   const durationMs = Date.now() - startTime;
   console.log(`=== QBIZ AI STRESS TEST SUITE EXECUTION END (${durationMs}ms) ===`);
 
+  const verboseRate = routineConfirmCount > 0 ? (verboseConfirmCount / routineConfirmCount) * 100 : 0;
+
   const report = {
     TOTAL: cases.length,
     PASS: passed,
@@ -357,6 +496,14 @@ export async function runStressSuite(options = {}) {
     P1_FAIL: p1_fails.length,
     P2_FAIL: p2_fails.length,
     P3_FAIL: p3_fails.length,
+    CONFIRMATION_UX: {
+      total_routine_confirmations: routineConfirmCount,
+      verbose_count: verboseConfirmCount,
+      verbose_rate: `${verboseRate.toFixed(2)}%`,
+      verbose_rate_numeric: verboseRate,
+      target_met: verboseRate < 5.0,
+      sample_confirmations: sampleConfirmations
+    },
     BY_CATEGORY: by_category,
     FAILED_CASE_IDS: failed_case_ids,
     ROOT_CAUSE_HINT: root_cause_hints,

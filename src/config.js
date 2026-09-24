@@ -6,8 +6,11 @@ export const CONFIG = {
   SYNC_MODE: 'local',
   API_BASE_URL: '/api/inventory',
   DEFAULT_LOW_STOCK: 5,
+  SUPABASE_URL: globalThis.__QBIZ_CONFIG__?.SUPABASE_URL || 'https://xewvtdprfsxsvdayrcvi.supabase.co',
+  SUPABASE_ANON_KEY: globalThis.__QBIZ_CONFIG__?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhld3Z0ZHByZnN4c3ZkYXlyY3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNTU1NjYsImV4cCI6MjEwNTgzMTU2Nn0.AWWwJe-sHeEanmPW0ApfZhRF8okKWijffkdF3jSaVSM',
   // Feature flags protect unfinished integrations and contracts from appearing as usable.
   FEATURE_FLAGS: {
+    auth: true,
     shipping_connector: false,
     marketplace_connector: false,
     customer_debt: false,

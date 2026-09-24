@@ -1,0 +1,166 @@
+{
+  "TOTAL": 1507,
+  "PASS": 1505,
+  "FAIL": 2,
+  "PASS_RATE": "99.9%",
+  "P0_FAIL": 0,
+  "P1_FAIL": 0,
+  "P2_FAIL": 2,
+  "P3_FAIL": 0,
+  "CONFIRMATION_UX": {
+    "total_routine_confirmations": 322,
+    "verbose_count": 0,
+    "verbose_rate": "0.00%",
+    "verbose_rate_numeric": 0,
+    "target_met": true,
+    "sample_confirmations": [
+      {
+        "id": "STR_01734",
+        "summary": "Kiểm kho sản phẩm \"Ghế 90T Trắng\": Sổ sách 0, Thực kiểm 90 (Lệch: +90)",
+        "charLen": 70,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_01248",
+        "summary": "Kiểm kho sản phẩm \"Ghế sáng chế 135\": Sổ sách 15, Thực kiểm 135 (Lệch: +120)",
+        "charLen": 76,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_06368",
+        "summary": "Xác nhận giảm tồn 1 \"Sản phẩm\"?",
+        "charLen": 31,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_03635",
+        "summary": "Nhập thêm 4 cái \"Nước khoáng Lavie 500ml\" vào kho \"Kho Trung tâm\"",
+        "charLen": 65,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_01837",
+        "summary": "Kiểm kho sản phẩm \"Ghế 90D Đen\": Sổ sách 0, Thực kiểm 90 (Lệch: +90)",
+        "charLen": 68,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_01732",
+        "summary": "Kiểm kho sản phẩm \"Ghế 90T Trắng\": Sổ sách 0, Thực kiểm 100 (Lệch: +100)",
+        "charLen": 72,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_09155",
+        "summary": "Nhập thêm 20 cái \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "charLen": 59,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_08958",
+        "summary": "Nhập thêm 25 cái \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "charLen": 59,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_01088",
+        "summary": "Kiểm kho sản phẩm \"Nước khoáng Lavie 1500ml\": Sổ sách 0, Thực kiểm 1500 (Lệch: +1500)",
+        "charLen": 85,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_04544",
+        "summary": "Kiểm kho sản phẩm \"Cốc sứ Bát Tràng\": Sổ sách 0, Thực kiểm 3 (Lệch: +3)",
+        "charLen": 71,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_02145",
+        "summary": "Thêm 1 sản phẩm vào giỏ hàng POS",
+        "charLen": 32,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_01391",
+        "summary": "Kiểm kho sản phẩm \"Nước khoáng Lavie 500ml\": Sổ sách 50, Thực kiểm 500 (Lệch: +450)",
+        "charLen": 83,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_09027",
+        "summary": "Đã lưu đơn hàng nháp / giữ đơn chưa thanh toán trên POS.",
+        "charLen": 56,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_05102",
+        "summary": "Xác nhận cập nhật trạng thái đơn hàng?",
+        "charLen": 38,
+        "lineCount": 1,
+        "isVerbose": false
+      },
+      {
+        "id": "STR_00055",
+        "summary": "Kiểm kho sản phẩm \"Ghế 90T Trắng\": Sổ sách 0, Thực kiểm 90 (Lệch: +90)",
+        "charLen": 70,
+        "lineCount": 1,
+        "isVerbose": false
+      }
+    ]
+  },
+  "BY_CATEGORY": {
+    "COMMON_REAL_USE": {
+      "total": 1157,
+      "pass": 1155,
+      "fail": 2
+    },
+    "ADVERSARIAL": {
+      "total": 62,
+      "pass": 62,
+      "fail": 0
+    },
+    "EDGE_UNCOMMON": {
+      "total": 170,
+      "pass": 170,
+      "fail": 0
+    },
+    "SAFETY_SECURITY": {
+      "total": 107,
+      "pass": 107,
+      "fail": 0
+    },
+    "INVALID_UNSUPPORTED": {
+      "total": 10,
+      "pass": 10,
+      "fail": 0
+    },
+    "ADVERSARIAL_ATTACK": {
+      "total": 1,
+      "pass": 1,
+      "fail": 0
+    }
+  },
+  "FAILED_CASE_IDS": [
+    "STR_00959",
+    "STR_01158"
+  ],
+  "ROOT_CAUSE_HINT": {
+    "UNWANTED_PROPOSAL": 2
+  },
+  "P0_DETAILS": [],
+  "P1_DETAILS": [],
+  "DURATION_MS": 2495
+}

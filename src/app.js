@@ -6,6 +6,31 @@ import * as aiModule from './ai/index.js';
 const { initAiUI, updateContextAndChips } = aiModule;
 import * as businessProfileModule from './business-profile.js';
 import * as uiProfileModule from './ui-profile.js';
+import {
+  initAuth,
+  getAuthState,
+  getCurrentUser,
+  getActiveShop,
+  getCurrentRole,
+  userCan,
+  signIn,
+  signUp,
+  signOut,
+  createShop,
+  addMember,
+  disableMember,
+  subscribeAuthState,
+  AUTH_STATES,
+} from './auth.js';
+import {
+  ROLES,
+  ROLE_LABELS,
+  CAPABILITIES,
+  CAPABILITY_LABELS,
+  ROLE_CAPABILITY_MAP,
+  hasCapability,
+  getRoleLabel,
+} from './capabilities.js';
 
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -117,7 +142,30 @@ function headerActions(){
   const showScan=state.page==='sales'?state.saleStep==='browse':['products','transfers'].includes(state.page);
   const scan=showScan?`<button class="icon-btn scan-trigger" data-action="scan" title="Quét mã" aria-label="Quét mã">${icon('scan-line')}</button>`:'';
   const alerts=notificationItems();
-  top.innerHTML=`<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${alerts.length?`<b>${alerts.length}</b>`:''}</button>${scan}`;
+  const auth=getAuthState();
+  let userBadge='';
+  if(auth.status===AUTH_STATES.AUTHENTICATED_SHOP_READY){
+    userBadge=`<button class="user-badge-btn" data-action="open-user-menu" title="${esc(auth.user?.email||'Tài khoản')}">${icon('user')}<span>${esc(auth.shop?.name||'Shop')}</span></button>`;
+  } else if(auth.status===AUTH_STATES.AUTHENTICATED_NO_SHOP){
+    userBadge=`<button class="user-badge-btn" data-action="create-shop-modal" title="Tạo cửa hàng mới">${icon('store')}<span>Tạo Shop</span></button>`;
+  } else {
+    userBadge=`<button class="user-badge-btn" data-action="open-auth-modal" title="Đăng nhập">${icon('user')}<span>Đăng nhập</span></button>`;
+  }
+  top.innerHTML=`${userBadge}<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${alerts.length?`<b>${alerts.length}</b>`:''}</button>${scan}`;
+}
+function injectLocalNotice(){
+  if(state.page!=='dashboard') return;
+  const auth=getAuthState();
+  if(auth.status===AUTH_STATES.AUTHENTICATED_SHOP_READY && (state.data?.products?.length||0)>0 && !sessionStorage.getItem('qbiz_dismiss_local_notice')){
+    const content=$('#content');
+    if(content && !$('#localDataNotice', content)){
+      const banner=document.createElement('div');
+      banner.className='local-data-banner';
+      banner.id='localDataNotice';
+      banner.innerHTML=`<div class="banner-body"><strong>Thiết bị này đang có dữ liệu cục bộ (${state.data.products.length} sản phẩm).</strong><span>Bước tiếp theo có thể đưa dữ liệu này lên Shop.</span></div><div class="banner-actions"><button class="secondary-btn tiny" data-action="dismiss-local-notice">Để sau</button><button class="ghost-btn tiny" data-action="prepare-sync-info">Chuẩn bị đồng bộ</button></div>`;
+      content.prepend(banner);
+    }
+  }
 }
 function notificationItems(){
   if(!state.data)return [];
@@ -139,7 +187,7 @@ function nav(){
   $('#desktopNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="nav-btn ${activePage===id?'active':''}" data-page="${id}"><span class="nav-ico">${icon(ico)}</span><span>${label}</span></button>`).join('');
   $('#mobileNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="${activePage===id?'active':''}" data-page="${id}">${icon(ico)}<span>${label}</span></button>`).join('');
 }
-function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports}[state.page]||renderDashboard)(); headerActions(); updateSyncPill(); updateContextAndChips(); }
+function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); updateSyncPill(); updateContextAndChips(); }
 
 const levelAvail=l=>Math.max(0,(l?.onHand||0)-(l?.reserved||0)-(l?.damaged||0));
 function warehouseStock(productId){return (state.data.levels||[]).filter(l=>l.productId===productId).reduce((m,l)=>Math.max(m,levelAvail(l)),0);}
@@ -2261,7 +2309,67 @@ function renderNotificationCenter(){
 function connectorCards(items){return `<div class="connector-grid">${items.map(([name,sub])=>`<article><div><b>${name}</b>${surfaceStatus('prepared','Chưa kết nối')}</div><p>${sub}</p><button class="secondary-btn" disabled>Kết nối</button></article>`).join('')}</div>`}
 function renderShippingCenter(){setTitle('Vận chuyển','QBiz');$('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Nhà vận chuyển</h2><p>Thiết lập nền; chưa lưu token hoặc gọi API từ trình duyệt.</p></div>${surfaceStatus('prepared','Chuẩn bị')}</div>${connectorCards([['GHN','Báo giá, tạo vận đơn, tracking và nhãn khi có adapter backend.'],['GHTK','Chưa có adapter/credential server.'],['J&T Express','Chưa có adapter/credential server.']])}<div class="surface-callout"><b>Vận chuyển khác Kênh bán.</b><p>Delivered không đồng nghĩa COD đã đối soát.</p></div></section></section>`}
 function renderChannelCenter(){setTitle('Kênh bán','QBiz');$('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Kênh bán hàng</h2><p>Shared Product Core; không tạo bản sản phẩm thứ hai.</p></div>${surfaceStatus('prepared','Chuẩn bị')}</div>${connectorCards([['QBiz Website','Sản phẩm, hiển thị website và đơn hàng qua Action API tương lai.'],['Shopee','Product mapping, order import và settlement cần backend.'],['TikTok Shop','Chưa kết nối.'],['Lazada','Chưa kết nối.']])}</section></section>`}
-function renderPermissionCenter(){setTitle('Người dùng & phân quyền','QBiz');const rules=['Bán hàng','Xem tồn kho','In phiếu','Xem giá vốn','Sửa giá','Điều chỉnh tồn','Hoàn tiền','Xem lợi nhuận','Quản lý người dùng'];$('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Vai trò mẫu</h2><p>Bề mặt tham chiếu; chưa có auth/permission enforcement local.</p></div>${surfaceStatus('prepared','Chưa áp dụng')}</div><div class="permission-matrix"><div><b>Quyền</b><b>Chủ cửa hàng</b><b>Thu ngân</b></div>${rules.map((r,i)=>`<div><span>${r}</span><b>✓</b><b>${i<3?'✓':'—'}</b></div>`).join('')}</div><button class="primary-btn full" disabled>Thêm người dùng</button><p class="field-limit">Không lưu vai trò giả. Cần Identity + Permission/Audit contract trước khi enforcement.</p></section></section>`}
+function renderPermissionCenter(){
+  setTitle('Người dùng & phân quyền','QBiz');
+  const auth = getAuthState();
+  const currentRole = auth.role || ROLES.CASHIER;
+  const isOwner = auth.role === ROLES.OWNER;
+  const isAuth = auth.status === AUTH_STATES.AUTHENTICATED_SHOP_READY;
+
+  const caps = Object.keys(CAPABILITY_LABELS);
+  const tableRows = caps.map(capKey => {
+    const label = CAPABILITY_LABELS[capKey];
+    const ownerOk = hasCapability(ROLES.OWNER, capKey);
+    const mgrOk = hasCapability(ROLES.MANAGER, capKey);
+    const cashierOk = hasCapability(ROLES.CASHIER, capKey);
+    const whOk = hasCapability(ROLES.WAREHOUSE, capKey);
+    return `<tr>
+      <td>${esc(label)}</td>
+      <td class="${ownerOk?'cap-yes':'cap-no'}">${ownerOk?'✓':'—'}</td>
+      <td class="${mgrOk?'cap-yes':'cap-no'}">${mgrOk?'✓':'—'}</td>
+      <td class="${cashierOk?'cap-yes':'cap-no'}">${cashierOk?'✓':'—'}</td>
+      <td class="${whOk?'cap-yes':'cap-no'}">${whOk?'✓':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  $('#content').innerHTML = `
+    <section class="feature-center">
+      <section class="card feature-panel">
+        <div class="section-head">
+          <div>
+            <h2>${esc(auth.shop?.name || 'Cửa hàng QBiz')}</h2>
+            <p>${isAuth ? `Tài khoản: <b>${esc(auth.user?.email)}</b> · Vai trò hiện tại: <b class="badge info">${esc(getRoleLabel(currentRole))}</b>` : 'Chưa đăng nhập tài khoản đám mây.'}</p>
+          </div>
+          ${surfaceStatus(isAuth ? 'working' : 'prepared', isAuth ? 'Đã kích hoạt' : 'Chưa đăng nhập')}
+        </div>
+        
+        <div class="feature-actions" style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;">
+          ${!isAuth ? `<button class="primary-btn" data-action="open-auth-modal">${icon('user')} Đăng nhập / Đăng ký</button>` : ''}
+          ${isAuth && isOwner ? `<button class="primary-btn" data-action="add-member-modal">${icon('plus')} Thêm nhân viên</button>` : ''}
+          ${isAuth ? `<button class="secondary-btn" data-action="open-user-menu">${icon('settings-2')} Quản lý tài khoản</button>` : ''}
+        </div>
+
+        <div class="capability-table-wrap">
+          <table class="capability-table">
+            <thead>
+              <tr>
+                <th>Quyền hạn hệ thống</th>
+                <th>Chủ shop</th>
+                <th>Quản lý</th>
+                <th>Thu ngân</th>
+                <th>Thủ kho</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
+        <p class="field-limit" style="margin-top:12px;">Phân quyền V1 được kiểm soát chặt chẽ ở máy chủ và Row Level Security. Nhân viên chỉ truy cập đúng dữ liệu thuộc cửa hàng của mình.</p>
+      </section>
+    </section>
+  `;
+}
 function renderScannerCenter(){setTitle('Quét mã','QBiz');$('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Quét theo ngữ cảnh</h2><p>Hàng hóa mở chi tiết; Bán hàng thêm giỏ; nghiệp vụ kho thêm vào phiếu.</p></div>${surfaceStatus('working','Có fallback')}</div><div class="context-grid">${[['products','Hàng hóa'],['sales','Bán hàng'],['transfers','Kho']].map(([p,l])=>`<button data-page="${p}">${icon('scan-line')}<b>${l}</b><small>Mở màn rồi dùng nút Quét</small></button>`).join('')}</div><button class="primary-btn full" data-action="scan">Quét / nhập mã thủ công</button><p class="field-limit">Camera phụ thuộc BarcodeDetector và quyền trình duyệt; luôn có ô nhập SKU/barcode thủ công.</p></section></section>`}
 function openDeviceCenter(){const _s=state.data.settings||[];const _did=_s.find(x=>x.id==='device_id')?.value,_rid=_s.find(x=>x.id==='register_id')?.value;const _dev=(state.data.devices||[]).find(x=>x.id===_did)||{};const _reg=(state.data.registers||[]).find(x=>x.id===_rid)||{};const devRows=`<div><span>${icon('settings-2')} Thiết bị này</span><b>${esc(_dev.device_name||'Thiết bị này')}</b></div><div><span>${icon('qr-code')} Mã thiết bị</span><b>${esc(_did||'—')}</b></div><div><span>${icon('store')} Quầy</span><b>${esc(_reg.register_name||'Quầy chính')}</b></div><div><span>${icon('layout-dashboard')} Hoạt động gần nhất</span><b>${esc(_dev.updated_at?dt(_dev.updated_at):'Chưa ghi nhận')}</b></div>`;
   openModal({title:'Thiết bị & In',sub:'Trạng thái thiết bị trên máy này.',hideSubmit:true,body:`<div class="device-list">${devRows}<div><span>${icon('file-text')} Máy in hóa đơn</span><b>Chưa kết nối</b></div><div><span>${icon('package-search')} Máy in tem</span><b>Chưa kết nối</b></div><div><span>${icon('scan-line')} Máy quét</span><b>Camera điện thoại</b></div><div><span>${icon('qr-code')} Màn QR khách hàng</span><b>Chưa kết nối</b></div><div><span>${icon('settings-2')} Két tiền</span><b>Qua máy in</b></div></div>`});}
@@ -2557,6 +2665,253 @@ async function optimizeImage(file){
 function loadImage(file){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=URL.createObjectURL(file);})}
 function blobToData(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);})}
 
+function openAuthModal(defaultTab = 'signin') {
+  let activeTab = defaultTab;
+  const renderBody = () => `
+    <div class="auth-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:8px">
+      <button type="button" class="tab-btn ${activeTab==='signin'?'active':''}" id="authTabSignin" style="flex:1;padding:8px;border-radius:6px;border:none;background:${activeTab==='signin'?'var(--primary,#0284c7)':'transparent'};color:${activeTab==='signin'?'#fff':'inherit'};font-weight:600;cursor:pointer">Đăng nhập</button>
+      <button type="button" class="tab-btn ${activeTab==='signup'?'active':''}" id="authTabSignup" style="flex:1;padding:8px;border-radius:6px;border:none;background:${activeTab==='signup'?'var(--primary,#0284c7)':'transparent'};color:${activeTab==='signup'?'#fff':'inherit'};font-weight:600;cursor:pointer">Đăng ký tài khoản</button>
+    </div>
+    <div class="field">
+      <label>Email tài khoản</label>
+      <input type="email" id="authEmail" placeholder="vd: shop@example.com" autocomplete="email" required />
+    </div>
+    ${activeTab === 'signup' ? `
+    <div class="field">
+      <label>Họ và tên</label>
+      <input type="text" id="authFullName" placeholder="vd: Nguyễn Văn A" autocomplete="name" />
+    </div>
+    ` : ''}
+    <div class="field">
+      <label>Mật khẩu (tối thiểu 6 ký tự)</label>
+      <input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" required />
+    </div>
+    <p class="field-limit" style="margin-top:10px;font-size:12px;color:var(--text-muted,#64748b)">
+      ${activeTab === 'signin' ? 'Đăng nhập để kết nối với Cửa hàng đám mây và phân quyền nhân viên.' : 'Đăng ký tài khoản mới để sở hữu Shop và quản lý phân quyền bán hàng.'}
+    </p>
+  `;
+
+  openModal({
+    title: activeTab === 'signin' ? 'Đăng nhập QBiz' : 'Đăng ký tài khoản QBiz',
+    sub: 'Tài khoản đám mây QBiz Cloud (PostgreSQL / Supabase)',
+    body: `<div id="authModalContainer">${renderBody()}</div>`,
+    submitText: activeTab === 'signin' ? 'Đăng nhập' : 'Tạo tài khoản',
+    onSubmit: async (root) => {
+      const email = $('#authEmail', root)?.value?.trim();
+      const password = $('#authPassword', root)?.value;
+      const fullName = $('#authFullName', root)?.value?.trim() || '';
+
+      if (!email || !password) {
+        throw new Error('Vui lòng nhập đầy đủ Email và Mật khẩu.');
+      }
+      if (password.length < 6) {
+        throw new Error('Mật khẩu phải từ 6 ký tự trở lên.');
+      }
+
+      if (activeTab === 'signin') {
+        await signIn({ email, password });
+        toast('Đăng nhập thành công!', 'ok');
+      } else {
+        await signUp({ email, password, fullName });
+        toast('Đăng ký tài khoản thành công!', 'ok');
+      }
+    }
+  });
+
+  const root = $('#modalRoot');
+  const bindTabs = () => {
+    const btnSignin = $('#authTabSignin', root);
+    const btnSignup = $('#authTabSignup', root);
+    const submitBtn = $('#modalSubmit', root);
+    const container = $('#authModalContainer', root);
+    if (!btnSignin || !btnSignup || !container) return;
+
+    btnSignin.onclick = () => {
+      activeTab = 'signin';
+      container.innerHTML = renderBody();
+      if (submitBtn) submitBtn.textContent = 'Đăng nhập';
+      bindTabs();
+    };
+    btnSignup.onclick = () => {
+      activeTab = 'signup';
+      container.innerHTML = renderBody();
+      if (submitBtn) submitBtn.textContent = 'Tạo tài khoản';
+      bindTabs();
+    };
+  };
+  bindTabs();
+}
+
+function openCreateShopModal() {
+  const auth = getAuthState();
+  if (auth.status === AUTH_STATES.UNAUTHENTICATED) {
+    return openAuthModal();
+  }
+
+  openModal({
+    title: 'Tạo Cửa hàng mới',
+    sub: 'Thiết lập Shop trên QBiz Cloud. Bạn sẽ là Chủ cửa hàng (OWNER).',
+    body: `
+      <div class="field">
+        <label>Tên Cửa hàng / Doanh nghiệp</label>
+        <input type="text" id="createShopName" placeholder="vd: Cửa Hàng Tiện Lợi QBiz" required />
+      </div>
+      <div class="callout" style="margin-top:12px;font-size:13px">
+        <strong>Phân quyền tự động:</strong>
+        <p style="margin:4px 0 0 0">Tài khoản <b>${esc(auth.user?.email || '')}</b> sẽ được gán quyền <b>Chủ cửa hàng (OWNER)</b> toàn quyền quản lý, tạo kho chính và quầy bán hàng đầu tiên.</p>
+      </div>
+    `,
+    submitText: 'Tạo Shop',
+    onSubmit: async (root) => {
+      const name = $('#createShopName', root)?.value?.trim();
+      if (!name) throw new Error('Vui lòng nhập tên Cửa hàng.');
+      await createShop({ name });
+      toast('Đã tạo cửa hàng thành công!', 'ok');
+    }
+  });
+}
+
+function openUserMenuModal() {
+  const auth = getAuthState();
+  const user = getCurrentUser();
+  const shop = getActiveShop();
+  const role = getCurrentRole();
+  const roleLabel = getRoleLabel(role);
+
+  openModal({
+    title: 'Tài khoản & Cửa hàng',
+    sub: user?.email || '',
+    hideSubmit: true,
+    body: `
+      <div class="user-menu-box" style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:var(--bg-subtle,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;color:var(--text-muted,#64748b)">CỬA HÀNG ĐANG CHỌN</span>
+            <span class="role-badge role-${(role||'').toLowerCase()}" style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px">${esc(roleLabel)}</span>
+          </div>
+          <div style="font-weight:700;font-size:16px">${esc(shop?.name || 'Chưa có Shop')}</div>
+          <div style="font-size:12px;color:var(--text-muted,#64748b);margin-top:2px">ID: ${esc(shop?.id || '---')}</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${userCan('MANAGE_USERS') ? `
+          <button class="secondary-btn" id="menuBtnAddMember" style="text-align:left;justify-content:flex-start;gap:8px">
+            ${icon('users')} Quản lý / Mời nhân viên
+          </button>
+          ` : ''}
+          <button class="secondary-btn" id="menuBtnCreateShop" style="text-align:left;justify-content:flex-start;gap:8px">
+            ${icon('store')} Tạo thêm Cửa hàng mới
+          </button>
+          <button class="secondary-btn" id="menuBtnPermissions" style="text-align:left;justify-content:flex-start;gap:8px">
+            ${icon('shield-check')} Xem bảng phân quyền & tính năng
+          </button>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border,#e2e8f0);margin:4px 0" />
+
+        <button class="secondary-btn" id="menuBtnSignOut" style="color:var(--danger,#ef4444);border-color:var(--danger,#ef4444);width:100%;justify-content:center">
+          ${icon('log-out')} Đăng xuất
+        </button>
+      </div>
+    `
+  });
+
+  const root = $('#modalRoot');
+  if ($('#menuBtnAddMember', root)) {
+    $('#menuBtnAddMember', root).onclick = () => {
+      root.innerHTML = '';
+      openAddMemberModal();
+    };
+  }
+  if ($('#menuBtnCreateShop', root)) {
+    $('#menuBtnCreateShop', root).onclick = () => {
+      root.innerHTML = '';
+      openCreateShopModal();
+    };
+  }
+  if ($('#menuBtnPermissions', root)) {
+    $('#menuBtnPermissions', root).onclick = () => {
+      root.innerHTML = '';
+      state.page = 'more';
+      render();
+      setTimeout(() => {
+        const target = $('#permissionMatrixCard');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    };
+  }
+  if ($('#menuBtnSignOut', root)) {
+    $('#menuBtnSignOut', root).onclick = async () => {
+      await signOut();
+      root.innerHTML = '';
+      render();
+      toast('Đã đăng xuất tài khoản.', 'ok');
+    };
+  }
+}
+
+function openAddMemberModal() {
+  if (!userCan('MANAGE_USERS')) {
+    toast('Bạn không có quyền quản lý thành viên cửa hàng.', 'error');
+    return;
+  }
+  const shop = getActiveShop();
+  openModal({
+    title: 'Thêm / Mời nhân viên',
+    sub: `Cửa hàng: ${shop?.name || ''}`,
+    body: `
+      <div class="field">
+        <label>Email tài khoản nhân viên</label>
+        <input type="email" id="memberEmail" placeholder="nhanvien@example.com" required />
+      </div>
+      <div class="field">
+        <label>Vai trò (Role)</label>
+        <select id="memberRole">
+          <option value="${ROLES.CASHIER}">${ROLE_LABELS.CASHIER} (Bán hàng, thu tiền, xem khách)</option>
+          <option value="${ROLES.WAREHOUSE}">${ROLE_LABELS.WAREHOUSE} (Nhập/xuất kho, kiểm kê, chuyển kho)</option>
+          <option value="${ROLES.MANAGER}">${ROLE_LABELS.MANAGER} (Quản lý hàng hóa, giá bán, chiết khấu, báo cáo)</option>
+        </select>
+      </div>
+      <div class="callout" style="margin-top:12px;font-size:12px">
+        Nhân viên sẽ truy cập vào dữ liệu của Shop này với đúng phạm vi quyền hạn được cấp. Dữ liệu các Shop khác được cách ly tuyệt đối (RLS).
+      </div>
+    `,
+    submitText: 'Thêm nhân viên',
+    onSubmit: async (root) => {
+      const email = $('#memberEmail', root)?.value?.trim();
+      const role = $('#memberRole', root)?.value;
+      if (!email) throw new Error('Vui lòng nhập email nhân viên.');
+      await addMember({ email, role });
+      toast(`Đã thêm ${email} vào cửa hàng với vai trò ${getRoleLabel(role)}.`, 'ok');
+    }
+  });
+}
+
+function openSyncInfoModal() {
+  openModal({
+    title: 'Thông tin Dữ liệu & Đồng bộ Đám mây',
+    sub: 'QBiz Kho Production V1 — Lộ trình Sync 01',
+    hideSubmit: true,
+    body: `
+      <div class="sync-info-box" style="display:flex;flex-direction:column;gap:12px;font-size:13px;line-height:1.6">
+        <div style="background:var(--bg-subtle,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px">
+          <strong style="color:var(--primary,#0284c7);display:block;margin-bottom:4px">✓ Dữ liệu cục bộ được bảo toàn 100%</strong>
+          Thiết bị này đang có dữ liệu danh mục, hàng hóa, giao dịch lưu trữ trên IndexedDB v12 cục bộ. Tất cả dữ liệu của bạn hoàn toàn nguyên vẹn và hoạt động trơn tru ngoại tuyến (offline-first).
+        </div>
+        <div>
+          <strong>Vì sao chưa đẩy dữ liệu lên đám mây ngay?</strong>
+          <p style="margin:4px 0">Để đảm bảo an toàn tuyệt đối, hệ thống triển khai theo quy trình kiểm định nghiêm ngặt:
+          <b>Gate 1</b> (hiện tại) hoàn tất xác thực tài khoản, định danh cửa hàng và chính sách bảo mật đa khách hàng (RLS).
+          <b>Gate 2</b> (bước tiếp theo) sẽ cung cấp công cụ kiểm định đối soát và đẩy toàn bộ dữ liệu cục bộ lên đám mây mà không mất mát hay trùng lặp.</p>
+        </div>
+        <div class="callout">
+          Bạn hoàn toàn có thể tiếp tục sử dụng ứng dụng để nhập hàng, bán hàng như bình thường.
+        </div>
+      </div>
+    `
+  });
+}
+
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.installPrompt=e; });
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)){setTimeout(()=>{try{t.scrollIntoView({block:'center',behavior:'smooth'})}catch{}},220);}});
 document.addEventListener('click', async e=>{
@@ -2565,6 +2920,17 @@ document.addEventListener('click', async e=>{
   if(page){const notificationId=e.target.closest('[data-notification-id]')?.dataset.notificationId;if(notificationId)state.notificationRead.add(notificationId);navigate(page); return; }
   const action=e.target.closest('[data-action]')?.dataset.action;
   const kind=e.target.closest('[data-kind]')?.dataset.kind;
+  if(action==='open-auth-modal') return openAuthModal();
+  if(action==='create-shop-modal') return openCreateShopModal();
+  if(action==='open-user-menu') return openUserMenuModal();
+  if(action==='add-member-modal') return openAddMemberModal();
+  if(action==='dismiss-local-notice'){
+    sessionStorage.setItem('qbiz_dismiss_local_notice', '1');
+    const b=$('#localDataNotice');
+    if(b) b.remove();
+    return;
+  }
+  if(action==='prepare-sync-info') return openSyncInfoModal();
   if(action==='quick-action') return openQuick(kind||'receive');
   if(action==='notifications') return navigate('notifications');
   if(action==='customer-picker') return openCustomerPicker();
@@ -2674,6 +3040,8 @@ async function boot(){
   await ensureSeed();
   await ensureLocalIdentity();
   await ensurePrintTemplates();
+  await initAuth();
+  subscribeAuthState(() => render());
   state.data=await snapshot();
   await businessProfileModule.initBusinessProfile(state.data?.settings);
   state.businessProfile = businessProfileModule.getBusinessProfile();
@@ -2681,7 +3049,44 @@ async function boot(){
   state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, state.businessProfile?.profile_id);
   history.replaceState(historyState(),'');render();
   initAiUI(state);
-  window.__qbiz_app__ = { state, navigate, render, openQuick, openProduct, openOrderDetail, openTransaction, openWarehouseManagement, refresh, closeModal: () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; updateContextAndChips(); }, ai: aiModule, businessProfile: businessProfileModule, uiProfile: uiProfileModule };
+  window.__qbiz_app__ = {
+    state,
+    navigate,
+    render,
+    openQuick,
+    openProduct,
+    openOrderDetail,
+    openTransaction,
+    openWarehouseManagement,
+    openAuthModal,
+    openCreateShopModal,
+    openUserMenuModal,
+    openAddMemberModal,
+    openSyncInfoModal,
+    auth: {
+      getAuthState,
+      getCurrentUser,
+      getActiveShop,
+      getCurrentRole,
+      userCan,
+      signIn,
+      signUp,
+      signOut,
+      createShop,
+      addMember,
+      disableMember,
+    },
+    refresh,
+    closeModal: () => {
+      if($('#modalRoot')) $('#modalRoot').innerHTML = '';
+      state.currentProductId = null;
+      state.currentOrderId = null;
+      updateContextAndChips();
+    },
+    ai: aiModule,
+    businessProfile: businessProfileModule,
+    uiProfile: uiProfileModule
+  };
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
   const params=new URLSearchParams(location.search);
   const action=params.get('action');
