@@ -1794,7 +1794,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // 0.0002 App Navigation Fast-Path ("mở bán hàng", "vào pos", "tạo đơn mới", "mở kho", "xem đơn hàng", "cài đặt máy in")
   const navAction = parseAppNavigationAction(pNorm) || parseAppNavigationAction(rawPrompt);
   if (navAction) {
-    const actRes = await executeAction(navAction.actionId, {}, state);
+    const actRes = await executeAction(navAction.actionId, navAction.params || {}, state);
     return {
       text: actRes.success ? `✅ **${navAction.label}**` : `⚠️ ${actRes.error}`,
       actionId: navAction.actionId,
@@ -2577,8 +2577,12 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         };
       }
       const latestSale = sales[sales.length - 1];
-      if (typeof window !== 'undefined' && window.__qbiz_app__?.openTransactionModal) {
-        window.__qbiz_app__.openTransactionModal(latestSale.id || latestSale.sale_uuid);
+      if (typeof window !== 'undefined') {
+        if (window.__qbiz_app__?.openTransaction) {
+          window.__qbiz_app__.openTransaction(latestSale);
+        } else if (window.__qbiz_app__?.openTransactionModal) {
+          window.__qbiz_app__.openTransactionModal(latestSale.id || latestSale.sale_uuid);
+        }
       }
       const fmt = new Intl.NumberFormat('vi-VN');
       return {
@@ -2590,21 +2594,22 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
           `✅ *Phiếu thanh toán đã được mở trên màn hình để bạn bấm in hoặc gửi cho khách.*`,
         status: 'SUCCESS',
         intent: 'PRINT_INVOICE',
+        actionId: 'open_transactions',
         tier: 0,
         provider: PROVIDER_MODES.DETERMINISTIC,
         compactTrace: 'Rule exact'
       };
     } else if (printAction.action === 'PRINTER_SETTINGS') {
-      if (typeof window !== 'undefined' && window.__qbiz_app__?.openPrintSettingsModal) {
-        window.__qbiz_app__.openPrintSettingsModal();
-      }
+      const actRes = await executeAction('open_print_settings', { tab: 'devices' }, state);
       return {
         text: `⚙️ **Đã mở bảng Cài đặt Máy in & Thiết bị:**\n\n` +
-          `- Bạn có thể kết nối máy in hóa đơn (Bluetooth / LAN / USB)\n` +
+          `- Cấu hình kết nối máy in hóa đơn (Bluetooth / LAN / USB)\n` +
           `- Chọn khổ giấy chuẩn (**K80** cho khổ rộng hoặc **K58** cho khổ nhỏ)\n` +
           `- Tùy chỉnh mẫu in hóa đơn và in test thử nghiệm.`,
         status: 'SUCCESS',
         intent: 'PRINTER_SETTINGS',
+        actionId: 'open_print_settings',
+        actionResult: actRes,
         tier: 0,
         provider: PROVIDER_MODES.DETERMINISTIC,
         compactTrace: 'Rule exact'

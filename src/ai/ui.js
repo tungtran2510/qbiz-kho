@@ -997,13 +997,13 @@ function openSheet() {
   // NOTE: Requirement 1 - Do NOT call .focus() here! Virtual keyboard will only open when user taps the input directly.
 }
 
-function closeSheet() {
+function closeSheet(options = {}) {
   const sheet = document.getElementById('qbizAiSheet');
   if (sheet) {
     sheet.style.display = 'none';
     sheet.classList.remove('is-open');
   }
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
+  if (!options?.preserveSpeech && typeof window !== 'undefined' && window.speechSynthesis) {
     try { window.speechSynthesis.cancel(); } catch (_) {}
   }
 }
@@ -1318,6 +1318,22 @@ async function handleUserMessage(query) {
   if (devInspectorOpen) renderDevInspector();
   if (isVoiceTranscript && lastResult?.text) {
     speakAssistantResponse(lastResult.text);
+  }
+
+  // Auto-toast & Auto-close AI bottom sheet on navigation/settings actions so the user directly sees the target screen/modal
+  const isNavAction = (
+    lastResult?.intent === 'NAVIGATION' ||
+    lastResult?.intent === 'PRINTER_SETTINGS' ||
+    lastResult?.intent === 'PRINT_INVOICE' ||
+    (lastResult?.actionId && (lastResult.actionId.startsWith('open_') || lastResult.actionId === 'print_document'))
+  );
+  if (isNavAction && !lastResult?.permissionDenied && (lastResult?.actionResult?.success !== false)) {
+    const rawLine = (lastResult?.text || '').split('\n')[0].replace(/[*#⚙️✅🖨️]/g, '').trim();
+    const toastMsg = lastResult?.actionResult?.message || rawLine || 'Đã chuyển màn hình theo yêu cầu.';
+    if (typeof window !== 'undefined' && typeof window.__qbiz_app__?.toast === 'function') {
+      window.__qbiz_app__.toast(toastMsg, 'ok');
+    }
+    setTimeout(() => { closeSheet({ preserveSpeech: true }); }, 400);
   }
 }
 

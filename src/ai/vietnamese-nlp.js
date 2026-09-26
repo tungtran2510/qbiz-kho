@@ -526,33 +526,247 @@ export function isFrustrationOrErrorReport(text) {
 
 /**
  * Detect direct app navigation commands:
- * e.g., "mở bán hàng", "vào pos", "tạo đơn mới", "mở kho", "xem đơn hàng", "cài đặt máy in"
+ * e.g., "mở bán hàng", "vào pos", "tạo đơn mới", "mở kho", "xem đơn hàng", "cài đặt máy in", "vào cài đặt", "thông tin cửa hàng"
  */
 export function parseAppNavigationAction(text) {
   const c = canonicalizeVietnamese(text);
   if (!c) return null;
+  const s = stripConversationalNoise(text);
+  const clean = canonicalizeVietnamese(s) || c;
 
-  // POS / Bán hàng
+  // 1. Máy in / Thiết bị in
   if (
-    c === 'mo ban hang' || c === 'vao ban hang' || c === 'mo pos' ||
-    c === 'vao pos' || c === 'tao don moi' || c === 'man hinh ban hang'
+    clean === 'cai dat may in' || clean === 'vao cai dat may in' || clean === 'mo cai dat may in' ||
+    clean === 'mo may in' || clean === 'vao may in' || clean === 'cai may in' ||
+    clean === 'may in' || clean === 'thiet bi in' || clean === 'ket noi may in' ||
+    clean === 'cau hinh may in' || clean === 'thiet lap may in' || clean === 'in va thiet bi' ||
+    c.includes('cai dat may in') || c.includes('vao may in') || c.includes('ket noi may in') ||
+    c.includes('thiet bi in') || c.includes('in va thiet bi') ||
+    ((c.includes('cai dat') || c.includes('thiet lap') || c.includes('cau hinh') || c.startsWith('vao ') || c.startsWith('mo ')) && (c.includes('may in') || c.includes('printer')))
+  ) {
+    let tab = 'devices';
+    if (c.includes('mau in') || c.includes('template')) tab = 'templates';
+    if (c.includes('nhat ky') || c.includes('lich su in') || c.includes('job')) tab = 'jobs';
+    return { actionId: 'open_print_settings', params: { tab }, label: 'Đã mở Cài đặt Máy in & Thiết bị.' };
+  }
+
+  // 2. Cài đặt hệ thống / Thiết lập chung
+  if (
+    clean === 'cai dat' || clean === 'mo cai dat' || clean === 'vao cai dat' ||
+    clean === 'thiet lap' || clean === 'cai dat he thong' || clean === 'menu cai dat' ||
+    clean === 'trang cai dat' || clean === 'settings' || clean === 'cau hinh' ||
+    clean === 'mo thiet lap' || clean === 'vao thiet lap'
+  ) {
+    return { actionId: 'open_settings', label: 'Đã mở màn hình Cài đặt hệ thống.' };
+  }
+
+  // 3. Thông tin cửa hàng / Hồ sơ shop
+  if (
+    clean === 'thong tin cua hang' || clean === 'thong tin shop' || clean === 'ho so shop' ||
+    clean === 'doi ten shop' || clean === 'doi ten cua hang' || clean === 'sua thong tin shop' ||
+    clean === 'cai dat cua hang' || clean === 'dia chi shop' || clean === 'sdt shop' ||
+    clean === 'ho so cua hang' || c.includes('thong tin cua hang') || c.includes('thong tin shop')
+  ) {
+    return { actionId: 'open_store_info', label: 'Đã mở Thông tin cửa hàng.' };
+  }
+
+  // 4. Chế độ kinh doanh / Mô hình kinh doanh
+  if (
+    clean === 'che do kinh doanh' || clean === 'mo hinh kinh doanh' ||
+    clean === 'doi che do kinh doanh' || clean === 'doi mo hinh kinh doanh' ||
+    clean === 'chon che do' || clean === 'nganh kinh doanh' ||
+    clean === 'doi nganh kinh doanh' || c.includes('che do kinh doanh') || c.includes('mo hinh kinh doanh')
+  ) {
+    return { actionId: 'open_business_mode', label: 'Đã mở Chế độ kinh doanh.' };
+  }
+
+  // 5. Kiểu giao diện / Tùy chỉnh UI
+  if (
+    clean === 'kieu giao dien' || clean === 'doi giao dien' || clean === 'cai dat giao dien' ||
+    clean === 'chon giao dien' || clean === 'giao dien' || clean === 'ui profile' ||
+    c.includes('kieu giao dien') || c.includes('doi giao dien')
+  ) {
+    return { actionId: 'open_ui_profile', label: 'Đã mở Tùy chỉnh giao diện.' };
+  }
+
+  // 6. Bán hàng & Thanh toán
+  if (
+    clean === 'cai dat thanh toan' || clean === 'ban hang va thanh toan' ||
+    clean === 'thanh toan va ban hang' || clean === 'phuong thuc thanh toan mac dinh' ||
+    clean === 'kho mac dinh' || c.includes('cai dat thanh toan') || c.includes('ban hang va thanh toan')
+  ) {
+    return { actionId: 'open_sale_preferences', label: 'Đã mở Bán hàng & Thanh toán.' };
+  }
+
+  // 7. Kho hàng & Luân chuyển
+  if (
+    clean === 'quan ly kho' || clean === 'cai dat kho' || clean === 'danh sach kho' ||
+    clean === 'them kho' || clean === 'kho hang' ||
+    c === 'mo kho' || c === 'vao kho' || c === 'xem kho' || c === 'mo ton kho'
+  ) {
+    return { actionId: 'open_warehouse', label: 'Đã mở Quản lý Kho hàng.' };
+  }
+
+  // 8. Kiểm kho nhanh
+  if (
+    clean === 'kiem kho' || clean === 'kiem ke' || clean === 'mo kiem kho' ||
+    clean === 'vao kiem kho' || clean === 'kiem ton' || clean === 'kiem ke kho' ||
+    clean === 'phieu kiem kho' || c.includes('kiem kho') || c.includes('kiem ke')
+  ) {
+    return { actionId: 'open_stocktake', label: 'Đã mở biểu mẫu Kiểm kho nhanh.' };
+  }
+
+  // 9. Nhập kho nhanh
+  if (
+    clean === 'nhap kho' || clean === 'nhap hang' || clean === 'mo nhap kho' ||
+    clean === 'vao nhap kho' || clean === 'tao phieu nhap' || clean === 'phieu nhap' ||
+    c.includes('nhap kho') || c.includes('nhap hang')
+  ) {
+    return { actionId: 'open_receipt', label: 'Đã mở biểu mẫu Nhập kho nhanh.' };
+  }
+
+  // 10. Chuyển kho
+  if (
+    clean === 'chuyen kho' || clean === 'dieu chuyen kho' || clean === 'mo chuyen kho' ||
+    clean === 'tao phieu chuyen' || clean === 'phieu chuyen kho' ||
+    c.includes('chuyen kho') || c.includes('dieu chuyen kho')
+  ) {
+    return { actionId: 'open_transfer', label: 'Đã mở biểu mẫu Chuyển kho.' };
+  }
+
+  // 11. Bán hàng (POS)
+  if (
+    clean === 'mo ban hang' || clean === 'vao ban hang' || clean === 'ban hang' ||
+    clean === 'pos' || clean === 'vao pos' || clean === 'mo pos' ||
+    clean === 'tao don moi' || clean === 'man hinh ban hang' || clean === 'quay thu ngan' ||
+    clean === 'thu ngan'
   ) {
     return { actionId: 'open_sales', label: 'Đã chuyển sang màn hình Bán hàng (POS).' };
   }
 
-  // Kho
-  if (c === 'mo kho' || c === 'vao kho' || c === 'xem kho' || c === 'danh sach kho' || c === 'mo ton kho') {
-    return { actionId: 'open_warehouse', label: 'Đã mở màn hình Quản lý Kho.' };
+  // 12. Đơn hàng
+  if (
+    clean === 'mo don hang' || clean === 'xem don hang' || clean === 'vao don hang' ||
+    clean === 'danh sach don' || clean === 'so don' || clean === 'quan ly don hang' ||
+    clean === 'don hang' || clean === 'don dat hang'
+  ) {
+    return { actionId: 'open_orders', label: 'Đã mở Danh sách Đơn hàng.' };
   }
 
-  // Đơn hàng
-  if (c === 'mo don hang' || c === 'xem don hang' || c === 'vao don hang' || c === 'danh sach don' || c === 'so don' || c === 'danh sach hoa don') {
-    return { actionId: 'open_orders', label: 'Đã mở màn hình Danh sách Đơn hàng.' };
+  // 13. Giao dịch & Hóa đơn
+  if (
+    clean === 'giao dich' || clean === 'lich su giao dich' || clean === 'hoa don' ||
+    clean === 'danh sach hoa don' || clean === 'phieu ban' || clean === 'xem hoa don' ||
+    clean === 'danh sach giao dich' || clean === 'mo giao dich' || clean === 'so giao dich' ||
+    clean === 'lich su ban' || clean === 'lich su ban hang'
+  ) {
+    return { actionId: 'open_transactions', label: 'Đã mở Lịch sử Giao dịch & Hóa đơn.' };
   }
 
-  // Báo cáo
-  if (c === 'mo bao cao' || c === 'xem bao cao' || c === 'bao cao tai chinh') {
-    return { actionId: 'open_reports', label: 'Đã mở màn hình Báo cáo kinh doanh.' };
+  // 14. Hàng hóa / Sản phẩm
+  if (
+    clean === 'san pham' || clean === 'hang hoa' || clean === 'danh sach san pham' ||
+    clean === 'danh sach hang hoa' || clean === 'mo san pham' || clean === 'xem san pham' ||
+    clean === 'quan ly san pham' || clean === 'quan ly hang hoa' ||
+    clean === 'danh muc san pham' || clean === 'danh muc hang hoa' || clean === 'danh muc' ||
+    clean === 'danh muc hang' || clean === 'kho san pham'
+  ) {
+    return { actionId: 'open_products', label: 'Đã mở Danh sách Hàng hóa.' };
+  }
+
+  // 15. Khách hàng
+  if (
+    clean === 'khach hang' || clean === 'danh sach khach hang' || clean === 'danh ba khach' ||
+    clean === 'mo khach hang' || clean === 'xem khach hang' || clean === 'quan ly khach hang' ||
+    clean === 'danh sach khach' || clean === 'khach'
+  ) {
+    return { actionId: 'open_customers', label: 'Đã mở Danh sách Khách hàng.' };
+  }
+
+  // 16. Nhà cung cấp
+  if (
+    clean === 'nha cung cap' || clean === 'danh sach nha cung cap' || clean === 'ncc' ||
+    clean === 'mo nha cung cap' || clean === 'xem nha cung cap' || clean === 'quan ly nha cung cap' ||
+    clean === 'danh sach ncc'
+  ) {
+    return { actionId: 'open_suppliers', label: 'Đã mở Danh sách Nhà cung cấp.' };
+  }
+
+  // 17. Báo cáo
+  if (
+    clean === 'mo bao cao' || clean === 'xem bao cao' || clean === 'bao cao' ||
+    clean === 'bao cao tai chinh' || clean === 'bao cao doanh thu' || clean === 'bao cao ban hang'
+  ) {
+    return { actionId: 'open_reports', label: 'Đã mở Trung tâm Báo cáo.' };
+  }
+
+  // 18. Đổi trả
+  if (
+    clean === 'doi tra' || clean === 'tra hang' || clean === 'mo doi tra' ||
+    clean === 'phieu doi tra' || clean === 'tra doi'
+  ) {
+    return { actionId: 'open_returns', label: 'Đã mở Trung tâm Đổi trả hàng.' };
+  }
+
+  // 19. Sổ quỹ tiền mặt
+  if (
+    clean === 'so quy' || clean === 'thu chi' || clean === 'mo so quy' ||
+    clean === 'phieu thu' || clean === 'phieu chi' || clean === 'quy tien mat'
+  ) {
+    return { actionId: 'open_cash', label: 'Đã mở Sổ quỹ thu chi tiền mặt.' };
+  }
+
+  // 20. Ca bán hàng
+  if (
+    clean === 'ca ban hang' || clean === 'so ca' || clean === 'mo ca' ||
+    clean === 'dong ca' || clean === 'giao ca' || clean === 'ca lam viec'
+  ) {
+    return { actionId: 'open_shift', label: 'Đã mở Quản lý Ca làm việc.' };
+  }
+
+  // 21. Sao lưu & Dữ liệu
+  if (
+    clean === 'sao luu' || clean === 'backup' || clean === 'du lieu' ||
+    clean === 'khoi phuc du lieu' || clean === 'cai dat du lieu' || clean === 'sao luu du lieu' ||
+    clean === 'dong bo du lieu' || clean === 'dong bo'
+  ) {
+    return { actionId: 'open_backup', label: 'Đã mở Trung tâm Sao lưu & Dữ liệu.' };
+  }
+
+  // 22. Phân quyền & Nhân viên
+  if (
+    clean === 'phan quyen' || clean === 'nguoi dung' || clean === 'nhan vien' ||
+    clean === 'them nhan vien' || clean === 'danh sach nhan vien' || clean === 'quan ly nhan vien'
+  ) {
+    return { actionId: 'open_permissions', label: 'Đã mở Quản lý Người dùng & Phân quyền.' };
+  }
+
+  // 23. Tiện ích nâng cao
+  if (clean === 'tien ich nang cao' || clean === 'tien ich' || clean === 'nang cao') {
+    return { actionId: 'open_advanced', label: 'Đã mở Tiện ích nâng cao.' };
+  }
+
+  // 24. Bảng giá & Giá sỉ
+  if (clean === 'bang gia' || clean === 'gia si' || clean === 'cai dat gia' || clean === 'chinh sach gia') {
+    return { actionId: 'open_prices', label: 'Đã mở Quản lý Bảng giá & Giá sỉ.' };
+  }
+
+  // 25. Khuyến mại
+  if (clean === 'khuyen mai' || clean === 'giam gia' || clean === 'chuong trinh khuyen mai') {
+    return { actionId: 'open_promos', label: 'Đã mở Quản lý Khuyến mại.' };
+  }
+
+  // 26. Công nợ
+  if (clean === 'cong no' || clean === 'so no' || clean === 'quan ly cong no' || clean === 'danh sach no') {
+    return { actionId: 'open_debts', label: 'Đã mở Quản lý Công nợ.' };
+  }
+
+  // 27. Tổng quan / Dashboard
+  if (
+    clean === 'tong quan' || clean === 'trang chu' || clean === 'dashboard' ||
+    clean === 've trang chu' || clean === 've tong quan'
+  ) {
+    return { actionId: 'open_dashboard', label: 'Đã chuyển về màn hình Tổng quan.' };
   }
 
   return null;

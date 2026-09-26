@@ -4271,12 +4271,40 @@ async function boot(){
     navigate,
     nav: navigate,
     render,
+    toast,
     openQuick,
     openProduct,
     openOrderDetail,
     openTransaction,
+    openTransactionModal: (saleId) => {
+      const s = (state.data?.sales || []).find(x => x.id === saleId || x.sale_uuid === saleId || x.code === saleId);
+      if (s) openTransaction(s);
+      else if (state.data?.sales?.length) openTransaction(state.data.sales[state.data.sales.length - 1]);
+    },
     printDocument,
+    openPrintSettings: (tab = 'devices') => {
+      state.printTab = tab;
+      navigate('print');
+    },
+    openPrintSettingsModal: (tab = 'devices') => {
+      state.printTab = tab;
+      navigate('print');
+    },
     openWarehouseManagement,
+    openBusinessProfile,
+    openBusinessModeModal,
+    openUiProfileModal,
+    openSalePreferences,
+    openConnectionSettings,
+    openDataSettings,
+    openPriceForm,
+    openPromoForm,
+    openComboForm,
+    openUnitForm,
+    openOpeningForm,
+    openCashForm,
+    openDebtForm,
+    openPurchaseOrderForm,
     openAuthModal,
     openCreateShopModal,
     openUserMenuModal,

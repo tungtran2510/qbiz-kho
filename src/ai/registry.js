@@ -628,21 +628,30 @@ export const ACTION_REGISTRY = {
     ],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
-      if (window.__qbiz_app__?.navigate) {
-        let targetTab = params?.tab || 'devices';
-        if (!params?.tab && params?.query) {
-          const qNorm = String(params.query).toLowerCase();
-          if (qNorm.includes('mau') || qNorm.includes('template')) {
-            targetTab = 'templates';
-          } else if (qNorm.includes('nhat ky') || qNorm.includes('lich su') || qNorm.includes('job')) {
-            targetTab = 'jobs';
-          } else {
-            targetTab = 'devices';
-          }
+      let targetTab = params?.tab || 'devices';
+      if (!params?.tab && params?.query) {
+        const qNorm = String(params.query).toLowerCase();
+        if (qNorm.includes('mau') || qNorm.includes('template')) {
+          targetTab = 'templates';
+        } else if (qNorm.includes('nhat ky') || qNorm.includes('lich su') || qNorm.includes('job')) {
+          targetTab = 'jobs';
+        } else {
+          targetTab = 'devices';
         }
+      }
+      const tabNames = { devices: 'Thiết bị & Máy in', templates: 'Mẫu in', jobs: 'Nhật ký in' };
+      if (window.__qbiz_app__?.openPrintSettings) {
+        window.__qbiz_app__.openPrintSettings(targetTab);
+        return {
+          success: true,
+          intent: 'OPEN_PRINT_SETTINGS',
+          actionId: 'open_print_settings',
+          message: `Đã mở màn hình **Cấu hình máy in & thiết bị** (${tabNames[targetTab] || 'Thiết bị'}).`
+        };
+      }
+      if (window.__qbiz_app__?.navigate) {
         state.printTab = targetTab;
         window.__qbiz_app__.navigate('print');
-        const tabNames = { devices: 'Thiết bị & Máy in', templates: 'Mẫu in', jobs: 'Nhật ký in' };
         return {
           success: true,
           intent: 'OPEN_PRINT_SETTINGS',
@@ -983,10 +992,14 @@ export const ACTION_REGISTRY = {
     required_capabilities: [],
     execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['thong tin cua hang', 'sua thong tin', 'ten cua hang', 'doi ten shop'],
+    aliases: ['thong tin cua hang', 'sua thong tin', 'ten cua hang', 'doi ten shop', 'thong tin shop', 'ho so shop', 'cai dat cua hang'],
     example_phrases: ['sửa thông tin cửa hàng', 'đổi tên cửa hàng', 'mở hồ sơ shop'],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
+      if (window.__qbiz_app__?.openBusinessProfile) {
+        window.__qbiz_app__.openBusinessProfile();
+        return { success: true, message: 'Đã mở Thông tin cửa hàng.' };
+      }
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('settings');
         setTimeout(() => document.querySelector('[data-action="business-profile"]')?.click(), 100);
@@ -1006,6 +1019,10 @@ export const ACTION_REGISTRY = {
     example_phrases: ['đổi chế độ kinh doanh', 'chuyển sang bán lẻ', 'mở mô hình kinh doanh', 'đổi mô hình kinh doanh'],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
+      if (window.__qbiz_app__?.openBusinessModeModal) {
+        window.__qbiz_app__.openBusinessModeModal();
+        return { success: true, message: 'Đã mở chọn chế độ kinh doanh.' };
+      }
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('settings');
         setTimeout(() => document.querySelector('[data-action="business-mode-selector"]')?.click(), 100);
@@ -1021,14 +1038,184 @@ export const ACTION_REGISTRY = {
     required_capabilities: [],
     execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['kieu giao dien', 'doi giao dien', 'giao dien', 'ui profile'],
+    aliases: ['kieu giao dien', 'doi giao dien', 'giao dien', 'ui profile', 'cai dat giao dien'],
     example_phrases: ['đổi kiểu giao diện', 'chọn giao diện', 'mở kiểu giao diện'],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
+      if (window.__qbiz_app__?.openUiProfileModal) {
+        window.__qbiz_app__.openUiProfileModal();
+        return { success: true, message: 'Đã mở chọn kiểu giao diện.' };
+      }
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('settings');
         setTimeout(() => document.querySelector('[data-action="ui-profile-selector"]')?.click(), 100);
         return { success: true, message: 'Đã mở chọn kiểu giao diện.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_sale_preferences: {
+    id: 'open_sale_preferences',
+    name: 'Mở Bán hàng & Thanh toán',
+    feature_id: null,
+    route: 'settings',
+    screen: 'SalePreferences',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['cai dat thanh toan', 'ban hang va thanh toan', 'phuong thuc thanh toan mac dinh', 'kho mac dinh'],
+    example_phrases: ['cài đặt thanh toán', 'mở bán hàng và thanh toán'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.openSalePreferences) {
+        window.__qbiz_app__.openSalePreferences();
+        return { success: true, message: 'Đã mở Cài đặt Bán hàng & Thanh toán.' };
+      }
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('settings');
+        setTimeout(() => document.querySelector('[data-action="sale-preferences"]')?.click(), 100);
+        return { success: true, message: 'Đã mở Cài đặt Bán hàng & Thanh toán.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_warehouse_management: {
+    id: 'open_warehouse_management',
+    name: 'Mở Cài đặt Kho hàng',
+    feature_id: null,
+    route: 'settings',
+    screen: 'WarehouseManagement',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['cai dat kho', 'danh sach kho', 'quan ly kho', 'them kho'],
+    example_phrases: ['cài đặt kho', 'mở quản lý kho', 'danh sách kho'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.openWarehouseManagement) {
+        window.__qbiz_app__.openWarehouseManagement();
+        return { success: true, message: 'Đã mở Quản lý Kho hàng.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_data_settings: {
+    id: 'open_data_settings',
+    name: 'Mở Cài đặt Dữ liệu',
+    feature_id: null,
+    route: 'settings',
+    screen: 'DataSettings',
+    required_capabilities: [PERMISSIONS.MANAGE_SETTINGS],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['cai dat du lieu', 'du lieu', 'quan ly du lieu'],
+    example_phrases: ['cài đặt dữ liệu', 'mở dữ liệu'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.openDataSettings) {
+        window.__qbiz_app__.openDataSettings();
+        return { success: true, message: 'Đã mở Cài đặt Dữ liệu.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_advanced: {
+    id: 'open_advanced',
+    name: 'Mở Tiện ích nâng cao',
+    feature_id: null,
+    route: 'advanced',
+    screen: 'AdvancedHub',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.NAVIGATE,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['tien ich nang cao', 'tien ich', 'nang cao', 'mo rong'],
+    example_phrases: ['mở tiện ích nâng cao', 'tiện ích nâng cao'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('advanced');
+        return { success: true, message: 'Đã mở Tiện ích nâng cao.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_prices: {
+    id: 'open_prices',
+    name: 'Mở Bảng giá & Giá sỉ',
+    feature_id: null,
+    route: 'prices',
+    screen: 'Prices',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.NAVIGATE,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['bang gia', 'gia si', 'bang gia ban le', 'cai dat gia'],
+    example_phrases: ['mở bảng giá', 'bảng giá', 'giá sỉ'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('prices');
+        return { success: true, message: 'Đã mở Quản lý Bảng giá & Giá sỉ.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_promos: {
+    id: 'open_promos',
+    name: 'Mở Khuyến mại',
+    feature_id: null,
+    route: 'promos',
+    screen: 'Promotions',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.NAVIGATE,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['khuyen mai', 'giam gia', 'chuong trinh khuyen mai'],
+    example_phrases: ['mở khuyến mại', 'khuyến mại'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('promos');
+        return { success: true, message: 'Đã mở Quản lý Khuyến mại.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_debts: {
+    id: 'open_debts',
+    name: 'Mở Quản lý Công nợ',
+    feature_id: null,
+    route: 'debts',
+    screen: 'Debts',
+    required_capabilities: [PERMISSIONS.VIEW_FINANCIAL_REPORTS],
+    execution_mode: EXECUTION_MODE.NAVIGATE,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['cong no', 'so no', 'quan ly cong no', 'no khach hang', 'no nha cung cap'],
+    example_phrases: ['mở công nợ', 'sổ nợ', 'quản lý công nợ'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('debts');
+        return { success: true, message: 'Đã mở Quản lý Công nợ.' };
       }
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
     },
