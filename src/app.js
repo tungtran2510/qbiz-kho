@@ -78,7 +78,7 @@ const keepFocus=(sel,fn)=>{const el=document.querySelector(sel);const had=el&&do
 const money=n=>n?new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(Number(n)):'';
 const dt=s=>new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(s));
 const saleUuid=()=>globalThis.crypto?.randomUUID?globalThis.crypto.randomUUID():'';
-const NAV=[['dashboard','Tổng quan','layout-dashboard'],['products','Hàng hóa','package-search'],['sales','Bán hàng','shopping-cart'],['transfers','Kho','arrow-left-right'],['more','Thêm','settings-2']];
+const NAV=[['dashboard','Tổng quan','layout-dashboard'],['products','Hàng hóa','package-search'],['sales','Bán hàng','shopping-cart'],['transfers','Kho','warehouse'],['more','Thêm','menu']];
 const MOVE_LABEL={receive:['Nhập','↓'],issue:['Xuất','↑'],sale:['Bán hàng','↗'],count:['Kiểm kho','✓'],transfer_out:['Chuyển đi','⇄'],transfer_in:['Nhận chuyển','⇄'],reserve:['Giữ hàng','◌'],release:['Trả giữ','◌'],return:['Khách trả','↩']};
 const DEFAULT_DISPLAY={version:2,view:'image',showPrice:true,showStock:true,showSku:true,density:'medium',posView:'grid3'};
 function loadDisplayPrefs(){try{const saved=JSON.parse(localStorage.getItem('qbiz_display_preferences')||'{}');return saved.version?{...DEFAULT_DISPLAY,...saved}:{...DEFAULT_DISPLAY}}catch{return {...DEFAULT_DISPLAY}}}
@@ -154,6 +154,8 @@ const ICONS={
   ,'shield-check':'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>'
   ,'log-out':'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
   ,'users':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+  ,'warehouse':'<path d="M3 21V9.5L12 4l9 5.5V21H3z"/><path d="M9 21V11h6v10"/><path d="M9 14h6"/><path d="M9 17h6"/>'
+  ,'menu':'<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>'
 };
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
@@ -236,11 +238,13 @@ function nav(){
   const activePage=NAV.some(([id])=>id===state.page)?state.page:'more';
   $('#desktopNav').innerHTML=NAV.map(([id,label,ico])=>{
     const displayLabel = (id === 'products' && isSvc) ? 'Dịch vụ' : label;
-    return `<button class="nav-btn ${activePage===id?'active':''}" data-page="${id}"><span class="nav-ico">${icon(ico)}</span><span>${displayLabel}</span></button>`;
+    const isSales = id === 'sales';
+    return `<button class="nav-btn ${activePage===id?'active':''} ${isSales?'nav-sales-hero':''}" data-page="${id}"><span class="nav-ico">${icon(ico)}</span><span>${displayLabel}</span></button>`;
   }).join('');
   $('#mobileNav').innerHTML=NAV.map(([id,label,ico])=>{
     const displayLabel = (id === 'products' && isSvc) ? 'Dịch vụ' : label;
-    return `<button class="${activePage===id?'active':''}" data-page="${id}">${icon(ico)}<span>${displayLabel}</span></button>`;
+    const isSales = id === 'sales';
+    return `<button class="${activePage===id?'active':''} ${isSales?'nav-sales-hero':''}" data-page="${id}">${icon(ico)}<span>${displayLabel}</span></button>`;
   }).join('');
 }
 function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); updateSyncPill(); updateContextAndChips(); }
@@ -290,7 +294,25 @@ function renderSalesLegacy(){
   $('#saleDiscount')?.addEventListener('input',e=>{state.saleDraft.discount=e.target.value;renderSales()}); $$('[data-discount-mode]').forEach(b=>b.onclick=()=>{state.saleDraft.discountMode=b.dataset.discountMode;renderSales()}); $('#cashReceived')?.addEventListener('input',e=>{state.saleDraft.cashReceived=e.target.value;renderSales()}); $('#saleNote')?.addEventListener('input',e=>state.saleDraft.note=e.target.value); $('#saleWarehouse')?.addEventListener('change',e=>state.saleDraft.warehouseId=e.target.value);
   $$('[data-sale-add]').forEach(b=>b.onclick=()=>addSaleItem(b.dataset.saleAdd)); $('[data-action="customer-picker"]')?.addEventListener('click',openCustomerPicker); $$('[data-sale-remove]').forEach(b=>b.onclick=()=>{state.saleCart=state.saleCart.filter(x=>x.itemId!==b.dataset.saleRemove);renderSales()}); $$('[data-sale-adjust]').forEach(b=>b.onclick=()=>adjustSaleQuantity(b.dataset.saleId,Number(b.dataset.saleAdjust))); $$('[data-sale-field]').forEach(i=>i.addEventListener('change',()=>updateSaleLine(i.dataset.saleId,i.dataset.saleField,i.value))); $('[data-sale-pay]')?.addEventListener('click',submitSale);
 }
-function saleProductTile(p){const stock=p.type==='SERVICE'?null:warehouseStock(p.id),line=state.saleCart.find(x=>x.itemId===p.id);return `<article class="pos-product"><button class="pos-product-main" data-sale-add="${p.id}"><div class="pos-product-image">${p.image?`<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>`:esc((p.name||'S').slice(0,1))}</div><strong>${esc(p.name)}</strong><small>${esc(p.type==='SERVICE'?'Dịch vụ':p.sku||'Chưa có SKU')}${stock===null?'':` · Tồn ${fmt(stock)}`}</small><b>${p.price?fmt(p.price):'Chưa có giá'}</b></button>${line?`<div class="pos-inline-qty"><button data-sale-adjust="-1" data-sale-id="${p.id}">−</button><span>${line.quantity}</span><button data-sale-adjust="1" data-sale-id="${p.id}">+</button></div>`:`<button class="pos-add" data-sale-add="${p.id}" aria-label="Thêm ${esc(p.name)}">+</button>`}</article>`}
+function saleProductTile(p){
+  const stock = p.type === 'SERVICE' ? null : warehouseStock(p.id);
+  const line = state.saleCart.find(x => x.itemId === p.id);
+  const skuText = esc(p.sku || (p.type === 'SERVICE' ? 'Dịch vụ' : 'Chưa có mã'));
+  const stockText = p.type === 'SERVICE' ? 'Dịch vụ' : (stock === null ? 'Tồn: 0' : `Tồn: ${fmt(stock)}`);
+  const priceText = p.price ? fmt(p.price) + ' ₫' : 'Chưa có giá';
+  return `<article class="pos-product">
+    <button class="pos-product-main" data-sale-add="${p.id}">
+      <div class="pos-product-image">${p.image ? `<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>` : esc((p.name || 'S').slice(0, 1))}</div>
+      <strong class="pos-prod-title">${esc(p.name)}</strong>
+      <div class="pos-prod-sku">${skuText}</div>
+      <div class="pos-prod-stock">${stockText}</div>
+      <div class="pos-prod-price-row">
+        <b class="pos-prod-price">${priceText}</b>
+      </div>
+    </button>
+    ${line ? `<div class="pos-inline-qty"><button data-sale-adjust="-1" data-sale-id="${p.id}">−</button><span>${line.quantity}</span><button data-sale-adjust="1" data-sale-id="${p.id}">+</button></div>` : `<button class="pos-add" data-sale-add="${p.id}" aria-label="Thêm ${esc(p.name)}">+</button>`}
+  </article>`;
+}
 function saleStepHeader(title){return `<div class="flow-head"><button class="flow-back" data-sale-back aria-label="Quay lại">‹</button><h2>${title}</h2><span></span></div>`}
 function saleCartRows(){return saleLines().map(x=>{const open=state.saleDiscountOpen.has(x.itemId);return `<article class="cart-row"><div class="pos-product-image">${x.p.image?`<img src="${x.p.image}" alt="${esc(x.p.name)}"/>`:esc((x.p.name||'S').slice(0,1))}</div><div class="cart-row-main"><div class="cart-row-title"><span><strong>${esc(x.p.name)}</strong><small>${esc(x.p.sku||'Dịch vụ')}</small></span><button data-sale-remove="${x.itemId}" aria-label="Xóa ${esc(x.p.name)}">×</button></div><small>${fmt(x.unitPrice)} ₫</small><div class="cart-row-bottom"><div class="quantity-control"><button data-sale-adjust="-1" data-sale-id="${x.itemId}">−</button><input type="number" inputmode="numeric" min="1" value="${x.quantity}" data-sale-field="quantity" data-sale-id="${x.itemId}"/><button data-sale-adjust="1" data-sale-id="${x.itemId}">+</button></div><b>${fmt(x.lineTotal)} ₫</b></div><button class="line-discount-trigger" data-line-discount="${x.itemId}">Giảm giá${x.discount?` · ${fmt(x.discount)} ₫`:''} <span>›</span></button>${open?`<div class="line-discount-editor"><span class="active">₫</span><span>%</span><input aria-label="Giảm giá cho ${esc(x.p.name)}" type="number" inputmode="decimal" min="0" value="${x.discount}" data-sale-field="discount" data-sale-id="${x.itemId}"/></div>`:''}</div></article>`}).join('')}
 function compactCheckoutExtras(){if(state.saleStep!=='checkout'||$('.checkout-more'))return;const extras=['.cart-note','.vat-box','.invoice-box'].map(s=>$(s)).filter(Boolean);if(!extras.length)return;const details=document.createElement('details');details.className='checkout-more';details.innerHTML='<summary>Tùy chọn thêm</summary>';extras[0].before(details);extras.forEach(x=>details.append(x));}
@@ -677,13 +699,17 @@ function renderDashboard(){
             </button>
           </div>
 
-          <!-- NGAY DƯỚI XEM DEMO: CHỌN NGÀNH 2x2 -->
+          <!-- NGAY DƯỚI XEM DEMO: CHỌN NGÀNH -->
           <div class="entry-industry-section" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
               <span style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:0.04em;text-transform:uppercase">CHỌN NGÀNH ĐỂ XEM DEMO</span>
-              <span style="font-size:11px;color:var(--primary,#0284c7);font-weight:600">4 shop mẫu chuẩn</span>
+              <span style="font-size:11px;color:var(--primary,#0284c7);font-weight:600">5 shop mẫu chuẩn</span>
             </div>
             <div class="industry-selector-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
+              <button type="button" class="industry-select-btn" data-action="select-demo-industry" data-industry="doctorloan" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f0fdfa;border:1.5px solid #0d9488;border-radius:8px;font-size:13px;font-weight:700;color:#0f766e;cursor:pointer;text-align:left;box-shadow:0 1px 2px rgba(13,148,136,0.1)">
+                <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:#ccfbf1;color:#0d9488;flex-shrink:0">${icon('shield-check')}</span>
+                <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Gối & Ghế DoctorLoan (Sáng chế y tế)</span>
+              </button>
               <button type="button" class="industry-select-btn" data-action="select-demo-industry" data-industry="retail" style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-weight:600;color:#0f172a;cursor:pointer;text-align:left;box-shadow:0 1px 2px rgba(0,0,0,0.03)">
                 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:#e0f2fe;color:#0284c7;flex-shrink:0">${icon('shopping-bag')}</span>
                 <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Bán lẻ / Tổng hợp</span>
@@ -4000,7 +4026,7 @@ function openSyncInfoModal() {
   });
 }
 
-async function previewDemo(industryKey = 'retail'){
+async function previewDemo(industryKey = 'doctorloan'){
   try{
     await loadDemoIndustry(industryKey, 'OWNER');
     state._userSelectedProductType = false;
@@ -4109,7 +4135,7 @@ document.addEventListener('click', async e=>{
   const kind=e.target.closest('[data-kind]')?.dataset.kind;
   if(action==='open-auth-modal' || action==='open-hero-auth') return openAuthModal();
   if(action==='create-shop-modal') return openCreateShopModal();
-  if(action==='preview-demo') return previewDemo('retail');
+  if(action==='preview-demo') return previewDemo('doctorloan');
   if(action==='select-demo-industry') {
     const ind = e.target.closest('[data-industry]')?.dataset.industry || 'retail';
     return previewDemo(ind);
