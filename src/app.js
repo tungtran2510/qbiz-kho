@@ -225,10 +225,23 @@ function openNotifications(){
   openModal({title:'Thông báo',sub:'Việc cần chú ý trên thiết bị này.',hideSubmit:true,body:items.length?`<div class="notification-list">${items.map(([label,count,page])=>{const meta={'Sắp hết hàng':['package-search','Sản phẩm sắp hết'],'Chuyển kho chờ nhận':['arrow-left-right','Phiếu chuyển đang vận chuyển'],'Đơn cần xử lý':['shopping-cart','Đơn hàng chờ xử lý'],'Lỗi đồng bộ':['settings-2','Mục chờ đồng bộ bị lỗi']};const [ico,sub]=meta[label]||['bell',''];return `<button class="notification-row" data-page="${page}"><i class="notification-ico">${icon(ico)}</i><span><b>${esc(label)}</b><small>${esc(sub)}</small></span><strong>${fmt(count)}</strong>${icon('chevron-right')}</button>`}).join('')}</div>`:'<div class="empty notification-empty"><strong>Không có việc cần xử lý.</strong></div>'});
   $$('[data-page]', $('#modalRoot')).forEach(b=>b.onclick=()=>{$('#modalRoot').innerHTML='';state.page=b.dataset.page;render();});
 }
+function isServiceMode(){
+  if(sessionStorage.getItem('qbiz_preview_demo') === '1'){
+    return sessionStorage.getItem('qbiz_demo_industry') === 'service' || getActiveDemoIndustry()?.key === 'service';
+  }
+  return state.workspace?.profile_id === 'service' || state.businessProfile?.profile_id === 'service';
+}
 function nav(){
+  const isSvc = isServiceMode();
   const activePage=NAV.some(([id])=>id===state.page)?state.page:'more';
-  $('#desktopNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="nav-btn ${activePage===id?'active':''}" data-page="${id}"><span class="nav-ico">${icon(ico)}</span><span>${label}</span></button>`).join('');
-  $('#mobileNav').innerHTML=NAV.map(([id,label,ico])=>`<button class="${activePage===id?'active':''}" data-page="${id}">${icon(ico)}<span>${label}</span></button>`).join('');
+  $('#desktopNav').innerHTML=NAV.map(([id,label,ico])=>{
+    const displayLabel = (id === 'products' && isSvc) ? 'Dịch vụ' : label;
+    return `<button class="nav-btn ${activePage===id?'active':''}" data-page="${id}"><span class="nav-ico">${icon(ico)}</span><span>${displayLabel}</span></button>`;
+  }).join('');
+  $('#mobileNav').innerHTML=NAV.map(([id,label,ico])=>{
+    const displayLabel = (id === 'products' && isSvc) ? 'Dịch vụ' : label;
+    return `<button class="${activePage===id?'active':''}" data-page="${id}">${icon(ico)}<span>${displayLabel}</span></button>`;
+  }).join('');
 }
 function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); updateSyncPill(); updateContextAndChips(); }
 
@@ -346,24 +359,26 @@ function renderQuickActions(workspace){
     `;
   }
   return workspace.primary_actions.map((act, index) => {
-    if(index === 0 && act.page === 'sales'){
+    let actTitle = act.title;
+    if(actTitle === 'Gói dịch vụ') actTitle = 'Thanh toán';
+    if(index === 0 && (act.page === 'sales' || act.id === 'sales')){
       return `
         <div class="quick-tile quick-hero">
-          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon(act.icon || 'shopping-cart')}</span><strong>${esc(act.title)}</strong></button>
+          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon(act.icon || 'credit-card')}</span><strong>${esc(actTitle || 'Thanh toán')}</strong></button>
           <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
         </div>
       `;
     }
     if(act.page){
-      return `<button class="quick-tile" data-page="${act.page}"><span class="qt-ico">${icon(act.icon || 'shopping-cart')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+      return `<button class="quick-tile" data-page="${act.page}"><span class="qt-ico">${icon(act.icon || 'shopping-cart')}</span><strong>${esc(actTitle)}</strong><small>${esc(act.sub || '')}</small></button>`;
     }
     if(act.action === 'customer-directory'){
-      return `<button class="quick-tile" data-action="customer-directory"><span class="qt-ico">${icon(act.icon || 'user')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+      return `<button class="quick-tile" data-action="customer-directory"><span class="qt-ico">${icon(act.icon || 'user')}</span><strong>${esc(actTitle)}</strong><small>${esc(act.sub || '')}</small></button>`;
     }
     if(act.action === 'quick-action'){
-      return `<button class="quick-tile" data-action="quick-action" data-kind="${act.kind}"><span class="qt-ico">${icon(act.icon || 'package-search')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+      return `<button class="quick-tile" data-action="quick-action" data-kind="${act.kind}"><span class="qt-ico">${icon(act.icon || 'package-search')}</span><strong>${esc(actTitle)}</strong><small>${esc(act.sub || '')}</small></button>`;
     }
-    return `<button class="quick-tile" data-page="${act.id}"><span class="qt-ico">${icon(act.icon || 'package-search')}</span><strong>${esc(act.title)}</strong><small>${esc(act.sub || '')}</small></button>`;
+    return `<button class="quick-tile" data-page="${act.id}"><span class="qt-ico">${icon(act.icon || 'package-search')}</span><strong>${esc(actTitle)}</strong><small>${esc(act.sub || '')}</small></button>`;
   }).join('');
 }
 function productCard(p){const t=productTotals(p); const [c,l]=productStatus(p); const service=p.type==='SERVICE'; return `<div class="product-card ${state.productSelected.has(p.id)?'selected':''}" data-product="${p.id}">${state.productSelecting?`<button class="row-select card-select" data-select-product="${p.id}" aria-label="Chọn"><span>${state.productSelected.has(p.id)?'✓':''}</span></button>`:''}<div class="pc-cover">${productImage(p)}</div><div class="pc-body"><div class="pc-head"><div><h3>${esc(p.name)}</h3><p><span class="pc-category">${service?'Dịch vụ':`${esc(p.category||'Sản phẩm')} · ${esc(p.unit||'cái')} · `}</span><span class="pc-sku">${esc(p.sku||'')}</span></p></div><span class="badge ${c}">${l}</span></div><div class="pc-info"><span>${esc(p.priceNote||money(p.price)||'Giá chưa cập nhật')}</span><small>${esc(p.description||'Chưa có mô tả')}</small></div>${service?'':'<div class="pc-metrics"><div><strong>'+fmt(t.onHand)+'</strong><span>Tồn thực</span></div><div><strong>'+fmt(t.available)+'</strong><span>Có thể bán</span></div><div><strong>'+fmt(p.lowStock)+'</strong><span>Tối thiểu</span></div></div>'}</div></div>`}
@@ -1072,7 +1087,11 @@ function renderDashboardAnalytics(){
 }
 
 function renderProducts(){
-  setTitle('Hàng hóa','QBiz');
+  const isSvc = isServiceMode() || state.productType === 'SERVICE';
+  if (isServiceMode() && !state._userSelectedProductType) {
+    state.productType = 'SERVICE';
+  }
+  setTitle(isSvc ? 'Dịch vụ' : 'Hàng hóa','QBiz');
   const createdMap=new Map();
   for(const o of (state.data.outbox||[])){ if(o.entity_type==='item'&&o.action==='create'&&!createdMap.has(o.entity_id)) createdMap.set(o.entity_id,o.created_at||o.updated_at||''); }
   const createdAtOf=p=>createdMap.get(p.id)||p.created_at||p.createdAt||'';
@@ -1101,7 +1120,7 @@ function renderProducts(){
   const gridMode=['grid2','grid3'].includes(state.displayPrefs.view);
   $('#content').innerHTML=`
     <section class="goods-toolbar card ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">
-      <div class="goods-title goods-title-compact"><div class="goods-stats"><strong class="goods-stat-main">${fmt(list.length)} ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'}</strong><span class="goods-stat-meta"><span class="goods-stat-sub">Tồn kho ${fmt(totalQty)}</span>${low?`<span class="goods-stat-sub warn">${fmt(low)} sắp hết</span>`:''}</span></div><div><button class="secondary-btn compact" data-display-settings>Hiển thị</button><button class="primary-btn compact" data-action="new-product" aria-label="Thêm hàng hóa">Thêm ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'} +</button></div></div>
+      <div class="goods-title goods-title-compact"><div class="goods-stats"><strong class="goods-stat-main">${fmt(list.length)} ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'}</strong><span class="goods-stat-meta"><span class="goods-stat-sub">Tồn kho ${fmt(totalQty)}</span>${low?`<span class="goods-stat-sub warn">${fmt(low)} sắp hết</span>`:''}</span></div><div><button class="secondary-btn compact" data-display-settings>Hiển thị</button><button class="primary-btn compact" data-action="new-product" aria-label="Thêm ${state.productType==='SERVICE'?'dịch vụ':'hàng hóa'}">Thêm ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'} +</button></div></div>
       <div class="goods-segments"><button class="${state.productType==='PRODUCT'?'active':''}" data-product-type="PRODUCT">Sản phẩm</button><button class="${state.productType==='SERVICE'?'active':''}" data-product-type="SERVICE">Dịch vụ</button></div>
       <div class="goods-search"><input id="productSearch" value="${esc(state.search)}" placeholder="${state.productType==='PRODUCT'?'Tìm tên / SKU / barcode...':'Tìm tên dịch vụ...'}"/><button data-action="scan" aria-label="Quét mã" ${state.productType==='SERVICE'?'hidden':''}>${icon('scan-line')}</button></div>
       <div class="goods-tools"><button data-category-picker>Danh mục${state.productCategory==='all'?'':` · ${esc(categoryLabel(state.productCategory))}`}</button><button data-product-filter class="${(state.productStatusFilter&&state.productStatusFilter!=='all')||(state.productStockFilter&&state.productStockFilter!=='all')||state.warehouse!=='all'?'active':''}">Lọc</button><select id="productSort"><option value="newest" ${state.productSort==='newest'?'selected':''}>Mới nhất</option><option value="oldest" ${state.productSort==='oldest'?'selected':''}>Cũ nhất</option><option value="priceAsc" ${state.productSort==='priceAsc'?'selected':''}>Giá thấp trước</option><option value="default" ${state.productSort==='default'?'selected':''}>Sắp xếp</option><option value="name" ${state.productSort==='name'?'selected':''}>Tên A–Z</option><option value="price" ${state.productSort==='price'?'selected':''}>Giá cao trước</option>${state.productType==='PRODUCT'?`<option value="stock" ${state.productSort==='stock'?'selected':''}>Tồn thấp trước</option><option value="status" ${state.productSort==='status'?'selected':''}>Trạng thái</option>`:''}</select><button data-toggle-select>${state.productSelecting?'Xong':'Chọn'}</button></div>
@@ -1113,7 +1132,7 @@ function renderProducts(){
       : `<section class="card goods-list ${state.displayPrefs.density==='compact'?'is-compact':''} ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">${visible.map(productTableRow).join('')||'<div class="empty"><strong>Không tìm thấy</strong>Thử tên hoặc SKU khác.</div>'}</section>`}${visible.length<list.length?`<button class="catalog-more product-more" data-product-more>Xem thêm ${Math.min(40,list.length-visible.length)}</button>`:''}
   `;
   $('#productSearch')?.addEventListener('input',e=>{state.search=e.target.value;keepFocus('#productSearch',renderProducts)});
-  $$('[data-product-type]').forEach(b=>b.onclick=()=>{state.productType=b.dataset.productType;state.productCategory='all';state.productLimit=40;state.productSelected.clear();renderProducts()});
+  $$('[data-product-type]').forEach(b=>b.onclick=()=>{state.productType=b.dataset.productType;state._userSelectedProductType=true;state.productCategory='all';state.productLimit=40;state.productSelected.clear();renderProducts()});
   $('#productSort')?.addEventListener('change',e=>{state.productSort=e.target.value;renderProducts()});$('[data-product-more]')?.addEventListener('click',()=>{state.productLimit+=40;renderProducts()});
   $('[data-display-settings]')?.addEventListener('click',openDisplaySettings);$('[data-category-picker]')?.addEventListener('click',()=>openCategoryPicker());$('[data-product-filter]')?.addEventListener('click',openProductFilter);
   $('[data-toggle-select]')?.addEventListener('click',()=>{state.productSelecting=!state.productSelecting;if(!state.productSelecting)state.productSelected.clear();renderProducts()});
@@ -3984,6 +4003,8 @@ function openSyncInfoModal() {
 async function previewDemo(industryKey = 'retail'){
   try{
     await loadDemoIndustry(industryKey, 'OWNER');
+    state._userSelectedProductType = false;
+    state.productType = (industryKey === 'service') ? 'SERVICE' : 'PRODUCT';
     await refresh();
     const ind = getActiveDemoIndustry();
     const shopTitle = (ind.shop?.name || '').split('—')[0].trim();
@@ -3993,12 +4014,19 @@ async function previewDemo(industryKey = 'retail'){
     toast('Lỗi nạp demo: '+err.message,'error');
   }
 }
-function exitDemo(){
+async function exitDemo(){
   sessionStorage.removeItem('qbiz_preview_demo');
   sessionStorage.removeItem('qbiz_demo_industry');
   sessionStorage.removeItem('qbiz_demo_role');
   sessionStorage.removeItem('qbiz_demo_shop');
-  render();
+  state._userSelectedProductType = false;
+  state.productType = 'PRODUCT';
+  try {
+    if(businessProfileModule && businessProfileModule.resetToDefaultProfile){
+      await businessProfileModule.resetToDefaultProfile();
+    }
+  }catch(_){}
+  await refresh();
   toast('Đã thoát demo.','info');
 }
 

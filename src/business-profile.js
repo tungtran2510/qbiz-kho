@@ -1128,15 +1128,15 @@ export function resolveWorkspaceProfile(profileOrId = null) {
     ];
   } else if (pid === 'service') {
     primary_actions = [
-      { id: 'services', kind: 'products', title: 'Gói dịch vụ', sub: 'Bảng giá & liệu trình', icon: 'sparkles', page: 'products' },
+      { id: 'sales', kind: 'sales', title: 'Thanh toán', sub: 'Lập hóa đơn dịch vụ', icon: 'credit-card', page: 'sales' },
+      { id: 'services', kind: 'products', title: 'Dịch vụ', sub: 'Bảng giá & liệu trình', icon: 'sparkles', page: 'products' },
       { id: 'customers', kind: 'customers', title: 'Khách hàng', sub: 'Hồ sơ khách & hội viên', icon: 'user', action: 'customer-directory' },
-      { id: 'sales', kind: 'sales', title: 'Thu phí dịch vụ', sub: 'Lập hóa đơn dịch vụ', icon: 'shopping-cart', page: 'sales' },
       { id: 'orders', kind: 'orders', title: 'Phiếu dịch vụ', sub: 'Theo dõi tiến trình', icon: 'file-text', page: 'orders' },
       { id: 'transactions', kind: 'transactions', title: 'Lịch sử thu', sub: 'Xem phiếu thu tiền', icon: 'file-text', page: 'transactions' },
     ];
     secondary_actions = ['receive', 'count', 'transfers', 'shifts', 'reports'];
     priority_highlights = [
-      'Gói dịch vụ & biểu phí',
+      'Dịch vụ & biểu phí',
       'Hồ sơ khách hàng & hội viên',
       'Thanh toán & hóa đơn dịch vụ',
       'Quản lý vật tư tiêu hao (phụ)',
