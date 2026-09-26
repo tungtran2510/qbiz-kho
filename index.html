@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <link rel="icon" href="./icons/icon-192.png" />
-  <link rel="stylesheet" href="./styles.css?v=20260927-v16" />
+  <link rel="stylesheet" href="./styles.css?v=20260927-v17" />
   <title>QBiz Kho</title>
 </head>
 <body>
@@ -30,9 +30,9 @@
 
     <main class="main">
       <header class="topbar">
-        <div>
+        <div style="min-width:0;flex:1 1 auto;overflow:hidden">
           <div class="eyebrow" id="pageEyebrow">QBiz</div>
-          <h1 id="pageTitle">Tổng quan</h1>
+          <h1 id="pageTitle" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tổng quan</h1>
         </div>
         <div class="top-actions" id="topActions"></div>
       </header>
@@ -48,6 +48,6 @@
   <div id="qbizPrintRoot" class="qbiz-print-only" aria-hidden="true"></div>
 
   <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-  <script type="module" src="./src/app.js?v=20260927-v16"></script>
+  <script type="module" src="./src/app.js?v=20260927-v17"></script>
 </body>
 </html>

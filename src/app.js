@@ -192,7 +192,7 @@ function headerActions(){
   } else if(auth.status===AUTH_STATES.AUTHENTICATED_NO_SHOP){
     userBadge=`<button class="user-badge-btn" data-action="create-shop-modal" title="Tạo cửa hàng mới">${icon('store')}<span>Tạo Shop</span></button>`;
   } else {
-    userBadge = `<button class="user-badge-btn" data-action="open-auth-modal" title="Đăng nhập">${icon('user')}<span>Đăng nhập</span></button>`;
+    userBadge = `<button class="user-badge-btn icon-only" data-action="open-auth-modal" title="Tài khoản / Đăng nhập" aria-label="Đăng nhập">${icon('user')}</button>`;
   }
   top.innerHTML=`${userBadge}<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${alerts.length?`<b>${alerts.length}</b>`:''}</button>${scan}`;
 }
