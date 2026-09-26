@@ -115,11 +115,11 @@
       50% { opacity: 0.5; transform: scale(0.85); }
     }
 
-    /* Device Segmented Control */
-    .device-controls {
+    /* Device & Height Segmented Controls */
+    .device-controls, .height-controls {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
       background: rgba(15, 23, 42, 0.6);
       padding: 3px;
       border-radius: 9999px;
@@ -178,47 +178,60 @@
       color: #fff;
     }
 
-    /* Canvas / Viewport Area */
+    /* Canvas / Viewport Area - Aligned to top so phone can be tall */
     .viewport-canvas {
       flex: 1;
       width: 100%;
       height: 100%;
       display: flex;
       justify-content: center;
-      align-items: center;
-      overflow: hidden;
+      align-items: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
       background: var(--bg-dark);
-      padding: 56px 16px 16px 16px;
+      padding: 48px 12px 16px 12px;
       position: relative;
+      scroll-behavior: smooth;
     }
 
-    /* Phone Shell (Matching user screenshot: max-w-md, clean dark sides) */
+    /* Custom scrollbar for canvas */
+    .viewport-canvas::-webkit-scrollbar {
+      width: 6px;
+    }
+    .viewport-canvas::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    .viewport-canvas::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    /* Phone Shell - Substantially taller to display full dashboard */
     .phone-container {
-      width: 420px;
-      height: 100%;
-      max-height: calc(100vh - 72px);
-      max-height: calc(100dvh - 72px);
+      width: 412px;
+      height: max(880px, calc(100vh - 64px));
+      min-height: 880px;
       background: #f8fafc;
       display: flex;
       flex-direction: column;
       position: relative;
       border-radius: 28px;
-      transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.25s ease, border-radius 0.25s ease;
+      transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1), min-height 0.25s ease, border-radius 0.25s ease;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-dark);
       overflow: hidden;
+      margin: 0 auto;
     }
 
     /* Desktop Full Width Mode */
     .phone-container.desktop-mode {
       width: 100% !important;
-      max-height: calc(100vh - 64px) !important;
+      height: calc(100vh - 64px) !important;
+      min-height: 0 !important;
       border-radius: 16px;
     }
 
     /* Phone Frame Mode (with simulated rounded smartphone edges) */
     .phone-container.frame-mode {
-      height: calc(100vh - 84px);
-      height: calc(100dvh - 84px);
       border-radius: 44px;
       border: 8px solid #1e293b;
       box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 2px #334155;
@@ -254,6 +267,12 @@
     }
 
     /* Responsive adjustments */
+    @media (max-width: 820px) {
+      .height-controls {
+        display: none;
+      }
+    }
+
     @media (max-width: 600px) {
       .preview-header {
         top: 6px;
@@ -265,6 +284,8 @@
       }
       .phone-container {
         width: 100% !important;
+        height: 100vh !important;
+        min-height: 0 !important;
         box-shadow: none;
         border: none;
       }
@@ -287,7 +308,7 @@
       </div>
 
       <!-- Device View Presets -->
-      <div class="device-controls" role="group" aria-label="Chọn kích thước hiển thị">
+      <div class="device-controls" role="group" aria-label="Chọn kích thước chiều rộng">
         <button class="ctrl-btn active" data-width="412" title="Chế độ điện thoại tiêu chuẩn (412px)">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></svg>
           Điện thoại
@@ -301,6 +322,20 @@
         <button class="ctrl-btn" data-width="100%" title="Chế độ máy tính toàn màn hình">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
           Máy tính
+        </button>
+      </div>
+
+      <!-- Height Controls -->
+      <div class="height-controls" role="group" aria-label="Chọn chiều cao hiển thị">
+        <button class="ctrl-btn active" data-height="tall" title="Chiều cao dài điện thoại (880px / Tối đa)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v18"/><path d="m8 7 4-4 4 4"/><path d="m8 17 4 4 4-4"/></svg>
+          Dài (880px)
+        </button>
+        <button class="ctrl-btn" data-height="xtall" title="Chiều cao cực dài (960px)">
+          960px
+        </button>
+        <button class="ctrl-btn" data-height="fit" title="Tự động vừa khít khung cửa sổ">
+          Vừa khung
         </button>
       </div>
 
@@ -338,14 +373,34 @@
   <script>
     const phoneContainer = document.getElementById('phoneContainer');
     const appFrame = document.getElementById('appFrame');
-    const ctrlButtons = document.querySelectorAll('.ctrl-btn');
+    const widthButtons = document.querySelectorAll('.device-controls .ctrl-btn');
+    const heightButtons = document.querySelectorAll('.height-controls .ctrl-btn');
     const toggleFrameBtn = document.getElementById('toggleFrameBtn');
     const reloadBtn = document.getElementById('reloadBtn');
 
+    let currentHeightMode = 'tall';
+
+    function applyHeight(mode) {
+      currentHeightMode = mode;
+      if (phoneContainer.classList.contains('desktop-mode')) {
+        return;
+      }
+      if (mode === 'tall') {
+        phoneContainer.style.height = 'max(880px, calc(100vh - 64px))';
+        phoneContainer.style.minHeight = '880px';
+      } else if (mode === 'xtall') {
+        phoneContainer.style.height = 'max(960px, calc(100vh - 64px))';
+        phoneContainer.style.minHeight = '960px';
+      } else if (mode === 'fit') {
+        phoneContainer.style.height = 'calc(100vh - 64px)';
+        phoneContainer.style.minHeight = '0px';
+      }
+    }
+
     // Switch device width
-    ctrlButtons.forEach(btn => {
+    widthButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        ctrlButtons.forEach(b => b.classList.remove('active'));
+        widthButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
         const width = btn.dataset.width;
@@ -356,7 +411,17 @@
         } else {
           phoneContainer.classList.remove('desktop-mode');
           phoneContainer.style.width = width + 'px';
+          applyHeight(currentHeightMode);
         }
+      });
+    });
+
+    // Switch device height
+    heightButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        heightButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyHeight(btn.dataset.height);
       });
     });
 

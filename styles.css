@@ -583,7 +583,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .dashboard-quick-grid .quick-tile.quick-hero{grid-column:1;grid-row:1/span 2;min-height:0;padding:0;display:flex;flex-direction:column;gap:0;overflow:hidden;background:linear-gradient(180deg,#eaf3ff,#fbfdff);border-color:#bdd7f5}
 .dashboard-quick-grid .quick-hero-main,.dashboard-quick-grid .quick-hero-sub{border:0;background:transparent;display:grid;justify-items:center;align-content:center;gap:6px;padding:8px 4px;cursor:pointer;font:inherit;color:inherit}
 .dashboard-quick-grid .quick-hero-main{flex:1;border-bottom:1px solid #d5e3f5}
-.dashboard-quick-grid .quick-tile.quick-hero .quick-hero-main strong{font-size:16px;font-weight:800;color:#173c72;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.dashboard-quick-grid .quick-tile.quick-hero .quick-hero-main strong{font-size:13.5px;font-weight:800;color:#173c72;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;padding:0 2px;letter-spacing:-0.02em}
 .dashboard-quick-grid .quick-hero-main .qt-ico{width:44px;height:44px;border-radius:14px}
 .dashboard-quick-grid .quick-hero-main .qt-ico .ui-icon{width:24px;height:24px}
 .dashboard-quick-grid .quick-hero-sub{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;min-height:36px}

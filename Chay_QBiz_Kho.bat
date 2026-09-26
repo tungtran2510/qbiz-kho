@@ -23,17 +23,17 @@ set "EDGE_64_EXE=C:\Program Files\Microsoft\Edge\Application\msedge.exe"
 set "TARGET_URL=http://localhost:4180/preview.html"
 
 if exist "%CHROME_EXE%" (
-    start "" "%CHROME_EXE%" --app="%TARGET_URL%" --start-maximized
+    start "" "%CHROME_EXE%" --app="%TARGET_URL%" --start-maximized --window-size=1280,960
     exit /b
 )
 
 if exist "%EDGE_EXE%" (
-    start "" "%EDGE_EXE%" --app="%TARGET_URL%" --start-maximized
+    start "" "%EDGE_EXE%" --app="%TARGET_URL%" --start-maximized --window-size=1280,960
     exit /b
 )
 
 if exist "%EDGE_64_EXE%" (
-    start "" "%EDGE_64_EXE%" --app="%TARGET_URL%" --start-maximized
+    start "" "%EDGE_64_EXE%" --app="%TARGET_URL%" --start-maximized --window-size=1280,960
     exit /b
 )
 
