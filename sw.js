@@ -1,5 +1,5 @@
-const CACHE='qbiz-kho-v9-20260926-owner-ai-mega-nlp-slang-actions';
-const ASSETS=['./','./index.html','./styles.css?v=20260926-v9','./manifest.webmanifest','./src/app.js?v=20260926-v9','./src/config.js','./src/db.js','./src/engine.js','./src/sync.js','./src/ai/index.js','./src/ai/vietnamese-nlp.js','./src/ai/context.js','./src/ai/policy.js','./src/ai/proposals.js','./src/ai/tools.js','./src/ai/skills.js','./src/ai/providers.js','./src/ai/router.js','./src/ai/memory.js','./src/ai/audit.js','./src/ai/ui.js','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE='qbiz-kho-v11-20260926-header-compact-and-hero-fix';
+const ASSETS=['./','./index.html','./styles.css?v=20260926-v11','./manifest.webmanifest','./src/app.js?v=20260926-v11','./src/config.js','./src/db.js','./src/engine.js','./src/sync.js','./src/ai/index.js','./src/ai/vietnamese-nlp.js','./src/ai/context.js','./src/ai/policy.js','./src/ai/proposals.js','./src/ai/tools.js','./src/ai/skills.js','./src/ai/providers.js','./src/ai/router.js','./src/ai/memory.js','./src/ai/audit.js','./src/ai/ui.js','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{

@@ -1313,6 +1313,7 @@ export async function loadDemoIndustry(industryKey = 'retail', role = ROLES.OWNE
 
   // Full Demo Business Profile populated in settings
   const businessProfileValue = {
+    profile_id: ind.key === 'food_beverage' ? 'fnb' : ind.key,
     store_name: ind.shop.name,
     display_name: ind.shop.displayName || ind.shop.name,
     logo: makeSvgShopLogo(ind.key),

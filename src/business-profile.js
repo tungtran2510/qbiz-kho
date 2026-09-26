@@ -1083,7 +1083,7 @@ export function resolveWorkspaceProfile(profileOrId = null) {
 
   if (pid === 'retail') {
     primary_actions = [
-      { id: 'sales', kind: 'sales', title: 'Bán hàng (POS)', sub: 'Thu ngân bán lẻ', icon: 'shopping-cart', page: 'sales' },
+      { id: 'sales', kind: 'sales', title: 'Bán hàng', sub: 'Thu ngân bán lẻ', icon: 'shopping-cart', page: 'sales' },
       { id: 'products', kind: 'products', title: 'Hàng hóa', sub: 'Quản lý sản phẩm', icon: 'package-search', page: 'products' },
       { id: 'receive', kind: 'receive', title: 'Nhập hàng', sub: 'Thêm vào kho', icon: 'package-plus', action: 'quick-action' },
       { id: 'count', kind: 'count', title: 'Kiểm tồn', sub: 'Kiểm tra tồn kho', icon: 'clipboard-check', action: 'quick-action' },
@@ -1098,7 +1098,7 @@ export function resolveWorkspaceProfile(profileOrId = null) {
     ];
   } else if (pid === 'fnb') {
     primary_actions = [
-      { id: 'sales', kind: 'sales', title: 'Bán hàng nhanh', sub: 'Bán hàng nhanh & thu ngân', icon: 'shopping-cart', page: 'sales' },
+      { id: 'sales', kind: 'sales', title: 'Bán hàng', sub: 'Bán nhanh & thu ngân', icon: 'shopping-cart', page: 'sales' },
       { id: 'orders', kind: 'orders', title: 'Đơn hàng', sub: 'Theo dõi đơn bán', icon: 'file-text', page: 'orders' },
       { id: 'products', kind: 'products', title: 'Danh sách món', sub: 'Thực đơn & bảng giá', icon: 'package-search', page: 'products' },
       { id: 'transactions', kind: 'transactions', title: 'Hóa đơn', sub: 'Phiếu thu gần đây', icon: 'file-text', page: 'transactions' },

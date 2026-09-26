@@ -21,7 +21,7 @@ def test_login_demo_ui():
         assert btn_shop.is_visible(), "CTA 'Tạo shop' missing!"
         assert "Tạo shop" in btn_shop.inner_text(), f"CTA text unexpected: {btn_shop.inner_text()}"
 
-        btn_login = page.locator('.entry-cta-bar [data-action="open-hero-auth"]')
+        btn_login = page.locator('.entry-cta-bar [data-action="open-hero-auth"], .entry-cta-bar [data-action="open-auth-modal"]')
         assert btn_login.is_visible(), "CTA 'Đăng nhập' missing!"
         assert "Đăng nhập" in btn_login.inner_text(), f"CTA text unexpected: {btn_login.inner_text()}"
 
@@ -73,7 +73,7 @@ def test_login_demo_ui():
         page.wait_for_timeout(300)
 
         # 6. Test clicking 'Đăng nhập'
-        page.locator('.entry-cta-bar [data-action="open-hero-auth"]').click()
+        page.locator('.entry-cta-bar [data-action="open-hero-auth"], .entry-cta-bar [data-action="open-auth-modal"]').click()
         page.wait_for_timeout(500)
         assert backdrop.is_visible(), "Modal backdrop not visible on 'Đăng nhập'!"
         assert "Đăng nhập" in backdrop.inner_text(), "Login modal did not open on 'Đăng nhập'!"

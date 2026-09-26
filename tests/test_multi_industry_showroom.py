@@ -80,7 +80,7 @@ def run_tests():
 
             # Check 3 CTAs
             btn_shop = page.locator('.entry-cta-bar [data-action="create-shop-modal"]')
-            btn_login = page.locator('.entry-cta-bar [data-action="open-hero-auth"]')
+            btn_login = page.locator('.entry-cta-bar [data-action="open-hero-auth"], .entry-cta-bar [data-action="open-auth-modal"]')
             btn_demo = page.locator('.entry-cta-bar [data-action="preview-demo"]')
             assert btn_shop.is_visible(), f"[{vp['name']}] CTA 'Tạo shop' missing"
             assert btn_login.is_visible(), f"[{vp['name']}] CTA 'Đăng nhập' missing"
@@ -116,14 +116,18 @@ def run_tests():
         ]
 
         for ind in industries:
-            print(f"Testing industry: {ind['key']}...")
-            # Click industry button from landing or banner
-            btn = page.locator(f'[data-action="select-demo-industry"][data-industry="{ind["key"]}"]').first
-            btn.click()
+            ind_key = ind['key']
+            print(f"Testing industry: {ind_key}...")
+            # Click industry button from landing or switch via app
+            btn = page.locator(f'[data-action="select-demo-industry"][data-industry="{ind_key}"]').first
+            if btn.is_visible():
+                btn.click()
+            else:
+                page.evaluate(f"() => window.__qbiz_app__.previewDemo('{ind_key}')")
             page.wait_for_timeout(1200)
 
             # Verify banner indicates demo mode and current industry
-            banner = page.locator('.demo-preview-banner')
+            banner = page.locator('.demo-preview-banner, .demo-compact-header')
             assert banner.is_visible(), f"Demo banner not visible for {ind['key']}"
             assert ind['badge'] in banner.inner_text(), f"Expected badge '{ind['badge']}' in banner text"
             assert ind['expected_name'] in banner.inner_text(), f"Expected shop name '{ind['expected_name']}' in banner text"
@@ -266,7 +270,7 @@ def run_tests():
         page.wait_for_timeout(1200)
 
         # Verify demo banner is GONE
-        assert not page.locator('.demo-preview-banner').is_visible(), "Demo banner must NOT be visible after exit!"
+        assert not page.locator('.demo-preview-banner, .demo-compact-header').is_visible(), "Demo banner must NOT be visible after exit!"
         # Verify 3 CTAs are BACK
         assert page.locator('.entry-cta-bar').is_visible(), "Standard landing entry bar must return!"
         assert page.locator('.entry-industry-section').is_visible(), "Industry selector must return!"

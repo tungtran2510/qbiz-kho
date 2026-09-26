@@ -65,12 +65,12 @@ def run_tests():
             assert btn_login.is_visible(), f"Login button not visible at {vp['name']}"
             assert btn_demo.is_visible(), f"Preview demo button not visible at {vp['name']}"
 
-            # Check CTA row layout (single row: bounding box y coordinates should be equal)
+            # Check CTA layout: Row 1 has Create + Login on same row; Row 2 has Demo below
             box_create = btn_create.bounding_box()
             box_login = btn_login.bounding_box()
             box_demo = btn_demo.bounding_box()
-            assert abs(box_create['y'] - box_login['y']) < 5, f"CTAs not on single row at {vp['name']}: create.y={box_create['y']}, login.y={box_login['y']}"
-            assert abs(box_login['y'] - box_demo['y']) < 5, f"CTAs not on single row at {vp['name']}: login.y={box_login['y']}, demo.y={box_demo['y']}"
+            assert abs(box_create['y'] - box_login['y']) < 5, f"Row 1 CTAs not aligned at {vp['name']}: create.y={box_create['y']}, login.y={box_login['y']}"
+            assert box_demo['y'] > box_login['y'] + 10, f"Demo CTA not on row 2 below login at {vp['name']}: login.y={box_login['y']}, demo.y={box_demo['y']}"
 
             # Check white-space nowrap on CTA span text
             btn_texts = page.evaluate("""() => {

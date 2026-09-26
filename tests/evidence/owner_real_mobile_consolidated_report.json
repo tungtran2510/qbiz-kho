@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-26 07:56:50",
+  "timestamp": "2026-09-26 23:31:46",
   "entry_overlay_viewports": [
     {
       "viewport": "360",
@@ -85,7 +85,7 @@
   "ai_owner_queries": [
     {
       "query": "Hôm nay bán bao nhiêu?",
-      "response": "Doanh số **hôm nay**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**",
+      "response": "Doanh số **hôm nay**:\n- Doanh thu thực thu: **64.900 ₫**\n- Số phiếu hoàn tất: **3 phiếu**\n- Hình thức: Tiền mặt: 30.000 ₫ · Chuyển khoản: 30.400 ₫ · QR: 4.500 ₫",
       "tier": 0,
       "provider": "DETERMINISTIC",
       "trace": "Rule exact",
@@ -93,7 +93,7 @@
     },
     {
       "query": "Tháng này bán được bao nhiêu?",
-      "response": "Doanh số **tháng này**:\n- Doanh thu thực thu: **854.550 ₫**\n- Số phiếu hoàn tất: **17 phiếu**\n- Hình thức: Tiền mặt: 329.100 ₫ · Chuyển khoản: 433.900 ₫ · QR: 91.550 ₫",
+      "response": "Doanh số **tháng này**:\n- Doanh thu thực thu: **884.550 ₫**\n- Số phiếu hoàn tất: **18 phiếu**\n- Hình thức: Tiền mặt: 329.100 ₫ · Chuyển khoản: 463.900 ₫ · QR: 91.550 ₫",
       "tier": 0,
       "provider": "DETERMINISTIC",
       "trace": "Rule exact",
@@ -101,7 +101,7 @@
     },
     {
       "query": "Mặt hàng nào bán chạy nhất tháng này",
-      "response": "Top mặt hàng bán chạy nhất **tháng này**:\n1. **Mì Hảo Hảo tôm chua cay 75g**: đã bán **15** sản phẩm · Doanh số **67.050 ₫**\n2. **Nước tăng lực Red Bull 250ml**: đã bán **14** sản phẩm · Doanh số **210.000 ₫**\n3. **Nước rửa chén Sunlight Trà Xanh 750g**: đã bán **5** sản phẩm · Doanh số **158.400 ₫**\n4. **Giấy vệ sinh Paseo 10 cuộn 3 lớp**: đã bán **3** sản phẩm · Doanh số **345.000 ₫**\n5. **Bàn chải đánh răng Colgate SlimSoft**: đã bán **2** sản phẩm · Doanh số **74.100 ₫**",
+      "response": "Top mặt hàng bán chạy nhất **tháng này**:\n1. **Mì Hảo Hảo tôm chua cay 75g**: đã bán **15** gói · Doanh thu **67.050 ₫**\n2. **Nước tăng lực Red Bull 250ml**: đã bán **14** lon · Doanh thu **210.000 ₫**\n3. **Nước rửa chén Sunlight Trà Xanh 750g**: đã bán **5** chai · Doanh thu **158.400 ₫**\n4. **Giấy vệ sinh Paseo 10 cuộn 3 lớp**: đã bán **3** lốc · Doanh thu **345.000 ₫**\n5. **Bàn chải đánh răng Colgate SlimSoft**: đã bán **2** cây · Doanh thu **74.100 ₫**",
       "tier": 0,
       "provider": "DETERMINISTIC",
       "trace": "Rule exact",
@@ -109,7 +109,7 @@
     },
     {
       "query": "Hàng nào sắp hết?",
-      "response": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Giấy vệ sinh Paseo 10 cuộn 3 lớp**: Còn **0 lốc** (Ngưỡng cảnh báo: 5)\n• **Nước rửa chén Sunlight Trà Xanh 750g**: Còn **5 chai** (Ngưỡng cảnh báo: 10)",
+      "response": "⚠️ **Cảnh báo tồn kho: Có 2 mặt hàng sắp hết / hết hàng:**\n\n1. **Giấy vệ sinh Paseo 10 cuộn 3 lớp**\n   - Tồn khả dụng: **0 lốc** (Định mức tối thiểu: 5)\n   - Giá bán: 115.000 ₫ | Trạng thái: 🔴 HẾT HÀNG\n2. **Nước rửa chén Sunlight Trà Xanh 750g**\n   - Tồn khả dụng: **5 chai** (Định mức tối thiểu: 10)\n   - Giá bán: 32.000 ₫ | Trạng thái: 🟡 SẮP HẾT\n\n💡 *Gợi ý: Bạn có thể nhập nhanh hàng bằng lệnh: \"Nhập 10 [tên sản phẩm]\" để bổ sung kho kịp thời!*",
       "tier": 0,
       "provider": "DETERMINISTIC",
       "trace": "Rule exact",
@@ -117,7 +117,7 @@
     },
     {
       "query": "Đề xuất mặt hàng cần nhập",
-      "response": "**GỢI Ý NHẬP HÀNG (6 mặt hàng)**:\n• **Giấy vệ sinh Paseo 10 cuộn 3 lớp** (SKU: PS-10C): Khả dụng **0**, Tốc độ bán **0 lốc/ngày**. Đề xuất nhập: **10 lốc**\n• **Nước rửa chén Sunlight Trà Xanh 750g** (SKU: SL-TX-750): Khả dụng **5**, Tốc độ bán **0 chai/ngày**. Đề xuất nhập: **15 chai**\n• **Bàn chải đánh răng Colgate SlimSoft** (SKU: CG-SLIM): Khả dụng **60**, Tốc độ bán **0 cây/ngày**. Đề xuất nhập: **0 cây** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n• **Mì Hảo Hảo tôm chua cay 75g** (SKU: HH-TCC): Khả dụng **190**, Tốc độ bán **0 gói/ngày**. Đề xuất nhập: **0 gói** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n• **Nước tăng lực Red Bull 250ml** (SKU: RB-250): Khả dụng **96**, Tốc độ bán **0 lon/ngày**. Đề xuất nhập: **0 lon** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n• **Dầu ăn Simply Đậu Nành 1L** (SKU: SP-DN-1L): Khả dụng **36**, Tốc độ bán **0 chai/ngày**. Đề xuất nhập: **0 chai** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n\n*Bạn có thể bấm trực tiếp vào gợi ý để tạo đề xuất nhập kho ngay.*",
+      "response": "Đã tạo đề xuất xuất kho: **Xuất kho / Giảm 1 cái \"p_135\" khỏi kho \"Kho Tổng Trung Tâm\"**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*",
       "tier": 0,
       "provider": "DETERMINISTIC",
       "trace": "Rule exact",

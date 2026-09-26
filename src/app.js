@@ -129,6 +129,7 @@ const ICONS={
   ,'file-text':'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6"/>'
   ,'undo-2':'<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-1"/>'
   ,'chevron-right':'<path d="m9 18 6-6-6-6"/>'
+  ,'chevron-down':'<path d="m6 9 6 6 6-6"/>'
   ,'user':'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'
   ,'store':'<path d="M3 9l2-6h14l2 6"/><path d="M5 13v8h14v-8M9 21v-6h6v6"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/>'
   ,'eye':'<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
@@ -191,10 +192,7 @@ function headerActions(){
   } else if(auth.status===AUTH_STATES.AUTHENTICATED_NO_SHOP){
     userBadge=`<button class="user-badge-btn" data-action="create-shop-modal" title="Tạo cửa hàng mới">${icon('store')}<span>Tạo Shop</span></button>`;
   } else {
-    const isDemo = sessionStorage.getItem('qbiz_preview_demo') === '1';
-    userBadge = isDemo
-      ? `<button class="user-badge-btn" data-action="open-auth-modal" title="Đang ở chế độ demo · Nhấn để đăng nhập"><span class="badge" style="background:#0284c7;color:#fff;font-size:10px;padding:1px 5px;border-radius:4px;font-weight:700">DEMO</span><span>Đăng nhập</span></button>`
-      : `<button class="user-badge-btn" data-action="open-auth-modal" title="Đăng nhập">${icon('user')}<span>Đăng nhập</span></button>`;
+    userBadge = `<button class="user-badge-btn" data-action="open-auth-modal" title="Đăng nhập">${icon('user')}<span>Đăng nhập</span></button>`;
   }
   top.innerHTML=`${userBadge}<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${alerts.length?`<b>${alerts.length}</b>`:''}</button>${scan}`;
 }
@@ -648,19 +646,19 @@ function renderDashboard(){
             </div>
           </div>
 
-          <!-- 3 NÚT ƯU TIÊN KHU ĐẦU TRANG: Tạo shop | Đăng nhập | Xem demo (1 dòng sạch sẽ, không rớt chữ) -->
-          <div class="entry-cta-bar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-            <button type="button" class="primary-btn entry-cta-btn" data-action="create-shop-modal" title="Tạo cửa hàng mới" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px;font-size:clamp(11.5px,3vw,13px);font-weight:700;border-radius:10px;min-height:50px;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;color:#fff;box-shadow:0 2px 6px rgba(2,132,199,0.25);cursor:pointer;white-space:nowrap">
+          <!-- HÀNG 1: Tạo shop mới & Đăng nhập (cùng 1 hàng, icon và chữ ngang hàng) | HÀNG 2: Xem shop demo (hàng dưới) -->
+          <div class="entry-cta-bar" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+            <button type="button" class="primary-btn entry-cta-btn" data-action="create-shop-modal" title="Tạo cửa hàng mới" style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 8px;font-size:clamp(12px,3.2vw,13.5px);font-weight:700;border-radius:10px;min-height:46px;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;color:#fff;box-shadow:0 2px 6px rgba(2,132,199,0.25);cursor:pointer;white-space:nowrap">
               ${icon('store')}
-              <span style="white-space:nowrap">Tạo shop</span>
+              <span style="white-space:nowrap">Tạo shop mới</span>
             </button>
-            <button type="button" class="secondary-btn entry-cta-btn" data-action="open-auth-modal" title="Đăng nhập tài khoản" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px;font-size:clamp(11.5px,3vw,13px);font-weight:700;border-radius:10px;min-height:50px;background:#fff;border:1.5px solid #cbd5e1;color:#1e293b;box-shadow:0 1px 2px rgba(0,0,0,0.04);cursor:pointer;white-space:nowrap">
+            <button type="button" class="secondary-btn entry-cta-btn" data-action="open-auth-modal" title="Đăng nhập tài khoản" style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 8px;font-size:clamp(12px,3.2vw,13.5px);font-weight:700;border-radius:10px;min-height:46px;background:#fff;border:1.5px solid #cbd5e1;color:#1e293b;box-shadow:0 1px 2px rgba(0,0,0,0.04);cursor:pointer;white-space:nowrap">
               ${icon('user')}
               <span style="white-space:nowrap">Đăng nhập</span>
             </button>
-            <button type="button" class="ghost-btn entry-cta-btn demo-cta-btn" data-action="preview-demo" title="Trải nghiệm ngay bản demo" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px;font-size:clamp(11.5px,3vw,13px);font-weight:700;border-radius:10px;min-height:50px;background:#f0f9ff;border:1.5px dashed #0284c7;color:#0284c7;box-shadow:0 1px 2px rgba(0,0,0,0.02);cursor:pointer;white-space:nowrap">
+            <button type="button" class="ghost-btn entry-cta-btn demo-cta-btn" data-action="preview-demo" title="Trải nghiệm ngay bản demo" style="grid-column:1/-1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 14px;font-size:clamp(12px,3.2vw,13.5px);font-weight:700;border-radius:10px;min-height:46px;background:#f0f9ff;border:1.5px dashed #0284c7;color:#0284c7;box-shadow:0 1px 2px rgba(0,0,0,0.02);cursor:pointer;white-space:nowrap">
               ${icon('eye')}
-              <span style="white-space:nowrap">Xem demo</span>
+              <span style="white-space:nowrap">Xem shop demo</span>
             </button>
           </div>
 
@@ -706,7 +704,7 @@ function renderDashboard(){
             <input type="email" id="quickLoginEmail" placeholder="Email đăng nhập" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff" />
             <input type="password" id="quickLoginPassword" placeholder="Mật khẩu" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff" />
           </div>
-          <button type="button" class="primary-btn" id="quickLoginBtn" style="width:100%;padding:10px 16px;border-radius:8px;font-weight:700;font-size:13px;justify-content:center;gap:6px;box-shadow:0 2px 6px rgba(2,132,199,0.2)">${icon('user')} Đăng nhập</button>
+          <button type="button" class="primary-btn" id="quickLoginBtn" style="width:100%;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:10px;font-weight:700;font-size:13.5px;min-height:46px;box-shadow:0 2px 6px rgba(2,132,199,0.25);cursor:pointer;white-space:nowrap">${icon('user')} <span>Đăng nhập</span></button>
           <div style="text-align:center;margin-top:8px">
             <button type="button" class="ghost-btn" id="quickForgotPasswordBtn" data-action="open-forgot-password-modal" style="font-size:12px;color:#64748b;text-decoration:none;cursor:pointer;padding:4px 8px">Quên mật khẩu?</button>
           </div>
@@ -723,31 +721,33 @@ function renderDashboard(){
         const activeRoleKey = getActiveDemoRole();
         const activeRoleMeta = DEMO_ROLES[activeRoleKey] || DEMO_ROLES.OWNER;
         return `
-        <section class="card demo-compact-header demo-preview-banner" style="margin-bottom:10px;padding:6px 10px;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+        <section class="card demo-compact-header demo-preview-banner" style="margin-bottom:10px;padding:6px 8px;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.03)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding-bottom:5px;margin-bottom:5px;border-bottom:1px solid #f1f5f9">
             <div style="display:flex;align-items:center;gap:6px;min-width:0">
-              <span class="badge" style="background:#0284c7;color:#fff;font-weight:700;font-size:9.5px;padding:1px 5px;border-radius:4px;letter-spacing:0.04em;flex-shrink:0">DEMO</span>
+              <span class="badge" style="background:#0284c7;color:#fff;font-weight:700;font-size:9px;padding:1px 5px;border-radius:4px;letter-spacing:0.04em;flex-shrink:0">DEMO</span>
               <strong style="font-size:11.5px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(activeDemoInd.shop.name)}</strong>
             </div>
             <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-              <button type="button" class="ghost-btn tiny" data-action="reset-demo" title="Khôi phục dữ liệu gốc" style="font-size:10.5px;padding:2px 6px;color:#64748b;border:1px solid #e2e8f0;border-radius:5px;cursor:pointer">Làm mới</button>
-              <button type="button" class="ghost-btn tiny" data-action="exit-demo" title="Thoát demo" style="font-size:10.5px;padding:2px 6px;color:#dc2626;border:1px solid #fecaca;background:#fff;border-radius:5px;cursor:pointer">Thoát demo</button>
+              <button type="button" class="ghost-btn tiny" data-action="reset-demo" title="Khôi phục dữ liệu gốc" style="font-size:10.5px;font-weight:600;padding:2px 6px;color:#64748b;border:1px solid #cbd5e1;background:#fff;border-radius:4px;cursor:pointer">Làm mới</button>
+              <button type="button" class="ghost-btn tiny" data-action="exit-demo" title="Thoát demo" style="font-size:10.5px;font-weight:600;padding:2px 6px;color:#dc2626;border:1px solid #fecaca;background:#fff5f5;border-radius:4px;cursor:pointer">Thoát demo</button>
             </div>
           </div>
-          <div class="demo-selector-row" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            <button type="button" class="demo-selector-card" data-action="open-demo-role-modal" style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:5px 8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;text-align:left;position:relative">
-              <span style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.02em;line-height:1">Vai trò</span>
-              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:2px;line-height:1.2">
-                <strong style="font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(activeRoleMeta.label)}</strong>
-                <span style="font-size:9px;color:#94a3b8;margin-left:4px">▼</span>
+          <div class="demo-selector-row" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%">
+            <button type="button" class="demo-selector-card demo-role-btn" data-action="open-demo-role-modal" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:7px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;min-height:38px">
+              <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:#e0f2fe;color:#0284c7;flex-shrink:0">${icon('user')}</span>
+              <div style="display:flex;flex-direction:column;min-width:0;flex:1">
+                <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.03em;line-height:1">Vai trò</span>
+                <strong style="font-size:11.5px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;line-height:1.2">${esc(activeRoleMeta.label)}</strong>
               </div>
+              <span style="display:flex;align-items:center;color:#94a3b8;flex-shrink:0;margin-left:auto">${icon('chevron-down')}</span>
             </button>
-            <button type="button" class="demo-selector-card" data-action="open-demo-industry-modal" style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:5px 8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;text-align:left;position:relative">
-              <span style="font-size:9.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.02em;line-height:1">Ngành</span>
-              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:2px;line-height:1.2">
-                <strong style="font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(activeDemoInd.shortName)}</strong>
-                <span style="font-size:9px;color:#94a3b8;margin-left:4px">▼</span>
+            <button type="button" class="demo-selector-card demo-industry-btn" data-action="open-demo-industry-modal" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:7px;cursor:pointer;text-align:left;width:100%;box-sizing:border-box;min-height:38px">
+              <span style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:#fce7f3;color:#ec4899;flex-shrink:0">${icon('store')}</span>
+              <div style="display:flex;flex-direction:column;min-width:0;flex:1">
+                <span style="font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.03em;line-height:1">Ngành</span>
+                <strong style="font-size:11.5px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;line-height:1.2">${esc(activeDemoInd.shortName)}</strong>
               </div>
+              <span style="display:flex;align-items:center;color:#94a3b8;flex-shrink:0;margin-left:auto">${icon('chevron-down')}</span>
             </button>
           </div>
         </section>
