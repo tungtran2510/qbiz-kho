@@ -301,8 +301,8 @@ export function validateProposal(proposal, currentState, actor = { role: 'owner'
 
   // 3. Section G: Quantity & Unit Validation
   const { parameters = {}, intent } = proposal;
-  if (intent === 'create_receipt_proposal' || intent === 'RECEIVE_STOCK') {
-    if (!parameters.productId) errors.push('Thiếu mã sản phẩm cần nhập.');
+  if (intent === 'create_receipt_proposal' || intent === 'RECEIVE_STOCK' || intent === 'create_issue_proposal' || intent === 'ISSUE_STOCK') {
+    if (!parameters.productId) errors.push('Thiếu mã sản phẩm.');
     
     const prod = (currentState?.data?.products || []).find(p => p.id === parameters.productId);
     const qtyCheck = validateQuantityAndUnit({
@@ -315,6 +315,16 @@ export function validateProposal(proposal, currentState, actor = { role: 'owner'
     // Section H: Warehouse Scope
     const scopeCheck = validateWarehouseScope(actor, parameters.warehouseId, null, null, currentState);
     if (!scopeCheck.allowed) errors.push(scopeCheck.error);
+
+    // For issue / reduce: check if stock is sufficient
+    if (intent === 'create_issue_proposal' || intent === 'ISSUE_STOCK') {
+      const whId = parameters.warehouseId || (currentState?.data?.warehouses || [])[0]?.id;
+      const lv = whId ? levelFor(currentState?.data, parameters.productId, whId) : null;
+      const avail = lv ? available(lv) : 0;
+      if (Number(parameters.qty) > avail) {
+        errors.push(`Số lượng xuất (${parameters.qty}) vượt quá số lượng có thể bán hiện có (${avail}).`);
+      }
+    }
 
   } else if (intent === 'create_transfer_proposal' || intent === 'TRANSFER_STOCK') {
     if (!parameters.fromWarehouseId || !parameters.toWarehouseId) errors.push('Thiếu kho xuất hoặc kho nhận.');
@@ -685,6 +695,28 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
         };
       }
 
+    } else if (proposal.intent === 'create_issue_proposal' || proposal.intent === 'ISSUE_STOCK') {
+      const { productId, warehouseId, qty, reason } = proposal.parameters;
+      // Call domain engine issue
+      executionResult = await engine.issue({
+        productId,
+        warehouseId,
+        qty: Number(qty),
+        reference: reason || proposal.human_summary,
+        operationId: opKey,
+      });
+
+      // Section V: Post-Write Reconciliation Check
+      const recon = await verifyLedgerReconciliation(productId, warehouseId);
+      if (!recon.pass) {
+        logAuditEvent('RECONCILIATION_FAILED', { productId, warehouseId, mismatch: recon.mismatch });
+        proposal.status = PROPOSAL_STATUS.FAILED;
+        return {
+          success: false,
+          error: `Giao dịch đã ghi nhưng đối soát sổ kho thất bại. Yêu cầu kiểm tra sổ cái.`,
+        };
+      }
+
     } else if (proposal.intent === 'create_transfer_proposal' || proposal.intent === 'TRANSFER_STOCK') {
       const { fromWarehouseId, toWarehouseId, lines, note } = proposal.parameters;
       // Call domain engine createTransfer
@@ -805,6 +837,29 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
       const memoryModule = await import('./memory.js');
       const memoryItem = memoryModule.commitMemory(proposal.parameters);
       executionResult = { memoryItem };
+
+    } else if (proposal.intent === 'update_product_status' || proposal.intent === 'UPDATE_PRODUCT_STATUS') {
+      const { productId, active } = proposal.parameters || {};
+      const prod = (appState.data?.products || []).find(p => p.id === productId);
+      if (!prod) throw new Error(`Không tìm thấy sản phẩm ${productId} để cập nhật trạng thái.`);
+      executionResult = await engine.updateItem({
+        ...prod,
+        active: Boolean(active),
+      }, opKey);
+
+    } else if (proposal.intent === 'update_product_price' || proposal.intent === 'UPDATE_PRODUCT_PRICE') {
+      const { productId, price, costPrice } = proposal.parameters || {};
+      const prod = (appState.data?.products || []).find(p => p.id === productId);
+      if (!prod) throw new Error(`Không tìm thấy sản phẩm ${productId} để cập nhật giá.`);
+      const patch = { ...prod };
+      if (price != null) patch.price = Number(price);
+      if (costPrice != null) patch.purchase_price = Number(costPrice);
+      executionResult = await engine.updateItem(patch, opKey);
+
+    } else if (proposal.intent === 'create_warehouse' || proposal.intent === 'CREATE_WAREHOUSE') {
+      const { name } = proposal.parameters || {};
+      if (!name?.trim()) throw new Error('Tên kho là bắt buộc.');
+      executionResult = await engine.createWarehouse(name.trim());
     }
 
     // Refresh application state snapshot so in-memory levels reflect committed DB writes

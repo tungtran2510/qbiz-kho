@@ -614,13 +614,41 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['may in', 'cai may in', 'mo may in', 'thiet bi in', 'sua may in', 'in thu', 'vao may in'],
-    example_phrases: ['mở máy in', 'cài máy in', 'sửa máy in', 'vào máy in'],
+    aliases: [
+      'may in', 'cai may in', 'mo may in', 'thiet bi in', 'sua may in', 'in thu', 'vao may in',
+      'cai dat may in', 'mo cai dat may in', 'cau hinh may in', 'thiet lap may in',
+      'ket noi may in', 'may in hoa don', 'may in bill', 'may in nhiet', 'may in tem',
+      'in va thiet bi', 'thiet bi va in', 'mau in', 'cai dat mau in', 'nhat ky in',
+      'lich su in', 'in test', 'test may in'
+    ],
+    example_phrases: [
+      'mở máy in', 'cài máy in', 'cài đặt máy in', 'mở cài đặt máy in',
+      'kết nối máy in', 'cấu hình máy in', 'thiết lập máy in', 'mẫu in',
+      'nhật ký in', 'in thử'
+    ],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
+        let targetTab = params?.tab || 'devices';
+        if (!params?.tab && params?.query) {
+          const qNorm = String(params.query).toLowerCase();
+          if (qNorm.includes('mau') || qNorm.includes('template')) {
+            targetTab = 'templates';
+          } else if (qNorm.includes('nhat ky') || qNorm.includes('lich su') || qNorm.includes('job')) {
+            targetTab = 'jobs';
+          } else {
+            targetTab = 'devices';
+          }
+        }
+        state.printTab = targetTab;
         window.__qbiz_app__.navigate('print');
-        return { success: true, message: 'Đã mở màn hình cấu hình máy in và thiết bị.' };
+        const tabNames = { devices: 'Thiết bị & Máy in', templates: 'Mẫu in', jobs: 'Nhật ký in' };
+        return {
+          success: true,
+          intent: 'OPEN_PRINT_SETTINGS',
+          actionId: 'open_print_settings',
+          message: `Đã mở màn hình **Cấu hình máy in & thiết bị** (${tabNames[targetTab] || 'Thiết bị'}).`
+        };
       }
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
     },
@@ -845,12 +873,77 @@ export const ACTION_REGISTRY = {
     required_capabilities: [PERMISSIONS.VIEW_SALES],
     execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['hoa don', 'lich su ban', 'giao dich', 'phieu ban'],
-    example_phrases: ['xem hóa đơn', 'lịch sử bán hàng', 'mở giao dịch'],
-    contexts: ['dashboard', 'sales', 'orders'],
+    aliases: [
+      'hoa don', 'lich su ban', 'giao dich', 'phieu ban', 'mo hoa don', 'xem hoa don',
+      'danh sach hoa don', 'lich su hoa don', 'trang hoa don', 'danh sach giao dich',
+      'lich su giao dich', 'mo giao dich', 'xem giao dich', 'danh sach phieu ban',
+      'lich su ban hang', 'mo phieu ban', 'xem phieu ban', 'so hoa don'
+    ],
+    example_phrases: ['xem hóa đơn', 'lịch sử bán hàng', 'mở giao dịch', 'danh sách hóa đơn'],
+    entity_types: ['TRANSACTION'],
+    contexts: ['dashboard', 'sales', 'orders', 'transactions'],
     async execute(params, state) {
-      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('transactions'); return { success: true, message: 'Đã mở lịch sử giao dịch.' }; }
+      if (window.__qbiz_app__?.navigate) {
+        state.txSearch = '';
+        window.__qbiz_app__.navigate('transactions');
+        return { success: true, message: 'Đã mở màn hình Giao dịch & phiếu (lịch sử hóa đơn bán hàng).' };
+      }
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  get_latest_transaction: {
+    id: 'get_latest_transaction',
+    name: 'Hóa đơn gần nhất',
+    feature_id: null,
+    route: 'transactions',
+    screen: 'TransactionList',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: [
+      'hoa don gan nhat', 'tim lay hoa don gan nhat', 'lay hoa don gan nhat', 'tim hoa don gan nhat',
+      'xem hoa don gan nhat', 'mo hoa don gan nhat', 'in hoa don gan nhat', 'in lai hoa don gan nhat',
+      'hoa don moi nhat', 'hoa don vua ban', 'hoa don vua tao', 'hoa don cuoi cung', 'hoa don vua roi',
+      'don gan nhat', 'don hang gan nhat', 'tim don gan nhat', 'xem don gan nhat', 'mo don gan nhat',
+      'don moi nhat', 'don vua ban', 'don vua roi', 'lay don gan nhat',
+      'phieu ban gan nhat', 'tim phieu ban gan nhat', 'xem phieu ban gan nhat', 'phieu gan nhat',
+      'phieu moi nhat', 'phieu vua ban', 'phieu vua roi', 'mo phieu ban gan nhat',
+      'giao dich gan nhat', 'tim giao dich gan nhat', 'xem giao dich gan nhat', 'giao dich moi nhat',
+      'in hoa don vua ban', 'in lai hoa don', 'in phieu gan nhat'
+    ],
+    example_phrases: [
+      'tìm lấy hóa đơn gần nhất', 'hóa đơn gần nhất', 'xem hóa đơn gần nhất', 'phiếu bán gần nhất',
+      'in hóa đơn gần nhất', 'đơn hàng gần nhất', 'giao dịch gần nhất', 'hóa đơn vừa bán'
+    ],
+    entity_types: ['TRANSACTION', 'ORDER'],
+    contexts: ['dashboard', 'sales', 'orders', 'transactions'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return await executeSkill('latest-transaction', params, context, state);
+    },
+  },
+
+  search_transactions: {
+    id: 'search_transactions',
+    name: 'Tìm kiếm hóa đơn',
+    feature_id: null,
+    route: 'transactions',
+    screen: 'TransactionList',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['tim hoa don', 'tra cuu hoa don', 'tim phieu ban', 'tim giao dich', 'tim don hang'],
+    example_phrases: ['tìm hóa đơn', 'tra cứu hóa đơn', 'tìm phiếu bán'],
+    entity_types: ['TRANSACTION', 'ORDER'],
+    contexts: ['dashboard', 'sales', 'orders', 'transactions'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return await executeSkill('search-transaction', params, context, state);
     },
   },
 
@@ -860,8 +953,8 @@ export const ACTION_REGISTRY = {
     required_capabilities: [PERMISSIONS.VIEW_SALES],
     execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['bao cao', 'thong ke', 'tong hop', 'xem bao cao'],
-    example_phrases: ['mở báo cáo', 'xem thống kê', 'báo cáo doanh thu'],
+    aliases: ['trang bao cao', 'mo bao cao', 'xem bao cao', 'trung tam bao cao', 'mo thong ke'],
+    example_phrases: ['mở báo cáo', 'xem thống kê', 'vào trang báo cáo', 'mở thống kê'],
     contexts: ['dashboard', 'products', 'sales'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('reports'); return { success: true, message: 'Đã mở trang báo cáo.' }; }
@@ -909,8 +1002,8 @@ export const ACTION_REGISTRY = {
     required_capabilities: [],
     execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['che do kinh doanh', 'doi che do', 'mo hinh kinh doanh', 'ban le', 'ban si', 'fnb', 'dich vu'],
-    example_phrases: ['đổi chế độ kinh doanh', 'chuyển sang bán lẻ', 'mở mô hình kinh doanh'],
+    aliases: ['che do kinh doanh', 'doi che do', 'mo hinh kinh doanh', 'doi mo hinh', 'chon mo hinh', 'chon che do kinh doanh', 'mo che do kinh doanh'],
+    example_phrases: ['đổi chế độ kinh doanh', 'chuyển sang bán lẻ', 'mở mô hình kinh doanh', 'đổi mô hình kinh doanh'],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.navigate) {
@@ -1051,9 +1144,39 @@ export const ACTION_REGISTRY = {
     aliases: ['doanh thu', 'doanh thu hom nay', 'doanh so', 'doanh so hom nay', 'ban bao nhieu', 'hom nay ban bao nhieu', 'hom nay co may don', 'may don', 'bao nhieu don', 'tong ket ban hang'],
     example_phrases: ['doanh thu hôm nay', 'hôm nay có mấy đơn', 'hôm nay bán bao nhiêu'],
     contexts: ['dashboard', 'sales', 'reports'],
-    async execute(params, state) {
+    async execute(params, state, context) {
       const { executeSkill } = await import('./skills.js');
-      return executeSkill('sales-summary', params || {}, {}, state);
+      return executeSkill('sales-summary', params || {}, context || {}, state);
+    },
+  },
+
+  find_low_stock: {
+    id: 'find_low_stock', name: 'Hàng sắp hết', feature_id: 'INVENTORY_LOW',
+    route: 'products', screen: 'LowStockList',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['hang sap het', 'mat hang sap het', 'hang gan het', 'mat hang gan het', 'xem mat hang nao gan het', 'xem hang sap het', 'canh bao ton', 'ton toi thieu', 'sap can'],
+    example_phrases: ['hàng sắp hết', 'xem mặt hàng nào gần hết', 'hàng gần hết'],
+    contexts: ['dashboard', 'products', 'transfers'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('find-low-stock', params || {}, context || {}, state);
+    },
+  },
+
+  query_receipts_aggregate: {
+    id: 'query_receipts_aggregate', name: 'Thống kê nhập hàng', feature_id: 'WAREHOUSE_RECEIPT',
+    route: 'transfers', screen: 'ReceiptSummary',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'READ',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['nhap bao nhieu hang', 'thang nay nhap bao nhieu hang', 'thang nay nhap vao bao nhieu hang', 'hom nay nhap bao nhieu hang', 'da nhap bao nhieu'],
+    example_phrases: ['tháng này nhập vào bao nhiêu hàng', 'hôm nay nhập bao nhiêu hàng'],
+    contexts: ['dashboard', 'transfers', 'products'],
+    async execute(params, state, context) {
+      const { queryReceiptsAggregate } = await import('./router.js');
+      return queryReceiptsAggregate(params?.query || '', state, context || {});
     },
   },
 
@@ -1111,9 +1234,9 @@ export const ACTION_REGISTRY = {
     aliases: ['cai nay con bao nhieu', 'con bao nhieu', 'kiem tra ton', 'xem ton kho', 'con khong', 'con ton khong'],
     example_phrases: ['cái này còn bao nhiêu', 'còn bao nhiêu', 'kiểm tra tồn'],
     contexts: ['products', 'sales', 'transfers'],
-    async execute(params, state) {
+    async execute(params, state, context) {
       const { executeSkill } = await import('./skills.js');
-      return executeSkill('check-stock', params || {}, {}, state);
+      return executeSkill('check-stock', params || {}, context || {}, state);
     },
   },
 
@@ -1129,6 +1252,21 @@ export const ACTION_REGISTRY = {
     async execute(params, state, context) {
       const { executeSkill } = await import('./skills.js');
       return executeSkill('receipt-proposal', params || {}, context || {}, state);
+    },
+  },
+
+  create_issue_proposal: {
+    id: 'create_issue_proposal', name: 'Đề xuất xuất kho / Giảm tồn', feature_id: 'WAREHOUSE_ISSUE',
+    route: 'transfers', screen: 'IssueProposal',
+    required_capabilities: [PERMISSIONS.RECEIVE_STOCK],
+    execution_mode: EXECUTION_MODE.MUTATE, risk_level: 'WRITE',
+    confirmation_policy: 'PROPOSAL_REQUIRED', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['de xuat xuat kho', 'de xuat giam kho', 'giam kho', 'xuat kho', 'giam ton', 'bot ton', 'tru kho', 'xuat bot', 'xuat huy'],
+    example_phrases: ['giảm kho cái này đi hai cái', 'giảm kho 2 cái', 'xuất kho 5 cái này', 'trừ kho 2 cái'],
+    contexts: ['products', 'transfers'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return executeSkill('issue-proposal', params || {}, context || {}, state);
     },
   },
 
@@ -1148,6 +1286,178 @@ export const ACTION_REGISTRY = {
       return { success: true, message: 'Đã tìm kiếm khách hàng.' };
     },
   },
+
+  sales_summary: {
+    id: 'sales_summary',
+    name: 'Báo cáo doanh thu & Bán hàng',
+    feature_id: 'DASHBOARD',
+    route: 'dashboard',
+    screen: 'Dashboard',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: [
+      'doanh thu', 'doanh so', 'ban bao nhieu', 'ban duoc bao nhieu', 'may don', 'bao nhieu don',
+      'hom nay ban duoc bao nhieu', 'thang nay ban duoc bao nhieu', 'tong ket ban hang', 'tinh hinh ban hang',
+      'hom nay ban the nao', 'thang nay ban the nao', 'tien ban hom nay', 'tien ban thang nay',
+      'doanh thu hom nay', 'doanh thu thang nay', 'doanh so hom nay', 'doanh so thang nay'
+    ],
+    example_phrases: ['hôm nay bán bao nhiêu', 'doanh thu hôm nay', 'tháng này bán được bao nhiêu'],
+    contexts: ['dashboard', 'sales', 'reports'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      const period = params?.period || (context?.period) || 'today';
+      return await executeSkill('sales-summary', { period }, context || {}, state);
+    },
+  },
+
+  profit_inquiry: {
+    id: 'profit_inquiry',
+    name: 'Báo cáo lợi nhuận & Giá vốn',
+    feature_id: 'DASHBOARD',
+    route: 'dashboard',
+    screen: 'Dashboard',
+    required_capabilities: [PERMISSIONS.VIEW_COST],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: [
+      'loi nhuan', 'gia von', 'lai bao nhieu', 'loi bao nhieu', 'lai hay lo', 'dang lai', 'lai gop',
+      'loi duoc', 'lai duoc', 'loi hon', 'lo hay lai', 'loi lai', 'tong gia von', 'ti le loi nhuan',
+      'ty suat loi nhuan', 'profit', 'gross profit', 'thang nay loi bao nhieu', 'hai ngay nay loi nhuan bao nhieu',
+      'loi nhuan hai ngay nay la bao nhieu', 'hom nay lai bao nhieu', 'tuan nay loi nhuan bao nhieu',
+      'hai ngay nay loi bao nhieu', '2 ngay nay loi bao nhieu', 'tu dau thang den nay loi bao nhieu'
+    ],
+    example_phrases: ['tháng này lời bao nhiêu', 'lợi nhuận hai ngày nay là bao nhiêu', 'hôm nay lãi bao nhiêu'],
+    contexts: ['dashboard', 'reports'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      const period = params?.period || context?.period || 'today';
+      return await executeSkill('profit-inquiry', { period, ...params }, context || {}, state);
+    },
+  },
+
+  daily_attention: {
+    id: 'daily_attention',
+    name: 'Tiêu điểm & Cần chú ý trong ngày',
+    feature_id: 'DASHBOARD',
+    route: 'dashboard',
+    screen: 'Dashboard',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['can chu y', 'tieu diem', 'dau ngay', 'sang nay', 'cua hang the nao', 'tinh hinh cua hang', 'diem can chu y'],
+    example_phrases: ['cần chú ý gì', 'tiêu điểm hôm nay', 'cửa hàng hôm nay thế nào'],
+    contexts: ['dashboard'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return await executeSkill('daily-attention', params || {}, context || {}, state);
+    },
+  },
+
+  replenishment_suggestion: {
+    id: 'replenishment_suggestion',
+    name: 'Gợi ý & Đề xuất nhập hàng',
+    feature_id: 'PRODUCTS',
+    route: 'products',
+    screen: 'ProductList',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['goi y nhap', 'can nhap gi', 'can nhap them', 'de xuat nhap hang', 'mat hang can nhap', 'hang nao can nhap'],
+    example_phrases: ['gợi ý nhập hàng', 'cần nhập thêm gì', 'hàng nào cần nhập'],
+    contexts: ['products', 'transfers', 'dashboard'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return await executeSkill('replenishment-suggestion', params || {}, context || {}, state);
+    },
+  },
+
+  shop_health_check: {
+    id: 'shop_health_check',
+    name: 'Kiểm tra dữ liệu & Sức khỏe hệ thống',
+    feature_id: 'DASHBOARD',
+    route: 'dashboard',
+    screen: 'Dashboard',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['kiem tra du lieu', 'suc khoe cua hang', 'kiem tra he thong', 'loi du lieu'],
+    example_phrases: ['kiểm tra dữ liệu', 'sức khỏe cửa hàng'],
+    contexts: ['dashboard', 'settings'],
+    async execute(params, state) {
+      const prods = state?.data?.products || [];
+      const orders = state?.data?.orders || [];
+      const sales = state?.data?.sales || [];
+      return {
+        text: `Hệ thống dữ liệu hoạt động bình thường:\n- **${prods.length}** sản phẩm trong kho\n- **${sales.length}** phiếu bán hàng đã lưu\n- **${orders.length}** đơn hàng ghi nhận\nKhông phát hiện xung đột dữ liệu.`,
+        success: true,
+      };
+    },
+  },
+
+  top_selling_products: {
+    id: 'top_selling_products',
+    name: 'Mặt hàng & dịch vụ bán chạy',
+    feature_id: 'DASHBOARD',
+    route: 'dashboard',
+    screen: 'Dashboard',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: [
+      'ban chay', 'top ban chay', 'chay nhat', 'hang ban chay', 'mat hang ban chay',
+      'dich vu ban chay', 'dich vu ban chay nhat', 'dich vu nao ban chay', 'goi ban chay',
+      'ban nhieu nhat', 'duoc ban nhieu nhat', 'ban duoc nhieu nhat', 'dat nhieu nhat',
+      'duoc dat nhieu nhat', 'goi tri lieu nao duoc dat nhieu nhat', 'doanh thu cao nhat',
+      'dich vu nao doanh thu cao nhat', 'mon nao ban chay', 'mon ban chay', 'ban chay nhat'
+    ],
+    example_phrases: [
+      'mặt hàng nào bán chạy nhất tháng này', 'top bán chạy',
+      'dịch vụ nào được bán nhiều nhất', 'báo cáo dịch vụ nào được bán nhiều nhất',
+      'gói trị liệu nào được đặt nhiều nhất', 'món nào bán chạy nhất hôm nay',
+      'dịch vụ nào doanh thu cao nhất'
+    ],
+    contexts: ['dashboard', 'sales', 'reports'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      const query = params?.query || '';
+      const period = params?.period || (query.includes('hom nay') ? 'today' : (query.includes('2 ngay') ? '2_days' : 'month'));
+      const sortBy = params?.sortBy || ((query.includes('doanh thu') || query.includes('doanh so')) ? 'revenue' : 'quantity');
+      return await executeSkill('top-selling-products', { period, query, sortBy, ...params }, context || {}, state);
+    },
+  },
+
+  price_lookup: {
+    id: 'price_lookup',
+    name: 'Tra cứu giá bán',
+    feature_id: 'PRODUCTS',
+    route: 'products',
+    screen: 'ProductList',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'READ',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['gia bao nhieu', 'bao nhieu tien', 'tra gia', 'gia ban', 'don gia'],
+    example_phrases: ['sản phẩm này giá bao nhiêu', 'cái này bao nhiêu tiền'],
+    contexts: ['products', 'sales', 'dashboard'],
+    async execute(params, state, context) {
+      const { executeSkill } = await import('./skills.js');
+      return await executeSkill('price-lookup', { query: params?.query || '' }, context || {}, state);
+    },
+  },
 };
 
 /**
@@ -1160,7 +1470,11 @@ export function findActionsByAlias(normalizedAlias) {
   const target = pNorm(normalizedAlias);
   if (!target) return [];
 
+  const isQuestion = /\b(nao|gi|sao|bao nhieu|may|khong|ko|k|the nao|chua)\b/i.test(target);
+  const isQueryIntent = /\b(ban chay|chay nhat|nhieu nhat|cao nhat|tot nhat|loi|lai|doanh thu|gia|con bao nhieu|con khong)\b/i.test(target);
+
   for (const [id, action] of Object.entries(ACTION_REGISTRY)) {
+    const isNavAction = action.risk_level === 'NAVIGATE' || action.execution_mode === EXECUTION_MODE.NAVIGATE;
     const list = [
       ...(action.aliases || []),
       ...(action.example_phrases || []).map(pNorm),
@@ -1177,8 +1491,15 @@ export function findActionsByAlias(normalizedAlias) {
         alias.startsWith(target + ' ') ||
         (alias.length >= 6 && target.startsWith(alias))
       ) {
+        // If target is a question or analytical query, do not allow prefix match to hijack into a NAVIGATE action!
+        if (isNavAction && (isQuestion || isQueryIntent) && alias !== target) {
+          continue;
+        }
         results.push({ action, matchScore: 85 });
       } else if (new RegExp(`(?:^|\\s)${alias.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?:\\s|$)`, 'i').test(target)) {
+        if (isNavAction && (isQuestion || isQueryIntent) && alias !== target) {
+          continue;
+        }
         results.push({ action, matchScore: 70 });
       }
     }

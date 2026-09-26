@@ -31,6 +31,12 @@ x)
 .env
 backups/
 remote-links.txt
+gateway_state.json
 *.zip
 *.exe
 tests/diag_out.txt
+deploy_out.txt
+*.jsonl
+
+.vercel
+.env*

@@ -16,29 +16,29 @@ export function norm(str) {
 }
 
 export const INTENT_TAXONOMY = {
-  OPEN: { id: 'OPEN', triggers: ['mo', 'vao', 'di toi', 'chuyen sang', 'mo giup', 'cho vao', 'dan toi', 'xem', 'chon'] },
+  OPEN: { id: 'OPEN', triggers: ['mo', 'vao', 'di toi', 'chuyen sang', 'mo giup', 'cho vao', 'dan toi', 'xem', 'chon', 'tim lay', 'lay'] },
   CREATE: { id: 'CREATE', triggers: ['them', 'tao', 'tao moi', 'them moi', 'lap', 'khoi tao'] },
   EDIT: { id: 'EDIT', triggers: ['sua', 'doi', 'thay', 'cap nhat', 'dieu chinh', 'chinh sua'] },
   DELETE: { id: 'DELETE', triggers: ['xoa', 'bo', 'loai', 'go', 'huy'] },
-  SEARCH: { id: 'SEARCH', triggers: ['tim', 'tim kiem', 'tra', 'tra cuu', 'kiem', 'xem co'] },
-  VIEW: { id: 'VIEW', triggers: ['xem', 'hien thi', 'cho xem', 'kiem tra'] },
+  SEARCH: { id: 'SEARCH', triggers: ['tim', 'tim kiem', 'tra', 'tra cuu', 'kiem', 'xem co', 'tim lay', 'lay', 'tim giup', 'tra giup'] },
+  VIEW: { id: 'VIEW', triggers: ['xem', 'hien thi', 'cho xem', 'kiem tra', 'tim lay', 'lay'] },
   ADD_QTY: { id: 'ADD_QTY', triggers: ['them', 'cong', 'tang', 'nhap them', 'nhap', 'bo sung'] },
   REMOVE_QTY: { id: 'REMOVE_QTY', triggers: ['bot', 'giam', 'tru', 'lay ra', 'xuat'] },
   MOVE: { id: 'MOVE', triggers: ['chuyen', 'chuyen kho', 'dieu chuyen', 'chuyen sang'] },
   COUNT: { id: 'COUNT', triggers: ['kiem', 'kiem kho', 'kiem ke', 'dem', 'doi chieu'] },
   PAY: { id: 'PAY', triggers: ['thanh toan', 'thu tien', 'tinh tien', 'tra tien'] },
-  PRINT: { id: 'PRINT', triggers: ['in', 'in phieu', 'in hoa don', 'in tem', 'in thu'] },
+  PRINT: { id: 'PRINT', triggers: ['in', 'in phieu', 'in hoa don', 'in tem', 'in thu', 'in lai'] },
   FILTER: { id: 'FILTER', triggers: ['loc', 'chi xem', 'hien nhung', 'tim nhung'] },
   SORT: { id: 'SORT', triggers: ['sap xep', 'xep theo', 'uu tien'] },
   REPORT: { id: 'REPORT', triggers: ['bao cao', 'thong ke', 'tong hop', 'cho biet'] },
   SUMMARIZE: { id: 'SUMMARIZE', triggers: ['tom tat', 'tong ket', 'hom nay the nao'] },
   COMPARE: { id: 'COMPARE', triggers: ['so sanh', 'doi chieu', 'chenh lech'] },
   DIAGNOSE: { id: 'DIAGNOSE', triggers: ['kiem tra loi', 'vi sao', 'tai sao', 'co van de gi'] },
-  CONFIGURE: { id: 'CONFIGURE', triggers: ['cai dat', 'cau hinh', 'thiet lap'] },
+  CONFIGURE: { id: 'CONFIGURE', triggers: ['cai dat', 'cau hinh', 'thiet lap', 'ket noi'] },
   BACKUP: { id: 'BACKUP', triggers: ['sao luu', 'backup'] },
   RESTORE: { id: 'RESTORE', triggers: ['khoi phuc', 'phuc hoi', 'restore'] },
-  CONFIRM: { id: 'CONFIRM', triggers: ['dong y', 'ok', 'oke', 'okey', 'u', 'uh', 'duoc', 'dung', 'chuan', 'lam di', 'tiep tuc', 'xac nhan', 'yes'] },
-  CANCEL: { id: 'CANCEL', triggers: ['khong', 'thoi', 'huy', 'bo', 'dung', 'khong lam', 'cancel'] },
+  CONFIRM: { id: 'CONFIRM', triggers: ['dong y', 'ok', 'oke', 'okey', 'oki', 'uk', 'uh', 'uhm', 'u', 'duoc', 'dc', 'dung', 'chuan', 'lam di', 'tiep tuc', 'xac nhan', 'yes'] },
+  CANCEL: { id: 'CANCEL', triggers: ['khong', 'ko', 'k', 'khg', 'hong', 'thoi', 'huy', 'bo', 'dung', 'khong lam', 'ko lam', 'k lam', 'cancel'] },
   UNDO: { id: 'UNDO', triggers: ['quay lai', 'hoan tac', 'lam lai nhu cu'] }
 };
 
@@ -48,10 +48,23 @@ export const ENTITY_ALIASES = {
   CUSTOMER: ['khach', 'khach hang', 'nguoi mua', 'khach le', 'dai ly', 'doi tac', 'hoi vien', 'customer'],
   SUPPLIER: ['nha cung cap', 'ncc', 'nguon hang', 'supplier', 'dau nguon'],
   ORDER: ['don', 'don hang', 'phieu', 'don ban', 'don cho', 'don chua xong'],
+  TRANSACTION: [
+    'hoa don gan nhat', 'phieu ban gan nhat', 'giao dich gan nhat',
+    'hoa don moi nhat', 'phieu ban moi nhat', 'giao dich moi nhat',
+    'hoa don vua ban', 'phieu vua ban', 'don vua ban', 'don gan nhat', 'phieu gan nhat',
+    'hoa don', 'phieu ban', 'giao dich', 'bien lai', 'phieu thu',
+    'phieu thanh toan', 'chung tu', 'so hoa don'
+  ],
   WAREHOUSE: ['kho', 'kho hang', 'chi nhanh', 'kho chinh', 'kho phu'],
   SALE: ['ban', 'ban hang', 'thu ngan', 'pos', 'gio', 'gio hang', 'tinh tien'],
   SETTINGS: ['cai dat', 'thiet lap', 'setting', 'settings', 'config', 'cau hinh'],
-  PRINT: ['may in', 'in', 'printer', 'thiet bi in', 'may in hoa don'],
+  PRINT: [
+    'cai dat may in', 'mo cai dat may in', 'cau hinh may in', 'thiet lap may in',
+    'ket noi may in', 'may in hoa don', 'thiet bi in', 'in va thiet bi',
+    'thiet bi va in', 'may in bill', 'may in nhiet', 'may in tem', 'may in',
+    'mau in', 'cai dat mau in', 'nhat ky in', 'lich su in', 'in thu', 'in test',
+    'printer', 'thiet bi'
+  ],
   REPORT: ['bao cao', 'thong ke', 'tong hop']
 };
 
@@ -66,9 +79,12 @@ export const CORRECTION_PHRASES = [
 ];
 
 export const TIME_EXPRESSIONS = {
-  'hom nay': 'TODAY', 'nay': 'TODAY', 'ngay hom nay': 'TODAY',
-  'hom qua': 'YESTERDAY', 'tuan nay': 'THIS_WEEK', 'tuan truoc': 'LAST_WEEK',
-  'thang nay': 'THIS_MONTH', 'thang truoc': 'LAST_MONTH', 'nam nay': 'THIS_YEAR',
+  'hom nay': 'TODAY', 'nay': 'TODAY', 'ngay hom nay': 'TODAY', 'hnay': 'TODAY',
+  'hom qua': 'YESTERDAY', 'hqua': 'YESTERDAY',
+  'tuan nay': 'THIS_WEEK', 'tuan truoc': 'LAST_WEEK', 'tuan trc': 'LAST_WEEK',
+  'thang nay': 'THIS_MONTH', 'thg nay': 'THIS_MONTH', 'thang nay': 'THIS_MONTH',
+  'thang truoc': 'LAST_MONTH', 'thg trc': 'LAST_MONTH', 'thang trc': 'LAST_MONTH',
+  'nam nay': 'THIS_YEAR',
   'sang nay': 'TODAY_MORNING', 'chieu nay': 'TODAY_AFTERNOON', 'toi nay': 'TODAY_EVENING',
   '7 ngay qua': 'LAST_7_DAYS', '30 ngay qua': 'LAST_30_DAYS'
 };
@@ -260,6 +276,30 @@ export function detectEntityType(normalizedText) {
           bestMatch = { entityType: entityType, alias: alias, confidence: maxConfidence };
         }
       }
+    }
+  }
+
+  // Domain Entity Priority: Specific target domains like TRANSACTION must override generic ORDER/SETTINGS
+  if (
+    normalizedText.includes('hoa don') || normalizedText.includes('phieu ban') ||
+    normalizedText.includes('giao dich') || normalizedText.includes('bien lai') ||
+    normalizedText.includes('phieu thu')
+  ) {
+    if (!normalizedText.includes('may in hoa don') && !normalizedText.includes('cai dat in hoa don') && !normalizedText.includes('mau in hoa don')) {
+      bestMatch = { entityType: 'TRANSACTION', alias: 'hoa don', confidence: 95 };
+    }
+  }
+
+  // Domain Entity Priority: Specific target domains like PRINT must override generic SETTINGS
+  if (bestMatch?.entityType === 'SETTINGS') {
+    if (
+      normalizedText.includes('may in') || normalizedText.includes('thiet bi in') ||
+      normalizedText.includes('in hoa don') || normalizedText.includes('in bill') ||
+      normalizedText.includes('mau in') || normalizedText.includes('nhat ky in') ||
+      normalizedText.includes('in tem') || normalizedText.includes('in thu') ||
+      normalizedText.includes('printer')
+    ) {
+      bestMatch = { entityType: 'PRINT', alias: 'may in', confidence: 95 };
     }
   }
   

@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-09-26T08:00:00.000Z",
+  "providers": [
+    {
+      "mode": "DETERMINISTIC",
+      "tier": 0,
+      "role": "Internal rule & dictionary fast-path",
+      "model": "rule-engine",
+      "endpoint": "in-process",
+      "status": "OPERATIONAL",
+      "latency_p50_ms": 0.24,
+      "latency_p95_ms": 2.82,
+      "latency_p99_ms": 4.67,
+      "pass_rate_pct": 100.0
+    },
+    {
+      "mode": "AUTO",
+      "tier": 1,
+      "role": "Local AI Qwen 3.5 2B + Cloud fallback",
+      "model": "qwen3.5:2b",
+      "endpoint": "http://127.0.0.1:11434",
+      "fallback_provider": "GEMINI_FALLBACK",
+      "fallback_model": "gemini-flash-lite-latest",
+      "status": "OPERATIONAL",
+      "real_ui_verified": true
+    },
+    {
+      "mode": "GEMINI",
+      "tier": 1,
+      "role": "Cloud Provider (Session-only API key)",
+      "model": "gemini-flash-lite-latest",
+      "endpoint": "https://generativelanguage.googleapis.com",
+      "status": "CONFIGURABLE",
+      "real_ui_verified": true
+    },
+    {
+      "mode": "MOCK_DEV",
+      "tier": 0,
+      "role": "Mock-dev for offline testing (Strictly blocked in production)",
+      "status": "TEST_ONLY",
+      "production_allowed": false
+    }
+  ]
+}

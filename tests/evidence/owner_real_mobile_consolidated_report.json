@@ -1,0 +1,190 @@
+{
+  "timestamp": "2026-09-26 07:56:50",
+  "entry_overlay_viewports": [
+    {
+      "viewport": "360",
+      "overlay_visible": true,
+      "ctas_single_row": true,
+      "nowrap_verified": true,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\entry_overlay_360.png"
+    },
+    {
+      "viewport": "390",
+      "overlay_visible": true,
+      "ctas_single_row": true,
+      "nowrap_verified": true,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\entry_overlay_390.png"
+    },
+    {
+      "viewport": "412",
+      "overlay_visible": true,
+      "ctas_single_row": true,
+      "nowrap_verified": true,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\entry_overlay_412.png"
+    },
+    {
+      "viewport": "430",
+      "overlay_visible": true,
+      "ctas_single_row": true,
+      "nowrap_verified": true,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\entry_overlay_430.png"
+    },
+    {
+      "viewport": "1440",
+      "overlay_visible": true,
+      "ctas_single_row": true,
+      "nowrap_verified": true,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\entry_overlay_1440.png"
+    }
+  ],
+  "demo_compact_header": {},
+  "demo_selectors": {
+    "role_modal": {
+      "opened": true,
+      "roles_count": 4,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\role_selector_open_390.png"
+    },
+    "industry_modal": {
+      "opened": true,
+      "industries_count": 4,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\industry_selector_open_390.png"
+    }
+  },
+  "demo_profit_industries": [
+    {
+      "industry": "retail",
+      "dashboard_profit_kpi": "168.550 ₫",
+      "reports_cost": "666.000 ₫",
+      "reports_gross_profit": "666.000 ₫",
+      "screenshot_390": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\demo_retail_390.png"
+    },
+    {
+      "industry": "fashion",
+      "dashboard_profit_kpi": "6.264.100 ₫",
+      "reports_cost": "8.590.000 ₫",
+      "reports_gross_profit": "8.590.000 ₫",
+      "screenshot_390": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\demo_fashion_390.png"
+    },
+    {
+      "industry": "food_beverage",
+      "dashboard_profit_kpi": "880.000 ₫",
+      "reports_cost": "486.000 ₫",
+      "reports_gross_profit": "486.000 ₫",
+      "screenshot_390": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\demo_food_beverage_390.png"
+    },
+    {
+      "industry": "service",
+      "dashboard_profit_kpi": "11.094.000 ₫",
+      "reports_cost": "3.140.000 ₫",
+      "reports_gross_profit": "3.140.000 ₫",
+      "screenshot_390": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence\\demo_service_390.png"
+    }
+  ],
+  "profit_icon_verified": true,
+  "ai_provider_badge": "AUTO: Quy tắc nội bộ & Fallback (Sẵn sàng)",
+  "ai_owner_queries": [
+    {
+      "query": "Hôm nay bán bao nhiêu?",
+      "response": "Doanh số **hôm nay**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Tháng này bán được bao nhiêu?",
+      "response": "Doanh số **tháng này**:\n- Doanh thu thực thu: **854.550 ₫**\n- Số phiếu hoàn tất: **17 phiếu**\n- Hình thức: Tiền mặt: 329.100 ₫ · Chuyển khoản: 433.900 ₫ · QR: 91.550 ₫",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Mặt hàng nào bán chạy nhất tháng này",
+      "response": "Top mặt hàng bán chạy nhất **tháng này**:\n1. **Mì Hảo Hảo tôm chua cay 75g**: đã bán **15** sản phẩm · Doanh số **67.050 ₫**\n2. **Nước tăng lực Red Bull 250ml**: đã bán **14** sản phẩm · Doanh số **210.000 ₫**\n3. **Nước rửa chén Sunlight Trà Xanh 750g**: đã bán **5** sản phẩm · Doanh số **158.400 ₫**\n4. **Giấy vệ sinh Paseo 10 cuộn 3 lớp**: đã bán **3** sản phẩm · Doanh số **345.000 ₫**\n5. **Bàn chải đánh răng Colgate SlimSoft**: đã bán **2** sản phẩm · Doanh số **74.100 ₫**",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Hàng nào sắp hết?",
+      "response": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Giấy vệ sinh Paseo 10 cuộn 3 lớp**: Còn **0 lốc** (Ngưỡng cảnh báo: 5)\n• **Nước rửa chén Sunlight Trà Xanh 750g**: Còn **5 chai** (Ngưỡng cảnh báo: 10)",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Đề xuất mặt hàng cần nhập",
+      "response": "**GỢI Ý NHẬP HÀNG (6 mặt hàng)**:\n• **Giấy vệ sinh Paseo 10 cuộn 3 lớp** (SKU: PS-10C): Khả dụng **0**, Tốc độ bán **0 lốc/ngày**. Đề xuất nhập: **10 lốc**\n• **Nước rửa chén Sunlight Trà Xanh 750g** (SKU: SL-TX-750): Khả dụng **5**, Tốc độ bán **0 chai/ngày**. Đề xuất nhập: **15 chai**\n• **Bàn chải đánh răng Colgate SlimSoft** (SKU: CG-SLIM): Khả dụng **60**, Tốc độ bán **0 cây/ngày**. Đề xuất nhập: **0 cây** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n• **Mì Hảo Hảo tôm chua cay 75g** (SKU: HH-TCC): Khả dụng **190**, Tốc độ bán **0 gói/ngày**. Đề xuất nhập: **0 gói** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n• **Nước tăng lực Red Bull 250ml** (SKU: RB-250): Khả dụng **96**, Tốc độ bán **0 lon/ngày**. Đề xuất nhập: **0 lon** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n• **Dầu ăn Simply Đậu Nành 1L** (SKU: SP-DN-1L): Khả dụng **36**, Tốc độ bán **0 chai/ngày**. Đề xuất nhập: **0 chai** *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*\n\n*Bạn có thể bấm trực tiếp vào gợi ý để tạo đề xuất nhập kho ngay.*",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Còn bao nhiêu hàng?",
+      "response": "Kho hiện có **6 mặt hàng** (tổng tồn **0** đơn vị):\n• **Bàn chải đánh răng Colgate SlimSoft**: Tồn 0 cây\n• **Mì Hảo Hảo tôm chua cay 75g**: Tồn 0 gói\n• **Giấy vệ sinh Paseo 10 cuộn 3 lớp**: Tồn 0 lốc\n• **Nước tăng lực Red Bull 250ml**: Tồn 0 lon\n• **Dầu ăn Simply Đậu Nành 1L**: Tồn 0 chai\n\n*Bạn muốn kiểm tra chi tiết mặt hàng nào?*",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Cái này còn bao nhiêu?",
+      "response": "Kho hiện có **6 mặt hàng** (tổng tồn **0** đơn vị):\n• **Bàn chải đánh răng Colgate SlimSoft**: Tồn 0 cây\n• **Mì Hảo Hảo tôm chua cay 75g**: Tồn 0 gói\n• **Giấy vệ sinh Paseo 10 cuộn 3 lớp**: Tồn 0 lốc\n• **Nước tăng lực Red Bull 250ml**: Tồn 0 lon\n• **Dầu ăn Simply Đậu Nành 1L**: Tồn 0 chai\n\n*Bạn muốn kiểm tra chi tiết mặt hàng nào?*",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Sản phẩm này giá bao nhiêu?",
+      "response": "Bạn muốn tra cứu giá của sản phẩm nào? Dưới đây là các sản phẩm hiện có:",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Mở màn hình bán hàng",
+      "response": "Đã mở màn hình bán hàng.",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Tháng này nhập bao nhiêu hàng",
+      "response": "📊 **Báo cáo nhập hàng tháng này (tháng 9/2026):**\n- Tổng số lượng đã nhập: **0** sản phẩm\n- Tổng số phiếu nhập: **1** phiếu\n*(Chưa có phiếu nhập nào phát sinh trong kỳ)*",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Kiểm kho",
+      "response": "Đã mở biểu mẫu kiểm kho.",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    },
+    {
+      "query": "Kiểm tra dữ liệu",
+      "response": "Hệ thống dữ liệu hoạt động bình thường:\n- **6** sản phẩm trong kho\n- **18** phiếu bán hàng đã lưu\n- **2** đơn hàng ghi nhận\nKhông phát hiện xung đột dữ liệu.",
+      "tier": 0,
+      "provider": "DETERMINISTIC",
+      "trace": "Rule exact",
+      "status": "PASS"
+    }
+  ],
+  "cashier_security_check": {
+    "query": "Hôm nay lời bao nhiêu?",
+    "response": "⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò **cashier** không được cấp quyền xem giá vốn và báo cáo lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).",
+    "denied": true,
+    "status": "PASS"
+  },
+  "overall_status": "ALL_PASS"
+}

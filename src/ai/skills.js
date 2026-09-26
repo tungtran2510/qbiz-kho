@@ -22,8 +22,38 @@ export const SKILL_REGISTRY = {
     name: 'Tìm kiếm sản phẩm',
     description: 'Tìm kiếm sản phẩm theo tên, mã SKU hoặc Barcode',
     async execute({ query }, context, state) {
-      const res = executeTool('search_products', { query }, state, context);
+      const GENERIC_PRICE = new Set(['san pham nay', 'cai nay', 'mon nay', 'sp nay', 'nay', 'gia bao nhieu', 'gia', 'bao nhieu', '']);
+      const qNorm = norm(query);
+      let targetProdId = null;
+      if (context?.current_product_id && (GENERIC_PRICE.has(qNorm) || !query)) {
+        targetProdId = context.current_product_id;
+      }
+      if (targetProdId) {
+        const detail = executeTool('get_product', { productId: targetProdId }, state, context);
+        if (detail.found && detail.product) {
+          const item = detail.product;
+          const avail = detail.stockTotals?.available ?? 0;
+          const onHand = detail.stockTotals?.onHand ?? 0;
+          return {
+            text: `Sản phẩm: **${item.name}** (SKU: ${item.sku || '—'})\n- Giá bán: **${new Intl.NumberFormat('vi-VN').format(item.price)} ₫**\n- Tồn khả dụng: **${avail} ${item.unit || 'cái'}** (Thực tồn: ${onHand})`,
+            product: detail.product,
+            candidates: [detail.product],
+            tier: 0,
+          };
+        }
+      }
+
+      const res = executeTool('search_products', { query: query || '' }, state, context);
       if (res.count === 0) {
+        const sampleProds = (state?.data?.products || []).slice(0, 5);
+        if (sampleProds.length > 0 && (!query || GENERIC_PRICE.has(qNorm))) {
+          return {
+            text: `Bạn muốn xem thông tin sản phẩm nào? Dưới đây là các sản phẩm trong cửa hàng:`,
+            candidates: sampleProds,
+            isAmbiguous: true,
+            tier: 0,
+          };
+        }
         return {
           text: `Không tìm thấy sản phẩm nào khớp với từ khóa "${query}".`,
           candidates: [],
@@ -34,7 +64,7 @@ export const SKILL_REGISTRY = {
         const item = res.candidates[0];
         const detail = executeTool('get_product', { productId: item.id }, state, context);
         return {
-          text: `Tìm thấy sản phẩm: **${item.name}** (SKU: ${item.sku || '—'})\n- Giá bán: ${new Intl.NumberFormat('vi-VN').format(item.price)} ₫\n- Tồn khả dụng: **${item.available} ${item.unit}** (Thực tồn: ${item.onHand})`,
+          text: `Tìm thấy sản phẩm: **${item.name}** (SKU: ${item.sku || '—'})\n- Giá bán: **${new Intl.NumberFormat('vi-VN').format(item.price)} ₫**\n- Tồn khả dụng: **${item.available} ${item.unit}** (Thực tồn: ${item.onHand})`,
           product: detail.product,
           candidates: res.candidates,
           tier: 0,
@@ -59,7 +89,14 @@ export const SKILL_REGISTRY = {
       // 1. Context binding: Check if a product is actively viewed
       let targetId = productId || context?.current_product_id;
 
-      if (!targetId && query) {
+      const qNorm = norm(query);
+      const GENERIC_TERMS = new Set([
+        'hang', 'hang hoa', 'san pham', 'sp', 'do', 'do dac', 'mat hang', 'cai', 'cai nay', 'mon', 'loai', 'tat ca',
+        'con bao nhieu', 'con bao nhieu hang', 'cai nay con bao nhieu', 'kiem ton', 'kiem tra ton', 'ton kho', 'con khong', 'con ton khong'
+      ]);
+      const isGeneric = !query || GENERIC_TERMS.has(qNorm) || qNorm.includes('con bao nhieu') || qNorm.includes('cai nay con');
+
+      if (!targetId && query && !isGeneric) {
         const resolved = resolveProduct(query, state?.data?.products || [], context);
         if (resolved.isExact || (resolved.candidates.length === 1 && !resolved.isAmbiguous)) {
           targetId = resolved.bestMatch ? resolved.bestMatch.id : resolved.candidates[0].id;
@@ -73,7 +110,7 @@ export const SKILL_REGISTRY = {
           };
         } else {
           return {
-            text: `Không tìm thấy sản phẩm "${query}" trong kho.`,
+            text: `Không tìm thấy sản phẩm "${query}" trong kho. Bạn có thể chọn từ danh sách sau:`,
             isAmbiguous: true,
             status: 'NEEDS_CLARIFICATION',
             candidates: (state?.data?.products || []).slice(0, 5),
@@ -83,28 +120,32 @@ export const SKILL_REGISTRY = {
       }
 
       if (!targetId) {
+        const prods = state?.data?.products || [];
+        const totalStock = prods.reduce((sum, p) => sum + (Number(p.stock ?? p.onHand ?? p.available) || 0), 0);
+        const sampleLines = prods.slice(0, 5).map(p => `• **${p.name}**: Tồn ${p.stock ?? p.available ?? 0} ${p.unit || 'cái'}`).join('\n');
         return {
-          text: 'Vui lòng mở một sản phẩm hoặc cung cấp tên/mã sản phẩm cần kiểm tra tồn kho.',
+          text: `Kho hiện có **${prods.length} mặt hàng** (tổng tồn **${totalStock}** đơn vị):\n${sampleLines}\n\n*Bạn muốn kiểm tra chi tiết mặt hàng nào?*`,
           isAmbiguous: true,
           status: 'NEEDS_CLARIFICATION',
-          candidates: (state?.data?.products || []).slice(0, 5),
+          candidates: prods.slice(0, 5),
           tier: 0,
         };
       }
 
       const res = executeTool('get_product', { productId: targetId }, state, context);
-      if (!res.found) {
+      if (!res.found || !res.product) {
         return { text: res.error || 'Sản phẩm không tồn tại.', tier: 0 };
       }
 
       const p = res.product;
-      const t = res.stockTotals;
-      const whBreakdown = res.warehouses
-        .map(w => `  • **${w.warehouseName}**: Còn bán được **${w.available}**, thực tế ${w.onHand}`)
+      const t = res.stockTotals || { available: 0, onHand: 0, reserved: 0 };
+      const unit = p.unit || 'cái';
+      const whBreakdown = (res.warehouses || [])
+        .map(w => `  • **${w.warehouseName || 'Kho'}**: Còn bán được **${w.available ?? 0}**, thực tế ${w.onHand ?? 0}`)
         .join('\n');
 
       return {
-        text: `Sản phẩm **${p.name}**:\n- Tổng có thể bán: **${t.available} ${p.unit}** (Thực tồn: ${t.onHand}, Đang giữ: ${t.reserved})\n- Chi tiết theo kho:\n${whBreakdown}`,
+        text: `Sản phẩm **${p.name || 'Sản phẩm'}**:\n- Tổng có thể bán: **${t.available ?? 0} ${unit}** (Thực tồn: ${t.onHand ?? 0}, Đang giữ: ${t.reserved ?? 0})\n- Chi tiết theo kho:\n${whBreakdown || '  • Chưa có dữ liệu kho'}`,
         product: p,
         stockTotals: t,
         warehouses: res.warehouses,
@@ -146,10 +187,10 @@ export const SKILL_REGISTRY = {
   'sales-summary': {
     id: 'sales-summary',
     name: 'Tổng kết doanh thu',
-    description: 'Thống kê tình hình bán hàng hôm nay hoặc tháng này',
-    async execute({ period = 'today' }, context, state) {
-      const res = executeTool('get_sales_summary', { period }, state, context);
-      const periodLabel = period === 'month' ? 'tháng này' : 'hôm nay';
+    description: 'Thống kê tình hình bán hàng hôm nay, tháng này, 2 ngày nay hoặc tùy chọn',
+    async execute({ period = 'today', customStart = null, customEnd = null }, context, state) {
+      const res = executeTool('get_sales_summary', { period, customStart, customEnd }, state, context);
+      const periodLabel = res.periodLabel || (period === 'month' ? 'tháng này' : (period === '2_days' ? 'hai ngày nay' : (period === 'today' ? 'hôm nay' : period)));
 
       let payInfo = [];
       if (res.paymentMethods.cash) payInfo.push(`Tiền mặt: ${new Intl.NumberFormat('vi-VN').format(res.paymentMethods.cash)} ₫`);
@@ -163,6 +204,8 @@ export const SKILL_REGISTRY = {
       return {
         text: `Doanh số **${periodLabel}**:\n- Doanh thu thực thu: **${res.formattedRevenue}**\n- Số phiếu hoàn tất: **${res.completedCount} phiếu**${debtNotice}${payInfo.length ? `\n- Hình thức: ${payInfo.join(' · ')}` : ''}`,
         summary: res,
+        intent: 'SALES_SUMMARY',
+        skillId: 'sales-summary',
         tier: 0,
       };
     },
@@ -267,7 +310,7 @@ export const SKILL_REGISTRY = {
     id: 'receipt-proposal',
     name: 'Đề xuất nhập hàng',
     description: 'Tạo Structured Proposal để nhập hàng vào kho (không tự ý ghi DB)',
-    async execute({ productId, warehouseId, qty = 20, reason }, context, state) {
+    async execute({ productId, warehouseId, qty = 20, reason, variantId, variantName }, context, state) {
       const targetId = productId || context?.current_product_id || (state?.data?.products || [])[0]?.id;
       if (!targetId) {
         return {
@@ -282,10 +325,44 @@ export const SKILL_REGISTRY = {
         warehouseId: targetWh,
         qty: Number(qty) || 20,
         reason: reason || 'Đề xuất nhập thêm hàng từ trợ lý AI',
+        variantId,
+        variantName,
       }, state, context);
 
       return {
         text: `Đã tạo đề xuất nhập kho: **${proposal.human_summary}**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*`,
+        proposal,
+        tier: 0,
+      };
+    },
+  },
+
+  // 7b. issue-proposal
+  'issue-proposal': {
+    id: 'issue-proposal',
+    name: 'Đề xuất xuất kho / Giảm tồn',
+    description: 'Tạo Structured Proposal để xuất kho hoặc giảm trừ tồn kho (không tự ý ghi DB)',
+    async execute({ productId, warehouseId, qty = 1, reason, variantId, variantName }, context, state) {
+      const targetId = productId || context?.current_product_id || (state?.data?.products || [])[0]?.id;
+      if (!targetId) {
+        return {
+          text: 'Vui lòng mở một sản phẩm hoặc chỉ định sản phẩm cần giảm trừ tồn kho.',
+          tier: 0,
+        };
+      }
+
+      const targetWh = warehouseId || context?.warehouse_id || (state?.data?.warehouses || [])[0]?.id;
+      const proposal = executeTool('create_issue_proposal', {
+        productId: targetId,
+        warehouseId: targetWh,
+        qty: Number(qty) || 1,
+        reason: reason || 'Đề xuất giảm kho / xuất kho từ trợ lý AI',
+        variantId,
+        variantName,
+      }, state, context);
+
+      return {
+        text: `Đã tạo đề xuất xuất kho: **${proposal.human_summary}**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*`,
         proposal,
         tier: 0,
       };
@@ -367,6 +444,83 @@ export const SKILL_REGISTRY = {
     },
   },
 
+  // 9b. update-product-status
+  'update-product-status': {
+    id: 'update-product-status',
+    name: 'Đổi trạng thái kinh doanh',
+    description: 'Tạo Structured Proposal để mở bán trở lại hoặc ngừng kinh doanh sản phẩm',
+    async execute({ productId, active, reason }, context, state) {
+      const targetId = productId || context?.current_product_id;
+      if (!targetId) {
+        return {
+          text: 'Vui lòng mở một sản phẩm hoặc chỉ định sản phẩm cần cập nhật trạng thái.',
+          tier: 0,
+        };
+      }
+      const proposal = executeTool('create_update_product_status_proposal', {
+        productId: targetId,
+        active: Boolean(active),
+        reason,
+      }, state, context);
+      return {
+        text: `Đã tạo đề xuất: **${proposal.human_summary}**.\n*(Chưa cập nhật trực tiếp - chờ xác nhận)*`,
+        proposal,
+        tier: 0,
+      };
+    },
+  },
+
+  // 9c. update-product-price
+  'update-product-price': {
+    id: 'update-product-price',
+    name: 'Cập nhật giá sản phẩm',
+    description: 'Tạo Structured Proposal để thay đổi giá bán hoặc giá nhập của sản phẩm',
+    async execute({ productId, price, costPrice, reason }, context, state) {
+      const targetId = productId || context?.current_product_id;
+      if (!targetId) {
+        return {
+          text: 'Vui lòng mở một sản phẩm hoặc chỉ định sản phẩm cần sửa giá.',
+          tier: 0,
+        };
+      }
+      const proposal = executeTool('create_update_product_price_proposal', {
+        productId: targetId,
+        price,
+        costPrice,
+        reason,
+      }, state, context);
+      return {
+        text: `Đã tạo đề xuất: **${proposal.human_summary}**.\n*(Chưa cập nhật trực tiếp - chờ xác nhận)*`,
+        proposal,
+        tier: 0,
+      };
+    },
+  },
+
+  // 9d. create-warehouse
+  'create-warehouse': {
+    id: 'create-warehouse',
+    name: 'Tạo kho mới',
+    description: 'Tạo Structured Proposal để thêm kho lưu trữ mới',
+    async execute({ name, reason }, context, state) {
+      if (!name?.trim()) {
+        return {
+          text: 'Vui lòng cho biết tên kho cần tạo mới.',
+          tier: 0,
+        };
+      }
+      const proposal = executeTool('create_warehouse_proposal', {
+        name: name.trim(),
+        reason,
+      }, state, context);
+      return {
+        text: `Đã tạo đề xuất: **${proposal.human_summary}**.\n*(Chưa tạo trực tiếp - chờ xác nhận)*`,
+        proposal,
+        tier: 0,
+      };
+    },
+  },
+
   // 10. memory-retrieve
   'memory-retrieve': {
     id: 'memory-retrieve',
@@ -425,11 +579,29 @@ export const SKILL_REGISTRY = {
     id: 'profit-inquiry',
     name: 'Tra cứu lợi nhuận & Giá vốn',
     description: 'Tra cứu lợi nhuận và giá vốn (yêu cầu quyền VIEW_COST)',
-    async execute({ period = 'today' }, context, state) {
-      const res = executeTool('get_profit_summary', { period }, state, context);
+    async execute({ period = 'today', customStart = null, customEnd = null }, context, state) {
+      const res = executeTool('get_profit_summary', { period, customStart, customEnd }, state, context);
+      const periodLabel = res.periodLabel || (period === 'month' ? 'tháng này' : (period === '2_days' ? 'hai ngày nay' : (period === 'today' ? 'hôm nay' : period)));
+
+      if (!res.hasCost) {
+        return {
+          text: `Lợi nhuận gộp **${periodLabel}**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).`,
+          summary: res,
+          hasCost: false,
+          intent: 'PROFIT_INQUIRY',
+          skillId: 'profit-inquiry',
+          tier: 0,
+        };
+      }
+
+      const txLabel = res.salesCount === 1 ? '1 giao dịch' : `${res.salesCount} giao dịch`;
+      const refundInfo = res.refundTotal > 0 ? `\n- Hoàn tiền: **${new Intl.NumberFormat('vi-VN').format(res.refundTotal)} ₫**` : '';
       return {
-        text: `Lợi nhuận gộp ${period === 'month' ? 'tháng này' : 'hôm nay'}:\n- Doanh thu: **${res.formattedRevenue}**\n- Giá vốn ước tính: **${new Intl.NumberFormat('vi-VN').format(res.cost)} ₫**\n- Lợi nhuận gộp: **${res.formattedGrossProfit}**`,
+        text: `Lợi nhuận gộp **${periodLabel}** (${txLabel}):\n- Doanh thu thực thu: **${res.formattedRevenue}**\n- Giá vốn hàng bán: **${res.formattedCost}**${refundInfo}\n- Lợi nhuận gộp: **${res.formattedGrossProfit}**${res.margin !== undefined ? ` (Tỷ suất: **${res.margin}%**)` : ''}`,
         summary: res,
+        hasCost: true,
+        intent: 'PROFIT_INQUIRY',
+        skillId: 'profit-inquiry',
         tier: 0,
       };
     },
@@ -654,6 +826,296 @@ export const SKILL_REGISTRY = {
         text: `**Chẩn đoán ca bán hàng**\n- **Hiện trạng:** ${structured.whatHappened}\n- **Doanh thu tiền mặt:** ${structured.why}\n- **Số dư két tiền:** ${structured.evidence}\n- **Bước tiếp theo:** ${structured.nextAction}`,
         diagnosis: res,
         structured,
+        tier: 0,
+      };
+    },
+  },
+
+  // 18. top-selling-products (Owner Basic Queries & Analytics)
+  'top-selling-products': {
+    id: 'top-selling-products',
+    name: 'Mặt hàng & dịch vụ bán chạy',
+    description: 'Thống kê các sản phẩm hoặc dịch vụ có số lượng bán/đặt hoặc doanh thu cao nhất trong kỳ',
+    async execute({ period = 'month', limit = 5, query = '', sortBy = 'auto' }, context, state) {
+      const sales = state?.data?.sales || [];
+      const prods = state?.data?.products || [];
+      const now = new Date();
+      const start = new Date(now);
+      if (period === 'today') {
+        start.setHours(0, 0, 0, 0);
+      } else if (period === '2_days') {
+        start.setDate(now.getDate() - 1);
+        start.setHours(0, 0, 0, 0);
+      } else if (period === 'month') {
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+      } else {
+        start.setDate(now.getDate() - 30);
+        start.setHours(0, 0, 0, 0);
+      }
+
+      const completedSales = sales.filter(s => {
+        const d = new Date(s.created_at || s.createdAt || 0);
+        return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && d >= start;
+      });
+
+      const itemMap = new Map();
+      completedSales.forEach(s => {
+        (s.items || []).forEach(it => {
+          const id = it.item_id || it.itemId || it.productId || it.id;
+          const prodObj = prods.find(p => p.id === id);
+          const name = it.name || prodObj?.name || 'Sản phẩm';
+          const qty = Number(it.quantity || 1);
+          const revenue = Number(it.line_total || it.total || it.unit_price * qty || it.price * qty || 0);
+          const isService = prodObj ? (
+            prodObj.type === 'SERVICE' || prodObj.type === 'service' || prodObj.is_service === true ||
+            ['lượt', 'buổi', 'liệu trình', 'suất'].includes(String(prodObj.unit || '').toLowerCase())
+          ) : false;
+          const unit = it.unit || prodObj?.unit || (isService ? 'lượt' : 'sản phẩm');
+
+          if (!itemMap.has(id)) {
+            itemMap.set(id, { id, name, qty: 0, revenue: 0, isService, unit });
+          }
+          const rec = itemMap.get(id);
+          rec.qty += qty;
+          rec.revenue += revenue;
+        });
+      });
+
+      let items = Array.from(itemMap.values());
+      const qNorm = String(query || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+      // Query-specific filter: If user explicitly asks for "dịch vụ", filter services if present
+      const asksService = qNorm.includes('dich vu') || qNorm.includes('tri lieu') || qNorm.includes('goi') || qNorm.includes('spa');
+      if (asksService) {
+        const serviceItems = items.filter(it => it.isService || /dịch vụ|trị liệu|gói|combo|chăm sóc|massage|gội/i.test(it.name));
+        if (serviceItems.length > 0) {
+          items = serviceItems;
+        }
+      }
+
+      // Sort by Revenue or Quantity
+      const isRevenueSort = sortBy === 'revenue' || (sortBy === 'auto' && (qNorm.includes('doanh thu') || qNorm.includes('doanh so') || qNorm.includes('tien')));
+      if (isRevenueSort) {
+        items.sort((a, b) => b.revenue - a.revenue || b.qty - a.qty);
+      } else {
+        items.sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
+      }
+
+      const periodLabel = period === 'today' ? 'hôm nay' : (period === '2_days' ? '2 ngày nay' : (period === 'month' ? 'tháng này' : '30 ngày qua'));
+
+      if (!items.length) {
+        const entityLabel = asksService ? 'dịch vụ' : 'mặt hàng / dịch vụ';
+        return {
+          text: `Chưa có giao dịch ${entityLabel} nào hoàn tất trong **${periodLabel}**.`,
+          items: [],
+          period,
+          tier: 0,
+        };
+      }
+
+      const topItems = items.slice(0, limit);
+      const isMostlyService = topItems.filter(it => it.isService || /dịch vụ|trị liệu|gói|combo|chăm sóc|massage|gội/i.test(it.name)).length >= Math.ceil(topItems.length / 2);
+
+      let headerTitle = `Top mặt hàng bán chạy nhất **${periodLabel}**:`;
+      if (isMostlyService || asksService) {
+        headerTitle = isRevenueSort ? `Top dịch vụ có doanh thu cao nhất **${periodLabel}**:` : `Top dịch vụ được bán / sử dụng nhiều nhất **${periodLabel}**:`;
+      } else if (isRevenueSort) {
+        headerTitle = `Top mặt hàng có doanh thu cao nhất **${periodLabel}**:`;
+      }
+
+      const lines = topItems.map((it, idx) => {
+        const verb = it.isService ? 'đã phục vụ' : 'đã bán';
+        const formattedRev = new Intl.NumberFormat('vi-VN').format(it.revenue);
+        if (isRevenueSort) {
+          return `${idx + 1}. **${it.name}**: Doanh thu **${formattedRev} ₫** (${verb} **${it.qty}** ${it.unit})`;
+        }
+        return `${idx + 1}. **${it.name}**: ${verb} **${it.qty}** ${it.unit} · Doanh thu **${formattedRev} ₫**`;
+      });
+
+      return {
+        text: `${headerTitle}\n${lines.join('\n')}`,
+        items: topItems,
+        period,
+        sortBy: isRevenueSort ? 'revenue' : 'quantity',
+        intent: 'TOP_SELLING_PRODUCTS',
+        skillId: 'top-selling-products',
+        tier: 0,
+      };
+    },
+  },
+
+  // 19. price-lookup (Owner Basic Queries)
+  'price-lookup': {
+    id: 'price-lookup',
+    name: 'Tra cứu giá bán',
+    description: 'Tra cứu giá bán niêm yết và chính sách giá của sản phẩm',
+    async execute({ query, productId }, context, state) {
+      let targetProd = null;
+      if (productId) {
+        targetProd = (state?.data?.products || []).find(p => p.id === productId);
+      } else if (context?.current_product_id) {
+        targetProd = (state?.data?.products || []).find(p => p.id === context.current_product_id);
+      }
+
+      if (!targetProd && query) {
+        const resolved = resolveProduct(query, state?.data?.products || [], context);
+        if (resolved.isExact || resolved.candidates.length === 1) {
+          targetProd = resolved.bestMatch || resolved.candidates[0];
+        } else if (resolved.candidates.length > 1) {
+          return {
+            text: `Tìm thấy ${resolved.candidates.length} sản phẩm phù hợp. Vui lòng chọn sản phẩm cần tra giá:`,
+            candidates: resolved.candidates,
+            isAmbiguous: true,
+            tier: 0,
+          };
+        }
+      }
+
+      if (!targetProd) {
+        const sampleProds = (state?.data?.products || []).slice(0, 5);
+        return {
+          text: 'Bạn muốn tra cứu giá của sản phẩm nào? Dưới đây là các sản phẩm hiện có:',
+          candidates: sampleProds,
+          isAmbiguous: true,
+          tier: 0,
+        };
+      }
+
+      const priceFmt = new Intl.NumberFormat('vi-VN').format(targetProd.price);
+      const costFmt = targetProd.cost_price ? ` (Giá vốn: ${new Intl.NumberFormat('vi-VN').format(targetProd.cost_price)} ₫)` : '';
+      return {
+        text: `Giá bán của **${targetProd.name}**:\n- Giá niêm yết: **${priceFmt} ₫** / ${targetProd.unit || 'cái'}${costFmt}\n- Mã SKU: ${targetProd.sku || '—'}\n- Trạng thái: ${targetProd.active !== false ? 'Đang kinh doanh' : 'Ngừng kinh doanh'}`,
+        product: targetProd,
+        tier: 0,
+      };
+    },
+  },
+
+  // 20. latest-transaction (Hóa đơn / Giao dịch gần nhất)
+  'latest-transaction': {
+    id: 'latest-transaction',
+    name: 'Hóa đơn gần nhất',
+    description: 'Tra cứu, xem hoặc in hóa đơn / phiếu bán / giao dịch gần nhất',
+    async execute({ shouldPrint = false } = {}, context, state) {
+      const res = executeTool('get_latest_transaction', {}, state, context);
+      if (!res.found || !res.transaction) {
+        return {
+          text: 'Chưa có hóa đơn hoặc giao dịch bán hàng nào được ghi nhận trên thiết bị.',
+          tier: 0,
+        };
+      }
+
+      const tx = res.transaction;
+      const isSale = res.type === 'sale';
+      const code = tx.code || tx.sale_uuid || (isSale ? 'Phiếu bán' : 'Đơn hàng');
+      const cust = tx.customer_label || 'Khách lẻ';
+      const totalNum = Number(tx.grand_total ?? tx.total ?? 0);
+      const totalFmt = new Intl.NumberFormat('vi-VN').format(totalNum) + ' ₫';
+      const dtRaw = tx.created_at || tx.createdAt || tx.date;
+      const dtStr = dtRaw ? new Date(dtRaw).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Vừa xong';
+      const items = tx.items || [];
+      const itemLines = items.slice(0, 5).map(it => {
+        const name = it.name || it.item_name || 'Sản phẩm';
+        const qty = it.quantity || 1;
+        const lineTotal = Number(it.line_total ?? it.total ?? (it.unit_price || it.price || 0) * qty);
+        return `  • **${name}**: ${qty} × ${new Intl.NumberFormat('vi-VN').format(it.unit_price || it.price || 0)} ₫ (${new Intl.NumberFormat('vi-VN').format(lineTotal)} ₫)`;
+      }).join('\n');
+      const moreItems = items.length > 5 ? `\n  • ... và còn ${items.length - 5} mặt hàng khác` : '';
+
+      const isPaid = (tx.payment_status || tx.payments?.[0]?.status) === 'PAID';
+      const payLabel = isPaid ? 'Đã thu tiền' : 'Chưa thu tiền';
+      const method = tx.payment_method || tx.payments?.[0]?.method;
+      const methodLabel = method === 'transfer' ? 'Chuyển khoản' : (method === 'qr' ? 'QR Code' : 'Tiền mặt');
+
+      // Tự động mở chi tiết hóa đơn trên màn hình để chủ shop xem ngay
+      if (typeof window !== 'undefined' && window.__qbiz_app__) {
+        try {
+          if (isSale && window.__qbiz_app__.openTransaction) {
+            window.__qbiz_app__.openTransaction(tx);
+          } else if (!isSale && window.__qbiz_app__.openOrderDetail) {
+            window.__qbiz_app__.openOrderDetail(tx.id);
+          }
+        } catch (_) {}
+      }
+
+      // Nếu người dùng yêu cầu in ngay
+      if (shouldPrint && typeof window !== 'undefined' && window.__qbiz_app__?.printDocument) {
+        try {
+          window.__qbiz_app__.printDocument({ type: 'receipt', documentId: tx.id, reprint: true });
+        } catch (_) {}
+      }
+
+      const printNotice = shouldPrint ? '\n\n🖨️ *Đã mở lệnh in phiếu ra máy in.*' : '\n\n*(Đã mở chi tiết hóa đơn trên màn hình để bạn xem, in hoặc chia sẻ)*';
+
+      return {
+        text: `📄 **Hóa đơn gần nhất:** **${code}**\n- **Khách hàng:** ${cust}\n- **Thời gian:** ${dtStr}\n- **Tổng thanh toán:** **${totalFmt}** (${payLabel} · ${methodLabel})\n- **Chi tiết (${items.length} món):**\n${itemLines || '  • Không có dòng hàng'}${moreItems}${printNotice}`,
+        transaction: tx,
+        transactionType: res.type,
+        intent: 'LATEST_TRANSACTION',
+        skillId: 'latest-transaction',
+        tier: 0,
+      };
+    },
+  },
+
+  // 21. search-transaction (Tìm kiếm hóa đơn)
+  'search-transaction': {
+    id: 'search-transaction',
+    name: 'Tìm kiếm hóa đơn & chứng từ',
+    description: 'Tìm kiếm hóa đơn theo mã phiếu, khách hàng hoặc từ khóa',
+    async execute({ query = '' } = {}, context, state) {
+      if (!query) {
+        return {
+          text: 'Vui lòng cung cấp mã hóa đơn, tên khách hàng hoặc thông tin cần tìm.',
+          tier: 0,
+        };
+      }
+      const res = executeTool('search_transactions', { query }, state, context);
+      if (res.count === 0) {
+        // Thử tìm trong orders
+        const ordRes = executeTool('search_orders', { query }, state, context);
+        if (ordRes.count === 1) {
+          if (typeof window !== 'undefined' && window.__qbiz_app__?.openOrderDetail) {
+            window.__qbiz_app__.openOrderDetail(ordRes.orders[0].id);
+          }
+          return {
+            text: `Tìm thấy đơn hàng **${ordRes.orders[0].code}** của khách **${ordRes.orders[0].customer}** (tổng ${new Intl.NumberFormat('vi-VN').format(ordRes.orders[0].total)} ₫). Đã mở chi tiết trên màn hình.`,
+            tier: 0,
+          };
+        }
+        return {
+          text: `Không tìm thấy hóa đơn hoặc phiếu bán nào khớp với từ khóa "${query}".`,
+          count: 0,
+          tier: 0,
+        };
+      }
+
+      if (res.count === 1) {
+        const txSummary = res.transactions[0];
+        const fullTx = (state?.data?.sales || []).find(s => s.id === txSummary.id);
+        if (typeof window !== 'undefined' && window.__qbiz_app__?.openTransaction && fullTx) {
+          window.__qbiz_app__.openTransaction(fullTx);
+        }
+        return {
+          text: `Tìm thấy hóa đơn **${txSummary.code}**:\n- **Khách hàng:** ${txSummary.customer}\n- **Tổng tiền:** **${new Intl.NumberFormat('vi-VN').format(txSummary.total)} ₫**\n- **Trạng thái:** ${txSummary.paymentStatus === 'PAID' ? 'Đã thu' : 'Chờ thu'}\n*(Đã mở chi tiết hóa đơn trên màn hình)*`,
+          transaction: fullTx,
+          tier: 0,
+        };
+      }
+
+      // Có nhiều kết quả: lọc trên trang transactions
+      if (typeof window !== 'undefined' && window.__qbiz_app__?.navigate) {
+        state.txSearch = query;
+        window.__qbiz_app__.navigate('transactions');
+      }
+      const lines = res.transactions.slice(0, 5).map(t =>
+        `• **${t.code}**: ${t.customer} · **${new Intl.NumberFormat('vi-VN').format(t.total)} ₫**`
+      ).join('\n');
+      return {
+        text: `Tìm thấy **${res.count} hóa đơn** phù hợp với "${query}":\n${lines}\n\n*(Đã lọc danh sách trên màn hình Giao dịch & phiếu)*`,
+        candidates: res.transactions,
+        count: res.count,
         tier: 0,
       };
     },

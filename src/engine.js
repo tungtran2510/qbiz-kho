@@ -229,8 +229,8 @@ export async function snapshot(){
   return {products,warehouses,levels,customers,suppliers,purchase_receipts,returns,refunds,shifts:shifts.sort((a,b)=>(b.opened_at||'').localeCompare(a.opened_at||'')),categories,settings,devices,registers,print_templates,print_jobs,movements:movements.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')),transfers:transfers.sort((a,b)=>(b.created_at||b.createdAt||'').localeCompare(a.created_at||a.createdAt||'')),purchase_receipts:purchase_receipts.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),returns:returns.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),refunds:refunds.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),sales:sales.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),orders:orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),outbox};
 }
 export function available(level){ return Math.max(0,(level?.onHand||0)-(level?.reserved||0)-(level?.damaged||0)); }
-export function levelFor(data,productId,warehouseId){ return data.levels.find(x=>x.productId===productId&&x.warehouseId===warehouseId) || {onHand:0,reserved:0,damaged:0}; }
-export function totalFor(data,productId){ const xs=data.levels.filter(x=>x.productId===productId); return {onHand:xs.reduce((s,x)=>s+x.onHand,0),reserved:xs.reduce((s,x)=>s+x.reserved,0),available:xs.reduce((s,x)=>s+available(x),0)}; }
+export function levelFor(data,productId,warehouseId){ return (data?.levels||[]).find(x=>x.productId===productId&&x.warehouseId===warehouseId) || {onHand:0,reserved:0,damaged:0}; }
+export function totalFor(data,productId){ const xs=(data?.levels||[]).filter(x=>x.productId===productId); return {onHand:xs.reduce((s,x)=>s+x.onHand,0),reserved:xs.reduce((s,x)=>s+x.reserved,0),available:xs.reduce((s,x)=>s+available(x),0)}; }
 
 async function changeLevel({productId,warehouseId,onHandDelta=0,reservedDelta=0,damagedDelta=0,type,qty,reason='',reference='',referenceType='',saleUuid='',groupId='',operationId='',validate=()=>{}}){
   const id=`${productId}:${warehouseId}`; const op=operationId||uuid(); const identity=await localIdentity(); let result;

@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-09-26T00:39:21.836Z",
+  "total_cases": 37102,
+  "target_minimum": 30000,
+  "target_met": true,
+  "split_counts": {
+    "TOTAL": 37102,
+    "OWNER_REAL": 452,
+    "HOLDOUT": 9044,
+    "VALIDATION": 8344,
+    "TRAINING": 19262
+  },
+  "dataset_hashes": {
+    "frozen_hidden_holdout": {
+      "path": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\ai_mega_eval\\holdout\\frozen_hidden_holdout.json",
+      "count": 9044,
+      "sha256": "915ded2d37419bbfaa16ad75eac6226ab473045415bf4116a683a340030428d1"
+    },
+    "validation_set": {
+      "path": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\ai_mega_eval\\reports\\validation_set.json",
+      "count": 8344,
+      "sha256": "bcc0aadc3b9d7a781877e83aa9332c164cb041f341cfa9c5e8545f4179533e62"
+    },
+    "training_set": {
+      "path": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\ai_mega_eval\\reports\\training_iteration_set.json",
+      "count": 19262,
+      "sha256": "5f0a3bb914d4575dcb096f0dc586cac8c96dbce1da75d71fe679cd6584635950"
+    },
+    "owner_real_golden": {
+      "path": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\ai_mega_eval\\owner_real\\owner_real_golden_set.json",
+      "count": 452,
+      "sha256": "d1a313e67f6111b3febc20a1a6c059d0b731509432e9225af4691e5f0c53ea7e"
+    }
+  },
+  "layers_covered": [
+    "L0_CONFIG_INTEGRITY",
+    "L1_OWNER_GOLDEN",
+    "L2_DETERMINISTIC_INVARIANTS",
+    "L3_INTENT_ROUTING",
+    "L4_ENTITY_RESOLUTION",
+    "L5_TOOL_SELECTION",
+    "L6_TOOL_EXECUTION",
+    "L7_DATA_GROUNDING",
+    "L8_WRITE_PROPOSAL",
+    "L9_MULTI_TURN",
+    "L10_MULTI_INTENT",
+    "L11_VOICE",
+    "L12_VIETNAMESE_ROBUSTNESS",
+    "L13_ROLE_PERMISSION",
+    "L14_TENANT_ISOLATION",
+    "L15_CHAOS",
+    "L16_SECURITY_INJECTION",
+    "L17_SCALE",
+    "L18_DEMO_INDUSTRY",
+    "L19_REAL_UI_PATH",
+    "L20_PHYSICAL_ANDROID",
+    "L21_VERSION_COMPARISON",
+    "L22_REGRESSION_FLYWHEEL"
+  ]
+}

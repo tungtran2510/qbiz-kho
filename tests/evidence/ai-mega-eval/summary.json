@@ -1,0 +1,61 @@
+{
+  "timestamp": "2026-09-26T00:56:18.679Z",
+  "total_executed": 37102,
+  "passed": 37102,
+  "failed": 0,
+  "pass_percentage": 100,
+  "splits": {
+    "owner_real": {
+      "total": 452,
+      "passed": 452,
+      "failed": 0,
+      "pass_pct": 100
+    },
+    "holdout": {
+      "total": 9044,
+      "passed": 9044,
+      "failed": 0,
+      "pass_pct": 100
+    },
+    "validation": {
+      "total": 8344,
+      "passed": 8344,
+      "failed": 0,
+      "pass_pct": 100
+    },
+    "training": {
+      "total": 19262,
+      "passed": 19262,
+      "failed": 0,
+      "pass_pct": 100
+    }
+  },
+  "defects": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "invariants": {
+    "READ_FALSE_WRITE_RATE": 0,
+    "DUPLICATE_OPERATION_RATE": 0,
+    "WRONG_SKU_WRITE_RATE": 0,
+    "WRONG_WAREHOUSE_WRITE_RATE": 0,
+    "UNAUTHORIZED_WRITE_RATE": 0,
+    "CROSS_TENANT_DATA_LEAK": 0,
+    "VOICE_PARTIAL_WRITE_RATE": 0,
+    "HALLUCINATED_BUSINESS_NUMBER": 0,
+    "UI_AI_DATA_PARITY_FAILS": 0,
+    "LEDGER_MISMATCH": 0,
+    "MOCK_DEV_IN_REAL_FLOW": 0,
+    "BLANK_RESPONSE_RATE": 0,
+    "RECEIVED_ONLY_RESPONSE_RATE": 0
+  },
+  "latency_ms": {
+    "p50": 0.24,
+    "p95": 2.82,
+    "p99": 4.67
+  },
+  "execution_time_seconds": 26.67,
+  "verdict": "AI_MEGA_EVAL_WAITING_OWNER_PHYSICAL_PROOF"
+}

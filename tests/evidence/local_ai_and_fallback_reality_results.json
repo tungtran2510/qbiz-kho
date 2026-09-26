@@ -1,0 +1,27 @@
+{
+  "local_ai_found": true,
+  "selected_local_provider": "OLLAMA",
+  "selected_local_model": "qwen3.5:2b",
+  "selected_local_endpoint": "http://127.0.0.1:11434",
+  "real_local_inference_verified": false,
+  "phone_to_pc_local_ai": "NOT_VERIFIED",
+  "cloud_fallback_provider": "GEMINI_FALLBACK",
+  "cloud_fallback_model": "gemini-flash-lite-latest",
+  "cloud_real_request_verified": true,
+  "local_request_count": 0,
+  "cloud_fallback_count": 20,
+  "missed_fallback_count": 0,
+  "false_fallback_count": 10,
+  "dashboard_cases": {
+    "case1_low_stock": "PASS",
+    "case2_generic_stock": "PASS",
+    "case3_month_receipts": "PASS",
+    "case4_reorder_suggestion": "PASS"
+  },
+  "trace_visible_dev": true,
+  "memory_isolated": true,
+  "p0_status": "PASS",
+  "p1_status": "PASS",
+  "blockers": "NONE",
+  "verdict": "NOT_READY"
+}

@@ -75,6 +75,15 @@ function formatResult(candidates) {
 export function resolveProduct(query, products, context = {}) {
   const normQuery = norm(query);
   const cleanQuery = normQuery.replace(/^(cai|chiec|mon|san pham|sp|hang|bo|loai)\s+/i, '').trim() || normQuery;
+  const GENERIC_PRODUCT_TERMS = new Set(['hang', 'hang hoa', 'san pham', 'sp', 'do', 'do dac', 'mat hang', 'cai', 'cai nay', 'mon', 'loai', 'tat ca']);
+  if (!cleanQuery || GENERIC_PRODUCT_TERMS.has(cleanQuery) || GENERIC_PRODUCT_TERMS.has(normQuery)) {
+    return {
+      candidates: [],
+      bestMatch: null,
+      isAmbiguous: true,
+      isExact: false,
+    };
+  }
   const tokens = cleanQuery.split(/\s+/).filter(w => w.length > 0);
   const candidates = [];
 

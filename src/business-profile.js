@@ -228,6 +228,34 @@ export const PRESET_RETAIL = Object.freeze({
 });
 
 /**
+ * PRESET FASHION: Apparel, boutique, shoes, accessories
+ */
+export const PRESET_FASHION = Object.freeze({
+  ...PRESET_RETAIL,
+  profile_id: 'fashion',
+  name: 'Thời trang & Phụ kiện',
+  business_type: 'FASHION',
+  capabilities: {
+    ...PRESET_RETAIL.capabilities,
+    variants: true,
+    barcode: true,
+  },
+  terminology: {
+    ...PRESET_RETAIL.terminology,
+    PRODUCT: { singular: 'Sản phẩm thời trang', plural: 'Sản phẩm', label: 'Thời trang', action_create: 'Thêm sản phẩm' },
+    CATEGORY: { singular: 'Bộ sưu tập', plural: 'Bộ sưu tập', label: 'Bộ sưu tập', action_create: 'Thêm bộ sưu tập' },
+    WAREHOUSE: { singular: 'Kho / Showroom', plural: 'Kho & Showroom', label: 'Kho', action_create: 'Thêm kho' },
+    SHIFT: { singular: 'Ca bán hàng', plural: 'Sổ ca', label: 'Ca bán hàng', action_create: 'Mở ca' },
+  },
+  metadata: {
+    ...PRESET_RETAIL.metadata,
+    base_preset: 'retail',
+    description: 'Tối ưu cho shop thời trang, quần áo, váy đầm, giày dép, phụ kiện quản lý theo size và màu sắc.',
+    created_at: '2026-09-26T00:00:00.000Z',
+  },
+});
+
+/**
  * PRESET 3: WHOLESALE (Distributor, B2B wholesale)
  */
 export const PRESET_WHOLESALE = Object.freeze({
@@ -507,9 +535,11 @@ export const PRESET_OTHER = Object.freeze({
 export const PROFILE_PRESETS = Object.freeze({
   [PRESET_GENERAL.profile_id]: PRESET_GENERAL,
   [PRESET_RETAIL.profile_id]: PRESET_RETAIL,
+  [PRESET_FASHION.profile_id]: PRESET_FASHION,
   [PRESET_WHOLESALE.profile_id]: PRESET_WHOLESALE,
   [PRESET_SERVICE.profile_id]: PRESET_SERVICE,
   [PRESET_FNB.profile_id]: PRESET_FNB,
+  'food_beverage': PRESET_FNB,
   [PRESET_CONSULTING.profile_id]: PRESET_CONSULTING,
   [PRESET_OTHER.profile_id]: PRESET_OTHER,
 });
@@ -531,6 +561,13 @@ export const BUSINESS_MODE_OPTIONS = Object.freeze([
     desc: 'Thu ngân nhanh, quét mã, ca bán',
     icon: 'shopping-bag',
     recommended_uses: ['Bán quầy thu ngân', 'Quét mã vạch nhanh', 'Mở & đóng ca bán'],
+  },
+  {
+    id: 'fashion',
+    name: 'Thời trang',
+    desc: 'Size, màu sắc, biến thể, quầy bán',
+    icon: 'tag',
+    recommended_uses: ['Thời trang & Quần áo', 'Biến thể size / màu', 'Bán hàng showroom'],
   },
   {
     id: 'fnb',
@@ -880,6 +917,8 @@ export async function setBusinessProfile(profileOrId, options = {}) {
     profile: deepClone(activeProfile),
   };
 }
+
+export const switchBusinessProfile = setBusinessProfile;
 
 /**
  * Reset profile to DEFAULT general profile

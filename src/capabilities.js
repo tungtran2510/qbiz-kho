@@ -17,6 +17,23 @@ export const ROLE_LABELS = {
   WAREHOUSE: 'Thủ kho',
 };
 
+// PLATFORM ROLE (System-level, separate from shop memberships)
+export const PLATFORM_ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+};
+
+export const PLATFORM_ROLE_LABELS = {
+  SUPER_ADMIN: 'Chủ nền tảng (Super Admin)',
+};
+
+export const PLATFORM_CAPABILITIES = {
+  VIEW_PLATFORM_CONSOLE: 'VIEW_PLATFORM_CONSOLE',
+  MANAGE_PLATFORM_SHOPS: 'MANAGE_PLATFORM_SHOPS',
+  MANAGE_PLATFORM_USERS: 'MANAGE_PLATFORM_USERS',
+  VIEW_PLATFORM_AUDIT: 'VIEW_PLATFORM_AUDIT',
+  VIEW_PLATFORM_METRICS: 'VIEW_PLATFORM_METRICS',
+};
+
 export const CAPABILITIES = {
   VIEW_DASHBOARD: 'VIEW_DASHBOARD',
   SELL: 'SELL',
@@ -132,4 +149,13 @@ export function hasCapability(role, capability) {
  */
 export function getRoleLabel(role) {
   return ROLE_LABELS[String(role).toUpperCase()] || role || 'Không xác định';
+}
+
+/**
+ * Get readable Vietnamese label for a platform role.
+ * @param {string} role
+ * @returns {string}
+ */
+export function getPlatformRoleLabel(role) {
+  return PLATFORM_ROLE_LABELS[String(role).toUpperCase()] || role || 'Không xác định';
 }

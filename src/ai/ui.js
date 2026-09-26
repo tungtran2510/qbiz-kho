@@ -7,7 +7,7 @@
 import { buildContextEnvelope, getCurrentActor, switchActor, setLastResolvedProduct, getPendingIntent, clearPendingIntent } from './context.js';
 import { routeIntent } from './router.js';
 import { confirmProposal, cancelProposal, executeProposal, PROPOSAL_STATUS } from './proposals.js';
-import { getProviderConfig, setProviderConfig, PROVIDER_MODES } from './providers.js';
+import { getProviderConfig, setProviderConfig, PROVIDER_MODES, isDevOrTestEnvironment } from './providers.js';
 import { executeAction, getSuggestedActions } from './registry.js';
 import { executeSkill } from './skills.js';
 import { levelFor } from '../engine.js';
@@ -148,10 +148,11 @@ export function initAiUI(state) {
                 <strong id="aiSheetTitle">Trợ lý QBiz</strong>
                 <span id="aiRouteBadge" class="ai-route-badge">Tổng quan</span>
               </div>
-              <small id="aiProviderBadge" class="ai-provider-badge">Tier 0: Offline</small>
+              <small id="aiProviderBadge" class="ai-provider-badge">AUTO: Quy tắc nội bộ & Fallback (Sẵn sàng)</small>
             </div>
           </div>
           <div class="ai-head-actions">
+            <button id="aiVoiceMuteBtn" class="ai-btn-sm ai-voice-mute-btn" title="Bật / Tắt giọng đọc trợ lý" aria-label="Bật tắt âm lượng giọng đọc">🔊</button>
             <button id="aiDevToggleBtn" class="ai-btn-sm ai-dev-btn" title="Xem thông số kỹ thuật (DEV Context Inspector)">DEV</button>
             <button id="aiMemoryToggleBtn" class="ai-btn-sm" title="Quản lý Trí nhớ QBiz">🧠</button>
             <button id="aiSettingsToggleBtn" class="ai-btn-sm" title="Cấu hình Provider (Gemini / OpenAI)">⚙</button>
@@ -168,6 +169,8 @@ export function initAiUI(state) {
           <div class="ai-drawer-body">
             <label>Chế độ Provider:
               <select id="aiProviderModeSelect">
+                <option value="AUTO">AUTO (Local AI -> Cloud Fallback)</option>
+                <option value="LOCAL_AI">LOCAL_AI (Ollama qwen3.5:2b - 127.0.0.1:11434)</option>
                 <option value="DETERMINISTIC">DETERMINISTIC (Tier 0 - Nội bộ / Offline)</option>
                 <option value="GEMINI">GEMINI (Google Gemini 1.5 Flash - Session Key)</option>
                 <option value="OPENAI_COMPATIBLE">OPENAI_COMPATIBLE (Session Key)</option>
@@ -236,6 +239,12 @@ export function initAiUI(state) {
           <!-- Rendered dynamically according to current route -->
         </div>
 
+        <!-- Active Voice TTS Speaking Banner with Instant Mute/Stop -->
+        <div id="aiSpeakingBanner" class="ai-speaking-banner" style="display:none;">
+          <span>🔊 Đang đọc câu trả lời...</span>
+          <button type="button" id="aiStopSpeakingBannerBtn" class="ai-speaking-banner-btn" title="Dừng đọc và tắt giọng">🔇 Tắt đọc</button>
+        </div>
+
         <!-- Voice Status Bar -->
         <div id="aiVoiceStatus" class="ai-voice-status" style="display:none;"></div>
 
@@ -302,6 +311,21 @@ export function initAiUI(state) {
   document.body.appendChild(container);
   bindEvents();
   updateContextAndChips();
+
+  window.__qbiz_ai__ = {
+    handleUserMessage,
+    openSheet,
+    closeSheet,
+    setVoiceMuted,
+    isVoiceMuted,
+    stopSpeaking,
+    submitVoiceTranscript: async (text) => {
+      setMicState('recognized', text);
+      const input = document.getElementById('aiTextInput');
+      if (input) input.value = '';
+      return await handleUserMessage(text);
+    }
+  };
 }
 
 /**
@@ -341,6 +365,179 @@ function renderAttachmentTray() {
       activeAttachments.splice(idx, 1);
       renderAttachmentTray();
     });
+  });
+}
+
+/**
+ * Voice TTS Mute State Management
+ */
+let isTtsMuted = false;
+try {
+  isTtsMuted = localStorage.getItem('qbiz_ai_voice_muted') === 'true';
+} catch (_) {}
+
+export function isVoiceMuted() {
+  return isTtsMuted;
+}
+
+export function updateVoiceMuteButtonUI() {
+  const btn = document.getElementById('aiVoiceMuteBtn');
+  const banner = document.getElementById('aiSpeakingBanner');
+  const trigger = document.getElementById('qbizAiTrigger');
+  const isSpeaking = typeof window !== 'undefined' && Boolean(window.speechSynthesis?.speaking);
+
+  if (banner) {
+    banner.style.display = (isSpeaking && !isTtsMuted) ? 'flex' : 'none';
+  }
+
+  if (trigger) {
+    if (isSpeaking && !isTtsMuted) trigger.classList.add('is-speaking');
+    else trigger.classList.remove('is-speaking');
+  }
+
+  if (!btn) return;
+
+  if (isTtsMuted) {
+    btn.innerHTML = '🔇';
+    btn.className = 'ai-btn-sm ai-voice-mute-btn is-muted';
+    btn.title = 'Giọng đọc đang TẮT — Bấm để bật lại';
+    btn.setAttribute('aria-label', 'Giọng đọc đang tắt, bấm để bật');
+  } else if (isSpeaking) {
+    btn.innerHTML = '🔊';
+    btn.className = 'ai-btn-sm ai-voice-mute-btn is-speaking';
+    btn.title = 'Đang đọc — Bấm để dừng đọc và tắt âm';
+    btn.setAttribute('aria-label', 'Đang đọc, bấm để dừng');
+  } else {
+    btn.innerHTML = '🔊';
+    btn.className = 'ai-btn-sm ai-voice-mute-btn';
+    btn.title = 'Giọng đọc đang BẬT — Bấm để tắt âm';
+    btn.setAttribute('aria-label', 'Giọng đọc đang bật, bấm để tắt âm');
+  }
+}
+
+export function setVoiceMuted(muted, showToast = true) {
+  isTtsMuted = Boolean(muted);
+  try {
+    localStorage.setItem('qbiz_ai_voice_muted', isTtsMuted ? 'true' : 'false');
+  } catch (_) {}
+
+  if (isTtsMuted && typeof window !== 'undefined' && window.speechSynthesis) {
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+  }
+
+  updateVoiceMuteButtonUI();
+
+  if (showToast && typeof window !== 'undefined' && window.__qbiz_app__?.toast) {
+    window.__qbiz_app__.toast(
+      isTtsMuted ? '🔇 Đã tắt âm lượng giọng đọc trợ lý' : '🔊 Đã bật giọng đọc trợ lý',
+      'info'
+    );
+  }
+}
+
+export function stopSpeaking() {
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+  }
+  updateVoiceMuteButtonUI();
+}
+
+/**
+ * Optional Text-to-Speech (TTS) for voice transcript responses
+ */
+function speakAssistantResponse(text) {
+  if (isTtsMuted) return; // Completely muted by user
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  try {
+    window.speechSynthesis.cancel();
+    if (!text) return;
+    const cleanText = text
+      .replace(/[*#_`~>]/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!cleanText) return;
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'vi-VN';
+    utterance.rate = 1.0;
+    const voices = window.speechSynthesis.getVoices?.() || [];
+    const viVoice = voices.find(v => v.lang && (v.lang === 'vi-VN' || v.lang.startsWith('vi')));
+    if (viVoice) utterance.voice = viVoice;
+
+    utterance.onstart = () => {
+      updateVoiceMuteButtonUI();
+    };
+    utterance.onend = () => {
+      updateVoiceMuteButtonUI();
+    };
+    utterance.onerror = () => {
+      updateVoiceMuteButtonUI();
+    };
+
+    window.speechSynthesis.speak(utterance);
+    updateVoiceMuteButtonUI();
+  } catch (err) {
+    console.warn('TTS playback error:', err);
+    updateVoiceMuteButtonUI();
+  }
+}
+
+function setMicState(state, text = '') {
+  micState = state;
+  const micBtn = document.getElementById('aiMicBtn');
+  const statusEl = document.getElementById('aiVoiceStatus');
+  if (micBtn) micBtn.classList.remove('is-listening', 'is-processing');
+  if (!statusEl) return;
+
+  if (state === 'listening') {
+    if (micBtn) micBtn.classList.add('is-listening');
+    statusEl.style.display = 'flex';
+    statusEl.className = 'ai-voice-status state-listening';
+    statusEl.innerHTML = `
+      <span class="ai-voice-dot"></span>
+      <span class="ai-voice-text">Đang nghe tiếng Việt... hãy nói yêu cầu</span>
+      <button type="button" class="ai-voice-cancel-btn" id="aiVoiceCancelBtn">Dừng</button>
+    `;
+  } else if (state === 'processing') {
+    if (micBtn) micBtn.classList.add('is-processing');
+    statusEl.style.display = 'flex';
+    statusEl.className = 'ai-voice-status state-processing';
+    statusEl.innerHTML = `
+      <span class="ai-voice-text">Đang nhận dạng...</span>
+    `;
+  } else if (state === 'recognized') {
+    statusEl.style.display = 'flex';
+    statusEl.className = 'ai-voice-status state-recognized';
+    statusEl.innerHTML = `
+      <span class="ai-voice-text">Đã nhận dạng — Đang gửi yêu cầu...</span>
+      <button type="button" class="ai-voice-clear-btn" id="aiVoiceClearBtn" title="Xóa">✕</button>
+    `;
+    setTimeout(() => {
+      if (statusEl.classList.contains('state-recognized')) statusEl.style.display = 'none';
+    }, 7000);
+  } else if (state === 'no-speech') {
+    statusEl.style.display = 'flex';
+    statusEl.className = 'ai-voice-status state-error';
+    statusEl.innerHTML = `
+      <span class="ai-voice-text">Không nghe rõ — Vui lòng thử nói lại</span>
+    `;
+    setTimeout(() => {
+      if (statusEl.classList.contains('state-error')) statusEl.style.display = 'none';
+    }, 4000);
+  } else {
+    statusEl.style.display = 'none';
+    statusEl.innerHTML = '';
+  }
+
+  document.getElementById('aiVoiceCancelBtn')?.addEventListener('click', () => {
+    try { recognitionInstance?.stop(); } catch (_) {}
+    setMicState('idle');
+  });
+  document.getElementById('aiVoiceClearBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('aiTextInput');
+    if (input) input.value = '';
+    setMicState('idle');
   });
 }
 
@@ -393,61 +590,6 @@ function initVoiceInput() {
     return;
   }
 
-  const setMicState = (state, text = '') => {
-    micState = state;
-    micBtn.classList.remove('is-listening', 'is-processing');
-    if (!statusEl) return;
-
-    if (state === 'listening') {
-      micBtn.classList.add('is-listening');
-      statusEl.style.display = 'flex';
-      statusEl.className = 'ai-voice-status state-listening';
-      statusEl.innerHTML = `
-        <span class="ai-voice-dot"></span>
-        <span class="ai-voice-text">Đang nghe tiếng Việt... hãy nói yêu cầu</span>
-        <button type="button" class="ai-voice-cancel-btn" id="aiVoiceCancelBtn">Dừng</button>
-      `;
-    } else if (state === 'processing') {
-      micBtn.classList.add('is-processing');
-      statusEl.style.display = 'flex';
-      statusEl.className = 'ai-voice-status state-processing';
-      statusEl.innerHTML = `
-        <span class="ai-voice-text">Đang nhận dạng...</span>
-      `;
-    } else if (state === 'recognized') {
-      statusEl.style.display = 'flex';
-      statusEl.className = 'ai-voice-status state-recognized';
-      statusEl.innerHTML = `
-        <span class="ai-voice-text">Đã nhận dạng — Bạn có thể kiểm tra hoặc sửa câu lệnh trước khi bấm Gửi</span>
-        <button type="button" class="ai-voice-clear-btn" id="aiVoiceClearBtn" title="Xóa">✕</button>
-      `;
-      setTimeout(() => {
-        if (statusEl.classList.contains('state-recognized')) statusEl.style.display = 'none';
-      }, 7000);
-    } else if (state === 'no-speech') {
-      statusEl.style.display = 'flex';
-      statusEl.className = 'ai-voice-status state-error';
-      statusEl.innerHTML = `
-        <span class="ai-voice-text">Không nghe rõ — Vui lòng thử nói lại</span>
-      `;
-      setTimeout(() => {
-        if (statusEl.classList.contains('state-error')) statusEl.style.display = 'none';
-      }, 4000);
-    } else {
-      statusEl.style.display = 'none';
-      statusEl.innerHTML = '';
-    }
-
-    document.getElementById('aiVoiceCancelBtn')?.addEventListener('click', () => {
-      try { recognitionInstance?.stop(); } catch (_) {}
-      setMicState('idle');
-    });
-    document.getElementById('aiVoiceClearBtn')?.addEventListener('click', () => {
-      if (input) input.value = '';
-      setMicState('idle');
-    });
-  };
-
   micBtn.addEventListener('click', async () => {
     if (micState === 'listening') {
       try {
@@ -465,6 +607,9 @@ function initVoiceInput() {
       recognitionInstance.maxAlternatives = 1;
 
       recognitionInstance.onstart = () => {
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          try { window.speechSynthesis.cancel(); } catch (_) {}
+        }
         setMicState('listening');
       };
 
@@ -502,8 +647,9 @@ function initVoiceInput() {
       recognitionInstance.onend = () => {
         const text = input.value.trim();
         if (text) {
-          // Keep transcript in input box so user can edit, review, or submit!
           setMicState('recognized', text);
+          if (input) input.value = '';
+          handleUserMessage(text);
         } else {
           setMicState('idle');
         }
@@ -684,6 +830,24 @@ function bindEvents() {
   const input = document.getElementById('aiTextInput');
   const devBtn = document.getElementById('aiDevToggleBtn');
   const settingsBtn = document.getElementById('aiSettingsToggleBtn');
+  const voiceMuteBtn = document.getElementById('aiVoiceMuteBtn');
+  const stopSpeakingBannerBtn = document.getElementById('aiStopSpeakingBannerBtn');
+
+  voiceMuteBtn?.addEventListener('click', () => {
+    if (typeof window !== 'undefined' && window.speechSynthesis?.speaking) {
+      window.speechSynthesis.cancel();
+      setVoiceMuted(true);
+      return;
+    }
+    setVoiceMuted(!isVoiceMuted());
+  });
+
+  stopSpeakingBannerBtn?.addEventListener('click', () => {
+    stopSpeaking();
+    setVoiceMuted(true);
+  });
+
+  updateVoiceMuteButtonUI();
 
   initDraggableTrigger(trigger);
   initVoiceInput();
@@ -771,19 +935,29 @@ function bindEvents() {
   galleryInput?.addEventListener('change', onFileInputChanged);
   fileInput?.addEventListener('change', onFileInputChanged);
 
+  let isSubmitting = false;
   const submitMessage = async () => {
+    if (isSubmitting) return;
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+    }
     const text = input?.value?.trim() || '';
     if (!text && activeAttachments.length === 0) return;
+    
+    isSubmitting = true;
+    const sendBtn = document.getElementById('aiSendBtn');
+    if (sendBtn) sendBtn.disabled = true;
     if (input) input.value = '';
-    await handleUserMessage(text);
+
+    try {
+      await handleUserMessage(text);
+    } finally {
+      isSubmitting = false;
+      if (sendBtn) sendBtn.disabled = false;
+    }
   };
 
   form?.addEventListener('submit', async e => {
-    e.preventDefault();
-    await submitMessage();
-  });
-
-  document.getElementById('aiSendBtn')?.addEventListener('click', async e => {
     e.preventDefault();
     await submitMessage();
   });
@@ -803,6 +977,7 @@ function openSheet() {
   const sheet = document.getElementById('qbizAiSheet');
   if (!sheet) return;
   sheet.style.display = 'block';
+  sheet.classList.add('is-open');
   updateContextAndChips();
 
   // If message history is empty, populate initial greeting
@@ -818,12 +993,19 @@ function openSheet() {
   }
 
   renderMessages();
+  updateVoiceMuteButtonUI();
   // NOTE: Requirement 1 - Do NOT call .focus() here! Virtual keyboard will only open when user taps the input directly.
 }
 
 function closeSheet() {
   const sheet = document.getElementById('qbizAiSheet');
-  if (sheet) sheet.style.display = 'none';
+  if (sheet) {
+    sheet.style.display = 'none';
+    sheet.classList.remove('is-open');
+  }
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+  }
 }
 
 function toggleProviderDrawer() {
@@ -849,8 +1031,8 @@ function updateProviderFormVisibility() {
   const mode = document.getElementById('aiProviderModeSelect')?.value;
   const gemGroup = document.getElementById('aiGeminiKeyGroup');
   const openGroup = document.getElementById('aiOpenAIKeyGroup');
-  if (gemGroup) gemGroup.style.display = mode === PROVIDER_MODES.GEMINI ? 'block' : 'none';
-  if (openGroup) openGroup.style.display = mode === PROVIDER_MODES.OPENAI_COMPATIBLE ? 'block' : 'none';
+  if (gemGroup) gemGroup.style.display = (mode === PROVIDER_MODES.GEMINI || mode === 'AUTO') ? 'block' : 'none';
+  if (openGroup) openGroup.style.display = (mode === PROVIDER_MODES.OPENAI_COMPATIBLE) ? 'block' : 'none';
 }
 
 function saveProviderSettings() {
@@ -963,6 +1145,10 @@ export function updateContextAndChips() {
     const cfg = getProviderConfig();
     if (cfg.mode === PROVIDER_MODES.DETERMINISTIC) {
       providerBadge.textContent = 'Tier 0: Offline';
+    } else if (cfg.mode === PROVIDER_MODES.AUTO) {
+      providerBadge.textContent = 'AUTO: Quy tắc nội bộ & Fallback (Sẵn sàng)';
+    } else if (cfg.mode === PROVIDER_MODES.LOCAL_AI) {
+      providerBadge.textContent = `LOCAL_AI: ${cfg.localModel || 'qwen3.5:2b'}`;
     } else {
       const model = cfg.mode === PROVIDER_MODES.GEMINI ? (cfg.geminiModel || 'gemini-flash-lite-latest') : (cfg.mode === PROVIDER_MODES.OPENAI_COMPATIBLE ? 'gpt-4o-mini' : 'mock-dev');
       const hasKey = cfg.mode === PROVIDER_MODES.MOCK_DEV || (cfg.mode === PROVIDER_MODES.GEMINI && Boolean(cfg.geminiKey)) || (cfg.mode === PROVIDER_MODES.OPENAI_COMPATIBLE && Boolean(cfg.openaiKey));
@@ -1001,6 +1187,34 @@ function renderChips() {
     chips = ROUTE_CHIPS.products;
   } else if (currentEnvelope.current_order_id && (route === 'orders' || appStateRef?.currentOrderId)) {
     chips = ROUTE_CHIPS.orders;
+  }
+
+  // Prepend industry-tailored demo questions if in demo showroom mode
+  if (sessionStorage.getItem('qbiz_preview_demo') === '1') {
+    const indKey = sessionStorage.getItem('qbiz_demo_industry') || 'retail';
+    const demoSuggestions = {
+      retail: [
+        'Mặt hàng nào bán chạy nhất tháng này?',
+        'Có bao nhiêu hàng sắp hết tồn?',
+        'Hôm nay bán được bao nhiêu tiền?',
+      ],
+      fashion: [
+        'Mẫu váy nào đang bán chạy nhất?',
+        'Áo Polo còn đủ size M và L không?',
+        'Đã có bao nhiêu lượt đổi hàng?',
+      ],
+      food_beverage: [
+        'Món nào bán chạy nhất hôm nay?',
+        'Doanh thu ca sáng đạt bao nhiêu?',
+        'Món nào ít bán cần đẩy mạnh khuyến mãi?',
+      ],
+      service: [
+        'Gói trị liệu nào được đặt nhiều nhất?',
+        'Hôm nay có bao nhiêu lượt khách hẹn?',
+        'Dịch vụ nào doanh thu cao nhất?',
+      ],
+    }[indKey] || [];
+    chips = [...demoSuggestions, ...chips];
   }
 
   bar.innerHTML = chips
@@ -1077,9 +1291,17 @@ async function handleUserMessage(query) {
       structured: res.structured || null,
       actionId: res.actionId || null,
       actionResult: res.actionResult || null,
+      intent: res.intent || null,
+      skillId: res.skillId || null,
+      summary: res.summary || null,
+      hasCost: res.hasCost ?? null,
       permissionDenied: res.permissionDenied || null,
       tier: res.tier,
       provider: res.provider,
+      trace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
+      compactTrace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
+      fallbackTriggered: Boolean(res.fallbackTriggered),
+      fallbackReason: res.fallbackReason || null,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
     });
   } catch (err) {
@@ -1094,6 +1316,9 @@ async function handleUserMessage(query) {
   renderMessages();
   scrollMessagesToBottom();
   if (devInspectorOpen) renderDevInspector();
+  if (isVoiceTranscript && lastResult?.text) {
+    speakAssistantResponse(lastResult.text);
+  }
 }
 
 function addAssistantMessage(text) {
@@ -1142,22 +1367,32 @@ function renderMessages() {
 
     // Candidates markup for ambiguous matching
     let candidatesHtml = '';
-    if (m.candidates && m.candidates.length > 1) {
+    if (m.candidates && m.candidates.length > 0) {
       candidatesHtml = `
         <div class="ai-candidates-box">
-          <div class="ai-candidates-label">Vui lòng chọn sản phẩm cần thao tác:</div>
+          <div class="ai-candidates-label">Vui lòng chọn sản phẩm / phân loại cần thao tác:</div>
           <div class="ai-candidates-list">
-            ${m.candidates.map(c => `
-              <button class="ai-candidate-row" data-pick-candidate="${esc(c.id)}" data-candidate-name="${esc(c.name)}">
+            ${m.candidates.map(c => {
+              const cName = typeof c === 'object' && c !== null ? (c.name || c.id) : String(c);
+              const cId = typeof c === 'object' && c !== null ? (c.id || cName) : cName;
+              const cSku = typeof c === 'object' && c !== null && c.sku ? c.sku : '—';
+              const cPriceNum = typeof c === 'object' && c !== null && !isNaN(Number(c.price)) ? Number(c.price) : null;
+              const cPriceFmt = cPriceNum !== null ? `${new Intl.NumberFormat('vi-VN').format(cPriceNum)} ₫` : '—';
+              const cAvail = typeof c === 'object' && c !== null && (c.available !== undefined || c.stock !== undefined) ? (c.available ?? c.stock) : '—';
+              const cUnit = typeof c === 'object' && c !== null && c.unit ? c.unit : 'cái';
+              const cParentId = typeof c === 'object' && c !== null && c.productId ? c.productId : cId;
+              const cVarName = typeof c === 'object' && c !== null && c.variant_name ? c.variant_name : '';
+              return `
+              <button class="ai-candidate-row" data-pick-candidate="${esc(cId)}" data-candidate-name="${esc(cName)}" data-candidate-variant="${esc(cVarName)}" data-candidate-product-id="${esc(cParentId)}">
                 <div class="ai-cand-info">
-                  <strong>${esc(c.name)}</strong>
-                  <small>SKU: ${esc(c.sku || '—')} · Giá: ${new Intl.NumberFormat('vi-VN').format(c.price)} ₫</small>
+                  <strong>${esc(cName)}</strong>
+                  <small>SKU: ${esc(cSku)} · Giá: ${cPriceFmt}</small>
                 </div>
                 <div class="ai-cand-stock">
-                  <span>Còn: <b>${c.available}</b> ${esc(c.unit)}</span>
+                  <span>Còn: <b>${cAvail}</b> ${esc(cUnit)}</span>
                 </div>
-              </button>
-            `).join('')}
+              </button>`;
+            }).join('')}
           </div>
         </div>
       `;
@@ -1507,27 +1742,48 @@ function renderMessages() {
           ${importAssistantHtml}
           ${proposalHtml}
         </div>
-        <small class="ai-msg-time">${m.time} ${m.tier !== undefined ? `· Tier ${m.tier}` : ''}</small>
+        <small class="ai-msg-time">${m.time} ${m.tier !== undefined ? `· Tier ${m.tier}` : ''} ${(devInspectorOpen || isDevOrTestEnvironment()) && (m.compactTrace || m.trace) ? `<span class="ai-provider-trace" style="color:#0284c7; margin-left:6px; font-weight:500;">[${esc(m.compactTrace || m.trace)}]</span>` : ''} <button type="button" class="ai-msg-speak-btn" data-msg-idx="${idx}" title="Đọc to hoặc tắt đọc" aria-label="Đọc câu trả lời này">🔊</button></small>
       </div>
     `;
   }).join('');
+
+  // Bind message-level speak/mute buttons
+  container.querySelectorAll('.ai-msg-speak-btn').forEach(btn => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.msgIdx);
+      const msg = chatMessages[idx];
+      if (!msg) return;
+      if (typeof window !== 'undefined' && window.speechSynthesis?.speaking) {
+        stopSpeaking();
+      } else {
+        if (isVoiceMuted()) {
+          setVoiceMuted(false, false);
+        }
+        speakAssistantResponse(msg.text);
+      }
+    };
+  });
 
   // Bind candidate picks with multi-turn intent resumption
   container.querySelectorAll('[data-pick-candidate]').forEach(btn => {
     btn.onclick = async () => {
       const candId = btn.dataset.pickCandidate;
-      const candName = btn.dataset.candidateName;
-      const cand = (appStateRef?.data?.products || []).find(p => p.id === candId);
+      const candName = btn.dataset.candidateName || '';
+      const candVariant = btn.dataset.candidateVariant || '';
+      const candProductId = btn.dataset.candidateProductId || candId;
+      const cand = (appStateRef?.data?.products || []).find(p => p.id === candProductId || p.id === candId);
       if (cand) setLastResolvedProduct(cand);
 
       const pending = getPendingIntent();
       if (pending && pending.skillId) {
         clearPendingIntent();
-        addAssistantMessage(`Đã chọn sản phẩm: **${candName}**. Tiến hành tạo đề xuất...`);
+        addAssistantMessage(`Đã chọn: **${candName}**. Tiến hành tạo đề xuất...`);
         try {
           const res = await executeSkill(pending.skillId, {
             ...pending.params,
-            productId: candId,
+            productId: candProductId,
+            variantId: candId,
+            variantName: candVariant,
           }, currentEnvelope, appStateRef);
           if (res.proposal) activeProposal = res.proposal;
           messageHistory.push({
@@ -1544,7 +1800,72 @@ function renderMessages() {
           addAssistantMessage(`⚠️ Lỗi: ${err.message}`);
         }
       } else {
-        handleUserMessage(`Kiểm tồn ${candName}`);
+        // Fallback when no pending intent: inspect last user message
+        const lastUser = [...messageHistory].reverse().find(m => m.role === 'user');
+        const lastTxt = (lastUser?.text || '').toLowerCase();
+        if (lastTxt.includes('nhap') || lastTxt.includes('nhập') || lastTxt.includes('them') || lastTxt.includes('thêm')) {
+          const numMatch = lastTxt.match(/(\d+)/);
+          const qty = numMatch ? parseInt(numMatch[1], 10) : 5;
+          const targetWh = currentEnvelope?.warehouse_id || (appStateRef?.data?.warehouses || [])[0]?.id;
+          addAssistantMessage(`Đã chọn: **${candName}**. Tiến hành tạo đề xuất nhập kho...`);
+          try {
+            const res = await executeSkill('receipt-proposal', {
+              productId: candProductId,
+              variantId: candId,
+              variantName: candVariant,
+              qty,
+              warehouseId: targetWh,
+              reason: `Đề xuất nhập thêm hàng cho ${candName}`
+            }, currentEnvelope, appStateRef);
+            if (res.proposal) activeProposal = res.proposal;
+            messageHistory.push({
+              role: 'assistant',
+              text: res.text,
+              proposal: res.proposal || null,
+              tier: res.tier || 0,
+              provider: PROVIDER_MODES.DETERMINISTIC,
+              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            });
+            renderMessages();
+            scrollMessagesToBottom();
+          } catch (err) {
+            addAssistantMessage(`⚠️ Lỗi: ${err.message}`);
+          }
+        } else if (lastTxt.includes('giam') || lastTxt.includes('giảm') || lastTxt.includes('xuat') || lastTxt.includes('xuất') || lastTxt.includes('tru') || lastTxt.includes('trừ') || lastTxt.includes('bot') || lastTxt.includes('bớt')) {
+          const numMatch = lastTxt.match(/(\d+)/);
+          const qty = numMatch ? parseInt(numMatch[1], 10) : 1;
+          const targetWh = currentEnvelope?.warehouse_id || (appStateRef?.data?.warehouses || [])[0]?.id;
+          addAssistantMessage(`Đã chọn: **${candName}**. Tiến hành tạo đề xuất xuất kho...`);
+          try {
+            const res = await executeSkill('issue-proposal', {
+              productId: candProductId,
+              variantId: candId,
+              variantName: candVariant,
+              qty,
+              warehouseId: targetWh,
+              reason: `Đề xuất giảm kho / xuất kho cho ${candName}`
+            }, currentEnvelope, appStateRef);
+            if (res.proposal) activeProposal = res.proposal;
+            messageHistory.push({
+              role: 'assistant',
+              text: res.text,
+              proposal: res.proposal || null,
+              tier: res.tier || 0,
+              provider: PROVIDER_MODES.DETERMINISTIC,
+              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            });
+            renderMessages();
+            scrollMessagesToBottom();
+          } catch (err) {
+            addAssistantMessage(`⚠️ Lỗi: ${err.message}`);
+          }
+        } else if (lastTxt.includes('chuyen') || lastTxt.includes('chuyển')) {
+          handleUserMessage(`Chuyển kho ${candName}`);
+        } else if (lastTxt.includes('ban') || lastTxt.includes('bán') || lastTxt.includes('gio') || lastTxt.includes('giỏ') || lastTxt.includes('lay') || lastTxt.includes('lấy')) {
+          handleUserMessage(`Thêm vào giỏ ${candName}`);
+        } else {
+          handleUserMessage(`Kiểm tồn ${candName}`);
+        }
       }
     };
   });
@@ -1754,6 +2075,11 @@ function renderDevInspector() {
       <div class="ai-dev-full"><span>Bound Order:</span> <b>${boundOrderDisplay}</b></div>
       <div><span>Tier:</span> <b>${lastResult ? `Tier ${lastResult.tier}` : 'Tier 0'}</b></div>
       <div><span>Provider:</span> <b>${lastResult?.provider || cfg.mode}</b></div>
+      <div><span>AI Trace:</span> <b style="color:#0284c7;">${lastResult?.compactTrace || lastResult?.trace || (lastResult ? 'Local Qwen' : 'None')}</b></div>
+      <div><span>Fallback:</span> <b>${lastResult?.fallbackTriggered ? 'YES' : 'NO'}</b></div>
+      ${lastResult?.fallbackReason ? `<div class="ai-dev-full"><span>Fallback Reason:</span> <b style="color:#c2410c;">${esc(lastResult.fallbackReason)}</b></div>` : ''}
+      <div><span>Local AI:</span> <b>${cfg.localProvider || 'OLLAMA'} (${cfg.localModel || 'qwen3.5:2b'})</b></div>
+      <div><span>Cloud Fallback:</span> <b>${cfg.cloudFallbackProvider || 'GEMINI'}</b></div>
       <div><span>Last Skill:</span> <b>${lastResult?.skillId || 'None'}</b></div>
       <div><span>Proposal ID:</span> <b>${activeProposal ? `${activeProposal.id} (${activeProposal.status})` : 'None'}</b></div>
     </div>
@@ -1766,4 +2092,12 @@ function renderDevInspector() {
     renderDevInspector();
     addAssistantMessage(`Đã chuyển vai trò người dùng sang: **${nextRole}** (Sensitive context purged).`);
   });
+}
+
+export function getMessageHistory() {
+  return [...messageHistory];
+}
+
+export function clearMessageHistory() {
+  messageHistory = [];
 }

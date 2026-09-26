@@ -1,0 +1,19 @@
+{
+  "evaluation_id": "MEGA_EVAL_20260926_MASTER",
+  "timestamp": "2026-09-26T08:00:00.000Z",
+  "git_sha": "2233841eb9394655db396f2acc97839f1e354bd6",
+  "app_version": "1.0.0-phase3.5",
+  "db_version": 12,
+  "canonical_runtime": "src/ai/router.js:routeIntent()",
+  "corpus_cases_count": 37102,
+  "corpus_file": "mega_eval_full_corpus.json",
+  "dataset_manifest_file": "dataset_manifest.json",
+  "preflight_manifest_file": "preflight_manifest.json",
+  "summary_file": "summary.json",
+  "failures_file": "failures.json",
+  "latency_file": "latency.json",
+  "critical_invariants_file": "critical_invariants.json",
+  "provider_matrix_file": "provider_matrix.json",
+  "harness_mutation_file": "harness_mutation_report.json",
+  "verdict": "AI_MEGA_EVAL_WAITING_OWNER_PHYSICAL_PROOF"
+}

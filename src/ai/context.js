@@ -166,10 +166,12 @@ export function buildContextEnvelope(appState = {}, overrides = {}) {
   const currentScreen = currentRoute === 'sales' ? (appState.saleStep || 'browse') : currentRoute;
 
   // Active modal or screen entity bindings (scoped to active route/modal)
-  const isProductScope = overrides.current_product_id || currentRoute === 'products' || (typeof document !== 'undefined' && document.getElementById('modalRoot')?.querySelector('.product-facts, .product-money'));
+  const modalProdEl = typeof document !== 'undefined' ? document.getElementById('modalRoot')?.querySelector('[data-product-id], .product-detail, .product-facts, .product-money') : null;
+  const modalProdId = modalProdEl?.dataset?.productId || null;
+  const isProductScope = overrides.current_product_id || currentRoute === 'products' || modalProdEl;
   const isOrderScope = overrides.current_order_id || currentRoute === 'orders' || (typeof document !== 'undefined' && document.getElementById('modalRoot')?.querySelector('.order-detail'));
 
-  const boundProductId = overrides.current_product_id || (isProductScope ? (appState.currentProductId || null) : null);
+  const boundProductId = overrides.current_product_id || appState.currentProductId || modalProdId || (isProductScope ? (appState.currentProductId || null) : null);
   const boundOrderId = overrides.current_order_id || (isOrderScope ? (appState.currentOrderId || null) : null);
   const boundSaleId = overrides.current_sale_id || appState.currentSaleId || null;
   const boundCustomerId = overrides.current_customer_id || appState.saleCustomer?.id || appState.currentCustomerId || null;

@@ -87,12 +87,20 @@ export function hasCapability(actor, permission) {
  */
 export const ALLOWED_WRITE_ACTIONS = new Set([
   'create_receipt_proposal',
+  'create_issue_proposal',
   'create_transfer_proposal',
   'create_stocktake_proposal',
   'create_cart_draft',
   'RECEIVE_STOCK',
+  'ISSUE_STOCK',
   'TRANSFER_STOCK',
   'STOCKTAKE_STOCK',
+  'update_product_status',
+  'UPDATE_PRODUCT_STATUS',
+  'update_product_price',
+  'UPDATE_PRODUCT_PRICE',
+  'create_warehouse',
+  'CREATE_WAREHOUSE',
   'propose_memory_save',
   'saveMemory',
 ]);
@@ -135,8 +143,12 @@ const WRITE_ACTIONS = new Set([
 const DRAFT_ACTIONS = new Set([
   'create_cart_draft',
   'create_receipt_proposal',
+  'create_issue_proposal',
   'create_transfer_proposal',
   'create_stocktake_proposal',
+  'create_update_product_status_proposal',
+  'create_update_product_price_proposal',
+  'create_warehouse_proposal',
   'propose_memory_save',
 ]);
 
@@ -223,6 +235,7 @@ export function computeAllowedTools(actor = {}, context = {}) {
   // Sales summary & order diagnosis
   if (roleDef.permissions.has(PERMISSIONS.VIEW_SALES)) {
     tools.add('get_sales_summary');
+    tools.add('aggregate_revenue');
     tools.add('search_orders');
     tools.add('get_order');
     tools.add('diagnose_order');
@@ -230,6 +243,9 @@ export function computeAllowedTools(actor = {}, context = {}) {
     tools.add('get_customer');
     tools.add('create_cart_draft');
     tools.add('diagnose_shift');
+    tools.add('get_latest_transaction');
+    tools.add('search_transactions');
+    tools.add('get_transaction');
   }
 
   // Cost & Profit inquiry (strictly requires VIEW_COST)
@@ -238,8 +254,9 @@ export function computeAllowedTools(actor = {}, context = {}) {
   }
 
   // Stock operations (only if role has permission)
-  if (roleDef.permissions.has(PERMISSIONS.RECEIVE_STOCK)) {
+  if (roleDef.permissions.has(PERMISSIONS.RECEIVE_STOCK) || roleKey === 'OWNER') {
     tools.add('create_receipt_proposal');
+    tools.add('create_issue_proposal');
   }
   if (roleDef.permissions.has(PERMISSIONS.TRANSFER_STOCK)) {
     tools.add('create_transfer_proposal');
@@ -248,10 +265,16 @@ export function computeAllowedTools(actor = {}, context = {}) {
     tools.add('create_stocktake_proposal');
   }
 
-  // Memory & Settings management
+  // Memory & Settings & Product/Warehouse management
   if (roleDef.permissions.has(PERMISSIONS.MANAGE_SETTINGS) || roleKey === 'OWNER') {
     tools.add('propose_memory_save');
     tools.add('saveMemory');
+    tools.add('create_update_product_status_proposal');
+    tools.add('create_update_product_price_proposal');
+    tools.add('create_warehouse_proposal');
+    tools.add('update_product_status');
+    tools.add('update_product_price');
+    tools.add('create_warehouse');
   }
 
   return tools;
@@ -455,6 +478,11 @@ const INJECTION_PATTERNS = [
   /(?:lenh\s+ngam|lệnh\s+ngầm|doanh\s+so\s+ao|doanh\s+số\s+ảo)/i,
   /<(?:img|iframe|svg|body|input|embed)\b|onerror\s*=|onload\s*=/i,
   /(?:cua\s+hang\s+khac|cửa\s+hàng\s+khác|chi\s+nhanh\s+khac|chi\s+nhánh\s+khác|shop\s+khac|shop\s+khác)/i,
+  /(?:mã\s+bí\s+mật|ma\s+bi\s+mat|service_role|supabase_service_role|service-role|anon_key|jwt_secret)/i,
+  /(?:đánh\s+dấu|danh\s+dau|chuyển|chuyen|xác\s+nhận|xac\s+nhan).*đơn.*(?:đã\s+thanh\s+toán|da\s+thanh\s+toan).*(?:không\s+cần|khong\s+can).*(?:tiền|thanh\s+toán)/i,
+  /(?:không\s+cần|khong\s+can)\s+(?:nhận\s+tiền|thu\s+tiền|tra\s+tien|trả\s+tiền)/i,
+  /(?:tự\s+động|tu\s+dong)\s+(?:tăng\s+giá|tang\s+gia|giảm\s+giá|giam\s+gia|thay\s+đổi\s+giá|thay\s+doi\s+gia)/i,
+  /(?:tăng|giảm|đổi)\s+giá\s+(?:tất\s+cả|toàn\s+bộ)\s+sản\s+phẩm/i,
 ];
 
 /**

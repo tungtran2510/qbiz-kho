@@ -20,6 +20,90 @@ function norm(str) {
     .trim();
 }
 
+/**
+ * Section 4: Canonical Deterministic Time-Range Resolver
+ * Supports relative periods in Vietnamese business operations.
+ */
+export function resolveDateInterval(period = 'today', now = new Date(), customStart = null, customEnd = null) {
+  const start = new Date(now);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  let label = 'hôm nay';
+  const pNorm = norm(period || 'today');
+
+  if (pNorm === 'today' || pNorm === 'hom nay' || pNorm === 'nay' || pNorm === 'ngay hom nay') {
+    start.setHours(0, 0, 0, 0);
+    label = 'hôm nay';
+  } else if (pNorm === 'yesterday' || pNorm === 'hom qua') {
+    start.setDate(now.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    end.setDate(now.getDate() - 1);
+    end.setHours(23, 59, 59, 999);
+    label = 'hôm qua';
+  } else if (
+    pNorm === '2_days' || pNorm === '2d' ||
+    pNorm.includes('hai ngay nay') || pNorm.includes('2 ngay nay') ||
+    pNorm.includes('hai ngay qua') || pNorm.includes('2 ngay qua') ||
+    pNorm.includes('tu hom qua den gio') || pNorm.includes('tu hom qua den nay') ||
+    pNorm.includes('hom qua den nay') || pNorm.includes('hom qua den gio') ||
+    pNorm.includes('may ngay nay')
+  ) {
+    start.setDate(now.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    label = 'hai ngày nay';
+  } else if (
+    pNorm === '3_days' || pNorm === '3d' ||
+    pNorm.includes('3 ngay nay') || pNorm.includes('3 ngay gan day') ||
+    pNorm.includes('ba ngay nay') || pNorm.includes('3 ngay qua')
+  ) {
+    start.setDate(now.getDate() - 2);
+    start.setHours(0, 0, 0, 0);
+    label = '3 ngày gần đây';
+  } else if (
+    pNorm === '7d' || pNorm === 'week' ||
+    pNorm.includes('tuan nay') || pNorm.includes('7 ngay qua') || pNorm.includes('7 ngay gan day')
+  ) {
+    start.setDate(now.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    label = 'tuần này';
+  } else if (pNorm === 'last_week' || pNorm.includes('tuan truoc')) {
+    start.setDate(now.getDate() - 13);
+    start.setHours(0, 0, 0, 0);
+    end.setDate(now.getDate() - 7);
+    end.setHours(23, 59, 59, 999);
+    label = 'tuần trước';
+  } else if (pNorm === '30d' || pNorm.includes('30 ngay qua') || pNorm.includes('30 ngay gan day')) {
+    start.setDate(now.getDate() - 29);
+    start.setHours(0, 0, 0, 0);
+    label = '30 ngày qua';
+  } else if (
+    pNorm === 'month' || pNorm.includes('thang nay') ||
+    pNorm.includes('tu dau thang den nay') || pNorm.includes('tu dau thang toi gio') ||
+    pNorm.includes('dau thang den nay') || pNorm.includes('thang hien tai')
+  ) {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    label = pNorm.includes('tu dau thang') ? 'từ đầu tháng đến nay' : 'tháng này';
+  } else if (pNorm === 'last_month' || pNorm.includes('thang truoc')) {
+    start.setMonth(now.getMonth() - 1, 1);
+    start.setHours(0, 0, 0, 0);
+    end.setDate(0);
+    end.setHours(23, 59, 59, 999);
+    label = 'tháng trước';
+  } else if (pNorm === 'custom' || customStart) {
+    if (customStart) start.setTime(new Date(`${customStart}T00:00:00`).getTime());
+    else start.setFullYear(2000);
+    if (customEnd) end.setTime(new Date(`${customEnd}T23:59:59.999`).getTime());
+    label = `từ ${start.toLocaleDateString('vi-VN')} đến ${end.toLocaleDateString('vi-VN')}`;
+  } else {
+    start.setHours(0, 0, 0, 0);
+    label = 'hôm nay';
+  }
+
+  return { start, end, label, periodKey: pNorm };
+}
+
 export const TOOLS = {
   /**
    * Search products by text query (name, SKU, barcode).
@@ -189,18 +273,25 @@ export const TOOLS = {
   },
 
   /**
-   * Summarize sales for today or current month.
+   * Summarize sales for today, month, 2_days, 3_days, week, etc.
    */
-  get_sales_summary({ period = 'today' }, state) {
+  get_sales_summary({ period = 'today', customStart = null, customEnd = null }, state) {
+    const { start, end, label } = resolveDateInterval(period, new Date(), customStart, customEnd);
     const sales = state?.data?.sales || [];
-    const now = new Date();
-    const todayPrefix = now.toISOString().slice(0, 10);
-    const monthPrefix = now.toISOString().slice(0, 7);
+    const completedOrders = state?.data?.orders || [];
 
-    const relevant = sales.filter(s => {
-      const stamp = s.created_at || s.createdAt || '';
-      if (period === 'today') return stamp.startsWith(todayPrefix);
-      if (period === 'month') return stamp.startsWith(monthPrefix);
+    const relevantSales = sales.filter(s => {
+      const dt = new Date(s.created_at || s.createdAt || s.date || 0);
+      return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= start && dt <= end;
+    });
+
+    const saleCodes = new Set(relevantSales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
+    const relevantOrders = completedOrders.filter(o => {
+      if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
+      const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
+      if (dt < start || dt > end) return false;
+      if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
+      if (o.sale_id && relevantSales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
       return true;
     });
 
@@ -210,7 +301,7 @@ export const TOOLS = {
     let unpaidTotal = 0;
     const paymentMethods = { cash: 0, transfer: 0, qr: 0 };
 
-    for (const s of relevant) {
+    for (const s of relevantSales) {
       const amt = Number(s.grand_total ?? s.total ?? 0);
       const isPaid = s.payment_status === 'PAID' || s.status === 'PAID';
       if (isPaid) {
@@ -225,8 +316,23 @@ export const TOOLS = {
       }
     }
 
+    for (const o of relevantOrders) {
+      const amt = Number(o.grand_total ?? o.total ?? 0);
+      if (o.payment_status === 'PAID') {
+        completedCount++;
+        totalRevenue += amt;
+        const method = o.payment_method || 'transfer';
+        if (paymentMethods[method] !== undefined) paymentMethods[method] += amt;
+        else paymentMethods.transfer += amt;
+      } else {
+        unpaidCount++;
+        unpaidTotal += amt;
+      }
+    }
+
     return {
       period,
+      periodLabel: label,
       completedCount,
       totalRevenue,
       unpaidCount,
@@ -310,6 +416,66 @@ export const TOOLS = {
     const o = (state?.data?.orders || []).find(x => x.id === orderId);
     if (!o) return { found: false, error: 'Không tìm thấy đơn hàng' };
     return { found: true, order: o };
+  },
+
+  /**
+   * Get the most recent sales transaction (or order if no sales).
+   */
+  get_latest_transaction(params = {}, state) {
+    const sales = (state?.data?.sales || []).slice().sort((a, b) =>
+      String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || ''))
+    );
+    if (sales.length > 0) {
+      return { found: true, type: 'sale', transaction: sales[0], totalSales: sales.length };
+    }
+    const orders = (state?.data?.orders || []).slice().sort((a, b) =>
+      String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || ''))
+    );
+    if (orders.length > 0) {
+      return { found: true, type: 'order', transaction: orders[0], totalOrders: orders.length };
+    }
+    return { found: false, error: 'Chưa có hóa đơn hoặc giao dịch bán hàng nào trên thiết bị.' };
+  },
+
+  /**
+   * Search transactions in sales or orders by query.
+   */
+  search_transactions({ query = '' } = {}, state) {
+    const q = norm(query);
+    if (!q) return { count: 0, transactions: [] };
+    const sales = state?.data?.sales || [];
+    const matches = sales.filter(s => {
+      const code = norm(s.code || s.sale_uuid || '');
+      const cust = norm(s.customer_label || '');
+      const method = norm(s.payment_method || '');
+      const items = (s.items || []).map(i => norm(i.name || i.item_name || '')).join(' ');
+      return code.includes(q) || cust.includes(q) || method.includes(q) || items.includes(q);
+    });
+    return {
+      count: matches.length,
+      transactions: matches.map(s => ({
+        id: s.id,
+        code: s.code || s.sale_uuid || 'Phiếu bán',
+        customer: s.customer_label || 'Khách lẻ',
+        total: Number(s.grand_total ?? s.total ?? 0),
+        createdAt: s.created_at || s.createdAt,
+        itemsCount: (s.items || []).length,
+        paymentStatus: s.payment_status || (s.payments?.[0]?.status) || 'PAID',
+      })),
+    };
+  },
+
+  /**
+   * Get single transaction details by ID or code.
+   */
+  get_transaction({ transactionId, code } = {}, state) {
+    const sales = state?.data?.sales || [];
+    const s = sales.find(x => x.id === transactionId || (code && (x.code === code || x.sale_uuid === code)));
+    if (s) return { found: true, type: 'sale', transaction: s };
+    const orders = state?.data?.orders || [];
+    const o = orders.find(x => x.id === transactionId || (code && x.code === code));
+    if (o) return { found: true, type: 'order', transaction: o };
+    return { found: false, error: 'Không tìm thấy hóa đơn hoặc giao dịch.' };
   },
 
   /**
@@ -448,7 +614,7 @@ export const TOOLS = {
   /**
    * Create a receipt proposal (NO stock mutation).
    */
-  create_receipt_proposal({ productId, warehouseId, qty, reason = 'Đề xuất nhập thêm hàng' }, state, envelope) {
+  create_receipt_proposal({ productId, warehouseId, qty, reason = 'Đề xuất nhập thêm hàng', variantId, variantName }, state, envelope) {
     const p = (state?.data?.products || []).find(x => x.id === productId);
     const wh = (state?.data?.warehouses || []).find(w => w.id === warehouseId) || (state?.data?.warehouses || [])[0];
     const nQty = Number(qty || 1);
@@ -462,12 +628,14 @@ export const TOOLS = {
       available: curLevel ? available(curLevel) : 0,
     };
 
+    const displayProdName = p ? (variantName ? `${p.name} (${variantName})` : p.name) : productId;
+
     return createProposal({
       requestId: envelope?.request_id,
       skillId: 'receipt-proposal',
       intent: 'create_receipt_proposal',
       entities: {
-        product: p ? { id: p.id, name: p.name, sku: p.sku } : { id: productId },
+        product: p ? { id: p.id, name: displayProdName, sku: p.sku, variantId, variantName } : { id: productId },
         warehouse: wh ? { id: wh.id, name: wh.name } : { id: warehouseId },
       },
       parameters: {
@@ -475,9 +643,53 @@ export const TOOLS = {
         warehouseId: targetWhId,
         qty: nQty,
         reason,
+        variantId,
+        variantName,
       },
       inventorySnapshot,
-      humanSummary: `Nhập thêm ${nQty} ${p?.unit || 'cái'} "${p?.name || productId}" vào kho "${wh?.name || 'Kho chính'}"`,
+      humanSummary: `Nhập thêm ${nQty} ${p?.unit || 'cái'} "${displayProdName}" vào kho "${wh?.name || 'Kho chính'}"`,
+      contextSnapshot: envelope,
+    });
+  },
+
+  /**
+   * Create an issue / stock reduction proposal (NO direct stock mutation).
+   */
+  create_issue_proposal({ productId, warehouseId, qty, reason = 'Đề xuất xuất kho / giảm tồn', variantId, variantName }, state, envelope) {
+    const p = (state?.data?.products || []).find(x => x.id === productId);
+    const wh = (state?.data?.warehouses || []).find(w => w.id === warehouseId) || (state?.data?.warehouses || [])[0];
+    const nQty = Number(qty || 1);
+    const targetWhId = wh?.id || warehouseId;
+    const curLevel = targetWhId ? levelFor(state?.data, productId, targetWhId) : null;
+    const avail = curLevel ? available(curLevel) : 0;
+    const inventorySnapshot = {
+      productId,
+      warehouseId: targetWhId,
+      onHand: curLevel ? Number(curLevel.onHand || 0) : 0,
+      reserved: curLevel ? Number(curLevel.reserved || 0) : 0,
+      available: avail,
+    };
+
+    const displayProdName = p ? (variantName ? `${p.name} (${variantName})` : p.name) : productId;
+
+    return createProposal({
+      requestId: envelope?.request_id,
+      skillId: 'issue-proposal',
+      intent: 'create_issue_proposal',
+      entities: {
+        product: p ? { id: p.id, name: displayProdName, sku: p.sku, variantId, variantName } : { id: productId },
+        warehouse: wh ? { id: wh.id, name: wh.name } : { id: warehouseId },
+      },
+      parameters: {
+        productId,
+        warehouseId: targetWhId,
+        qty: nQty,
+        reason,
+        variantId,
+        variantName,
+      },
+      inventorySnapshot,
+      humanSummary: `Xuất kho / Giảm ${nQty} ${p?.unit || 'cái'} "${displayProdName}" khỏi kho "${wh?.name || 'Kho chính'}"`,
       contextSnapshot: envelope,
     });
   },
@@ -588,32 +800,183 @@ export const TOOLS = {
   },
 
   /**
-   * Section M: Get gross profit & cost summary (strictly requires VIEW_COST).
+   * Create a product status proposal (open for sale / stop selling).
    */
-  get_profit_summary({ period = 'today' }, state, envelope, actor) {
+  create_update_product_status_proposal({ productId, active, reason }, state, envelope) {
+    const p = (state?.data?.products || []).find(x => x.id === productId);
+    const actBool = Boolean(active);
+    const summary = `${actBool ? 'Mở bán trở lại (Đang kinh doanh)' : 'Ngừng kinh doanh (Tạm dừng bán)'} cho sản phẩm "${p?.name || productId}"`;
+    return createProposal({
+      requestId: envelope?.request_id,
+      skillId: 'update-product-status',
+      intent: 'update_product_status',
+      entities: {
+        product: p ? { id: p.id, name: p.name, sku: p.sku } : { id: productId },
+      },
+      parameters: {
+        productId,
+        active: actBool,
+        reason: reason || (actBool ? 'Mở bán trở lại từ AI' : 'Ngừng kinh doanh từ AI'),
+      },
+      humanSummary: summary,
+      contextSnapshot: envelope,
+    });
+  },
+
+  /**
+   * Create a product price proposal (selling price or purchase price / cost).
+   */
+  create_update_product_price_proposal({ productId, price, costPrice, reason }, state, envelope) {
+    const p = (state?.data?.products || []).find(x => x.id === productId);
+    const nPrice = price != null ? Number(price) : null;
+    const nCost = costPrice != null ? Number(costPrice) : null;
+    const fmt = new Intl.NumberFormat('vi-VN');
+    let summary = '';
+    if (nPrice != null && nCost != null) {
+      summary = `Cập nhật giá "${p?.name || productId}": Giá bán ${fmt.format(nPrice)} ₫, Giá nhập ${fmt.format(nCost)} ₫`;
+    } else if (nPrice != null) {
+      summary = `Cập nhật giá bán "${p?.name || productId}": ${fmt.format(nPrice)} ₫ (hiện tại: ${p?.price != null ? fmt.format(p.price) + ' ₫' : 'chưa đặt'})`;
+    } else {
+      summary = `Cập nhật giá nhập "${p?.name || productId}": ${fmt.format(nCost)} ₫ (hiện tại: ${p?.purchase_price != null ? fmt.format(p.purchase_price) + ' ₫' : 'chưa đặt'})`;
+    }
+    return createProposal({
+      requestId: envelope?.request_id,
+      skillId: 'update-product-price',
+      intent: 'update_product_price',
+      entities: {
+        product: p ? { id: p.id, name: p.name, sku: p.sku } : { id: productId },
+      },
+      parameters: {
+        productId,
+        price: nPrice,
+        costPrice: nCost,
+        reason: reason || (nCost != null ? 'Sửa giá nhập từ AI' : 'Sửa giá bán từ AI'),
+      },
+      humanSummary: summary,
+      contextSnapshot: envelope,
+    });
+  },
+
+  /**
+   * Create a warehouse creation proposal.
+   */
+  create_warehouse_proposal({ name, reason }, state, envelope) {
+    const cleanName = String(name || '').trim();
+    return createProposal({
+      requestId: envelope?.request_id,
+      skillId: 'create-warehouse',
+      intent: 'create_warehouse',
+      entities: {
+        warehouseName: cleanName,
+      },
+      parameters: {
+        name: cleanName,
+        reason: reason || 'Tạo kho mới từ AI',
+      },
+      humanSummary: `Tạo thêm kho mới "${cleanName}"`,
+      contextSnapshot: envelope,
+    });
+  },
+
+  /**
+   * Section M: Get gross profit & cost summary (strictly requires VIEW_COST).
+   * Exact parity with reportSales('month'|'today'|'2_days'|etc.) on Dashboard.
+   */
+  get_profit_summary({ period = 'today', customStart = null, customEnd = null }, state, envelope, actor) {
     const act = actor || (envelope && envelope.actor_role ? { id: envelope.actor_id, role: envelope.actor_role } : getCurrentActor());
     if (!hasCapability(act, PERMISSIONS.VIEW_COST)) {
       throw new Error(`HARD DENY: Tài khoản vai trò "${act.role}" không có quyền xem giá vốn và lợi nhuận (VIEW_COST denied).`);
     }
 
-    const sales = state?.data?.sales || [];
+    const { start, end, label } = resolveDateInterval(period, new Date(), customStart, customEnd);
+
+    const sales = (state?.data?.sales || []).filter(s => {
+      if (s.status === 'cancelled') return false;
+      const dt = new Date(s.created_at || s.createdAt || s.date || 0);
+      return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= start && dt <= end;
+    });
+
+    const saleCodes = new Set(sales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
+    const completedOrders = (state?.data?.orders || []).filter(o => {
+      if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
+      const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
+      if (dt < start || dt > end) return false;
+      if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
+      if (o.sale_id && sales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
+      return true;
+    }).map(o => ({
+      id: o.id,
+      code: o.code || o.id,
+      customer_label: o.customer_label || 'Khách lẻ',
+      created_at: o.created_at || o.createdAt,
+      subtotal: Number(o.subtotal || 0),
+      discount_total: Number(o.discount_total || 0),
+      tax_total: Number(o.tax_total || 0),
+      grand_total: Number(o.grand_total || 0),
+      total: Number(o.grand_total || 0),
+      status: 'COMPLETED',
+      items: (o.items || []).map(i => ({
+        item_id: i.item_id || i.itemId || i.productId || i.id,
+        name: i.name || 'Sản phẩm',
+        quantity: Number(i.quantity || 0),
+        unit_price: Number(i.unit_price || 0),
+        cost_price: Number(i.cost_price || 0),
+        line_total: Number(i.line_total ?? (Number(i.quantity || 0) * Number(i.unit_price || 0)) ?? 0)
+      })),
+      is_order: true
+    }));
+
+    const allSales = [...sales, ...completedOrders];
+    const sum = key => allSales.reduce((n, s) => n + Number(s[key] || 0), 0);
+    const gross = sum('subtotal');
+    const discount = sum('discount_total');
+    const net = gross > 0 ? Math.max(0, gross - discount) : (sum('grand_total') || sum('total'));
+
     const products = state?.data?.products || [];
     const prodMap = new Map(products.map(p => [p.id, p]));
-    let revenue = 0, estimatedCost = 0;
-    for (const s of sales) {
-      revenue += Number(s.grand_total ?? s.total ?? 0);
+
+    let estimatedCost = 0;
+    let itemsCount = 0;
+    let itemsWithCost = 0;
+
+    for (const s of allSales) {
       for (const item of (s.items || [])) {
-        const p = prodMap.get(item.itemId || item.productId);
-        const cost = Number(p?.purchase_price || 0);
-        estimatedCost += cost * Number(item.quantity || 1);
+        itemsCount++;
+        const pId = item.item_id || item.itemId || item.productId || item.product_id || item.id;
+        const p = prodMap.get(pId);
+        const unitCost = Number(item.cost_price ?? item.cost ?? p?.cost_price ?? p?.cost ?? p?.purchase_price ?? 0);
+        if (unitCost > 0 || (item.cost_price !== undefined || p?.cost_price !== undefined)) {
+          itemsWithCost++;
+        }
+        const qty = Number(item.quantity ?? item.qty ?? 1);
+        const itemTotalCost = Number(item.cost_total) > 0 ? Number(item.cost_total) : (unitCost * qty);
+        estimatedCost += itemTotalCost;
       }
     }
-    const grossProfit = Math.max(0, revenue - estimatedCost);
+
+    const refundTotal = (state?.data?.refunds || []).filter(r => {
+      const rDate = new Date(r.created_at || r.createdAt || 0);
+      return rDate >= start && rDate <= end;
+    }).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+    const hasCost = estimatedCost > 0;
+    const grossProfit = hasCost ? Math.max(0, net - estimatedCost - refundTotal) : 0;
+    const margin = net > 0 ? Math.round((grossProfit / net) * 100) : 0;
+
     return {
-      revenue,
+      period,
+      periodLabel: label,
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      salesCount: allSales.length,
+      revenue: net,
       cost: estimatedCost,
       grossProfit,
-      formattedRevenue: new Intl.NumberFormat('vi-VN').format(revenue) + ' ₫',
+      margin,
+      hasCost,
+      refundTotal,
+      formattedRevenue: new Intl.NumberFormat('vi-VN').format(net) + ' ₫',
+      formattedCost: new Intl.NumberFormat('vi-VN').format(estimatedCost) + ' ₫',
       formattedGrossProfit: new Intl.NumberFormat('vi-VN').format(grossProfit) + ' ₫',
     };
   },

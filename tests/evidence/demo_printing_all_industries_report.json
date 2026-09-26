@@ -1,0 +1,248 @@
+{
+  "status": "PASSED",
+  "timestamp": "2026-09-26T08:55:55Z",
+  "industries": {
+    "retail": {
+      "business_profile": {
+        "store_name": "QBiz Mart — Cửa hàng tiện lợi & Tiêu dùng",
+        "display_name": "QBiz Mart",
+        "tax_code": "0108999888",
+        "phone": "0912.345.678",
+        "hotline": "1900.6868",
+        "website": "https://mart.qbiz.vn",
+        "logo_valid_svg": true
+      },
+      "print_templates": [
+        {
+          "id": "tpl_demo_retail_58",
+          "name": "Mẫu in nhiệt hóa đơn K58 (Bán lẻ Demo)",
+          "paper": "RECEIPT_58",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_retail_80",
+          "name": "Mẫu in nhiệt hóa đơn K80 (Bán lẻ Demo)",
+          "paper": "RECEIPT_80",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_retail_a4",
+          "name": "Phiếu xuất kho A4 (Bán lẻ Demo)",
+          "paper": "A4",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_retail_label",
+          "name": "Mẫu in tem mã vạch 50x30 (Bán lẻ Demo)",
+          "paper": "LABEL_50x30",
+          "logo": false
+        }
+      ],
+      "devices": [],
+      "reprint_idempotency": true,
+      "viewports": {
+        "mobile_390": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_retail_mobile_390_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_retail_mobile_390_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_retail_mobile_390.png"
+        },
+        "mobile_412": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_retail_mobile_412_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_retail_mobile_412_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_retail_mobile_412.png"
+        },
+        "desktop_1440": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_retail_desktop_1440_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_retail_desktop_1440_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_retail_desktop_1440.png"
+        }
+      }
+    },
+    "fashion": {
+      "business_profile": {
+        "store_name": "Mây Boutique — Thời trang Nữ & Phụ kiện",
+        "display_name": "Mây Boutique",
+        "tax_code": "0107666555",
+        "phone": "0918.234.567",
+        "hotline": "1800.8899",
+        "website": "https://mayboutique.qbiz.vn",
+        "logo_valid_svg": true
+      },
+      "print_templates": [
+        {
+          "id": "tpl_demo_fashion_58",
+          "name": "Mẫu in nhiệt hóa đơn K58 (Thời trang Demo)",
+          "paper": "RECEIPT_58",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_fashion_80",
+          "name": "Mẫu in nhiệt hóa đơn K80 (Thời trang Demo)",
+          "paper": "RECEIPT_80",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_fashion_a4",
+          "name": "Phiếu xuất kho A4 (Thời trang Demo)",
+          "paper": "A4",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_fashion_label",
+          "name": "Mẫu in tem mã vạch 50x30 (Thời trang Demo)",
+          "paper": "LABEL_50x30",
+          "logo": false
+        }
+      ],
+      "devices": [],
+      "reprint_idempotency": true,
+      "viewports": {
+        "mobile_390": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_fashion_mobile_390_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_fashion_mobile_390_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_fashion_mobile_390.png"
+        },
+        "mobile_412": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_fashion_mobile_412_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_fashion_mobile_412_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_fashion_mobile_412.png"
+        },
+        "desktop_1440": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_fashion_desktop_1440_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_fashion_desktop_1440_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_fashion_desktop_1440.png"
+        }
+      }
+    },
+    "food_beverage": {
+      "business_profile": {
+        "store_name": "The Coffee Garden & Bakery",
+        "display_name": "The Coffee Garden",
+        "tax_code": "0106555444",
+        "phone": "0987.654.321",
+        "hotline": "024.3888.9999",
+        "website": "https://coffeegarden.qbiz.vn",
+        "logo_valid_svg": true
+      },
+      "print_templates": [
+        {
+          "id": "tpl_demo_food_beverage_58",
+          "name": "Mẫu in nhiệt hóa đơn K58 (Ăn uống Demo)",
+          "paper": "RECEIPT_58",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_food_beverage_80",
+          "name": "Mẫu in nhiệt hóa đơn K80 (Ăn uống Demo)",
+          "paper": "RECEIPT_80",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_food_beverage_a4",
+          "name": "Phiếu xuất kho A4 (Ăn uống Demo)",
+          "paper": "A4",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_food_beverage_label",
+          "name": "Mẫu in tem mã vạch 50x30 (Ăn uống Demo)",
+          "paper": "LABEL_50x30",
+          "logo": false
+        }
+      ],
+      "devices": [],
+      "reprint_idempotency": true,
+      "viewports": {
+        "mobile_390": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_food_beverage_mobile_390_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_food_beverage_mobile_390_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_food_beverage_mobile_390.png"
+        },
+        "mobile_412": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_food_beverage_mobile_412_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_food_beverage_mobile_412_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_food_beverage_mobile_412.png"
+        },
+        "desktop_1440": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_food_beverage_desktop_1440_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_food_beverage_desktop_1440_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_food_beverage_desktop_1440.png"
+        }
+      }
+    },
+    "service": {
+      "business_profile": {
+        "store_name": "Sen Spa & Chăm sóc Trị liệu",
+        "display_name": "Sen Spa & Trị liệu",
+        "tax_code": "0316888777",
+        "phone": "0933.888.999",
+        "hotline": "1900.9999",
+        "website": "https://senspa.qbiz.vn",
+        "logo_valid_svg": true
+      },
+      "print_templates": [
+        {
+          "id": "tpl_demo_service_58",
+          "name": "Mẫu in nhiệt hóa đơn K58 (Dịch vụ Demo)",
+          "paper": "RECEIPT_58",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_service_80",
+          "name": "Mẫu in nhiệt hóa đơn K80 (Dịch vụ Demo)",
+          "paper": "RECEIPT_80",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_service_a4",
+          "name": "Phiếu xuất kho A4 (Dịch vụ Demo)",
+          "paper": "A4",
+          "logo": true
+        },
+        {
+          "id": "tpl_demo_service_label",
+          "name": "Mẫu in tem mã vạch 50x30 (Dịch vụ Demo)",
+          "paper": "LABEL_50x30",
+          "logo": false
+        }
+      ],
+      "devices": [],
+      "reprint_idempotency": true,
+      "viewports": {
+        "mobile_390": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_service_mobile_390_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_service_mobile_390_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_service_mobile_390.png"
+        },
+        "mobile_412": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_service_mobile_412_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_service_mobile_412_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_service_mobile_412.png"
+        },
+        "desktop_1440": {
+          "overflow_clean": true,
+          "screenshot_k80": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_service_desktop_1440_k80.png",
+          "screenshot_k58": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_receipt_service_desktop_1440_k58.png",
+          "screenshot_print_center": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\evidence/demo_print_center_service_desktop_1440.png"
+        }
+      }
+    }
+  },
+  "viewports_verified": [
+    "mobile_390",
+    "mobile_412",
+    "desktop_1440"
+  ],
+  "all_passed": true
+}

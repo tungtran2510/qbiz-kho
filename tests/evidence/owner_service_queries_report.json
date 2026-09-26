@@ -1,0 +1,37 @@
+{
+  "báo cáo dịch vụ nào được bán nhiều nhất": {
+    "tier": 0,
+    "intent": "TOP_SELLING",
+    "text": "Top dịch vụ được bán / sử dụng nhiều nhất **tháng này**:\n1. **Chăm Sóc Da Mặt Chuyên Sâu Cấp Ẩm (60 phút)**: đã phục vụ **15** buổi · Doanh thu **6.705.000 ₫**\n2. **Massage Trị Liệu Cổ Vai Gáy (45 phút)**: đã phục vụ **14** lần · Doanh thu **3.500.000 ₫**\n3. **Gội Đầu Dưỡng Sinh Thảo Dược Đông Y (50 phút)**: đã phục vụ **5** buổi · Doanh thu **864.000 ₫**\n4. **Massage Body Đá Nóng Himalaya (75 phút)**: đã phục vụ **3** lần · Doanh thu **1.404.000 ₫**\n5. **Combo Hoàng Gia: Body Đá Nóng + Chăm Sóc Mặt (90 phút)**: đã phục vụ **2** combo · Doanh thu **1.311.000 ₫**"
+  },
+  "dịch vụ nào được bán nhiều nhất": {
+    "tier": 0,
+    "intent": "TOP_SELLING",
+    "text": "Top dịch vụ được bán / sử dụng nhiều nhất **tháng này**:\n1. **Chăm Sóc Da Mặt Chuyên Sâu Cấp Ẩm (60 phút)**: đã phục vụ **15** buổi · Doanh thu **6.705.000 ₫**\n2. **Massage Trị Liệu Cổ Vai Gáy (45 phút)**: đã phục vụ **14** lần · Doanh thu **3.500.000 ₫**\n3. **Gội Đầu Dưỡng Sinh Thảo Dược Đông Y (50 phút)**: đã phục vụ **5** buổi · Doanh thu **864.000 ₫**\n4. **Massage Body Đá Nóng Himalaya (75 phút)**: đã phục vụ **3** lần · Doanh thu **1.404.000 ₫**\n5. **Combo Hoàng Gia: Body Đá Nóng + Chăm Sóc Mặt (90 phút)**: đã phục vụ **2** combo · Doanh thu **1.311.000 ₫**"
+  },
+  "AI còn hoạt động ko": {
+    "tier": 0,
+    "intent": "AI_HEALTH_CHECK",
+    "text": "✅ **Trợ lý AI QBiz đang hoạt động bình thường!**\n\n- **Trạng thái:** Sẵn sàng 100% (Phản hồi tức thì nội bộ / Offline-first)\n- **Vai trò hiện tại:** OWNER\n- **Dữ liệu cục bộ:** 6 mặt hàng/dịch vụ, 18 phiếu bán hàng\n- **Chế độ vận hành:** Tier 0 Deterministic (Không phụ thuộc mạng ngoài)\n\n*Bạn có thể hỏi bất kỳ câu hỏi nào về doanh số, dịch vụ bán chạy, lợi nhuận, giá bán hoặc điều khiển nhanh hệ thống.*"
+  },
+  "gói trị liệu nào được đặt nhiều nhất": {
+    "tier": 0,
+    "intent": "TOP_SELLING",
+    "text": "Top dịch vụ được bán / sử dụng nhiều nhất **tháng này**:\n1. **Chăm Sóc Da Mặt Chuyên Sâu Cấp Ẩm (60 phút)**: đã phục vụ **15** buổi · Doanh thu **6.705.000 ₫**\n2. **Massage Trị Liệu Cổ Vai Gáy (45 phút)**: đã phục vụ **14** lần · Doanh thu **3.500.000 ₫**\n3. **Gội Đầu Dưỡng Sinh Thảo Dược Đông Y (50 phút)**: đã phục vụ **5** buổi · Doanh thu **864.000 ₫**\n4. **Massage Body Đá Nóng Himalaya (75 phút)**: đã phục vụ **3** lần · Doanh thu **1.404.000 ₫**\n5. **Combo Hoàng Gia: Body Đá Nóng + Chăm Sóc Mặt (90 phút)**: đã phục vụ **2** combo · Doanh thu **1.311.000 ₫**"
+  },
+  "dịch vụ nào doanh thu cao nhất": {
+    "tier": 0,
+    "intent": "TOP_SELLING",
+    "text": "Top dịch vụ có doanh thu cao nhất **tháng này**:\n1. **Chăm Sóc Da Mặt Chuyên Sâu Cấp Ẩm (60 phút)**: Doanh thu **6.705.000 ₫** (đã phục vụ **15** buổi)\n2. **Massage Trị Liệu Cổ Vai Gáy (45 phút)**: Doanh thu **3.500.000 ₫** (đã phục vụ **14** lần)\n3. **Massage Body Đá Nóng Himalaya (75 phút)**: Doanh thu **1.404.000 ₫** (đã phục vụ **3** lần)\n4. **Combo Hoàng Gia: Body Đá Nóng + Chăm Sóc Mặt (90 phút)**: Doanh thu **1.311.000 ₫** (đã phục vụ **2** combo)\n5. **Gội Đầu Dưỡng Sinh Thảo Dược Đông Y (50 phút)**: Doanh thu **864.000 ₫** (đã phục vụ **5** buổi)"
+  },
+  "tháng này bán được bao nhiêu": {
+    "tier": 0,
+    "intent": "SALES_SUMMARY",
+    "text": "Doanh số **tháng này**:\n- Doanh thu thực thu: **14.284.000 ₫**\n- Số phiếu hoàn tất: **18 phiếu**\n- Hình thức: Tiền mặt: 4.124.000 ₫ · Chuyển khoản: 4.184.000 ₫ · QR: 5.976.000 ₫"
+  },
+  "lợi nhuận tháng này": {
+    "tier": 0,
+    "intent": "PROFIT_INQUIRY",
+    "text": "Lợi nhuận gộp **tháng này** (18 giao dịch):\n- Doanh thu thực thu: **14.284.000 ₫**\n- Giá vốn hàng bán: **3.140.000 ₫**\n- Hoàn tiền: **50.000 ₫**\n- Lợi nhuận gộp: **11.094.000 ₫** (Tỷ suất: **78%**)"
+  }
+}
