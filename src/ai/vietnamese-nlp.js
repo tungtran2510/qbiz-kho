@@ -57,7 +57,21 @@ const TELEX_TYPOS = [
   [/\b(?:baonhieu|baonhiu|baonhj)\b/gi, 'bao nhieu'],
   [/\b(?:tienn+|tieenf|tiewn)\b/gi, 'tien'],
   [/\b(?:haang|hangf)\b/gi, 'hang'],
-  [/\b(?:toongr|tongr)\b/gi, 'tong']
+  [/\b(?:toongr|tongr)\b/gi, 'tong'],
+
+  // Action typos & compound words without spaces:
+  [/\b(?:kikhoat|kichhoat|khickhoat|kik\s*hoat|khich\s*hoat)\b/gi, 'kich hoat'],
+  [/\b(?:chinhja|suaja|doija|thayja)\b/gi, 'chinh gia'],
+  [/\b(?:chinh\s*ja|sua\s*ja|doi\s*ja|thay\s*ja)\b/gi, 'chinh gia'],
+  [/\b(?:tang\s*ja|tangja)\b/gi, 'tang gia'],
+  [/\b(?:ha\s*ja|haja|giamja)\b/gi, 'ha gia'],
+  [/\b(?:inbill|inhoadon|inlai|inlaibill)\b/gi, 'in'],
+  [/\b(?:chotkho|kiemkho|kiemke)\b/gi, 'kiem kho'],
+  [/\b(?:nhapkho|themkho)\b/gi, 'nhap kho'],
+  [/\b(?:xuatkho)\b/gi, 'xuat kho'],
+  [/\b(?:chuyenkho|dieuchuyen)\b/gi, 'chuyen kho'],
+  [/\b(?:ve0|vekhong|cho\s*ve\s*0|set0)\b/gi, 've 0'],
+  [/\b(?:hetsach|hetveo)\b/gi, 'het sach']
 ];
 
 /**
@@ -75,6 +89,12 @@ const TEENCODE_PATTERNS = [
   [/\bdthu\b/gi, 'doanh thu'],
   // dt meaning doanh thu (when not followed by phone digits)
   [/\bdt\b(?!\s*\d{6,})/gi, 'doanh thu'],
+  [/\bln\b/gi, 'loi nhuan'],
+  [/\bgv\b/gi, 'gia von'],
+  [/\bcn\b(?!\s*[-_]?\d)/gi, 'cong no'],
+  [/\bpx\b(?!\s*[-_]?\d)/gi, 'phieu xuat'],
+  [/\bpn\b(?!\s*[-_]?\d)/gi, 'phieu nhap'],
+  [/\bkd\b/gi, 'kinh doanh'],
   [/\b(?:ck)\b(?!\s*[-_]?\d)/gi, 'chuyen khoan'],
   [/\b(?:tm)\b(?!\s*[-_]?\d)/gi, 'tien mat'],
   [/\b(?:kt)\b(?!\s*[-_]?\d)/gi, 'kiem tra'],
@@ -107,6 +127,22 @@ const TEENCODE_PATTERNS = [
   [/\b(?:wth|clgt)\b/gi, 'gi the'],
   [/\b(?:uk|uh|uhm|um|oki|okey|oke)\b/gi, 'ok'],
   [/\bchuc\b/gi, '10'],
+
+  // Currency & quantity spoken slang
+  [/\b(?:cu|củ)\b/gi, 'trieu'],
+  [/\b(?:lit|lít)\b/gi, 'tram nghin'],
+  [/\b(?:trieu\s*ruoi|tr\s*ruoi|m\s*ruoi)\b/gi, '1500000'],
+  [/\b(?:tram\s*ruoi|k\s*ruoi)\b/gi, '150000'],
+  [/\b(?:hai\s*cu\s*ruoi|2\s*cu\s*ruoi)\b/gi, '2500000'],
+  [/\b(?:ba\s*cu\s*ruoi|3\s*cu\s*ruoi)\b/gi, '3500000'],
+  [/\b(?:nua\s*cu)\b/gi, '500000'],
+  [/\b(?:nua\s*ta)\b/gi, '6'],
+  [/\b(?:mot\s*ta|1\s*ta)\b/gi, '12'],
+  [/\b(?:mot\s*doi|1\s*doi)\b/gi, '2'],
+  [/\b(?:hai\s*chuc|2\s*chuc)\b/gi, '20'],
+  [/\b(?:ba\s*chuc|3\s*chuc)\b/gi, '30'],
+  [/\b(?:bon\s*chuc|4\s*chuc)\b/gi, '40'],
+  [/\b(?:nam\s*chuc|5\s*chuc)\b/gi, '50'],
 
   // Retail entities with negative lookahead to protect SKU/IDs (e.g. SP-001, HD-0001, KH-01, NV-01)
   [/\bsp\b(?!\s*[-_]?\d)/gi, 'san pham'],
@@ -269,12 +305,12 @@ export function isSlowMovingQuery(text) {
     c.includes('hang ban cham') ||
     c.includes('mat hang ban cham') ||
     c.includes('san pham ban cham') ||
-    c.includes('hang e') ||
-    c.includes('ban e') ||
-    c.includes('e am') ||
+    c.includes('cham troi') ||
     c.includes('ton kho lau') ||
     c.includes('ton lau') ||
-    c.includes('cham troi')
+    /\b(?:hang|mon|sp|mat hang|san pham)\s+(?:nao\s+)?e(?:\s+(?:nhat|am|qua|nhieu))?\b/i.test(c) ||
+    /\b(?:ban\s+e|e\s+am|e\s+nhat)\b/i.test(c) ||
+    /\bhang\s+e\b/i.test(c)
   );
 }
 
@@ -644,7 +680,35 @@ export function parseVietnameseNumberWord(str) {
   const cleanDigits = s.replace(/[.,](?=\d{3}\b)/g, '');
   const directMatch = cleanDigits.match(/\b\d+(?:\.\d+)?\b/);
   
-  // Multipliers with attached or separate units: 500k, 50tr, 50 trieu, 500 nghin
+  // Spoken compounds with specific values
+  if (/\b(?:hai\s*cu\s*ruoi|2\s*cu\s*ruoi)\b/i.test(s)) return 2500000;
+  if (/\b(?:ba\s*cu\s*ruoi|3\s*cu\s*ruoi)\b/i.test(s)) return 3500000;
+  if (/\b(?:nua\s*cu)\b/i.test(s)) return 500000;
+  if (/\b(?:trieu\s*ruoi|1\s*trieu\s*ruoi|1tr\s*ruoi)\b/i.test(s)) return 1500000;
+  if (/\b(?:hai\s*trieu\s*ruoi|2\s*trieu\s*ruoi|2tr\s*ruoi)\b/i.test(s)) return 2500000;
+  if (/\b(?:tram\s*ruoi|1\s*tram\s*ruoi|150k)\b/i.test(s)) return 150000;
+  if (/\b(?:hai\s*tram\s*ruoi|2\s*tram\s*ruoi|250k)\b/i.test(s)) return 250000;
+  if (/\b(?:nua\s*ta)\b/i.test(s)) return 6;
+  if (/\b(?:mot\s*ta|1\s*ta)\b/i.test(s)) return 12;
+  if (/\b(?:mot\s*doi|1\s*doi)\b/i.test(s)) return 2;
+  if (/\b(?:hai\s*chuc|2\s*chuc)\b/i.test(s)) return 20;
+  if (/\b(?:ba\s*chuc|3\s*chuc)\b/i.test(s)) return 30;
+  if (/\b(?:bon\s*chuc|4\s*chuc)\b/i.test(s)) return 40;
+  if (/\b(?:nam\s*chuc|5\s*chuc)\b/i.test(s)) return 50;
+
+  // Multipliers with attached or separate units: 500k, 50tr, 50 trieu, 50 cu, 2 lit
+  const cuMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*(?:cu|m)\b/i);
+  if (cuMatch) {
+    return Math.round(parseFloat(cuMatch[1].replace(',', '.')) * 1000000);
+  }
+  const litMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*lit\b/i);
+  if (litMatch) {
+    return Math.round(parseFloat(litMatch[1].replace(',', '.')) * 100000);
+  }
+  const vanMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*van\b/i);
+  if (vanMatch) {
+    return Math.round(parseFloat(vanMatch[1].replace(',', '.')) * 10000);
+  }
   const kMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*k\b/i);
   if (kMatch) {
     return Math.round(parseFloat(kMatch[1].replace(',', '.')) * 1000);
@@ -661,9 +725,13 @@ export function parseVietnameseNumberWord(str) {
   if (nghinMatch) {
     return Math.round(parseFloat(nghinMatch[1].replace(',', '.')) * 1000);
   }
+  const chucMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*chuc\b/i);
+  if (chucMatch) {
+    return Math.round(parseFloat(chucMatch[1].replace(',', '.')) * 10);
+  }
 
-  // Word-based multipliers (triệu, nghìn, ngàn)
-  if (/\b(?:trieu)\b/i.test(s)) {
+  // Word-based multipliers (triệu, nghìn, ngàn, củ)
+  if (/\b(?:trieu|cu)\b/i.test(s)) {
     const num = directMatch ? parseFloat(directMatch[0]) : (
       /\bmot\b/i.test(s) ? 1 : /\bhai\b/i.test(s) ? 2 : /\bba\b/i.test(s) ? 3 : (/\bbon\b/i.test(s) || /\btu\b/i.test(s)) ? 4 :
       /\bnam\b/i.test(s) ? 5 : /\bsau\b/i.test(s) ? 6 : /\bbay\b/i.test(s) ? 7 : /\btam\b/i.test(s) ? 8 : /\bchin\b/i.test(s) ? 9 :
@@ -679,6 +747,13 @@ export function parseVietnameseNumberWord(str) {
     );
     if (num !== null) return Math.round(num * 1000);
   }
+  if (/\b(?:lit)\b/i.test(s)) {
+    const num = directMatch ? parseFloat(directMatch[0]) : (
+      /\bmot\b/i.test(s) ? 1 : /\bhai\b/i.test(s) ? 2 : /\bba\b/i.test(s) ? 3 : (/\bbon\b/i.test(s) || /\btu\b/i.test(s)) ? 4 :
+      /\bnam\b/i.test(s) ? 5 : null
+    );
+    if (num !== null) return Math.round(num * 100000);
+  }
   
   if (directMatch) {
     return parseFloat(directMatch[0]);
@@ -688,7 +763,7 @@ export function parseVietnameseNumberWord(str) {
   const WORD_MAP = {
     'khong': 0, 'mot': 1, 'hai': 2, 'ba': 3, 'bon': 4, 'tu': 4,
     'nam': 5, 'sau': 6, 'bay': 7, 'tam': 8, 'chin': 9, 'muoi': 10,
-    'chuc': 10, 'nua ta': 6, 'ta': 12
+    'chuc': 10, 'nua ta': 6, 'ta': 12, 'doi': 2
   };
   for (const [w, val] of Object.entries(WORD_MAP)) {
     const rx = new RegExp(`\\b${w}\\b`, 'i');
@@ -713,6 +788,9 @@ export function parseContextualStockAdjustment(text) {
     c.includes('cho con hang') ||
     c.includes('dat con hang') ||
     c.includes('bao con hang') ||
+    c.includes('kich hoat ton kho') ||
+    c.includes('mo lai con hang') ||
+    c.includes('bat con hang') ||
     (c.includes('con hang') && (c.includes('so luong') || c.includes('chiec') || c.includes('cai') || c.includes('kich hoat') || c.includes('cho')))
   );
 
@@ -721,6 +799,10 @@ export function parseContextualStockAdjustment(text) {
     c.includes('sua ton kho thanh') ||
     c.includes('chinh so luong thanh') ||
     c.includes('sua so luong thanh') ||
+    c.includes('chot ton kho') ||
+    c.includes('chot ton') ||
+    c.includes('kiem kho con') ||
+    c.includes('kiem ke con') ||
     c.includes('dat ton kho') ||
     c.includes('dat so luong') ||
     c.includes('cap nhat ton kho') ||
@@ -732,10 +814,20 @@ export function parseContextualStockAdjustment(text) {
 
   if (isActivateInStock || isSetStockExplicit) {
     const qty = parseVietnameseNumberWord(c);
+    let prodQuery = null;
+    const matchProd = c.match(/(?:kich hoat con hang|cho con hang|chinh ton kho|sua ton kho|chot ton|kiem kho)\s+(?:cho\s+)?(?:san pham\s+|mat hang\s+|sp\s+)?(.+?)(?=\s+(?:so luong|thanh|la|\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)\b|$)/i);
+    if (matchProd) {
+      let p = matchProd[1].trim();
+      p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay)\b/gi, '').trim();
+      if (p.length >= 2 && !p.includes('con hang')) {
+        prodQuery = p;
+      }
+    }
     return {
       type: 'SET_STOCK',
       qty: qty !== null && qty >= 0 ? qty : 1,
       isActivate: isActivateInStock,
+      productQuery: prodQuery,
       raw: c
     };
   }
@@ -766,9 +858,19 @@ export function parseContextualStockIncrease(text) {
   if (isIncrease) {
     const qty = parseVietnameseNumberWord(c);
     if (qty !== null && qty > 0) {
+      let prodQuery = null;
+      const matchProd = c.match(/(?:them|nhap them|nhap vao|bo sung|cong them|nhap)\s+(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)?\s*(?:cai|chiec|hop|goi|sp|ly)?\s+(.+)$/i);
+      if (matchProd) {
+        let p = matchProd[1].trim();
+        p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay|vao kho\s+[a-z0-9\s]+)\b/gi, '').trim();
+        if (p.length >= 2 && !p.startsWith('kho')) {
+          prodQuery = p;
+        }
+      }
       return {
         type: 'ADD_STOCK',
         qty,
+        productQuery: prodQuery,
         raw: c
       };
     }
@@ -795,13 +897,25 @@ export function parseContextualStockDecreaseOrZero(text) {
     c === 'chinh ton ve 0' ||
     c === 'dat ton bang 0' ||
     c.includes('ve 0') ||
-    c.includes('het sach roi')
+    c.includes('het sach roi') ||
+    c.includes('het veo') ||
+    c.includes('khong con cai nao') ||
+    c.includes('chay hang')
   );
 
   if (isZero) {
+    let prodQuery = null;
+    const matchProd = c.match(/(?:cho|chinh ton|dat ton)\s+(.+?)\s+ve\s+0/i);
+    if (matchProd) {
+      let p = matchProd[1].trim();
+      p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay)\b/gi, '').trim();
+      if (p.length >= 2) prodQuery = p;
+    }
     return {
       type: 'SET_ZERO',
+      isZero: true,
       qty: 0,
+      productQuery: prodQuery,
       raw: c
     };
   }
@@ -811,15 +925,24 @@ export function parseContextualStockDecreaseOrZero(text) {
     c.startsWith('xuat ') ||
     c.startsWith('bot ') ||
     c.startsWith('tru ') ||
-    c.startsWith('xuat bot ')
+    c.startsWith('xuat bot ') ||
+    c.startsWith('hong ')
   );
 
   if (isDecrease) {
     const qty = parseVietnameseNumberWord(c);
     if (qty !== null && qty > 0) {
+      let prodQuery = null;
+      const matchProd = c.match(/(?:giam|xuat|bot|tru|hong)\s+(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)?\s*(?:cai|chiec|hop|goi|sp)?\s+(.+)$/i);
+      if (matchProd) {
+        let p = matchProd[1].trim();
+        p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay)\b/gi, '').trim();
+        if (p.length >= 2) prodQuery = p;
+      }
       return {
         type: 'REDUCE_STOCK',
         qty,
+        productQuery: prodQuery,
         raw: c
       };
     }
@@ -848,15 +971,25 @@ export function parseProductStatusChange(text) {
     c.includes('khong kinh doanh nua') ||
     c.includes('dung ban cai nay') ||
     c.includes('dung ban san pham') ||
+    c.includes('ngung ban') ||
+    c.includes('bo mau') ||
+    c.includes('nghi ban') ||
     c === 'khong ban nua' ||
-    c === 'ngung ban' ||
     c === 'tam ngung'
   );
 
   if (isDeactivate) {
+    let prodQuery = null;
+    const matchProd = c.match(/(?:ngung ban|khong ban|tam dung ban|tam ngung ban|nghi ban|bo mau)\s+(?:san pham\s+|mat hang\s+|sp\s+)?(.+?)(?:\s+(?:nua|di))?$/i);
+    if (matchProd) {
+      let p = matchProd[1].trim();
+      p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay|nua|di)\b/gi, '').trim();
+      if (p.length >= 2) prodQuery = p;
+    }
     return {
       action: 'DEACTIVATE',
       active: false,
+      productQuery: prodQuery,
       raw: c
     };
   }
@@ -870,16 +1003,26 @@ export function parseProductStatusChange(text) {
     c.includes('mo ban lai') ||
     c.includes('mo ban tro lai') ||
     c.includes('kinh doanh lai') ||
+    c.includes('kinh doanh tro lai') ||
     c.includes('cho phep ban lai') ||
     c.includes('hien lai san pham') ||
+    c.includes('ban tiep') ||
     c === 'ban lai' ||
     c === 'mo ban'
   );
 
   if (isReactivate) {
+    let prodQuery = null;
+    const matchProd = c.match(/(?:ban lai|mo ban lai|kich hoat ban lai|ban tiep|kinh doanh lai)\s+(?:san pham\s+|mat hang\s+|sp\s+)?(.+?)(?:\s+(?:tro lai|lai))?$/i);
+    if (matchProd) {
+      let p = matchProd[1].trim();
+      p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay|tro lai|lai)\b/gi, '').trim();
+      if (p.length >= 2) prodQuery = p;
+    }
     return {
       action: 'REACTIVATE',
       active: true,
+      productQuery: prodQuery,
       raw: c
     };
   }
@@ -899,7 +1042,8 @@ export function parseProductPriceChange(text) {
   const isCost = (
     c.includes('gia nhap') ||
     c.includes('gia von') ||
-    c.includes('gia mua')
+    c.includes('gia mua') ||
+    c.includes('von nhap')
   );
 
   const isPriceEdit = (
@@ -908,15 +1052,25 @@ export function parseProductPriceChange(text) {
     c.includes('chinh gia') ||
     c.includes('thay doi gia') ||
     c.includes('gia moi') ||
+    c.includes('ha gia') ||
+    c.includes('tang gia') ||
     c.startsWith('ban gia ')
   );
 
   if (isPriceEdit || (c.includes('gia') && c.includes('thanh'))) {
     const priceVal = parseVietnameseNumberWord(c);
     if (priceVal !== null && priceVal > 0) {
+      let prodQuery = null;
+      const matchWithThanh = c.match(/(?:sua gia|doi gia|chinh gia|thay doi gia|ban gia|sua gia nhap|doi gia nhap|sua gia von|doi gia von)\s+(?:san pham\s+|mat hang\s+|sp\s+)?(.+?)\s+thanh\s+(.+)$/i);
+      if (matchWithThanh) {
+        let p = matchWithThanh[1].trim();
+        p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay)\b/gi, '').trim();
+        if (p.length >= 2) prodQuery = p;
+      }
       return {
         type: isCost ? 'COST_PRICE' : 'SALE_PRICE',
         amount: priceVal,
+        productQuery: prodQuery,
         raw: c
       };
     }
@@ -975,6 +1129,189 @@ export function parseWarehouseManagementQuery(text) {
     };
   }
 
+  return null;
+}
+
+/**
+ * Parse warehouse stock transfer commands:
+ * e.g., "chuyển 5 cái từ kho trung tâm sang kho hà đông", "chuyển 10 ghế 135 sang kho phụ", "điều chuyển 2 cái sang kho hà đông"
+ */
+export function parseStockTransferCommand(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return null;
+
+  if (c.startsWith('chuyen ') || c.startsWith('dieu chuyen ') || c.includes('sang kho ') || c.includes('chuyen kho ')) {
+    const qty = parseVietnameseNumberWord(c) || 1;
+    let fromWh = null;
+    let toWh = null;
+    let prodQuery = null;
+
+    const fromMatch = c.match(/tu\s+(kho\s+[a-z0-9\s]+?)(?=\s+(?:sang|den|ve)\b|$)/i);
+    if (fromMatch) fromWh = fromMatch[1].trim();
+
+    const toMatch = c.match(/(?:sang|den|ve)\s+(kho\s+[a-z0-9\s]+?)(?=\s*$|\s+(?:tu|so luong|ghi chu)\b)/i);
+    if (toMatch) toWh = toMatch[1].trim();
+
+    const prodMatch = c.match(/(?:chuyen|dieu chuyen)\s+(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)?\s*(?:cai|chiec|hop|goi|sp)?\s*(.+?)(?=\s+(?:tu|sang|den|ve)\s+kho|$)/i);
+    if (prodMatch) {
+      let p = prodMatch[1].replace(/^(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)\s*(?:cai|chiec|hop|goi|sp)?\s*/i, '').trim();
+      p = p.replace(/\b(?:cai nay|mon nay|sp nay|hang nay|nay)\b/gi, '').trim();
+      if (p.length >= 2 && !p.startsWith('kho')) {
+        prodQuery = p;
+      }
+    }
+
+    if (toWh || c.includes('chuyen kho') || c.includes('dieu chuyen')) {
+      return {
+        action: 'TRANSFER_STOCK',
+        qty,
+        productQuery: prodQuery,
+        fromWarehouse: fromWh,
+        toWarehouse: toWh,
+        raw: c
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse debt & receivables / payables queries:
+ * e.g., "ai đang nợ tiền", "khách nào nợ", "tổng công nợ", "khách nợ bao nhiêu", "nợ nhà cung cấp bao nhiêu", "ncc nợ bn"
+ */
+export function parseDebtQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return null;
+
+  const isDebt = (
+    c.includes('cong no') ||
+    c.includes('so no') ||
+    c.includes('con no') ||
+    c.includes('dang no') ||
+    c.includes('ai no') ||
+    c.includes('khach no') ||
+    c.includes('no ncc') ||
+    c.includes('no nha cung cap') ||
+    c.includes('phai tra ncc') ||
+    c.includes('phai thu khach') ||
+    c.includes('no bao nhieu')
+  );
+
+  if (!isDebt) return null;
+
+  if (c.includes('ncc') || c.includes('nha cung cap') || c.includes('phai tra') || c.includes('dau vao')) {
+    return { type: 'SUPPLIER_DEBT', raw: c };
+  }
+  if (c.includes('khach') || c.includes('nguoi mua') || c.includes('ai no') || c.includes('phai thu')) {
+    return { type: 'CUSTOMER_DEBT', raw: c };
+  }
+  return { type: 'TOTAL_DEBT', raw: c };
+}
+
+/**
+ * Parse print & invoice actions:
+ * e.g., "in lại hóa đơn", "in lại bill vừa bán", "in hóa đơn gần nhất", "cài đặt máy in", "kết nối máy in", "chọn khổ k80"
+ */
+export function parsePrintActionQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return null;
+
+  if (
+    c.includes('in lai hoa don') ||
+    c.includes('in lai bill') ||
+    c.includes('in lai don') ||
+    c.includes('in hoa don gan nhat') ||
+    c.includes('in bill gan nhat') ||
+    c.includes('in don gan nhat') ||
+    c.includes('in don moi nhat') ||
+    c.includes('in bill vua ban') ||
+    c.includes('in bill vua xong') ||
+    c.includes('in phieu vua ban') ||
+    c.includes('in lai phieu') ||
+    c === 'in lai' ||
+    c === 'in bill'
+  ) {
+    return { action: 'PRINT_LATEST_INVOICE', raw: c };
+  }
+
+  if (c.includes('in thu') || c.includes('in test') || c.includes('test may in')) {
+    return { action: 'PRINT_TEST', raw: c };
+  }
+
+  if (c.includes('k80') || c.includes('kho k80') || c.includes('kho 80')) {
+    return { action: 'SET_PAPER_K80', raw: c };
+  }
+  if (c.includes('k58') || c.includes('kho k58') || c.includes('kho 58')) {
+    return { action: 'SET_PAPER_K58', raw: c };
+  }
+
+  if (
+    c.includes('cai dat may in') ||
+    c.includes('ket noi may in') ||
+    c.includes('thiet lap may in') ||
+    c.includes('cau hinh may in') ||
+    c === 'may in'
+  ) {
+    return { action: 'PRINTER_SETTINGS', raw: c };
+  }
+
+  return null;
+}
+
+/**
+ * Parse owner emotions, venting & business advice queries:
+ * e.g., "hôm nay ế quá", "chán quá không có khách", "bán buôn chán thế", "làm sao để đông khách", "cách xả hàng tồn"
+ */
+export function parseOwnerEmotionOrAdviceQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return null;
+
+  const isEmotionSlow = (
+    c.includes('e qua') ||
+    c.includes('e am') ||
+    c.includes('chan qua') ||
+    c.includes('buon ban chan the') ||
+    c.includes('sao e the') ||
+    c.includes('khong co khach') ||
+    c.includes('chua co khach') ||
+    c.includes('vang khach') ||
+    c.includes('vang ve') ||
+    c.includes('e am qua') ||
+    c.includes('sao hom nay vang the') ||
+    c.includes('lam sao de dong khach') ||
+    c.includes('cach ban duoc nhieu hang') ||
+    c.includes('cach xa hang ton') ||
+    c.includes('tu van ban hang') ||
+    c.includes('tu van kinh doanh')
+  );
+
+  if (isEmotionSlow) {
+    return { type: 'SLOW_SALES_EMOTION', raw: c };
+  }
+
+  return null;
+}
+
+/**
+ * Parse system questions or technical discrepancy queries:
+ * e.g., "sao tồn kho bị âm", "tại sao giá vốn sai", "kiểm tra lỗi", "sao lệch kho", "sao lưu dữ liệu"
+ */
+export function parseSystemOrDataQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return null;
+
+  if (c.includes('ton kho bi am') || c.includes('ton am') || c.includes('am kho')) {
+    return { action: 'NEGATIVE_STOCK_HELP', raw: c };
+  }
+  if (c.includes('gia von sai') || c.includes('gia von am') || c.includes('tai sao gia von')) {
+    return { action: 'COST_PRICE_HELP', raw: c };
+  }
+  if (c.includes('sao lech kho') || c.includes('lech ton') || c.includes('lech kho')) {
+    return { action: 'STOCK_MISMATCH_HELP', raw: c };
+  }
+  if (c.includes('sao luu') || c.includes('backup') || c.includes('dong bo google drive') || c.includes('tai ban sao luu')) {
+    return { action: 'BACKUP_ACTION', raw: c };
+  }
   return null;
 }
 

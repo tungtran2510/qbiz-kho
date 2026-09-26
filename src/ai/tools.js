@@ -729,7 +729,12 @@ export const TOOLS = {
         note,
       },
       inventorySnapshot,
-      humanSummary: `Chuyển ${lines.length} mặt hàng từ kho "${fromWh?.name || fromWarehouseId}" sang kho "${toWh?.name || toWarehouseId}"`,
+      humanSummary: lines.length === 1
+        ? (() => {
+            const p = (state?.data?.products || []).find(x => x.id === lines[0].productId);
+            return `Chuyển ${lines[0].qty} ${p?.unit || 'chiếc'} "${p?.name || 'sản phẩm'}" từ kho "${fromWh?.name || fromWarehouseId}" sang kho "${toWh?.name || toWarehouseId}"`;
+          })()
+        : `Chuyển ${lines.length} mặt hàng từ kho "${fromWh?.name || fromWarehouseId}" sang kho "${toWh?.name || toWarehouseId}"`,
       contextSnapshot: envelope,
     });
   },

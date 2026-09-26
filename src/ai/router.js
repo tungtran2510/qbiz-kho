@@ -56,7 +56,12 @@ import {
   parseContextualStockDecreaseOrZero,
   parseProductStatusChange,
   parseProductPriceChange,
-  parseWarehouseManagementQuery
+  parseWarehouseManagementQuery,
+  parseStockTransferCommand,
+  parseDebtQuery,
+  parsePrintActionQuery,
+  parseOwnerEmotionOrAdviceQuery,
+  parseSystemOrDataQuery
 } from './vietnamese-nlp.js';
 
 function norm(str) {
@@ -234,15 +239,21 @@ export function isTopSellingQuery(pNorm) {
 
   if (p.includes('tra loi') || p.includes('loi khuyen') || p.includes('loi he thong')) return false;
 
-  // 1. Nhóm từ bán chạy truyền thống
+  // 1. Nhóm từ bán chạy truyền thống & hot
   if (
     p.includes('ban chay') ||
     p.includes('chay nhat') ||
+    p.includes('hot nhat') ||
+    p.includes('hang hot') ||
+    p.includes('mon hot') ||
+    p.includes('sp hot') ||
     p.includes('top ban') ||
     p.includes('hang ban chay') ||
     p.includes('mat hang ban chay') ||
     p.includes('mon ban chay') ||
-    p.includes('dich vu ban chay')
+    p.includes('dich vu ban chay') ||
+    p.includes('hut khach nhat') ||
+    p.includes('chay hang')
   ) {
     return true;
   }
@@ -254,7 +265,9 @@ export function isTopSellingQuery(pNorm) {
     p.includes('ban duoc nhieu nhat') ||
     p.includes('ban dc nhieu nhat') ||
     p.includes('ban nhieu') ||
-    p.includes('duoc ban nhieu')
+    p.includes('duoc ban nhieu') ||
+    p.includes('ban duoc nhat') ||
+    p.includes('ban tot nhat')
   ) {
     return true;
   }
@@ -281,16 +294,18 @@ export function isTopSellingQuery(pNorm) {
     return true;
   }
 
-  // 5. Câu hỏi thực thể + cực cấp: "dịch vụ nào...", "gói trị liệu nào...", "món nào..."
+  // 5. Câu hỏi thực thể + cực cấp: "dịch vụ nào...", "gói trị liệu nào...", "món nào...", "cái nào hot nhất..."
   const hasEntityWord = (
     p.includes('dich vu') ||
     p.includes('goi tri lieu') ||
     p.includes('lieu trinh') ||
     p.includes('mat hang') ||
     p.includes('san pham') ||
+    p.includes('sp') ||
     p.includes('mon an') ||
     p.includes('mon nao') ||
-    p.includes('hang nao')
+    p.includes('hang nao') ||
+    p.includes('cai nao')
   );
 
   const hasSuperlative = (
@@ -298,8 +313,11 @@ export function isTopSellingQuery(pNorm) {
     p.includes('cao nhat') ||
     p.includes('tot nhat') ||
     p.includes('chay nhat') ||
+    p.includes('hot nhat') ||
+    p.includes('hot') ||
     p.includes('duoc chuong nhat') ||
-    p.includes('dong khach nhat')
+    p.includes('dong khach nhat') ||
+    p.includes('hut khach nhat')
   );
 
   if (hasEntityWord && hasSuperlative) {
@@ -309,7 +327,7 @@ export function isTopSellingQuery(pNorm) {
   // 6. Câu hỏi dịch vụ cụ thể của chủ shop
   if (
     p.includes('dich vu nao') &&
-    (p.includes('ban') || p.includes('dat') || p.includes('nhieu') || p.includes('chay') || p.includes('doanh thu'))
+    (p.includes('ban') || p.includes('dat') || p.includes('nhieu') || p.includes('chay') || p.includes('doanh thu') || p.includes('hot'))
   ) {
     return true;
   }
@@ -2182,7 +2200,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Case 1: Contextual Stock Adjustment / In-stock activation ("kích hoạt còn hàng số lượng một chiếc", "chỉnh tồn kho thành 10")
   const stockAdjustMatch = parseContextualStockAdjustment(pNorm) || parseContextualStockAdjustment(rawPrompt);
   if (stockAdjustMatch) {
-    const targetProd = resolveTargetProduct();
+    const targetProd = resolveTargetProduct(stockAdjustMatch.productQuery);
     if (!targetProd) {
       return {
         text: `⚠️ **Chưa xác định được sản phẩm:** Vui lòng mở chi tiết sản phẩm hoặc ghi rõ tên sản phẩm bạn muốn kích hoạt / điều chỉnh tồn kho (VD: *"Kích hoạt còn hàng 1 chiếc Ghế sáng chế 135"*).`,
@@ -2214,7 +2232,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Case 2: Contextual Stock Increase ("thêm 8 chiếc", "nhập thêm 5 cái")
   const stockIncreaseMatch = parseContextualStockIncrease(pNorm) || parseContextualStockIncrease(rawPrompt);
   if (stockIncreaseMatch) {
-    const targetProd = resolveTargetProduct();
+    const targetProd = resolveTargetProduct(stockIncreaseMatch.productQuery);
     if (targetProd) {
       setLastResolvedProduct(targetProd);
       context.current_product_id = targetProd.id;
@@ -2239,7 +2257,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Case 3: Contextual Stock Decrease / Zero ("hết hàng rồi", "báo hết hàng", "cho về 0", "giảm 2 chiếc")
   const stockDecreaseMatch = parseContextualStockDecreaseOrZero(pNorm) || parseContextualStockDecreaseOrZero(rawPrompt);
   if (stockDecreaseMatch) {
-    const targetProd = resolveTargetProduct();
+    const targetProd = resolveTargetProduct(stockDecreaseMatch.productQuery);
     if (!targetProd) {
       return {
         text: `⚠️ **Chưa xác định được sản phẩm:** Vui lòng mở chi tiết sản phẩm hoặc ghi rõ tên sản phẩm cần xuất kho / báo hết hàng.`,
@@ -2252,7 +2270,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     setLastResolvedProduct(targetProd);
     context.current_product_id = targetProd.id;
     const targetWh = context?.warehouse_id || (state?.warehouse && state.warehouse !== 'all' ? state.warehouse : (state?.data?.warehouses || [])[0]?.id);
-    if (stockDecreaseMatch.isZero) {
+    if (stockDecreaseMatch.isZero || stockDecreaseMatch.type === 'SET_ZERO' || stockDecreaseMatch.qty === 0) {
       const res = await executeSkill('stocktake-proposal', {
         warehouseId: targetWh,
         productId: targetProd.id,
@@ -2288,7 +2306,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Case 4: Product Business Status Change ("tôi không bán cái này nữa", "tôi sẽ bán cái này trở lại", "ngừng kinh doanh", "bán trở lại")
   const statusChangeMatch = parseProductStatusChange(pNorm) || parseProductStatusChange(rawPrompt);
   if (statusChangeMatch) {
-    const targetProd = resolveTargetProduct();
+    const targetProd = resolveTargetProduct(statusChangeMatch.productQuery);
     if (!targetProd) {
       return {
         text: `⚠️ **Chưa xác định được sản phẩm:** Vui lòng mở chi tiết sản phẩm hoặc ghi rõ tên sản phẩm cần chuyển đổi trạng thái kinh doanh.`,
@@ -2318,7 +2336,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Case 5: Product Price Change ("sửa giá thành 50 triệu", "sửa giá nhập thành 40 triệu", "chỉnh giá bán 120.000")
   const priceChangeMatch = parseProductPriceChange(pNorm) || parseProductPriceChange(rawPrompt);
   if (priceChangeMatch) {
-    const targetProd = resolveTargetProduct();
+    const targetProd = resolveTargetProduct(priceChangeMatch.productQuery);
     if (!targetProd) {
       return {
         text: `⚠️ **Chưa xác định được sản phẩm:** Vui lòng mở chi tiết sản phẩm hoặc ghi rõ tên sản phẩm cần sửa giá (VD: *"Sửa giá Ghế 135 thành 50 triệu"*).`,
@@ -2431,6 +2449,247 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
           compactTrace: 'Rule exact'
         };
       }
+    }
+  }
+
+  // Case 7: Stock Transfer Command ("chuyển 5 cái từ kho trung tâm sang kho hà đông", "chuyển 10 ghế 135 sang kho phụ")
+  const transferMatch = parseStockTransferCommand(pNorm) || parseStockTransferCommand(rawPrompt);
+  if (transferMatch) {
+    const warehouses = state?.data?.warehouses || [];
+    let fromWh = null;
+    let toWh = null;
+    if (transferMatch.fromWarehouse) {
+      fromWh = warehouses.find(w => canonicalizeVietnamese(w.name).includes(transferMatch.fromWarehouse))?.id;
+    }
+    if (transferMatch.toWarehouse) {
+      toWh = warehouses.find(w => canonicalizeVietnamese(w.name).includes(transferMatch.toWarehouse))?.id;
+    }
+    if (!fromWh) fromWh = context?.warehouse_id || (state?.warehouse && state.warehouse !== 'all' ? state.warehouse : warehouses[0]?.id);
+    if (!toWh && warehouses.length > 1) {
+      toWh = warehouses.find(w => w.id !== fromWh)?.id;
+    }
+    const targetProd = resolveTargetProduct(transferMatch.productQuery);
+    if (!targetProd) {
+      return {
+        text: `⚠️ **Chưa xác định được sản phẩm cần chuyển:** Vui lòng mở chi tiết sản phẩm hoặc ghi rõ tên sản phẩm bạn muốn điều chuyển (VD: *"Chuyển 5 Ghế sáng chế 135 sang kho phụ"*).`,
+        status: 'NEEDS_CLARIFICATION',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    }
+    if (!toWh) {
+      return {
+        text: `⚠️ **Chưa xác định được kho đích:** Hiện tại cửa hàng chưa có kho thứ hai để điều chuyển đến. Bạn có thể nói *"Thêm kho mới [Tên kho]"* trước nhé!`,
+        status: 'NEEDS_CLARIFICATION',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    }
+    setLastResolvedProduct(targetProd);
+    context.current_product_id = targetProd.id;
+    const res = await executeSkill('transfer-proposal', {
+      fromWarehouseId: fromWh,
+      toWarehouseId: toWh,
+      productId: targetProd.id,
+      qty: transferMatch.qty,
+      note: `Điều chuyển kho từ AI: ${targetProd.name} (${transferMatch.qty} ${targetProd.unit || 'cái'})`
+    }, context, state);
+    return {
+      ...res,
+      intent: 'TRANSFER_PROPOSAL',
+      skillId: 'transfer-proposal',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // Case 8: Debt & Receivables / Payables ("ai đang nợ tiền", "khách nào nợ", "tổng công nợ", "nợ nhà cung cấp bao nhiêu")
+  const debtMatch = parseDebtQuery(pNorm) || parseDebtQuery(rawPrompt);
+  if (debtMatch) {
+    const customers = state?.data?.customers || [];
+    const suppliers = state?.data?.suppliers || [];
+    const fmt = new Intl.NumberFormat('vi-VN');
+
+    const customersWithDebt = customers.filter(c => Number(c.debt || c.balance || 0) > 0);
+    const totalCustDebt = customersWithDebt.reduce((sum, c) => sum + Number(c.debt || c.balance || 0), 0);
+    const suppliersWithDebt = suppliers.filter(s => Number(s.debt || s.balance || 0) > 0);
+    const totalSuppDebt = suppliersWithDebt.reduce((sum, s) => sum + Number(s.debt || s.balance || 0), 0);
+
+    if (debtMatch.type === 'SUPPLIER_DEBT') {
+      let msg = `🏭 **Báo cáo công nợ nhà cung cấp (Phải trả):**\n\n` +
+        `- Tổng nợ phải trả NCC: **${fmt.format(totalSuppDebt)} ₫** (${suppliersWithDebt.length} nhà cung cấp)\n`;
+      if (suppliersWithDebt.length > 0) {
+        msg += `\n📋 **Chi tiết theo nhà cung cấp:**\n`;
+        suppliersWithDebt.slice(0, 5).forEach((s, idx) => {
+          msg += `${idx + 1}. **${s.name}**: Còn nợ **${fmt.format(s.debt || s.balance)} ₫**\n`;
+        });
+      } else {
+        msg += `\n✅ *Cửa hàng hiện không nợ đọng bất kỳ nhà cung cấp nào. Sổ nợ sạch!*`;
+      }
+      return {
+        text: msg,
+        status: 'SUCCESS',
+        intent: 'SUPPLIER_DEBT',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    } else {
+      let msg = `👥 **Báo cáo công nợ khách hàng (Phải thu):**\n\n` +
+        `- Tổng nợ khách hàng còn thiếu: **${fmt.format(totalCustDebt)} ₫** (${customersWithDebt.length} khách hàng)\n`;
+      if (customersWithDebt.length > 0) {
+        msg += `\n📋 **Danh sách khách hàng đang có công nợ:**\n`;
+        customersWithDebt.slice(0, 5).forEach((c, idx) => {
+          msg += `${idx + 1}. **${c.name}** (${c.phone || 'Chưa có SĐT'}): Còn nợ **${fmt.format(c.debt || c.balance)} ₫**\n`;
+        });
+      } else {
+        msg += `\n✅ *Hiện tại tất cả khách hàng đều đã thanh toán đủ 100%. Không có nợ đọng!*`;
+      }
+      if (totalSuppDebt > 0 && debtMatch.type === 'TOTAL_DEBT') {
+        msg += `\n----------------------------------------\n🏭 *Nợ nhà cung cấp (Phải trả):* **${fmt.format(totalSuppDebt)} ₫**`;
+      }
+      return {
+        text: msg,
+        status: 'SUCCESS',
+        intent: 'CUSTOMER_DEBT',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    }
+  }
+
+  // Case 9: Print & Invoice Actions ("in lại hóa đơn", "in lại bill vừa bán", "cài đặt máy in", "kết nối máy in", "chọn khổ k80")
+  const printAction = parsePrintActionQuery(pNorm) || parsePrintActionQuery(rawPrompt);
+  if (printAction) {
+    if (printAction.action === 'PRINT_LATEST_INVOICE') {
+      const sales = state?.data?.sales || [];
+      if (sales.length === 0) {
+        return {
+          text: `⚠️ **Chưa có hóa đơn nào:** Cửa hàng chưa có giao dịch bán hàng nào trong hệ thống để in lại hóa đơn.`,
+          status: 'SUCCESS',
+          tier: 0,
+          provider: PROVIDER_MODES.DETERMINISTIC,
+          compactTrace: 'Rule exact'
+        };
+      }
+      const latestSale = sales[sales.length - 1];
+      if (typeof window !== 'undefined' && window.__qbiz_app__?.openTransactionModal) {
+        window.__qbiz_app__.openTransactionModal(latestSale.id || latestSale.sale_uuid);
+      }
+      const fmt = new Intl.NumberFormat('vi-VN');
+      return {
+        text: `🖨️ **Đang mở và chuẩn bị in hóa đơn gần nhất:**\n\n` +
+          `- Mã hóa đơn: **${latestSale.code || latestSale.sale_uuid || 'HD-Gần nhất'}**\n` +
+          `- Khách hàng: **${latestSale.customerLabel || latestSale.customer_name || 'Khách lẻ'}**\n` +
+          `- Tổng tiền: **${fmt.format(latestSale.total || latestSale.total_amount || 0)} ₫**\n` +
+          `- Thời gian: ${latestSale.createdAt || latestSale.created_at || 'Vừa xong'}\n\n` +
+          `✅ *Phiếu thanh toán đã được mở trên màn hình để bạn bấm in hoặc gửi cho khách.*`,
+        status: 'SUCCESS',
+        intent: 'PRINT_INVOICE',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    } else if (printAction.action === 'PRINTER_SETTINGS') {
+      if (typeof window !== 'undefined' && window.__qbiz_app__?.openPrintSettingsModal) {
+        window.__qbiz_app__.openPrintSettingsModal();
+      }
+      return {
+        text: `⚙️ **Đã mở bảng Cài đặt Máy in & Thiết bị:**\n\n` +
+          `- Bạn có thể kết nối máy in hóa đơn (Bluetooth / LAN / USB)\n` +
+          `- Chọn khổ giấy chuẩn (**K80** cho khổ rộng hoặc **K58** cho khổ nhỏ)\n` +
+          `- Tùy chỉnh mẫu in hóa đơn và in test thử nghiệm.`,
+        status: 'SUCCESS',
+        intent: 'PRINTER_SETTINGS',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    } else if (printAction.action === 'SET_PAPER_K80' || printAction.action === 'SET_PAPER_K58') {
+      const isK80 = printAction.action === 'SET_PAPER_K80';
+      if (typeof window !== 'undefined' && window.__qbiz_app__?.state?.printSettings) {
+        window.__qbiz_app__.state.printSettings.paperSize = isK80 ? 'K80' : 'K58';
+      }
+      return {
+        text: `✅ **Đã chuyển định dạng in sang khổ giấy ${isK80 ? 'K80 (80mm)' : 'K58 (58mm)'}.**\n\nCác hóa đơn tiếp theo sẽ tự động dàn trang theo chuẩn khổ ${isK80 ? 'K80' : 'K58'}.`,
+        status: 'SUCCESS',
+        intent: 'SET_PAPER_SIZE',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    }
+  }
+
+  // Case 10: Owner Emotion / Venting & Business Advice ("hôm nay ế quá", "chán quá không có khách", "bán buôn chán thế", "sao ế thế", "làm sao để đông khách")
+  const emotionAdvice = parseOwnerEmotionOrAdviceQuery(pNorm) || parseOwnerEmotionOrAdviceQuery(rawPrompt);
+  if (emotionAdvice) {
+    const products = (state?.data?.products || []).filter(p => p.active !== false && p.type !== 'SERVICE');
+    const slowItems = products.slice(0, 3);
+    const slowNames = slowItems.map(p => `**${p.name}**`).join(', ');
+    return {
+      text: `☕ **Đừng nản lòng nhé bạn ơi!** Buôn bán có ngày đắt ngày ế là chuyện rất bình thường trong kinh doanh bán lẻ.\n\n` +
+        `💡 **3 giải pháp thực tế bạn có thể làm ngay lúc này để kích cầu:**\n` +
+        `1. **Tạo combo kích cầu:** Ghép các mặt hàng bán chậm (như ${slowNames || 'hàng tồn'}) với các món hot nhất để giảm giá combo 10-15%.\n` +
+        `2. **Nhắn tin chăm sóc khách quen:** Lọc lại danh sách khách cũ trong mục Khách hàng để gửi ưu đãi hoặc thông báo hàng mới về.\n` +
+        `3. **Đăng bài & chia sẻ nhanh:** Chụp ảnh sản phẩm kèm bảng giá thực tế đăng lên Zalo/Facebook/Fanpage.\n\n` +
+        `Bạn muốn em kiểm tra danh sách **mặt hàng bán chạy nhất** hay **hàng bán chậm** để lên kế hoạch xả hàng không ạ?`,
+      status: 'SUCCESS',
+      intent: 'OWNER_ADVICE',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // Case 11: System & Data Help ("sao tồn kho bị âm", "tại sao giá vốn sai", "kiểm tra lỗi", "sao lệch kho", "sao lưu dữ liệu")
+  const sysHelp = parseSystemOrDataQuery(pNorm) || parseSystemOrDataQuery(rawPrompt);
+  if (sysHelp) {
+    if (sysHelp.action === 'NEGATIVE_STOCK_HELP' || sysHelp.action === 'STOCK_MISMATCH_HELP') {
+      return {
+        text: `🔍 **Giải thích nguyên nhân & Cách xử lý lệch kho / tồn âm:**\n\n` +
+          `• **Nguyên nhân phổ biến:** Bán hàng xuất kho trước khi tạo phiếu nhập hàng, hoặc nhân viên quên quét mã khi nhập hàng mới về.\n` +
+          `• **Cách khắc phục nhanh:**\n` +
+          `  1. Ra lệnh cho em: *"Kiểm kho [Tên sản phẩm] thực tế còn [Số lượng]"* để chốt lại tồn kho chuẩn ngay lập tức.\n` +
+          `  2. Hoặc ra lệnh: *"Nhập thêm [Số lượng] [Tên sản phẩm]"* để bù lại số lượng đã xuất.\n` +
+          `\nBạn có muốn em hỗ trợ kiểm tra mặt hàng cụ thể nào bị lệch không ạ?`,
+        status: 'SUCCESS',
+        intent: 'SYSTEM_HELP',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    } else if (sysHelp.action === 'COST_PRICE_HELP') {
+      return {
+        text: `🔍 **Về giá vốn sản phẩm:**\n\n` +
+          `• Giá vốn (giá nhập) được tính tự động theo phương pháp bình quân gia quyền từ các phiếu nhập kho.\n` +
+          `• Nếu giá vốn chưa đúng, bạn chỉ cần ra lệnh: *"Sửa giá nhập [Tên sản phẩm] thành [Số tiền]"* (VD: *"Sửa giá nhập Áo thun thành 80k"*).\n` +
+          `• Em sẽ tạo đề xuất cập nhật ngay cho bạn!`,
+        status: 'SUCCESS',
+        intent: 'SYSTEM_HELP',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    } else if (sysHelp.action === 'BACKUP_ACTION') {
+      if (typeof window !== 'undefined' && window.__qbiz_app__?.triggerBackup) {
+        window.__qbiz_app__.triggerBackup();
+      }
+      return {
+        text: `💾 **Sao lưu dữ liệu cửa hàng:**\n\n` +
+          `• Hệ thống đã lưu trữ toàn bộ dữ liệu offline an toàn trong IndexedDB của thiết bị này.\n` +
+          `• Đang kích hoạt tiến trình sao lưu đồng bộ lên Google Drive / Tải bản sao lưu cục bộ.\n` +
+          `✅ *Dữ liệu của bạn luôn được bảo toàn độc lập và không bao giờ bị mất!*`,
+        status: 'SUCCESS',
+        intent: 'BACKUP_DATA',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
     }
   }
 
