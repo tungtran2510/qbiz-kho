@@ -3369,6 +3369,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   cursor: pointer !important;
 }
 .pos-product-image {
+  position: relative !important;
   width: 100% !important;
   aspect-ratio: 1.35/1 !important;
   border-radius: 8px !important;
@@ -3384,6 +3385,38 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+}
+/* Treo tồn lên đỉnh ảnh kiểu thẻ (Floating Stock Badge) — giảm hẳn 1 dòng giúp khung thẻ gọn gàng */
+.pos-stock-badge {
+  position: absolute !important;
+  top: 5px !important;
+  left: 5px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 2.5px 7px !important;
+  font-size: 10.5px !important;
+  font-weight: 750 !important;
+  line-height: 1.2 !important;
+  border-radius: 6px !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  color: #ffffff !important;
+  letter-spacing: 0.01em !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+  white-space: nowrap !important;
+}
+.pos-stock-badge.low-stock {
+  background: rgba(217, 119, 6, 0.88) !important;
+}
+.pos-stock-badge.out-of-stock {
+  background: rgba(225, 29, 72, 0.9) !important;
+}
+.pos-stock-badge.service {
+  background: rgba(124, 58, 237, 0.82) !important;
 }
 /* Dòng 1: Tiêu đề */
 .pos-prod-title {
@@ -3405,21 +3438,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  margin-bottom: 1px !important;
+  margin-bottom: 2px !important;
   line-height: 1.25 !important;
 }
-/* Dòng 3: Tồn — sát gần giá cho gọn gàng */
-.pos-prod-stock {
-  font-size: 11px !important;
-  color: #475569 !important;
-  font-weight: 600 !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  margin-bottom: 0 !important;
-  line-height: 1.25 !important;
-}
-/* Dòng 4: Giá — nằm gọn ngay dưới dòng tồn */
+/* Dòng 3: Giá — nằm gọn ngay dưới mã SKU (do tồn đã treo lên ảnh) */
 .pos-prod-price-row {
   display: flex !important;
   align-items: center !important;
@@ -3509,10 +3531,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   min-height: 96px !important;
 }
 .pos-grid.list .pos-product-main {
-  min-height: 96px !important;
+  min-height: 84px !important;
   display: grid !important;
   grid-template-columns: 80px minmax(0, 1fr) !important;
-  grid-template-rows: auto auto auto auto !important;
+  grid-template-rows: auto auto auto !important;
   column-gap: 12px !important;
   row-gap: 2px !important;
   align-content: center !important;
@@ -3520,10 +3542,17 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 .pos-grid.list .pos-product-image {
   grid-column: 1 !important;
-  grid-row: 1 / span 4 !important;
+  grid-row: 1 / span 3 !important;
   width: 80px !important;
   height: 80px !important;
   margin-bottom: 0 !important;
+}
+.pos-grid.list .pos-stock-badge {
+  top: 3px !important;
+  left: 3px !important;
+  padding: 1.5px 5px !important;
+  font-size: 9.5px !important;
+  border-radius: 4px !important;
 }
 .pos-grid.list .pos-prod-title {
   grid-column: 2 !important;
@@ -3537,14 +3566,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   grid-row: 2 !important;
   margin-bottom: 0 !important;
 }
-.pos-grid.list .pos-prod-stock {
-  grid-column: 2 !important;
-  grid-row: 3 !important;
-  margin-bottom: 0 !important;
-}
 .pos-grid.list .pos-prod-price-row {
   grid-column: 2 !important;
-  grid-row: 4 !important;
+  grid-row: 3 !important;
   padding-right: 0 !important;
   min-height: 0 !important;
   margin-top: 2px !important;

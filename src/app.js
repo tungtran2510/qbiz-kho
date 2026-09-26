@@ -298,14 +298,27 @@ function saleProductTile(p){
   const stock = p.type === 'SERVICE' ? null : warehouseStock(p.id);
   const line = state.saleCart.find(x => x.itemId === p.id);
   const skuText = esc(p.sku || (p.type === 'SERVICE' ? 'Dịch vụ' : 'Chưa có mã'));
-  const stockText = p.type === 'SERVICE' ? 'Dịch vụ' : (stock === null ? 'Tồn: 0' : `Tồn: ${fmt(stock)}`);
+  const isService = p.type === 'SERVICE';
+  const isOutOfStock = !isService && stock !== null && stock <= 0;
+  const isLowStock = !isService && stock !== null && p.lowStock && stock <= p.lowStock && stock > 0;
+  
+  let stockBadgeHtml = '';
+  if (isService) {
+    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock service">Dịch vụ</span>`;
+  } else if (isOutOfStock) {
+    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock out-of-stock">Hết hàng</span>`;
+  } else if (isLowStock) {
+    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock low-stock">Tồn: ${fmt(stock)}</span>`;
+  } else {
+    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock">Tồn: ${fmt(stock ?? 0)}</span>`;
+  }
+
   const priceText = p.price ? fmt(p.price) : 'Chưa có giá';
   return `<article class="pos-product">
     <button class="pos-product-main" data-sale-add="${p.id}">
-      <div class="pos-product-image">${p.image ? `<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>` : esc((p.name || 'S').slice(0, 1))}</div>
+      <div class="pos-product-image">${p.image ? `<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>` : esc((p.name || 'S').slice(0, 1))}${stockBadgeHtml}</div>
       <strong class="pos-prod-title">${esc(p.name)}</strong>
       <div class="pos-prod-sku">${skuText}</div>
-      <div class="pos-prod-stock">${stockText}</div>
       <div class="pos-prod-price-row">
         <b class="pos-prod-price">${priceText}</b>
       </div>
@@ -703,13 +716,9 @@ function renderDashboard(){
           <div class="entry-industry-section" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;margin-bottom:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
               <span style="font-size:11px;font-weight:700;color:#64748b;letter-spacing:0.04em;text-transform:uppercase">CHỌN NGÀNH ĐỂ XEM DEMO</span>
-              <span style="font-size:11px;color:var(--primary,#0284c7);font-weight:600">5 shop mẫu chuẩn</span>
+              <span style="font-size:11px;color:var(--primary,#0284c7);font-weight:600">4 shop mẫu chuẩn</span>
             </div>
             <div class="industry-selector-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">
-              <button type="button" class="industry-select-btn" data-action="select-demo-industry" data-industry="doctorloan" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:9px 12px;background:#f0fdfa;border:1.5px solid #0d9488;border-radius:8px;font-size:13px;font-weight:700;color:#0f766e;cursor:pointer;text-align:left;box-shadow:0 1px 2px rgba(13,148,136,0.1)">
-                <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:#ccfbf1;color:#0d9488;flex-shrink:0">${icon('shield-check')}</span>
-                <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Gối & Ghế DoctorLoan (Sáng chế y tế)</span>
-              </button>
               <button type="button" class="industry-select-btn" data-action="select-demo-industry" data-industry="retail" style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#ffffff;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px;font-weight:600;color:#0f172a;cursor:pointer;text-align:left;box-shadow:0 1px 2px rgba(0,0,0,0.03)">
                 <span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:#e0f2fe;color:#0284c7;flex-shrink:0">${icon('shopping-bag')}</span>
                 <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Bán lẻ / Tổng hợp</span>
@@ -4026,7 +4035,7 @@ function openSyncInfoModal() {
   });
 }
 
-async function previewDemo(industryKey = 'doctorloan'){
+async function previewDemo(industryKey = 'retail'){
   try{
     await loadDemoIndustry(industryKey, 'OWNER');
     state._userSelectedProductType = false;
@@ -4135,7 +4144,7 @@ document.addEventListener('click', async e=>{
   const kind=e.target.closest('[data-kind]')?.dataset.kind;
   if(action==='open-auth-modal' || action==='open-hero-auth') return openAuthModal();
   if(action==='create-shop-modal') return openCreateShopModal();
-  if(action==='preview-demo') return previewDemo('doctorloan');
+  if(action==='preview-demo') return previewDemo('retail');
   if(action==='select-demo-industry') {
     const ind = e.target.closest('[data-industry]')?.dataset.industry || 'retail';
     return previewDemo(ind);

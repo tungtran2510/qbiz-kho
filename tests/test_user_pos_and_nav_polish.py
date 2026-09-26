@@ -22,20 +22,30 @@ def run_tests():
         
         print("Page loaded successfully.")
         
-        # Check if DoctorLoan button exists in landing overlay
+        # 1. Verify Landing Overlay: Exactly 4 industry buttons, NO standalone doctorloan button
         dl_btn = page.locator('button[data-industry="doctorloan"]')
         has_dl_btn = dl_btn.count() > 0
-        print(f"DoctorLoan button in landing overlay: {has_dl_btn}")
+        print(f"DoctorLoan standalone button in landing overlay (should be False): {has_dl_btn}")
+        assert not has_dl_btn, "DoctorLoan standalone button should NOT be in landing overlay!"
         
-        # Click DoctorLoan industry button
-        if has_dl_btn:
-            dl_btn.click()
+        # Check standard 4 industries
+        ind_btns = page.locator('button[data-action="select-demo-industry"]')
+        ind_count = ind_btns.count()
+        print(f"Standard demo industries count: {ind_count}")
+        assert ind_count == 4, f"Expected 4 demo industries, got {ind_count}"
+        
+        # Capture landing overlay screenshot
+        page.screenshot(path='tests/evidence/evidence_landing_4_industries.png')
+        print("Captured tests/evidence/evidence_landing_4_industries.png")
+        
+        # Click Retail / Bán lẻ / Cửa hàng tổng hợp
+        retail_btn = page.locator('button[data-industry="retail"]')
+        if retail_btn.count() > 0:
+            retail_btn.click()
             time.sleep(1)
         else:
-            preview_btn = page.locator('[data-action="preview-demo"]')
-            if preview_btn.count() > 0:
-                preview_btn.click()
-                time.sleep(1)
+            page.locator('[data-action="preview-demo"]').click()
+            time.sleep(1)
                 
         # Check that we are in the app
         page.wait_for_selector('.mobile-nav')
@@ -57,52 +67,85 @@ def run_tests():
         print(f"Chip border-radius: {chip_radius}, height: {chip_height}px")
         assert chip_radius == '8px', f"Expected border-radius 8px, got {chip_radius}"
         
-        # Verify Product Card hierarchy
+        # 2. Verify Product Card Floating Stock Badge & Compact Card Layout
         first_product = page.locator('.pos-product').first
         assert first_product.count() > 0, "No product card found in POS"
         
+        stock_badge = first_product.locator('.pos-product-image .pos-stock-badge')
+        assert stock_badge.count() > 0, "Stock badge missing from product image thumbnail!"
+        
+        badge_text = stock_badge.inner_text().strip()
+        print(f"Stock Badge Text (on thumbnail): {badge_text}")
+        assert 'Tồn:' in badge_text or 'Hết hàng' in badge_text or 'Dịch vụ' in badge_text, f"Unexpected badge text: {badge_text}"
+        
+        # Verify badge position is absolute inside pos-product-image
+        badge_pos = stock_badge.evaluate('el => getComputedStyle(el).position')
+        print(f"Stock badge position: {badge_pos}")
+        assert badge_pos == 'absolute', f"Stock badge should be position: absolute, got {badge_pos}"
+        
         title_el = first_product.locator('.pos-prod-title')
         sku_el = first_product.locator('.pos-prod-sku')
-        stock_el = first_product.locator('.pos-prod-stock')
         price_el = first_product.locator('.pos-prod-price')
         add_btn = first_product.locator('.pos-add')
         
         title_text = title_el.inner_text().strip()
         sku_text = sku_el.inner_text().strip()
-        stock_text = stock_el.inner_text().strip()
         price_text = price_el.inner_text().strip()
         
         print(f"Product Title: {title_text}")
         print(f"Product SKU: {sku_text}")
-        print(f"Product Stock: {stock_text}")
         print(f"Product Price: {price_text}")
         
         # Assert NO 'đ' or '₫' in priceText
         assert 'đ' not in price_text.lower() and '₫' not in price_text, f"Price should not contain currency symbol, got {price_text}"
         print("Verified: Price text has no trailing currency symbol (đ / ₫).")
         
-        # Verify vertical distance between stock and price
-        stock_rect = stock_el.bounding_box()
-        price_rect = price_el.bounding_box()
-        vertical_gap = price_rect['y'] - (stock_rect['y'] + stock_rect['height'])
-        print(f"Vertical gap between stock and price: {vertical_gap:.1f}px")
-        assert vertical_gap < 15, f"Vertical gap between stock and price is too large: {vertical_gap}px"
-        
         # Verify add button size and font-size
         add_btn_size = add_btn.evaluate('el => ({width: el.offsetWidth, height: el.offsetHeight, fontSize: getComputedStyle(el).fontSize})')
         print(f"Add button size: {add_btn_size}")
-        assert add_btn_size['width'] >= 30, f"Add button width should be >= 30px, got {add_btn_size['width']}"
+        assert add_btn_size['width'] >= 34, f"Add button width should be >= 34px, got {add_btn_size['width']}"
         assert int(float(add_btn_size['fontSize'].replace('px',''))) >= 20, f"Add button font size should be >= 20px, got {add_btn_size['fontSize']}"
         
-        # Check DOM order of elements in pos-product-main
+        # Check DOM order of elements in pos-product-main: Image -> Title -> SKU -> Price
         dom_order = first_product.locator('.pos-product-main > *').evaluate_all(
             "nodes => nodes.map(n => n.className)"
         )
         print(f"DOM order inside product main: {dom_order}")
         assert 'pos-prod-title' in dom_order[1], f"Expected pos-prod-title at index 1, got {dom_order}"
         assert 'pos-prod-sku' in dom_order[2], f"Expected pos-prod-sku at index 2, got {dom_order}"
-        assert 'pos-prod-stock' in dom_order[3], f"Expected pos-prod-stock at index 3, got {dom_order}"
-        assert 'pos-prod-price-row' in dom_order[4], f"Expected pos-prod-price-row at index 4, got {dom_order}"
+        assert 'pos-prod-price-row' in dom_order[3], f"Expected pos-prod-price-row at index 3, got {dom_order}"
+        print("Verified: Stock is removed from card body and floats on image, shortening card height!")
+        
+        # 3. Verify DoctorLoan products exist inside Retail showroom
+        page.click('button[data-sale-show-all]')
+        time.sleep(1)
+        
+        # Search for DoctorLoan products
+        search_box = page.locator('#saleSearch')
+        search_box.fill('DoctorLoan')
+        time.sleep(0.8)
+        
+        dl_products_count = page.locator('.pos-product').count()
+        print(f"Search 'DoctorLoan' found {dl_products_count} products in Retail showroom.")
+        assert dl_products_count >= 2, f"Expected at least 2 DoctorLoan items in retail, found {dl_products_count}"
+        
+        # Capture mobile POS search screenshot
+        page.screenshot(path='tests/evidence/evidence_pos_retail_with_doctorloan_products.png')
+        print("Captured tests/evidence/evidence_pos_retail_with_doctorloan_products.png")
+        
+        # Clear search
+        search_box.fill('')
+        time.sleep(0.8)
+        
+        # Capture mobile POS grid view with floating badge
+        page.screenshot(path='tests/evidence/evidence_pos_floating_stock_badge_mobile_390.png')
+        print("Captured tests/evidence/evidence_pos_floating_stock_badge_mobile_390.png")
+        
+        # Switch to list mode and verify thumbnail badge
+        page.evaluate("() => { const grid = document.querySelector('.pos-grid'); if(grid) grid.className = 'pos-grid list'; }")
+        time.sleep(0.5)
+        page.screenshot(path='tests/evidence/evidence_pos_list_floating_badge_mobile_390.png')
+        print("Captured tests/evidence/evidence_pos_list_floating_badge_mobile_390.png")
         
         # Verify Navigation Icons
         mobile_nav = page.locator('.mobile-nav')
@@ -110,30 +153,14 @@ def run_tests():
         more_btn = mobile_nav.locator('button[data-page="more"]')
         sales_btn = mobile_nav.locator('button[data-page="sales"]')
         
-        # Check warehouse icon SVG
         kho_svg = kho_btn.locator('svg').inner_html()
         assert 'M3 21V9.5L12 4' in kho_svg, "Kho button does not use warehouse icon"
         
-        # Check menu icon SVG
         more_svg = more_btn.locator('svg').inner_html()
         assert 'x1="4" x2="20" y1="12"' in more_svg, "Thêm button does not use menu icon"
         
-        # Check sales hero button styling
         has_hero_class = sales_btn.evaluate("el => el.classList.contains('nav-sales-hero')")
         assert has_hero_class, "Sales button missing nav-sales-hero class"
-        
-        # Capture mobile POS screenshot
-        page.screenshot(path='tests/evidence/evidence_pos_hierarchy_mobile_390.png')
-        print("Captured tests/evidence/evidence_pos_hierarchy_mobile_390.png")
-        
-        # Switch to list mode and verify
-        page.evaluate("() => { const grid = document.querySelector('.pos-grid'); if(grid) grid.className = 'pos-grid list'; }")
-        time.sleep(0.5)
-        page.screenshot(path='tests/evidence/evidence_pos_list_hierarchy_mobile_390.png')
-        print("Captured tests/evidence/evidence_pos_list_hierarchy_mobile_390.png")
-        
-        # Reset to grid mode
-        page.evaluate("() => { const grid = document.querySelector('.pos-grid'); if(grid) grid.className = 'pos-grid grid3'; }")
         
         # Test 2: Desktop 1280x800
         context_desktop = browser.new_context(viewport={'width': 1280, 'height': 800})
@@ -142,18 +169,14 @@ def run_tests():
         page_d.wait_for_load_state('networkidle')
         time.sleep(1)
         
-        # Enter DoctorLoan demo
-        dl_btn_d = page_d.locator('button[data-industry="doctorloan"]')
-        if dl_btn_d.count() > 0:
-            dl_btn_d.click()
-        else:
-            page_d.locator('[data-action="preview-demo"]').click()
+        # Click Retail
+        page_d.locator('button[data-industry="retail"]').click()
         time.sleep(1)
         
         page_d.click('.nav-btn[data-page="sales"]')
         time.sleep(1)
-        page_d.screenshot(path='tests/evidence/evidence_pos_desktop_doctorloan.png')
-        print("Captured tests/evidence/evidence_pos_desktop_doctorloan.png")
+        page_d.screenshot(path='tests/evidence/evidence_pos_desktop_retail.png')
+        print("Captured tests/evidence/evidence_pos_desktop_retail.png")
         
         browser.close()
         print("ALL TESTS PASSED SUCCESSFULLY!")
