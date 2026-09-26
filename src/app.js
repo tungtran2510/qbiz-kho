@@ -3319,8 +3319,33 @@ function openWarehouseManagement(){
 function openScan(){ openModal({title:'Quét barcode / QR',sub:'Đưa mã vào khung quét. Bạn cũng có thể nhập SKU bằng tay.',hideSubmit:true,body:`<div class="scan-box"><video id="scanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:none"></video><div id="scanPlaceholder"><div class="scan-placeholder-icon">${icon('scan-line')}</div><strong>Đưa mã vào khung quét</strong><div style="font-size:12px;opacity:.75;margin-top:8px">Cho phép camera khi được hỏi</div></div><div class="scan-frame"></div><div class="scan-corners"></div><div class="scan-line"></div></div><div class="field" style="margin-top:14px"><label>Hoặc nhập barcode / SKU</label><div style="display:flex;gap:8px"><input id="manualCode" placeholder="Quét hoặc nhập mã..."/><button class="primary-btn" id="findCode">Tìm</button></div></div>`}); $('#findCode').onclick=()=>findScanned($('#manualCode').value); startBarcodeCamera(); }
 async function startBarcodeCamera(){ if(!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) return; try{ const detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code']}); const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); const v=$('#scanVideo'); if(!v) return; v.srcObject=stream; v.style.display='block'; $('#scanPlaceholder').style.display='none'; const loop=async()=>{ if(!document.body.contains(v)){ stream.getTracks().forEach(t=>t.stop()); return; } try{ const codes=await detector.detect(v); if(codes[0]?.rawValue){ stream.getTracks().forEach(t=>t.stop()); findScanned(codes[0].rawValue); return; } }catch{} requestAnimationFrame(loop); }; loop(); } catch{} }
 function findScanned(code){ code=String(code||'').trim().toLowerCase(); const p=state.data.products.find(x=>[x.barcode,x.sku].some(v=>String(v||'').toLowerCase()===code)); if(!p) return toast('Không tìm thấy barcode/SKU này.','error'); $('#modalRoot').innerHTML=''; openProduct(p.id); }
-function openInstall(){ openModal({title:'Cài QBiz Kho',sub:'Bản web cài được trên Android và iPhone',body:`<div class="install-grid"><div class="install-card"><h4>Android</h4><p>${state.installPrompt?'Nhấn “Cài ngay” bên dưới.':'Chrome → menu ⋮ → Cài ứng dụng / Thêm vào màn hình chính.'}</p></div><div class="install-card"><h4>iPhone / iPad</h4><p>Safari → Chia sẻ → Thêm vào Màn hình chính → bật “Mở dưới dạng ứng dụng web”.</p></div></div><div class="callout">Giai đoạn hiện tại là duyệt giao diện nên chưa cần cài ngay.</div>`,submitText:state.installPrompt?'Cài ngay':'Đã hiểu',onSubmit:async()=>{ if(state.installPrompt){ state.installPrompt.prompt(); await state.installPrompt.userChoice; state.installPrompt=null; } }}); }
-function toast(msg,type=''){const n=document.createElement('div'); n.className=`toast ${type}`; n.textContent=msg; $('#toastRoot').append(n); setTimeout(()=>n.remove(),3000); }
+function dismissToast(el, immediate = false) {
+  if (!el || el.dataset.dismissing) return;
+  el.dataset.dismissing = 'true';
+  if (immediate) {
+    try { el.remove(); } catch (e) {}
+    return;
+  }
+  el.classList.add('fade-out');
+  setTimeout(() => {
+    try { el.remove(); } catch (e) {}
+  }, 180);
+}
+
+function toast(msg, type = '', duration = 1400) {
+  const root = $('#toastRoot');
+  if (!root) return;
+  const existing = root.querySelectorAll('.toast:not([data-dismissing])');
+  existing.forEach(el => dismissToast(el, true));
+
+  const n = document.createElement('div');
+  n.className = `toast ${type}`;
+  n.textContent = msg;
+  n.onclick = () => dismissToast(n);
+  root.append(n);
+
+  setTimeout(() => dismissToast(n), duration);
+}
 
 async function updateSyncPill(){ const s=await syncStatus(); const el=$('#desktopSyncPill'); if(el) el.querySelector('span:last-child').textContent=s.label+(s.pending?` · ${s.pending} chờ`: ''); }
 async function exportBackup(){ const data=await snapshot(); const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),...data},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`qbiz-kho-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); }
@@ -3958,14 +3983,14 @@ function openSyncInfoModal() {
 
 async function previewDemo(industryKey = 'retail'){
   try{
-    toast('Đang nạp dữ liệu mẫu demo...','info');
     await loadDemoIndustry(industryKey, 'OWNER');
     await refresh();
     const ind = getActiveDemoIndustry();
-    toast(`Đã mở shop demo ${ind.shortName}: ${ind.shop.name}!`, 'ok');
+    const shopTitle = (ind.shop?.name || '').split('—')[0].trim();
+    toast(`Shop demo: ${shopTitle}`, 'ok');
   }catch(err){
     console.error('Lỗi nạp demo:',err);
-    toast('Lỗi nạp dữ liệu demo: '+err.message,'error');
+    toast('Lỗi nạp demo: '+err.message,'error');
   }
 }
 function exitDemo(){
@@ -3974,7 +3999,7 @@ function exitDemo(){
   sessionStorage.removeItem('qbiz_demo_role');
   sessionStorage.removeItem('qbiz_demo_shop');
   render();
-  toast('Đã thoát chế độ demo.','info');
+  toast('Đã thoát demo.','info');
 }
 
 function openDemoRoleModal() {
@@ -4008,7 +4033,7 @@ function openDemoRoleModal() {
       $('#modalRoot').innerHTML = '';
       render();
       const meta = DEMO_ROLES[roleKey];
-      toast(`Đã chuyển sang vai trò: ${meta.label} (${meta.sub})`, 'ok');
+      toast(`Vai trò: ${meta.label}`, 'ok');
     };
   });
 }
@@ -4042,7 +4067,6 @@ function openDemoIndustryModal() {
       const indKey = btn.dataset.chooseIndustry;
       $('#modalRoot').innerHTML = '';
       await previewDemo(indKey);
-      toast(`Đã chuyển sang ngành: ${DEMO_INDUSTRIES[indKey].name}`, 'ok');
     };
   });
 }
