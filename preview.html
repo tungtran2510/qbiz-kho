@@ -237,24 +237,6 @@
       box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 2px #334155;
     }
 
-    /* Dynamic Island / Notch */
-    .phone-notch {
-      display: none;
-      position: absolute;
-      top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100px;
-      height: 24px;
-      background: #000;
-      border-radius: 20px;
-      z-index: 50;
-      pointer-events: none;
-    }
-
-    .phone-container.frame-mode .phone-notch {
-      display: block;
-    }
 
     /* App Iframe */
     .app-iframe {
@@ -358,11 +340,10 @@
     <!-- Main Viewport Canvas -->
     <main class="viewport-canvas">
       <div class="phone-container" id="phoneContainer">
-        <div class="phone-notch"></div>
         <iframe 
           id="appFrame" 
           class="app-iframe"
-          src="./index.html?v=20260927-v17" 
+          src="./index.html?v=20260927-v18" 
           title="QBiz Kho — Bán Hàng & Quản Lý Kho"
           allow="microphone; camera; clipboard-read; clipboard-write; display-capture; autoplay"
         ></iframe>
