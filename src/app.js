@@ -299,7 +299,7 @@ function saleProductTile(p){
   const line = state.saleCart.find(x => x.itemId === p.id);
   const skuText = esc(p.sku || (p.type === 'SERVICE' ? 'Dịch vụ' : 'Chưa có mã'));
   const stockText = p.type === 'SERVICE' ? 'Dịch vụ' : (stock === null ? 'Tồn: 0' : `Tồn: ${fmt(stock)}`);
-  const priceText = p.price ? fmt(p.price) + ' ₫' : 'Chưa có giá';
+  const priceText = p.price ? fmt(p.price) : 'Chưa có giá';
   return `<article class="pos-product">
     <button class="pos-product-main" data-sale-add="${p.id}">
       <div class="pos-product-image">${p.image ? `<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>` : esc((p.name || 'S').slice(0, 1))}</div>

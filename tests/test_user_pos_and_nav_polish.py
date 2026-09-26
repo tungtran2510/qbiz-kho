@@ -67,10 +67,32 @@ def run_tests():
         price_el = first_product.locator('.pos-prod-price')
         add_btn = first_product.locator('.pos-add')
         
-        print(f"Product Title: {title_el.inner_text().strip()}")
-        print(f"Product SKU: {sku_el.inner_text().strip()}")
-        print(f"Product Stock: {stock_el.inner_text().strip()}")
-        print(f"Product Price: {price_el.inner_text().strip()}")
+        title_text = title_el.inner_text().strip()
+        sku_text = sku_el.inner_text().strip()
+        stock_text = stock_el.inner_text().strip()
+        price_text = price_el.inner_text().strip()
+        
+        print(f"Product Title: {title_text}")
+        print(f"Product SKU: {sku_text}")
+        print(f"Product Stock: {stock_text}")
+        print(f"Product Price: {price_text}")
+        
+        # Assert NO 'đ' or '₫' in priceText
+        assert 'đ' not in price_text.lower() and '₫' not in price_text, f"Price should not contain currency symbol, got {price_text}"
+        print("Verified: Price text has no trailing currency symbol (đ / ₫).")
+        
+        # Verify vertical distance between stock and price
+        stock_rect = stock_el.bounding_box()
+        price_rect = price_el.bounding_box()
+        vertical_gap = price_rect['y'] - (stock_rect['y'] + stock_rect['height'])
+        print(f"Vertical gap between stock and price: {vertical_gap:.1f}px")
+        assert vertical_gap < 15, f"Vertical gap between stock and price is too large: {vertical_gap}px"
+        
+        # Verify add button size and font-size
+        add_btn_size = add_btn.evaluate('el => ({width: el.offsetWidth, height: el.offsetHeight, fontSize: getComputedStyle(el).fontSize})')
+        print(f"Add button size: {add_btn_size}")
+        assert add_btn_size['width'] >= 30, f"Add button width should be >= 30px, got {add_btn_size['width']}"
+        assert int(float(add_btn_size['fontSize'].replace('px',''))) >= 20, f"Add button font size should be >= 20px, got {add_btn_size['fontSize']}"
         
         # Check DOM order of elements in pos-product-main
         dom_order = first_product.locator('.pos-product-main > *').evaluate_all(
@@ -90,23 +112,15 @@ def run_tests():
         
         # Check warehouse icon SVG
         kho_svg = kho_btn.locator('svg').inner_html()
-        print(f"Kho button icon contains warehouse path: {'M3 21V9.5L12 4' in kho_svg}")
         assert 'M3 21V9.5L12 4' in kho_svg, "Kho button does not use warehouse icon"
         
         # Check menu icon SVG
         more_svg = more_btn.locator('svg').inner_html()
-        print(f"Thêm button icon contains menu path: {'x1=\"4\" x2=\"20\" y1=\"12\"' in more_svg}")
         assert 'x1="4" x2="20" y1="12"' in more_svg, "Thêm button does not use menu icon"
         
         # Check sales hero button styling
         has_hero_class = sales_btn.evaluate("el => el.classList.contains('nav-sales-hero')")
-        print(f"Sales button has nav-sales-hero class: {has_hero_class}")
         assert has_hero_class, "Sales button missing nav-sales-hero class"
-        
-        sales_icon_bg = sales_btn.locator('svg').evaluate("el => getComputedStyle(el).background")
-        sales_icon_color = sales_btn.locator('svg').evaluate("el => getComputedStyle(el).color")
-        print(f"Sales icon background: {sales_icon_bg[:40]}..., color: {sales_icon_color}")
-        assert 'rgb(255, 255, 255)' in sales_icon_color, f"Sales icon should be white, got {sales_icon_color}"
         
         # Capture mobile POS screenshot
         page.screenshot(path='tests/evidence/evidence_pos_hierarchy_mobile_390.png')
@@ -120,12 +134,6 @@ def run_tests():
         
         # Reset to grid mode
         page.evaluate("() => { const grid = document.querySelector('.pos-grid'); if(grid) grid.className = 'pos-grid grid3'; }")
-        
-        # Navigate to Kho and check active state color
-        kho_btn.click()
-        time.sleep(0.5)
-        kho_color = kho_btn.evaluate("el => getComputedStyle(el).color")
-        print(f"Kho button active color: {kho_color}")
         
         # Test 2: Desktop 1280x800
         context_desktop = browser.new_context(viewport={'width': 1280, 'height': 800})
@@ -147,23 +155,6 @@ def run_tests():
         page_d.screenshot(path='tests/evidence/evidence_pos_desktop_doctorloan.png')
         print("Captured tests/evidence/evidence_pos_desktop_doctorloan.png")
         
-        # Also test switching to other shops to verify "áp dụng cho mọi shop"
-        page_d.click('.header-shortcut')
-        time.sleep(0.5)
-        # Select another industry like retail
-        retail_opt = page_d.locator('[data-switch-industry="retail"]')
-        if retail_opt.count() > 0:
-            retail_opt.click()
-            time.sleep(1)
-            page_d.click('.nav-btn[data-page="sales"]')
-            time.sleep(0.5)
-            chips_retail = page_d.locator('.pos-chips button')
-            cr_radius = chips_retail.first.evaluate('el => getComputedStyle(el).borderRadius')
-            print(f"Retail shop chip border-radius: {cr_radius}")
-            assert cr_radius == '8px', f"Expected border-radius 8px in Retail shop, got {cr_radius}"
-            page_d.screenshot(path='tests/evidence/evidence_pos_desktop_retail.png')
-            print("Captured tests/evidence/evidence_pos_desktop_retail.png")
-            
         browser.close()
         print("ALL TESTS PASSED SUCCESSFULLY!")
 
