@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>QBiz Kho — Trình Xem Trước &amp; Sử Dụng</title>
+  <link rel="icon" type="image/x-icon" href="./icons/qbiz_kho.ico">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-dark: rgba(30, 41, 59, 0.85);
+      --border-dark: #334155;
+      --text-light: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-blue: #2563eb;
+      --accent-navy: #102a56;
+      --accent-green: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg-dark);
+      font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-light);
+      user-select: none;
+    }
+
+    /* Outer Stage */
+    .preview-stage {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Floating Top Control Pill */
+    .preview-header {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel-dark);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-dark);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      transition: all 0.2s ease;
+      opacity: 0.95;
+    }
+
+    .preview-header:hover {
+      opacity: 1;
+      box-shadow: 0 14px 30px -4px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-right: 10px;
+      border-right: 1px solid var(--border-dark);
+    }
+
+    .brand-logo {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      object-fit: cover;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .brand-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+      display: inline-block;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Device Segmented Control */
+    .device-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 3px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .ctrl-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .ctrl-btn:hover {
+      color: #fff;
+    }
+
+    .ctrl-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-left: 6px;
+      border-left: 1px solid var(--border-dark);
+    }
+
+    .action-icon-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .action-icon-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Canvas / Viewport Area */
+    .viewport-canvas {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      background: var(--bg-dark);
+      padding: 56px 16px 16px 16px;
+      position: relative;
+    }
+
+    /* Phone Shell (Matching user screenshot: max-w-md, clean dark sides) */
+    .phone-container {
+      width: 420px;
+      height: 100%;
+      max-height: calc(100vh - 72px);
+      max-height: calc(100dvh - 72px);
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border-radius: 28px;
+      transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.25s ease, border-radius 0.25s ease;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-dark);
+      overflow: hidden;
+    }
+
+    /* Desktop Full Width Mode */
+    .phone-container.desktop-mode {
+      width: 100% !important;
+      max-height: calc(100vh - 64px) !important;
+      border-radius: 16px;
+    }
+
+    /* Phone Frame Mode (with simulated rounded smartphone edges) */
+    .phone-container.frame-mode {
+      height: calc(100vh - 84px);
+      height: calc(100dvh - 84px);
+      border-radius: 44px;
+      border: 8px solid #1e293b;
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 0 2px #334155;
+    }
+
+    /* Dynamic Island / Notch */
+    .phone-notch {
+      display: none;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 24px;
+      background: #000;
+      border-radius: 20px;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .phone-container.frame-mode .phone-notch {
+      display: block;
+    }
+
+    /* App Iframe */
+    .app-iframe {
+      width: 100%;
+      height: 100%;
+      flex: 1;
+      border: none;
+      background: #f3f6fb;
+      display: block;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .preview-header {
+        top: 6px;
+        padding: 4px 10px;
+        gap: 8px;
+      }
+      .brand-title {
+        display: none;
+      }
+      .phone-container {
+        width: 100% !important;
+        box-shadow: none;
+        border: none;
+      }
+      .phone-container.frame-mode {
+        height: 100vh;
+        margin-top: 0;
+        border-radius: 0;
+        border: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-stage">
+    <!-- Top Control Pill -->
+    <header class="preview-header" id="previewHeader">
+      <div class="brand-pill">
+        <img src="./icons/icon-192.png" alt="QBiz Kho" class="brand-logo">
+        <span class="brand-title">QBiz Kho <span class="live-dot" title="Đang chạy trực tiếp"></span></span>
+      </div>
+
+      <!-- Device View Presets -->
+      <div class="device-controls" role="group" aria-label="Chọn kích thước hiển thị">
+        <button class="ctrl-btn active" data-width="412" title="Chế độ điện thoại tiêu chuẩn (412px)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="3"/><path d="M12 18h.01"/></svg>
+          Điện thoại
+        </button>
+        <button class="ctrl-btn" data-width="390" title="Chế độ iPhone (390px)">
+          390px
+        </button>
+        <button class="ctrl-btn" data-width="430" title="Chế độ Max / Plus (430px)">
+          430px
+        </button>
+        <button class="ctrl-btn" data-width="100%" title="Chế độ máy tính toàn màn hình">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+          Máy tính
+        </button>
+      </div>
+
+      <div class="header-actions">
+        <!-- Toggle Phone Frame (Khung viền điện thoại) -->
+        <button class="action-icon-btn" id="toggleFrameBtn" title="Bật/Tắt khung viền điện thoại">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
+        </button>
+        <!-- Reload Button -->
+        <button class="action-icon-btn" id="reloadBtn" title="Tải lại ứng dụng">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+        </button>
+        <!-- Open Full Browser Tab -->
+        <a href="./index.html" target="_blank" class="action-icon-btn" title="Mở trong tab trình duyệt mới">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+    </header>
+
+    <!-- Main Viewport Canvas -->
+    <main class="viewport-canvas">
+      <div class="phone-container" id="phoneContainer">
+        <div class="phone-notch"></div>
+        <iframe 
+          id="appFrame" 
+          class="app-iframe"
+          src="./index.html" 
+          title="QBiz Kho — Bán Hàng & Quản Lý Kho"
+          allow="microphone; camera; clipboard-read; clipboard-write; display-capture; autoplay"
+        ></iframe>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const phoneContainer = document.getElementById('phoneContainer');
+    const appFrame = document.getElementById('appFrame');
+    const ctrlButtons = document.querySelectorAll('.ctrl-btn');
+    const toggleFrameBtn = document.getElementById('toggleFrameBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+
+    // Switch device width
+    ctrlButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        ctrlButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const width = btn.dataset.width;
+        if (width === '100%') {
+          phoneContainer.classList.add('desktop-mode');
+          phoneContainer.classList.remove('frame-mode');
+          toggleFrameBtn.style.color = '';
+        } else {
+          phoneContainer.classList.remove('desktop-mode');
+          phoneContainer.style.width = width + 'px';
+        }
+      });
+    });
+
+    // Toggle frame mode (bezel vs edge-to-edge clean container)
+    let isFrame = false;
+    toggleFrameBtn.addEventListener('click', () => {
+      isFrame = !isFrame;
+      phoneContainer.classList.toggle('frame-mode', isFrame);
+      toggleFrameBtn.style.color = isFrame ? '#2563eb' : '';
+    });
+
+    // Reload iframe
+    reloadBtn.addEventListener('click', () => {
+      try {
+        appFrame.contentWindow.location.reload();
+      } catch (e) {
+        appFrame.src = './index.html?v=' + Date.now();
+      }
+    });
+
+    // Auto-focus inside iframe on load
+    appFrame.addEventListener('load', () => {
+      try {
+        appFrame.contentWindow.focus();
+      } catch (e) {}
+    });
+  </script>
+</body>
+</html>
