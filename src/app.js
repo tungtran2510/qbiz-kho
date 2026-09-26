@@ -349,7 +349,7 @@ function renderQuickActions(workspace){
   if(!workspace || workspace.profile_id === 'general' || workspace.profile_id === 'other'){
     return `
         <div class="quick-tile quick-hero">
-          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon('shopping-cart')}</span><strong>Bán hàng</strong></button>
+          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon('shopping-cart')}</span><strong style="font-size:13px;line-height:1.2;white-space:normal;word-break:keep-all;text-align:center;display:block;overflow:visible;text-overflow:clip">Bán hàng</strong></button>
           <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
         </div>
         ${quickTile('receive','📥','Nhập kho','Thêm hàng vào kho')}
@@ -364,7 +364,7 @@ function renderQuickActions(workspace){
     if(index === 0 && (act.page === 'sales' || act.id === 'sales')){
       return `
         <div class="quick-tile quick-hero">
-          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon(act.icon || 'credit-card')}</span><strong>${esc(actTitle || 'Thanh toán')}</strong></button>
+          <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon(act.icon || 'credit-card')}</span><strong style="font-size:13px;line-height:1.2;white-space:normal;word-break:keep-all;text-align:center;display:block;overflow:visible;text-overflow:clip">${esc(actTitle || 'Thanh toán')}</strong></button>
           <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
         </div>
       `;
