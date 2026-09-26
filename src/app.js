@@ -4273,6 +4273,7 @@ async function boot(){
     render,
     toast,
     openQuick,
+    openScan,
     openProduct,
     openOrderDetail,
     openTransaction,

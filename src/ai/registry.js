@@ -1221,6 +1221,29 @@ export const ACTION_REGISTRY = {
     },
   },
 
+  open_scan: {
+    id: 'open_scan',
+    name: 'Quét mã vạch / QR',
+    feature_id: null,
+    route: null,
+    screen: 'ScanModal',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['quet ma', 'quet barcode', 'quet qr', 'may quet', 'bat camera quet'],
+    example_phrases: ['quét mã', 'quét barcode', 'mở máy quét mã vạch'],
+    contexts: ['sales', 'products', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.openScan) {
+        window.__qbiz_app__.openScan();
+        return { success: true, message: 'Đã mở máy quét mã vạch / QR.' };
+      }
+      return { success: false, error: 'Hàm openScan chưa sẵn sàng.' };
+    },
+  },
+
   new_product: {
     id: 'new_product', name: 'Thêm hàng hóa mới', feature_id: 'PRODUCTS',
     route: 'products', screen: 'NewProductForm',

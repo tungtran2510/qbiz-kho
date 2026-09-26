@@ -599,9 +599,11 @@ export function parseAppNavigationAction(text) {
   }
 
   // 7. Kho hàng & Luân chuyển
+  if (clean === 'cai dat kho' || clean === 'them kho' || clean === 'danh sach kho' || clean === 'quan ly kho hang') {
+    return { actionId: 'open_warehouse_management', label: 'Đã mở Cài đặt Kho hàng.' };
+  }
   if (
-    clean === 'quan ly kho' || clean === 'cai dat kho' || clean === 'danh sach kho' ||
-    clean === 'them kho' || clean === 'kho hang' ||
+    clean === 'quan ly kho' || clean === 'kho hang' ||
     c === 'mo kho' || c === 'vao kho' || c === 'xem kho' || c === 'mo ton kho'
   ) {
     return { actionId: 'open_warehouse', label: 'Đã mở Quản lý Kho hàng.' };
@@ -724,10 +726,15 @@ export function parseAppNavigationAction(text) {
     return { actionId: 'open_shift', label: 'Đã mở Quản lý Ca làm việc.' };
   }
 
-  // 21. Sao lưu & Dữ liệu
+  // 21. Cài đặt Dữ liệu (Modal)
+  if (clean === 'cai dat du lieu' || clean === 'quan ly du lieu' || clean === 'menu du lieu' || clean === 'du lieu') {
+    return { actionId: 'open_data_settings', label: 'Đã mở Cài đặt Dữ liệu.' };
+  }
+
+  // 21b. Sao lưu & Khôi phục (Trang Backup)
   if (
-    clean === 'sao luu' || clean === 'backup' || clean === 'du lieu' ||
-    clean === 'khoi phuc du lieu' || clean === 'cai dat du lieu' || clean === 'sao luu du lieu' ||
+    clean === 'sao luu' || clean === 'backup' ||
+    clean === 'khoi phuc du lieu' || clean === 'sao luu du lieu' ||
     clean === 'dong bo du lieu' || clean === 'dong bo'
   ) {
     return { actionId: 'open_backup', label: 'Đã mở Trung tâm Sao lưu & Dữ liệu.' };
@@ -767,6 +774,11 @@ export function parseAppNavigationAction(text) {
     clean === 've trang chu' || clean === 've tong quan'
   ) {
     return { actionId: 'open_dashboard', label: 'Đã chuyển về màn hình Tổng quan.' };
+  }
+
+  // 28. Quét mã vạch / QR
+  if (clean === 'quet ma' || clean === 'quet barcode' || clean === 'quet qr' || clean === 'may quet' || clean === 'mo may quet' || clean === 'camera quet') {
+    return { actionId: 'open_scan', label: 'Đã mở Máy quét mã vạch / QR.' };
   }
 
   return null;
