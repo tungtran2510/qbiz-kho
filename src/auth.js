@@ -88,7 +88,7 @@ export function getCurrentRole() {
   if (sessionStorage.getItem('qbiz_preview_demo') === '1') {
     return sessionStorage.getItem('qbiz_demo_role') || ROLES.OWNER;
   }
-  return currentMembership?.role || null;
+  return currentMembership?.role || (currentSession ? null : ROLES.OWNER);
 }
 
 export function userCan(capability) {

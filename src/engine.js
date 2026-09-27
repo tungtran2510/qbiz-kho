@@ -283,10 +283,28 @@ export async function countAdjust({productId,warehouseId,counted,reason='Kiểm 
   return changeLevel({productId,warehouseId,onHandDelta:cur=>counted-cur.onHand,type:'count',qty:cur=>counted-cur.onHand,reason,operationId,validate:cur=>{if(counted<cur.reserved+cur.damaged)throw new Error('Tồn thực tế nhỏ hơn số đã giữ/hàng hỏng. Hãy xử lý ngoại lệ trước.');}});
 }
 
+export const STOCK_IN_TYPES = {
+  PURCHASE: 'Nhập mua hàng NCC',
+  TRANSFER_IN: 'Nhập chuyển kho đến',
+  RETURN_IN: 'Nhập hàng khách trả lại',
+  ADJUSTMENT_IN: 'Nhập cân đối kiểm kê (thừa)',
+  OPENING_STOCK: 'Nhập tồn đầu kỳ',
+  ASSEMBLY_IN: 'Nhập thành phẩm gia công / combo'
+};
+
+export const STOCK_OUT_TYPES = {
+  SALE_OUT: 'Xuất bán hàng',
+  TRANSFER_OUT: 'Xuất chuyển kho đi',
+  PURCHASE_RETURN_OUT: 'Xuất trả hàng cho NCC',
+  DAMAGED_EXPIRED_OUT: 'Xuất hủy hàng hỏng / hết hạn',
+  INTERNAL_USE_OUT: 'Xuất tiêu dùng nội bộ / hàng mẫu',
+  ADJUSTMENT_OUT: 'Xuất cân đối kiểm kê (thiếu)'
+};
+
 // One warehouse document is one local business operation.  Its level changes,
 // movements and outbox record commit together so a multi-line receipt cannot
 // leave inventory half-applied when a line fails.
-export async function applyWarehouseBatch({kind,warehouseId,lines,reference='',operationId='',documentId='',supplierId=''}){
+export async function applyWarehouseBatch({kind,warehouseId,lines,reference='',operationId='',documentId='',supplierId='',subType='',receiverName='',delivererName='',note=''}){
   if(!['receive','issue','count'].includes(kind)) throw new Error('Loại phiếu kho không hợp lệ.');
   if(!warehouseId) throw new Error('Hãy chọn kho.');
   if(!Array.isArray(lines)||!lines.length) throw new Error('Phiếu cần ít nhất một dòng hàng.');
@@ -299,6 +317,10 @@ export async function applyWarehouseBatch({kind,warehouseId,lines,reference='',o
     normalized.set(productId,kind==='count'?{productId,qty,price:raw.price}:{productId,qty:(previous?.qty||0)+qty,price:raw.price??previous?.price??null});
   }
   const operation=operationId||uuid(), docId=documentId||uid('invdoc'), stamp=now(), identity=await localIdentity();
+  const resolvedSubType = subType || (kind === 'receive' ? 'PURCHASE' : kind === 'issue' ? 'SALE_OUT' : 'COUNT');
+  const typeLabel = (kind === 'receive' ? STOCK_IN_TYPES[resolvedSubType] : kind === 'issue' ? STOCK_OUT_TYPES[resolvedSubType] : 'Kiểm kho') || ({receive:'Nhập hàng',issue:'Xuất hàng',count:'Kiểm kho'}[kind]);
+  const defaultReason = reference ? `${typeLabel} (${reference})` : typeLabel;
+
   let result;
   await runTransaction(['products','levels','movements','outbox','purchase_receipts'],(stores,tx,context)=>{
     const existingReq=stores.outbox.get(operation);
@@ -333,14 +355,14 @@ export async function applyWarehouseBatch({kind,warehouseId,lines,reference='',o
               const next={...current,onHand,reserved:Number(current.reserved||0),damaged:Number(current.damaged||0),version:Number(current.version||0)+1,updatedAt:stamp};
               if(next.onHand<0||next.reserved<0||next.damaged<0||next.reserved+next.damaged>next.onHand) throw new Error('Tồn kho không hợp lệ.');
               nextLevels.push(next);
-              if(movementQty!==0){const eventId=uuid();movements.push({id:`${operation}:movement:${line.productId}`,groupId:docId,type:kind,productId:line.productId,warehouseId,qty:movementQty,reason:reference||({receive:'Nhập hàng',issue:'Xuất hàng',count:'Kiểm kho'}[kind]),reference:docId,reference_type:'warehouse_document',reference_id:docId,operation_id:operation,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:stamp,after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}});}
+              if(movementQty!==0){const eventId=uuid();movements.push({id:`${operation}:movement:${line.productId}`,groupId:docId,type:kind,productId:line.productId,warehouseId,qty:movementQty,reason:defaultReason,reference:docId,reference_type:'warehouse_document',reference_id:docId,sub_type:resolvedSubType,operation_id:operation,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:stamp,after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}});}
               if(kind==='receive'&&line.price!==null&&line.price!==undefined&&!Number.isNaN(Number(line.price))) nextProducts.push({...item,purchase_price:Number(line.price),updated_at:stamp});
             }
-            const receiptLines=[...normalized.values()].map(line=>({...line,line_total:line.price===null||line.price===undefined?null:Number(line.qty||0)*Number(line.price||0)}));
+            const receiptLines=[...normalized.values()].map(line=>({...line,name:productMap.get(line.productId)?.name||'',sku:productMap.get(line.productId)?.sku||'',unit:productMap.get(line.productId)?.unit||'cái',line_total:line.price===null||line.price===undefined?null:Number(line.qty||0)*Number(line.price||0)}));
             const totalCost=receiptLines.some(line=>line.line_total===null)?null:receiptLines.reduce((sum,line)=>sum+Number(line.line_total||0),0);
-            const document={id:docId,document_id:docId,kind,warehouse_id:warehouseId,supplier_id:kind==='receive'?(supplierId||''):'',reference,operation_id:operation,status:'COMMITTED',created_at:stamp,updated_at:stamp,total_cost:totalCost,lines:receiptLines};
+            const document={id:docId,document_id:docId,kind,sub_type:resolvedSubType,sub_type_label:typeLabel,warehouse_id:warehouseId,supplier_id:kind==='receive'?(supplierId||''):'',receiver_name:receiverName||'',deliverer_name:delivererName||'',note:note||'',reference,operation_id:operation,status:'COMMITTED',created_at:stamp,updated_at:stamp,total_cost:totalCost,lines:receiptLines};
             const outbox=makeOutbox({operationId:operation,eventId:uuid(),entityType:'inventory_document',entityId:docId,action:kind,version:1,deviceId:identity.device_id,registerId:identity.register_id,type:`inventory_document.${kind}`,createdAt:stamp,payload:{document,inventory_movements:movements}});
-            nextProducts.forEach(row=>stores.products.put(row)); nextLevels.forEach(row=>stores.levels.put(row)); movements.forEach(row=>stores.movements.put(row)); if(kind==='receive') stores.purchase_receipts.put(document); stores.outbox.put(outbox); result=document;
+            nextProducts.forEach(row=>stores.products.put(row)); nextLevels.forEach(row=>stores.levels.put(row)); movements.forEach(row=>stores.movements.put(row)); stores.purchase_receipts.put(document); stores.outbox.put(outbox); result=document;
           }catch(error){context.abort(error);}
         };
       };

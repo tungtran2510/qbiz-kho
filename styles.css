@@ -3653,3 +3653,351 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   color: var(--q-blue, #1485ee) !important;
 }
 
+/* ==========================================================================
+   OFFICIAL WAREHOUSE VOUCHERS (MẪU 01-VT & 02-VT) — TT 200/133 & TT 88
+   ========================================================================== */
+.voucher-modal-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+}
+.voucher-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--bg-subtle, #f8fafc);
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+.voucher-toolbar .voucher-standard-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.voucher-toolbar .voucher-standard-select select {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.voucher-toolbar .voucher-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.voucher-sheet {
+  background: #ffffff;
+  color: #0f172a;
+  padding: 32px 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  font-family: 'Times New Roman', Times, serif, system-ui;
+  line-height: 1.4;
+  margin: 0 auto;
+}
+.voucher-sheet.paper-A4 {
+  max-width: 780px;
+  font-size: 14px;
+}
+.voucher-sheet.paper-A5 {
+  max-width: 580px;
+  padding: 20px 24px;
+  font-size: 12.5px;
+}
+
+.voucher-top-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  margin-bottom: 18px;
+  align-items: start;
+}
+.voucher-company-info strong {
+  display: block;
+  font-size: 1.1em;
+  text-transform: uppercase;
+  color: #000;
+}
+.voucher-company-info span {
+  display: block;
+  color: #334155;
+  font-size: 0.92em;
+}
+.voucher-form-code {
+  text-align: right;
+  font-size: 0.88em;
+  color: #334155;
+  border-left: 2px solid #cbd5e1;
+  padding-left: 12px;
+}
+.voucher-form-code b {
+  display: block;
+  font-size: 1.05em;
+  color: #000;
+}
+
+.voucher-heading {
+  text-align: center;
+  margin: 14px 0 16px;
+}
+.voucher-heading h1 {
+  margin: 0;
+  font-size: 1.7em;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #000;
+}
+.voucher-heading .voucher-date {
+  font-style: italic;
+  font-size: 0.95em;
+  margin-top: 4px;
+  color: #475569;
+}
+.voucher-heading .voucher-no {
+  font-weight: 700;
+  font-size: 1.05em;
+  margin-top: 2px;
+  color: #0f172a;
+}
+
+.voucher-meta-info {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.98em;
+}
+.voucher-meta-info .v-row {
+  display: flex;
+  gap: 8px;
+}
+.voucher-meta-info .v-label {
+  white-space: nowrap;
+  color: #334155;
+}
+.voucher-meta-info .v-val {
+  flex: 1;
+  border-bottom: 1px dotted #cbd5e1;
+  color: #000;
+}
+
+.voucher-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: inherit;
+}
+.voucher-table th,
+.voucher-table td {
+  border: 1px solid #000;
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.voucher-table th {
+  background: #f8fafc;
+  font-weight: 700;
+  text-align: center;
+}
+.voucher-table .text-center { text-align: center; }
+.voucher-table .text-right { text-align: right; }
+.voucher-table .text-left { text-align: left; }
+.voucher-table .row-total td {
+  font-weight: 700;
+}
+
+.voucher-amount-words {
+  margin: 10px 0 16px;
+  font-size: 0.98em;
+}
+.voucher-amount-words b {
+  font-style: italic;
+  font-weight: 700;
+}
+
+.voucher-signatures-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  text-align: center;
+  margin-top: 24px;
+  page-break-inside: avoid;
+}
+.voucher-signatures-grid.cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.voucher-signatures-grid .sig-col strong {
+  display: block;
+  font-size: 0.95em;
+  text-transform: uppercase;
+}
+.voucher-signatures-grid .sig-col small {
+  display: block;
+  font-style: italic;
+  color: #64748b;
+  font-size: 0.85em;
+  margin-top: 2px;
+}
+.voucher-signatures-grid .sig-space {
+  height: 65px;
+}
+.voucher-signatures-grid .sig-name {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Print styles for warehouse vouchers */
+@media print {
+  .voucher-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Shipping, Website Gateway & Drive Restore styles */
+.carrier-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.carrier-card:hover {
+  border-color: var(--primary, #0284c7);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.carrier-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.carrier-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.carrier-brand b {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-color, #0f172a);
+}
+.carrier-logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 13px;
+  color: #fff;
+}
+.carrier-logo-ghtk { background: #008744; }
+.carrier-logo-ghn { background: #e06000; }
+.carrier-logo-vtp { background: #ee0033; }
+.carrier-logo-qbiz { background: linear-gradient(135deg, #0284c7, #2563eb); }
+.carrier-logo-shopee { background: #ee4d2d; }
+.carrier-logo-tiktok { background: #000; }
+
+.carrier-desc {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  line-height: 1.45;
+  margin: 0;
+}
+.carrier-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+}
+.carrier-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.shipment-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+}
+.shipment-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+.shipment-table th, .shipment-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+.shipment-table th {
+  background: var(--bg-subtle, #f8fafc);
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+}
+
+.drive-restore-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.drive-backup-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  gap: 12px;
+}
+.drive-backup-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.drive-backup-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-color, #0f172a);
+}
+.drive-backup-meta {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.drive-checksum-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: monospace;
+  font-size: 11px;
+  background: #f0fdf4;
+  color: #166534;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+}
+
