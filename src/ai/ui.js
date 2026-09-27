@@ -1607,26 +1607,59 @@ function renderMessages() {
           </div>
         `;
       } else {
+        const INTENT_NAMES = {
+          create_receipt_proposal: 'Đề xuất nhập kho',
+          create_cart_draft: 'Đề xuất giỏ hàng',
+          propose_memory_save: 'Ghi nhớ thông tin shop',
+          create_stocktake_proposal: 'Đề xuất kiểm kê kho'
+        };
+        const PARAM_LABELS = {
+          productName: 'Sản phẩm',
+          quantity: 'Số lượng',
+          qty: 'Số lượng',
+          costPrice: 'Giá nhập',
+          price: 'Đơn giá',
+          unit: 'Đơn vị',
+          warehouseName: 'Kho',
+          supplierName: 'Nhà cung cấp',
+          customerName: 'Khách hàng',
+          notes: 'Ghi chú',
+          reason: 'Lý do'
+        };
+        const HIDE_KEYS = new Set(['productId', 'warehouseId', 'variantId', 'variantName']);
+        const title = INTENT_NAMES[p.intent] || (p.intent ? p.intent.replace(/_/g, ' ') : 'Đề xuất thao tác');
+        const badgeLabel = p.risk_level === 'HIGH_RISK_WRITE' ? 'Cần duyệt' : (p.risk_level === 'READ_ONLY' ? 'Thông tin' : 'Đề xuất');
+        const badgeClass = p.risk_level === 'HIGH_RISK_WRITE' ? 'danger' : 'warn';
+
+        const displayParams = Object.entries(p.parameters || {}).filter(([k, v]) => {
+          if (HIDE_KEYS.has(k)) return false;
+          if (v === '' || v === null || v === undefined) return false;
+          if (k === 'costPrice' && Number(v) === 0) return false;
+          return true;
+        });
+
         proposalHtml = `
           <div class="ai-proposal-card ${isConfirmed ? 'is-confirmed' : ''} ${isCancelled ? 'is-cancelled' : ''}">
             <div class="ai-proposal-head">
-              <span class="ai-prop-tag ${p.risk_level === 'HIGH_RISK_WRITE' ? 'danger' : 'warn'}">${esc(p.risk_level)}</span>
-              <strong class="ai-prop-title">${esc(p.intent)}</strong>
+              <span class="ai-prop-tag ${badgeClass}">${esc(badgeLabel)}</span>
+              <strong class="ai-prop-title">${esc(title)}</strong>
             </div>
             <div class="ai-prop-body">
               <p class="ai-prop-summary">${esc(p.human_summary)}</p>
-              <div class="ai-prop-params">
-                ${Object.entries(p.parameters || {}).map(([k, v]) => `
-                  <div class="ai-param-row">
-                    <span>${esc(k)}</span>
-                    <b>${esc(typeof v === 'object' ? JSON.stringify(v) : v)}</b>
-                  </div>
-                `).join('')}
-              </div>
+              ${displayParams.length ? `
+                <div class="ai-prop-params">
+                  ${displayParams.map(([k, v]) => `
+                    <div class="ai-param-row">
+                      <span>${esc(PARAM_LABELS[k] || k)}</span>
+                      <b>${esc(typeof v === 'object' ? JSON.stringify(v) : ((k === 'costPrice' || k === 'price') && typeof v === 'number') ? new Intl.NumberFormat('vi-VN').format(v) + 'đ' : v)}</b>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
             </div>
             <div class="ai-prop-actions" id="propActions_${p.id}">
               ${p.status === PROPOSAL_STATUS.SUCCEEDED ? `
-                <div class="ai-prop-status-ok">✓ ${p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' : (p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' : 'Đã thực thi thành công vào sổ kho (Succeeded & Reconciled)')}</div>
+                <div class="ai-prop-status-ok">✓ ${p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' : (p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' : 'Đã thực thi thành công vào sổ kho')}</div>
                 ${p.intent !== 'propose_memory_save' && p.intent !== 'create_cart_draft' ? `
                 <div style="margin-top:8px;">
                   <button class="secondary-btn ai-btn-nav" data-action-id="open_warehouse">Xem tồn kho</button>
@@ -1637,7 +1670,7 @@ function renderMessages() {
               ` : p.status === PROPOSAL_STATUS.FAILED ? `
                 <div class="ai-prop-status-cancel">⚠️ Thao tác không thể hoàn tất: ${esc(p.failure_reason || 'Lỗi thực thi')}</div>
               ` : p.status === PROPOSAL_STATUS.EXPIRED ? `
-                <div class="ai-prop-status-cancel">Đề xuất đã hết hạn (Expired).</div>
+                <div class="ai-prop-status-cancel">Đề xuất đã hết hạn.</div>
               ` : p.status === PROPOSAL_STATUS.CANCELLED ? `
                 <div class="ai-prop-status-cancel">Đã hủy đề xuất.</div>
               ` : `

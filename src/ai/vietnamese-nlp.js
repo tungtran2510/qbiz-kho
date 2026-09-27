@@ -149,7 +149,18 @@ const TEENCODE_PATTERNS = [
   [/\b(?:hd|hđ)\b(?!\s*[-_]?\d)/gi, 'hoa don'],
   [/\bkh\b(?!\s*[-_]?\d)/gi, 'khach hang'],
   [/\bnv\b(?!\s*[-_]?\d)/gi, 'nhan vien'],
-  [/\bncc\b(?!\s*[-_]?\d)/gi, 'nha cung cap']
+  [/\bncc\b(?!\s*[-_]?\d)/gi, 'nha cung cap'],
+
+  // Shipping, Invoices & Accounting
+  [/\b(?:dvvc)\b/gi, 'don vi van chuyen'],
+  [/\b(?:ghtk)\b/gi, 'giao hang tiet kiem'],
+  [/\b(?:ghn)\b/gi, 'giao hang nhanh'],
+  [/\b(?:vtp)\b/gi, 'viettel post'],
+  [/\b(?:ship|shipping)\b/gi, 'van chuyen'],
+  [/\b(?:bcao|b\s*cao)\b/gi, 'bao cao'],
+  [/\b(?:so\s*quy|quy\s*tien)\b/gi, 'so quy'],
+  [/\b(?:két|ket\s*tien|trong\s*ket)\b/gi, 'ket tien'],
+  [/\b(?:vat)\b/gi, 'thue vat']
 ];
 
 /**
@@ -278,8 +289,21 @@ export function isDailyOrdersCountQuery(text) {
 
   return (
     c.includes('co don nao chua') ||
+    c.includes('co don nao moi') ||
+    c.includes('co don moi') ||
+    c.includes('don moi') ||
+    c.includes('don hang moi') ||
+    c.includes('kiem tra don moi') ||
+    c.includes('don nao moi') ||
+    c.includes('co ai dat hang chua') ||
+    c.includes('co ai dat don moi ko') ||
+    c.includes('co ai dat hang ko') ||
+    c.includes('co ai dat hang khong') ||
+    c.includes('don moi hom nay') ||
+    c.includes('don dat hang moi') ||
     c.includes('co bill nao chua') ||
     c.includes('co hoa don nao chua') ||
+    c.includes('co hoa don nao moi') ||
     c.includes('may bill roi') ||
     c.includes('may don roi') ||
     c.includes('may hoa don roi') ||
@@ -289,6 +313,169 @@ export function isDailyOrdersCountQuery(text) {
     (c.includes('may don') && (c.includes('hom nay') || c.includes('nay') || c.includes('roi') || c.includes('ban duoc'))) ||
     (c.includes('bao nhieu don') && (c.includes('hom nay') || c.includes('nay') || c.includes('ban duoc'))) ||
     (c.includes('bao nhieu bill') && (c.includes('hom nay') || c.includes('nay') || c.includes('ban duoc')))
+  );
+}
+
+/**
+ * Detect shipping & logistics queries:
+ * e.g., "kết nối đơn vị vận chuyển", "giao hàng", "GHN", "GHTK", "Viettel Post", "ship hàng"
+ */
+export function isShippingQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return false;
+  return (
+    c.includes('van chuyen') ||
+    c.includes('giao hang') ||
+    c.includes('don vi van chuyen') ||
+    c.includes('ket noi van chuyen') ||
+    c.includes('ket noi ship') ||
+    c.includes('ket noi giao hang') ||
+    c.includes('doi tac giao hang') ||
+    c.includes('doi tac van chuyen') ||
+    c.includes('don vi giao hang') ||
+    c.includes('tien ship') ||
+    c.includes('phi ship') ||
+    c.includes('phi van chuyen') ||
+    c.includes('ghtk') ||
+    c.includes('ghn') ||
+    c.includes('viettel post') ||
+    c.includes('buu dien') ||
+    c.includes('giao hang nhanh') ||
+    c.includes('giao hang tiet kiem') ||
+    /\bship\b/i.test(c) ||
+    /\bdvvc\b/i.test(c)
+  );
+}
+
+/**
+ * Detect contextual product stock queries when viewing a product:
+ * e.g., "Hàng này hết", "Hàng này còn không", "còn bao nhiêu cái", "hết hàng chưa", "giá bao nhiêu cái này"
+ */
+export function isContextualProductQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return false;
+  return (
+    c === 'hang nay het' ||
+    c === 'hang nay het chua' ||
+    c === 'hang nay con khong' ||
+    c === 'hang nay con ko' ||
+    c === 'hang nay con k' ||
+    c === 'cai nay het chua' ||
+    c === 'cai nay het' ||
+    c === 'cai nay con khong' ||
+    c === 'cai nay con ko' ||
+    c === 'cai nay con k' ||
+    c === 'sp nay con khong' ||
+    c === 'sp nay con ko' ||
+    c === 'sp nay het chua' ||
+    c === 'mon nay con khong' ||
+    c === 'mon nay con ko' ||
+    c === 'mon nay het chua' ||
+    c === 'con bao nhieu cai' ||
+    c === 'con bao nhieu' ||
+    c === 'con may cai' ||
+    c === 'con hang khong' ||
+    c === 'con hang ko' ||
+    c === 'het hang chua' ||
+    c === 'het hang' ||
+    c.startsWith('hang nay con') ||
+    c.startsWith('hang nay het') ||
+    c.startsWith('cai nay con') ||
+    c.startsWith('cai nay het') ||
+    c.startsWith('san pham nay con') ||
+    c.startsWith('san pham nay het') ||
+    c.includes('hang nay con bao nhieu') ||
+    c.includes('cai nay con bao nhieu') ||
+    c.includes('san pham nay con bao nhieu') ||
+    c.includes('gia bao nhieu cai nay') ||
+    c.includes('gia cai nay bao nhieu') ||
+    c.includes('hang nay gia bao nhieu')
+  );
+}
+
+/**
+ * Detect invoice & sales report queries:
+ * e.g., "báo cáo hoa đơn", "báo cáo hóa đơn", "danh sách hóa đơn", "tra cứu hóa đơn", "hóa đơn hôm nay"
+ */
+export function isInvoiceReportQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return false;
+  return (
+    c.includes('bao cao hoa don') ||
+    c.includes('bao cao bill') ||
+    c.includes('danh sach hoa don') ||
+    c.includes('danh sach bill') ||
+    c.includes('xem hoa don') ||
+    c.includes('tra cuu hoa don') ||
+    c.includes('in lai hoa don') ||
+    c.includes('hoa don ban hang') ||
+    c.includes('hoa don hom nay') ||
+    c.includes('hoa don gan nhat') ||
+    c.includes('tat ca hoa don') ||
+    c.includes('tim hoa don') ||
+    c === 'hoa don' ||
+    c === 'bill' ||
+    c === 'bao cao hoa don'
+  );
+}
+
+/**
+ * Detect accounting & cash flow queries:
+ * e.g., "sổ quỹ", "thu chi", "tiền mặt và chuyển khoản", "tiền trong két", "két tiền", "công nợ phải thu"
+ */
+export function isAccountingFinanceQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return false;
+  return (
+    c.includes('so quy') ||
+    c.includes('thu chi') ||
+    c.includes('quy tien') ||
+    c.includes('tien trong ket') ||
+    c.includes('ket tien') ||
+    c.includes('trong ket') ||
+    c.includes('tien mat va chuyen khoan') ||
+    c.includes('tien mat chuyen khoan') ||
+    c.includes('chuyen khoan hay tien mat') ||
+    c.includes('bao nhieu tien mat') ||
+    c.includes('bao nhieu chuyen khoan') ||
+    c.includes('cong no phai thu') ||
+    c.includes('cong no phai tra') ||
+    c.includes('no phai thu') ||
+    c.includes('no phai tra') ||
+    c.includes('tong cong no') ||
+    c.includes('gia tri ton kho') ||
+    c.includes('tong tien ton kho') ||
+    c.includes('tien hang ton') ||
+    c.includes('thue vat') ||
+    c.includes('tien thue')
+  );
+}
+
+/**
+ * Detect customer queries:
+ * e.g., "khách hàng", "danh sách khách", "khách VIP", "khách nợ", "công nợ khách"
+ */
+export function isCustomerQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return false;
+  return (
+    c.includes('danh sach khach hang') ||
+    c.includes('danh sach khach') ||
+    c.includes('khach hang vip') ||
+    c.includes('khach vip') ||
+    c.includes('khach mua nhieu') ||
+    c.includes('khach no') ||
+    c.includes('khach hang no') ||
+    c.includes('cong no khach') ||
+    c.includes('cong no khach hang') ||
+    c.includes('khach quen') ||
+    c.includes('co bao nhieu khach') ||
+    c.includes('may khach hang') ||
+    c.includes('thong tin khach') ||
+    c.includes('tim khach hang') ||
+    c.includes('tim khach') ||
+    c === 'khach hang' ||
+    c === 'khach'
   );
 }
 
@@ -630,8 +817,7 @@ export function parseAppNavigationAction(text) {
   // 10. Chuyển kho
   if (
     clean === 'chuyen kho' || clean === 'dieu chuyen kho' || clean === 'mo chuyen kho' ||
-    clean === 'tao phieu chuyen' || clean === 'phieu chuyen kho' ||
-    c.includes('chuyen kho') || c.includes('dieu chuyen kho')
+    (/\bchuyen kho\b/.test(c) && !c.includes('chuyen khoan')) || c.includes('dieu chuyen kho')
   ) {
     return { actionId: 'open_transfer', label: 'Đã mở biểu mẫu Chuyển kho.' };
   }
@@ -710,9 +896,9 @@ export function parseAppNavigationAction(text) {
     return { actionId: 'open_returns', label: 'Đã mở Trung tâm Đổi trả hàng.' };
   }
 
-  // 19. Sổ quỹ tiền mặt
+  // 19. Sổ quỹ tiền mặt (chỉ điều hướng khi có từ mở/vào)
   if (
-    clean === 'so quy' || clean === 'thu chi' || clean === 'mo so quy' ||
+    clean === 'mo so quy' || clean === 'vao so quy' || clean === 'xem so quy' ||
     clean === 'phieu thu' || clean === 'phieu chi' || clean === 'quy tien mat'
   ) {
     return { actionId: 'open_cash', label: 'Đã mở Sổ quỹ thu chi tiền mặt.' };

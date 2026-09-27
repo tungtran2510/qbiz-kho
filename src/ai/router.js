@@ -37,6 +37,11 @@ import {
   stripConversationalNoise,
   isClarificationQuery,
   isDailyOrdersCountQuery,
+  isShippingQuery,
+  isContextualProductQuery,
+  isInvoiceReportQuery,
+  isAccountingFinanceQuery,
+  isCustomerQuery,
   isSlowMovingQuery,
   isShiftQuery,
   parseNaturalSaleCommand,
@@ -694,7 +699,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
   if (p.includes('mo so ca') || p.includes('so ca') || p.includes('mo ca ban') || p === 'mo ca' || p.includes('ca ban hang')) {
     return { type: 'ACTION', action_id: 'open_shift', action: ACTION_REGISTRY['open_shift'], confidence: 95, source: 'domain_skill' };
   }
-  if (p.includes('mo so quy') || p.includes('so quy') || p.includes('quy tien') || p.includes('so quy tien mat')) {
+  if (p.includes('mo so quy') || p.includes('vao so quy') || p.includes('xem so quy')) {
     return { type: 'ACTION', action_id: 'open_cash', action: ACTION_REGISTRY['open_cash'], confidence: 95, source: 'domain_skill' };
   }
   if (p === 'kiem kho' || p === 'kiem ke' || p.includes('mo kiem kho') || p.includes('man hinh kiem kho') || p.includes('vao kiem kho') || p.includes('kiem ke kho')) {
@@ -1536,7 +1541,7 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
     return {
       text: structured.explanation && !structured.explanation.includes('Đã tiếp nhận yêu cầu')
         ? structured.explanation
-        : `Tôi có thể hỗ trợ bạn:\n- Doanh thu: *"Hôm nay bán được bao nhiêu?", "Tháng này bán được bao nhiêu?"*\n- Bán chạy: *"Mặt hàng nào bán chạy nhất tháng này?"*\n- Tồn kho: *"Hàng nào sắp hết?", "Còn bao nhiêu hàng?"*\n- Bán hàng: *"Mở bán hàng", "Thêm 2 sản phẩm vào giỏ"*\n- Nhập xuất: *"Tháng này nhập bao nhiêu hàng?", "Kiểm kho"*\nBạn cần trợ giúp thao tác nào?`,
+        : `Em chưa hiểu rõ câu này. Bạn cần kiểm tra tồn kho, xem doanh thu hay đơn hàng?`,
       tier: 1,
       provider: config.mode,
       intent: structured.intent || 'GENERAL_QUERY',
@@ -1859,21 +1864,32 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
-  // 0.002 Daily Orders & Bills Count Fast-Path ("có đơn nào chưa", "nay đc mấy bill rồi", "mấy đơn rồi")
+  // 0.002 Daily Orders & Bills Count Fast-Path ("có đơn nào mới", "có đơn nào chưa", "đơn mới hôm nay", "mấy bill rồi")
   if (isDailyOrdersCountQuery(pNorm) || isDailyOrdersCountQuery(rawPrompt)) {
+    const orders = state?.data?.orders || [];
     const sales = state?.data?.sales || [];
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayOrders = orders.filter(o => {
+      const dt = o.created_at || o.createdAt || o.date || '';
+      return dt.startsWith(todayStr);
+    });
     const todaySales = sales.filter(s => {
       const dt = s.created_at || s.createdAt || '';
       return dt.startsWith(todayStr);
     });
 
-    if (todaySales.length === 0) {
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const recentOrders = todayOrders.length > 0 ? todayOrders : orders.slice(-3).reverse();
+
+    if (todayOrders.length === 0 && todaySales.length === 0) {
+      let text = `Hôm nay chưa có đơn hàng mới nào phát sinh.`;
+      if (recentOrders.length > 0) {
+        const top = recentOrders[0];
+        text += ` Đơn gần nhất là **${top.code || top.id}** (${top.customer || 'Khách lẻ'}, ${fmt.format(top.total || 0)} ₫ - ${top.status || 'Chờ xử lý'}).`;
+      }
       return {
-        text: `📊 **Tình hình đơn hàng hôm nay (${todayStr.split('-').reverse().join('/')}):**\n\n` +
-          `- Cửa hàng **chưa có đơn hàng / hóa đơn nào** được ghi nhận hôm nay.\n` +
-          `- Bạn có thể mở màn hình **Bán hàng (POS)** để tạo đơn mới khi có khách ghé mua nhé!`,
+        text,
         status: 'SUCCESS',
         intent: 'DAILY_ORDERS_COUNT',
         skillId: 'sales-summary',
@@ -1883,17 +1899,179 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       };
     }
 
-    const totalRev = todaySales.reduce((sum, s) => sum + Number(s.total || s.total_amount || 0), 0);
-    const latest = todaySales[todaySales.length - 1];
-    const fmt = new Intl.NumberFormat('vi-VN');
+    let text = `📦 **Đơn hàng mới (${todayOrders.length > 0 ? 'Hôm nay' : 'Gần nhất'}):**\n`;
+    recentOrders.forEach(o => {
+      text += `• **${o.code || o.id}**: ${o.customer || 'Khách lẻ'} · ${fmt.format(o.total || 0)} ₫ (${o.status || 'Đã tạo'})\n`;
+    });
+    if (todaySales.length > 0) {
+      const totalSale = todaySales.reduce((s, x) => s + Number(x.total || 0), 0);
+      text += `• Bán lẻ tại quầy: **${todaySales.length} hóa đơn** (tổng ${fmt.format(totalSale)} ₫).`;
+    }
     return {
-      text: `📊 **Tình hình đơn hàng hôm nay (${todayStr.split('-').reverse().join('/')}):**\n\n` +
-        `- Số đơn / hóa đơn đã bán: **${todaySales.length} đơn**\n` +
-        `- Tổng tiền thu về: **${fmt.format(totalRev)} ₫**\n` +
-        `- Đơn gần nhất: **${latest.code || latest.sale_uuid || 'HD Mới'}** (${fmt.format(latest.total || 0)} ₫)`,
+      text: text.trim(),
       status: 'SUCCESS',
       intent: 'DAILY_ORDERS_COUNT',
       skillId: 'sales-summary',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // 0.0021 Shipping & Logistics Fast-Path ("kết nối đơn vị vận chuyển", "giao hàng", "GHN", "GHTK", "Viettel Post", "ship")
+  if (isShippingQuery(pNorm) || isShippingQuery(rawPrompt)) {
+    if (typeof window !== 'undefined' && window.__qbiz_app__?.navigate) {
+      window.__qbiz_app__.navigate('orders');
+    }
+    return {
+      text: `🚚 **Kết nối đơn vị vận chuyển:**\nQBiz Kho hỗ trợ liên kết các đơn vị giao hàng như **GHTK, GHN, Viettel Post, v.v.** để đẩy đơn và in vận đơn trực tiếp trong chi tiết đơn hàng. Đã mở trang Đơn hàng cho bạn.`,
+      status: 'SUCCESS',
+      intent: 'SHIPPING_INQUIRY',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // 0.0022 Contextual Product Stock & Info ("Hàng này hết", "Hàng này còn không", "còn bao nhiêu cái", "hết hàng chưa")
+  if (isContextualProductQuery(pNorm) || isContextualProductQuery(rawPrompt)) {
+    let boundId = context?.current_product_id || state?.currentProductId;
+    if (!boundId && typeof document !== 'undefined') {
+      const modalEl = document.getElementById('modalRoot')?.querySelector('[data-product-id]');
+      boundId = modalEl?.dataset?.productId;
+    }
+    if (!boundId && state?.data?.products?.length > 0) {
+      boundId = state.data.products[0].id;
+    }
+    if (boundId) {
+      const prod = (state?.data?.products || []).find(p => p.id === boundId);
+      if (prod) {
+        const stockData = totalFor(state?.data, prod.id) || { available: prod.stock || 0, onHand: prod.stock || 0 };
+        const avail = Number(stockData.available ?? stockData.onHand ?? prod.stock ?? 0);
+        const onHand = Number(stockData.onHand ?? prod.stock ?? 0);
+        const minStock = Number(prod.lowStock || prod.min_stock || 2);
+        const fmt = new Intl.NumberFormat('vi-VN');
+        const priceStr = prod.price != null ? `${fmt.format(prod.price)} ₫` : 'Chưa đặt giá';
+
+        let msg = '';
+        if (avail <= 0) {
+          msg = `🔴 **${prod.name}** (${prod.sku || ''}) hiện **ĐÃ HẾT HÀNG** (tồn thực: ${onHand} ${prod.unit || 'cái'}). Bạn có muốn nhập thêm hàng vào kho không?`;
+        } else {
+          msg = `🟢 **${prod.name}** (${prod.sku || ''}) hiện **CÒN HÀNG**:\n- Có thể bán: **${avail} ${prod.unit || 'cái'}** (tồn thực: ${onHand}, định mức tối thiểu: ${minStock})\n- Giá bán: **${priceStr}**. Sẵn sàng bán!`;
+        }
+        return {
+          text: msg,
+          product: prod,
+          status: 'SUCCESS',
+          intent: 'CONTEXTUAL_STOCK',
+          tier: 0,
+          provider: PROVIDER_MODES.DETERMINISTIC,
+          compactTrace: 'Rule exact'
+        };
+      }
+    }
+  }
+
+  // 0.0023 Invoice & Sales Report Fast-Path ("Báo cáo hoa đơn", "báo cáo hóa đơn", "danh sách hóa đơn", "hóa đơn hôm nay")
+  if (isInvoiceReportQuery(pNorm) || isInvoiceReportQuery(rawPrompt)) {
+    const sales = state?.data?.sales || [];
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todaySales = sales.filter(s => (s.created_at || s.createdAt || '').startsWith(todayStr));
+    const targetSales = todaySales.length > 0 ? todaySales : sales.slice(-5);
+    const totalRev = targetSales.reduce((sum, s) => sum + Number(s.total || s.total_amount || 0), 0);
+
+    if (typeof window !== 'undefined' && window.__qbiz_app__?.navigate) {
+      window.__qbiz_app__.navigate('sales');
+    }
+
+    let msg = `🧾 **Báo cáo hóa đơn bán hàng:**\n`;
+    if (todaySales.length > 0) {
+      msg += `Hôm nay đã phát hành **${todaySales.length} hóa đơn**, tổng doanh thu: **${fmt.format(totalRev)} ₫**.\n`;
+    } else {
+      msg += `Hôm nay chưa phát sinh hóa đơn mới (toàn thời gian: ${sales.length} hóa đơn).\n`;
+    }
+    msg += `Đã mở danh sách hóa đơn & giao dịch bán hàng cho bạn.`;
+    return {
+      text: msg,
+      status: 'SUCCESS',
+      intent: 'INVOICE_REPORT',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // 0.0024 Customer & Receivables Fast-Path ("Khách hàng", "danh sách khách", "khách VIP", "công nợ khách")
+  if (isCustomerQuery(pNorm) || isCustomerQuery(rawPrompt)) {
+    const customers = state?.data?.customers || [];
+    const fmt = new Intl.NumberFormat('vi-VN');
+
+    if (pNorm.includes('no') || pNorm.includes('cong no')) {
+      const debtCusts = customers.filter(c => Number(c.debt || 0) > 0);
+      let text = `👥 **Công nợ khách hàng:**\n`;
+      if (debtCusts.length === 0) {
+        text += `Hiện không có khách hàng nào nợ tiền.`;
+      } else {
+        text += `Có ${debtCusts.length} khách còn công nợ:\n`;
+        debtCusts.slice(0, 4).forEach(c => {
+          text += `• **${c.name}**: Còn nợ ${fmt.format(c.debt)} ₫\n`;
+        });
+      }
+      return {
+        text: text.trim(),
+        status: 'SUCCESS',
+        intent: 'CUSTOMER_DEBT',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    }
+
+    if (typeof window !== 'undefined' && window.__qbiz_app__?.navigate) {
+      window.__qbiz_app__.navigate('customers');
+    }
+    return {
+      text: `👥 **Khách hàng:** Hiện có **${customers.length} khách hàng** trong hệ thống. Đã mở danh sách khách hàng cho bạn.`,
+      status: 'SUCCESS',
+      intent: 'CUSTOMER_LIST',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // 0.00245 Accounting & Cashflow Fast-Path ("sổ quỹ", "thu chi", "tiền mặt và chuyển khoản", "trong két")
+  if (isAccountingFinanceQuery(pNorm) || isAccountingFinanceQuery(rawPrompt)) {
+    const sales = state?.data?.sales || [];
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todaySales = sales.filter(s => (s.created_at || s.createdAt || '').startsWith(todayStr));
+    const targetSales = todaySales.length > 0 ? todaySales : sales;
+
+    let cash = 0, transfer = 0, total = 0;
+    for (const s of targetSales) {
+      const t = Number(s.total || s.total_amount || 0);
+      total += t;
+      const m = String(s.payment_method || s.paymentMethod || '').toLowerCase();
+      if (m.includes('transfer') || m.includes('chuyen') || m.includes('qr') || m.includes('bank')) {
+        transfer += t;
+      } else {
+        cash += t;
+      }
+    }
+
+    const prefix = todaySales.length > 0 ? 'Hôm nay' : 'Toàn thời gian';
+    const msg = `💰 **Sổ quỹ & Thu chi (${prefix}):**\n` +
+      `- Tiền mặt thu được (két): **${fmt.format(cash)} ₫**\n` +
+      `- Tiền chuyển khoản / QR: **${fmt.format(transfer)} ₫**\n` +
+      `- Tổng doanh thu: **${fmt.format(total)} ₫**`;
+    return {
+      text: msg,
+      status: 'SUCCESS',
+      intent: 'ACCOUNTING_CASHFLOW',
       tier: 0,
       provider: PROVIDER_MODES.DETERMINISTIC,
       compactTrace: 'Rule exact'
@@ -5699,12 +5877,15 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
 
   // 2. Transfer Proposal (Section W: No silent fallback)
   if (
-    p.includes('chuyen kho') ||
-    p.includes('chuyen hang') ||
-    p.startsWith('chuyen ') ||
-    p.startsWith('dua ') ||
-    (p.includes('dua') && (p.includes('sang kho') || p.includes('ve kho') || p.includes('qua kho') || p.includes('kho phu'))) ||
-    (p.includes('chuyen') && (p.includes('sang kho') || p.includes('ve kho') || p.includes('kho phu') || p.includes('kho ha dong')))
+    !p.includes('chuyen khoan') &&
+    (
+      p.includes('chuyen kho') ||
+      p.includes('chuyen hang') ||
+      (p.startsWith('chuyen ') && !p.startsWith('chuyen khoan')) ||
+      p.startsWith('dua ') ||
+      (p.includes('dua') && (p.includes('sang kho') || p.includes('ve kho') || p.includes('qua kho') || p.includes('kho phu'))) ||
+      (p.includes('chuyen') && (p.includes('sang kho') || p.includes('ve kho') || p.includes('kho phu') || p.includes('kho ha dong')))
+    )
   ) {
     const whs = state.data?.warehouses || [];
     if (whs.length < 2) {
@@ -6228,7 +6409,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         provider: PROVIDER_MODES.DETERMINISTIC,
       };
     }
-    if (p.includes('chuyen kho') || p.includes('dieu chuyen')) {
+    if ((p.includes('chuyen kho') && !p.includes('chuyen khoan')) || p.includes('dieu chuyen')) {
       const actRes = await executeAction('open_transfer', {}, state);
       return {
         text: actRes.success ? 'Đã mở biểu mẫu **Chuyển kho**.' : `⚠️ ${actRes.error}`,
@@ -6455,12 +6636,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   const providerCfg = getProviderConfig();
   const isNoProvider = providerCfg.mode === PROVIDER_MODES.DETERMINISTIC || (providerCfg.mode === PROVIDER_MODES.GEMINI && !providerCfg.geminiKey);
   return {
-    text: `Tôi có thể hỗ trợ bạn theo ngữ cảnh hiện tại (**${context.current_route}**):\n` +
-      `• **Tổng quan**: "Hôm nay bán bao nhiêu?", "Hàng sắp hết"\n` +
-      `• **Hàng hóa**: "Còn bao nhiêu?", "Nhập thêm 20 cái này vào kho chính"\n` +
-      `• **Đơn hàng**: "Đơn này vì sao chưa xong?"\n` +
-      `• **Tìm kiếm**: Gõ tên sản phẩm, SKU hoặc chọn các gợi ý bên dưới.` +
-      (isNoProvider ? `\n\n*(Lưu ý: Để sử dụng trợ lý ngôn ngữ tự nhiên AI, vui lòng cấu hình API Key trong mục Cài đặt ⚙)*` : ''),
+    text: `Em chưa hiểu rõ câu này. Bạn cần kiểm tra tồn kho, xem doanh thu hay đơn hàng?`,
     tier: 0,
     status: isNoProvider ? 'AI_PROVIDER_NOT_CONFIGURED' : 'READY',
     provider: providerCfg.mode,
