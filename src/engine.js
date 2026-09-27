@@ -518,7 +518,7 @@ export async function createSale({items,warehouseId,paymentMethod='cash',discoun
   const saleItems=[...mergedItems.values()].map(line=>{const p=source.get(line.itemId); if(!p) throw new Error('Không tìm thấy mặt hàng trong giỏ.'); const quantity=Math.floor(Number(line.quantity)); const unitPrice=Math.max(0,Number(line.unitPrice)||0); const lineDiscount=Math.max(0,Number(line.discount)||0); const lineSubtotal=Math.max(0,quantity*unitPrice-lineDiscount); const taxAmount=Math.max(0,Number(line.tax_amount)||0); const taxInclusive=Boolean(line.tax_inclusive); return {item_id:p.id,type:p.type||'PRODUCT',name:p.name,sku:p.sku||'',quantity,unit_price:unitPrice,discount:lineDiscount,tax_code:line.tax_code||'',tax_category:line.tax_category||'',tax_rate:line.tax_rate===''||line.tax_rate==null?null:Number(line.tax_rate),tax_amount:taxAmount,tax_inclusive:taxInclusive,line_subtotal:lineSubtotal,line_total:taxInclusive?lineSubtotal:lineSubtotal+taxAmount};});
   const totals=new Map();
   for(const line of saleItems){ if(line.type==='PRODUCT' && source.get(line.item_id).trackInventory!==false) totals.set(line.item_id,(totals.get(line.item_id)||0)+line.quantity); }
-  const operationId=requestedOperationId||uuid(); const eventId=uuid(); const subtotal=saleItems.reduce((sum,line)=>sum+line.line_subtotal,0); const discountTotal=Math.max(0,Math.min(subtotal,Number(discount)||0)); const taxTotal=saleItems.reduce((sum,line)=>sum+line.tax_amount,0); const grandTotal=Math.max(0,subtotal-discountTotal+taxTotal); const method=['cash','transfer','qr'].includes(paymentMethod)?paymentMethod:'cash'; const paymentStatus=method==='cash'?'PAID':'PENDING';  const identity=await localIdentity(); const deviceId=identity.device_id; const registerId=identity.register_id;
+  const operationId=requestedOperationId||uuid(); const eventId=uuid(); const subtotal=Math.round(saleItems.reduce((sum,line)=>sum+line.line_subtotal,0)); const discountTotal=Math.round(Math.max(0,Math.min(subtotal,Number(discount)||0))); const taxTotal=Math.round(saleItems.reduce((sum,line)=>sum+line.tax_amount,0)); const grandTotal=Math.round(Math.max(0,subtotal-discountTotal+taxTotal)); const method=['cash','transfer','qr'].includes(paymentMethod)?paymentMethod:'cash'; const paymentStatus=method==='cash'?'PAID':'PENDING';  const identity=await localIdentity(); const deviceId=identity.device_id; const registerId=identity.register_id;
   const activeShiftBefore=openShiftFor(await getAll('shifts'),{device_id:deviceId,register_id:registerId});
   if(!activeShiftBefore || activeShiftBefore.status !== 'OPEN'){
     throw new Error('Chưa mở ca. Hãy mở ca trước khi thanh toán.');
@@ -566,62 +566,77 @@ export async function createSale({items,warehouseId,paymentMethod='cash',discoun
 
 export async function createReturn({saleId,lines,reason='Khách trả hàng',refundMethod='original',refundAmount=null,returnId='',operationId=''}){
   if(!saleId||!Array.isArray(lines)||!lines.length) throw new Error('Phiếu trả cần giao dịch gốc và ít nhất một dòng.');
-  const id=returnId||uid('ret'); const operation=operationId||uuid(); const identity=await localIdentity(); const activeShift=currentShift?await currentShift():null; let result;
-  await runTransaction(['sales','levels','movements','returns','refunds','outbox'],(stores,tx,context)=>{
+  const id=returnId||uid('ret'); const operation=operationId||uuid(); const identity=await localIdentity();
+  const shiftsBefore=await getAll('shifts');
+  const activeShiftBefore=openShiftFor(shiftsBefore,{device_id:identity.device_id,register_id:identity.register_id});
+  if(!activeShiftBefore || activeShiftBefore.status !== 'OPEN'){
+    throw new Error('Chưa mở ca. Hãy mở ca trước khi nhận trả hàng và hoàn tiền.');
+  }
+  let result;
+  await runTransaction(['sales','levels','movements','returns','refunds','outbox','shifts'],(stores,tx,context)=>{
     const existingReq=stores.outbox.get(operation);
     existingReq.onerror=()=>context.abort(existingReq.error);
     existingReq.onsuccess=()=>{
       if(existingReq.result){result=existingReq.result.payload?.return||null;return;}
-      const saleReq=stores.sales.get(saleId);
-      saleReq.onerror=()=>context.abort(saleReq.error);
-      saleReq.onsuccess=()=>{
-        const returnsReq=stores.returns.getAll();
-        returnsReq.onerror=()=>context.abort(returnsReq.error);
-        returnsReq.onsuccess=()=>{
-          const refundsReq=stores.refunds.getAll();
-          refundsReq.onerror=()=>context.abort(refundsReq.error);
-          refundsReq.onsuccess=()=>{
-            try{
-              const sale=saleReq.result;
-              if(!sale) throw new Error('Không tìm thấy giao dịch gốc.');
-              const prior=new Map();
-              for(const row of returnsReq.result||[]) if(row.sale_id===saleId) for(const line of row.lines||[]) prior.set(line.item_id,(prior.get(line.item_id)||0)+Number(line.quantity||0));
-              const priorRefundTotal=(refundsReq.result||[]).filter(r=>r.sale_id===saleId).reduce((n,r)=>n+Number(r.amount||0),0);
-              const maxRefundable=Math.max(0,Number(sale.grand_total??sale.total??0)-priorRefundTotal);
-              const saleLines=new Map((sale.items||[]).map(line=>[line.item_id||line.itemId,line]));
-              const discountRatio=Math.max(0,1-Math.min(1,Number(sale.discount_total||sale.discount||0)/Math.max(1,Number(sale.subtotal||1))));
-              const normalized=[]; const levelOps=[]; const movements=[]; let computedRefund=0; let expectedInventory=0; let completedInventory=0;
-              for(const raw of lines){
-                const itemId=String(raw?.item_id||raw?.itemId||''); const qty=Math.floor(Number(raw?.quantity||0)); const condition=String(raw?.condition||'SELLABLE').toUpperCase();
-                if(!itemId||!(qty>0)||!['SELLABLE','DAMAGED','NO_RESTOCK'].includes(condition)) throw new Error('Dòng trả hàng không hợp lệ.');
-                const sold=saleLines.get(itemId); if(!sold) throw new Error('Sản phẩm không thuộc giao dịch gốc.');
-                const remaining=Math.max(0,Number(sold.quantity||0)-(prior.get(itemId)||0)); if(qty>remaining) throw new Error(`Số lượng trả vượt quá số đã bán của ${sold.name||'sản phẩm'}.`);
-                const defaultUnitPaid=(Number(sold.line_total||sold.lineTotal||0)/Math.max(1,Number(sold.quantity||1)))*discountRatio;
-                const lineRefund=Math.max(0,Number(raw.refund_amount??(defaultUnitPaid*qty))||0); computedRefund+=lineRefund;
-                const warehouseId=raw.warehouse_id||sold.warehouse_id||sale.warehouseId||sale.warehouse_id||'';
-                normalized.push({item_id:itemId,quantity:qty,condition,reason:raw.reason||reason,warehouse_id:warehouseId,refund_amount:lineRefund});
-                if(condition==='NO_RESTOCK'||sold.type==='SERVICE'||sold.track_inventory===false) continue;
-                expectedInventory++;
-                if(!warehouseId) throw new Error(`Thiếu kho cho ${sold.name||'sản phẩm'}.`);
-                const levelId=`${itemId}:${warehouseId}`; const levelReq=stores.levels.get(levelId);
-                levelReq.onerror=()=>context.abort(levelReq.error);
-                levelReq.onsuccess=()=>{
-                  const current=levelReq.result||{id:levelId,productId:itemId,warehouseId,onHand:0,reserved:0,damaged:0,version:0};
-                  const next={...current,onHand:Number(current.onHand||0)+qty,damaged:Number(current.damaged||0)+(condition==='DAMAGED'?qty:0),version:Number(current.version||0)+1,updatedAt:now()};
-                  const eventId=uuid(); const movement={id:`${operation}:movement:${itemId}`,groupId:id,type:'return',productId:itemId,warehouseId,qty,reason:condition==='DAMAGED'?'Trả hàng lỗi':condition==='SELLABLE'?'Trả hàng bán lại được':'Trả hàng không nhập lại',reference:id,reference_type:'return',reference_id:id,sale_uuid:sale.sale_uuid||sale.id,operation_id:operation,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:now(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};
-                  levelOps.push({next,movement}); completedInventory++; if(completedInventory===expectedInventory) finish();
+      const shiftsReq=stores.shifts.getAll();
+      shiftsReq.onerror=()=>context.abort(shiftsReq.error);
+      shiftsReq.onsuccess=()=>{
+        const activeShift=openShiftFor(shiftsReq.result,{device_id:identity.device_id,register_id:identity.register_id});
+        if(!activeShift || activeShift.status !== 'OPEN'){
+          context.abort(new Error('Chưa mở ca. Hãy mở ca trước khi nhận trả hàng và hoàn tiền.'));
+          return;
+        }
+        const saleReq=stores.sales.get(saleId);
+        saleReq.onerror=()=>context.abort(saleReq.error);
+        saleReq.onsuccess=()=>{
+          const returnsReq=stores.returns.getAll();
+          returnsReq.onerror=()=>context.abort(returnsReq.error);
+          returnsReq.onsuccess=()=>{
+            const refundsReq=stores.refunds.getAll();
+            refundsReq.onerror=()=>context.abort(refundsReq.error);
+            refundsReq.onsuccess=()=>{
+              try{
+                const sale=saleReq.result;
+                if(!sale) throw new Error('Không tìm thấy giao dịch gốc.');
+                const prior=new Map();
+                for(const row of returnsReq.result||[]) if(row.sale_id===saleId) for(const line of row.lines||[]) prior.set(line.item_id,(prior.get(line.item_id)||0)+Number(line.quantity||0));
+                const priorRefundTotal=(refundsReq.result||[]).filter(r=>r.sale_id===saleId).reduce((n,r)=>n+Number(r.amount||0),0);
+                const maxRefundable=Math.max(0,Number(sale.grand_total??sale.total??0)-priorRefundTotal);
+                const saleLines=new Map((sale.items||[]).map(line=>[line.item_id||line.itemId,line]));
+                const discountRatio=Math.max(0,1-Math.min(1,Number(sale.discount_total||sale.discount||0)/Math.max(1,Number(sale.subtotal||1))));
+                const normalized=[]; const levelOps=[]; const movements=[]; let computedRefund=0; let expectedInventory=0; let completedInventory=0;
+                for(const raw of lines){
+                  const itemId=String(raw?.item_id||raw?.itemId||''); const qty=Math.floor(Number(raw?.quantity||0)); const condition=String(raw?.condition||'SELLABLE').toUpperCase();
+                  if(!itemId||!(qty>0)||!['SELLABLE','DAMAGED','NO_RESTOCK'].includes(condition)) throw new Error('Dòng trả hàng không hợp lệ.');
+                  const sold=saleLines.get(itemId); if(!sold) throw new Error('Sản phẩm không thuộc giao dịch gốc.');
+                  const remaining=Math.max(0,Number(sold.quantity||0)-(prior.get(itemId)||0)); if(qty>remaining) throw new Error(`Số lượng trả vượt quá số đã bán của ${sold.name||'sản phẩm'}.`);
+                  const defaultUnitPaid=(Number(sold.line_total||sold.lineTotal||0)/Math.max(1,Number(sold.quantity||1)))*discountRatio;
+                  const lineRefund=Math.max(0,Number(raw.refund_amount??(defaultUnitPaid*qty))||0); computedRefund+=lineRefund;
+                  const warehouseId=raw.warehouse_id||sold.warehouse_id||sale.warehouseId||sale.warehouse_id||'';
+                  normalized.push({item_id:itemId,quantity:qty,condition,reason:raw.reason||reason,warehouse_id:warehouseId,refund_amount:lineRefund});
+                  if(condition==='NO_RESTOCK'||sold.type==='SERVICE'||sold.track_inventory===false) continue;
+                  expectedInventory++;
+                  if(!warehouseId) throw new Error(`Thiếu kho cho ${sold.name||'sản phẩm'}.`);
+                  const levelId=`${itemId}:${warehouseId}`; const levelReq=stores.levels.get(levelId);
+                  levelReq.onerror=()=>context.abort(levelReq.error);
+                  levelReq.onsuccess=()=>{
+                    const current=levelReq.result||{id:levelId,productId:itemId,warehouseId,onHand:0,reserved:0,damaged:0,version:0};
+                    const next={...current,onHand:Number(current.onHand||0)+qty,damaged:Number(current.damaged||0)+(condition==='DAMAGED'?qty:0),version:Number(current.version||0)+1,updatedAt:now()};
+                    const eventId=uuid(); const movement={id:`${operation}:movement:${itemId}`,groupId:id,type:'return',productId:itemId,warehouseId,qty,reason:condition==='DAMAGED'?'Trả hàng lỗi':condition==='SELLABLE'?'Trả hàng bán lại được':'Trả hàng không nhập lại',reference:id,reference_type:'return',reference_id:id,sale_uuid:sale.sale_uuid||sale.id,operation_id:operation,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:now(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};
+                    levelOps.push({next,movement}); completedInventory++; if(completedInventory===expectedInventory) finish();
+                  };
+                }
+                const finish=()=>{
+                  const stamp=now();
+                  const actualRefundAmount=Math.round(Math.min(maxRefundable,refundAmount==null?computedRefund:Number(refundAmount||0)));
+                  const refund={id:`${id}:refund`,return_id:id,sale_id:saleId,shift_id:activeShift.id,method:refundMethod,amount:actualRefundAmount,status:'RECORDED',created_at:stamp,operation_id:operation};
+                  const doc={id,return_id:id,sale_id:saleId,shift_id:activeShift.id,warehouse_id:sale.warehouseId||sale.warehouse_id||'',reason,status:'CONFIRMED',refund_method:refundMethod,refund_amount:refund.amount,created_at:stamp,updated_at:stamp,operation_id:operation,lines:normalized};
+                  const movementRows=levelOps.map(x=>x.movement); const outbox=makeOutbox({operationId:operation,eventId:uuid(),entityType:'return',entityId:id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'return.create',createdAt:stamp,payload:{return:doc,refund,inventory_movements:movementRows}});
+                  levelOps.forEach(x=>stores.levels.put(x.next)); movementRows.forEach(x=>stores.movements.put(x)); stores.returns.put(doc); stores.refunds.put(refund); stores.outbox.put(outbox); result=doc;
                 };
-              }
-              const finish=()=>{
-                const stamp=now();
-                const actualRefundAmount=Math.min(maxRefundable,refundAmount==null?computedRefund:Number(refundAmount||0));
-                const refund={id:`${id}:refund`,return_id:id,sale_id:saleId,shift_id:activeShift?.id||'',method:refundMethod,amount:actualRefundAmount,status:'RECORDED',created_at:stamp,operation_id:operation};
-                const doc={id,return_id:id,sale_id:saleId,shift_id:activeShift?.id||'',warehouse_id:sale.warehouseId||sale.warehouse_id||'',reason,status:'CONFIRMED',refund_method:refundMethod,refund_amount:refund.amount,created_at:stamp,updated_at:stamp,operation_id:operation,lines:normalized};
-                const movementRows=levelOps.map(x=>x.movement); const outbox=makeOutbox({operationId:operation,eventId:uuid(),entityType:'return',entityId:id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'return.create',createdAt:stamp,payload:{return:doc,refund,inventory_movements:movementRows}});
-                levelOps.forEach(x=>stores.levels.put(x.next)); movementRows.forEach(x=>stores.movements.put(x)); stores.returns.put(doc); stores.refunds.put(refund); stores.outbox.put(outbox); result=doc;
-              };
-              if(expectedInventory===0) finish();
-            }catch(error){context.abort(error);}
+                if(expectedInventory===0) finish();
+              }catch(error){context.abort(error);}
+            };
           };
         };
       };
@@ -675,7 +690,10 @@ export async function completeOrder(id,operationId=''){return mutateOrder(id,'CO
 export async function cancelOrder(id,operationId=''){return mutateOrder(id,'CANCELLED',operationId);}
 export async function createProduct({name,sku,barcode='',lowStock=CONFIG.DEFAULT_LOW_STOCK,image='',images=[],categoryId='',price=null,active=true,websiteVisibility=false,variants=[],trackInventory=true,operationId=''}){
   if(!name?.trim()||!sku?.trim()) throw new Error('Tên và SKU là bắt buộc.');
-  const all=await getAll('products'); if(all.some(p=>String(p.sku||'').toLowerCase()===sku.trim().toLowerCase())) throw new Error('SKU đã tồn tại.');
+  const all=await getAll('products');
+  if(all.some(p=>String(p.sku||'').toLowerCase()===sku.trim().toLowerCase())) throw new Error('SKU đã tồn tại.');
+  const cleanBarcode=String(barcode||'').trim();
+  if(cleanBarcode&&all.some(p=>String(p.barcode||'').trim().toLowerCase()===cleanBarcode.toLowerCase())) throw new Error('Mã vạch (Barcode) này đã được dùng cho sản phẩm khác.');
   const gallery=Array.isArray(images)?images.filter(Boolean):[];
   const identity=await localIdentity();const op=operationId||uuid();const stamp=now();const product=asItem({id:uid('p'),name:name.trim(),sku:sku.trim(),barcode:barcode.trim(),categoryId,price:price===null||price===''?null:Number(price),active,websiteVisibility,variants,trackInventory,lowStock:Number(lowStock)||0,image:image||gallery[0]||'',images:gallery,operation_id:op,version:1,source:SYNC_SOURCE});const outbox=makeOutbox({operationId:op,entityType:'item',entityId:product.id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'item.create',createdAt:stamp,payload:{item:product}});await runTransaction(['products','outbox'],stores=>{stores.products.put(product);stores.outbox.put(outbox);});return product;
 }
@@ -692,7 +710,14 @@ export async function createCategory({name,parentId='',type='PRODUCT',image=''})
   const identity=await localIdentity();const op=uuid();const stamp=now(); const category={id:uid('cat'),name:clean,parentId:parentId||'',parent_id:parentId||'',type,image:image||'',created_at:stamp,updated_at:stamp,operation_id:op,version:1,source:SYNC_SOURCE};const outbox=makeOutbox({operationId:op,entityType:'category',entityId:category.id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'category.create',createdAt:stamp,payload:{category}});
   await runTransaction(['categories','outbox'],stores=>{stores.categories.put(category);stores.outbox.put(outbox);}); return category;
 }
-export async function updateItem(item,requestedOperationId=''){ if(!item?.id||!item.name?.trim()) throw new Error('Mục không hợp lệ.');const identity=await localIdentity();const operationId=requestedOperationId||uuid();const next={...item,name:item.name.trim(),operation_id:operationId,version:Number(item.version||0)+1,source:item.source||SYNC_SOURCE,updated_at:now()};const outbox=makeOutbox({operationId,entityType:'item',entityId:next.id,action:'update',version:next.version,deviceId:identity.device_id,registerId:identity.register_id,type:'item.update',payload:{item:next}});await runTransaction(['products','outbox'],stores=>{stores.products.put(next);stores.outbox.put(outbox);});return next; }
+export async function updateItem(item,requestedOperationId=''){
+  if(!item?.id||!item.name?.trim()) throw new Error('Mục không hợp lệ.');
+  const all=await getAll('products');
+  if(item.sku?.trim()&&all.some(p=>p.id!==item.id&&String(p.sku||'').trim().toLowerCase()===item.sku.trim().toLowerCase())) throw new Error('SKU đã tồn tại trên sản phẩm khác.');
+  const cleanBc=String(item.barcode||'').trim().toLowerCase();
+  if(cleanBc&&all.some(p=>p.id!==item.id&&String(p.barcode||'').trim().toLowerCase()===cleanBc)) throw new Error('Mã vạch (Barcode) này đã được dùng cho sản phẩm khác.');
+  const identity=await localIdentity();const operationId=requestedOperationId||uuid();const next={...item,name:item.name.trim(),operation_id:operationId,version:Number(item.version||0)+1,source:item.source||SYNC_SOURCE,updated_at:now()};const outbox=makeOutbox({operationId,entityType:'item',entityId:next.id,action:'update',version:next.version,deviceId:identity.device_id,registerId:identity.register_id,type:'item.update',payload:{item:next}});await runTransaction(['products','outbox'],stores=>{stores.products.put(next);stores.outbox.put(outbox);});return next;
+}
 export async function createWarehouse(name){ if(!name?.trim()) throw new Error('Tên kho là bắt buộc.');const identity=await localIdentity();const operationId=uuid();const w={id:uid('wh'),name:name.trim(),operation_id:operationId,version:1,source:SYNC_SOURCE};const outbox=makeOutbox({operationId,entityType:'warehouse',entityId:w.id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'warehouse.create',payload:{warehouse:w}});await runTransaction(['warehouses','outbox'],stores=>{stores.warehouses.put(w);stores.outbox.put(outbox);});return w; }
 
 function normalizeSupplierInput(input={}){
@@ -988,6 +1013,10 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
               levelsReq.onsuccess=()=>{
                 try{
                   const activeShift=openShiftFor(shiftsReq.result,{device_id:deviceId,register_id:registerId});
+                  if(!activeShift || activeShift.status !== 'OPEN'){
+                    context.abort(new Error('Chưa mở ca. Hãy mở ca trước khi đổi hàng.'));
+                    return;
+                  }
                   const levelMap=new Map((levelsReq.result||[]).map(x=>[x.id,{...x}]));
 
                   const prior=new Map();
@@ -1056,8 +1085,8 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
                     }
                   }
 
-                  const returnRefund=Math.min(maxRefundable,computedRefund);
-                  const diff=newSaleTotal-returnRefund;
+                  const returnRefund=Math.round(Math.min(maxRefundable,computedRefund));
+                  const diff=Math.round(newSaleTotal-returnRefund);
 
                   const saleMovements=[];
                   const totals=new Map();
@@ -1109,7 +1138,7 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
                     id:`${returnId}:refund`,
                     return_id:returnId,
                     sale_id:saleId,
-                    shift_id:activeShift?.id||'',
+                    shift_id:activeShift.id,
                     method:'exchange',
                     amount:returnRefund,
                     status:'RECORDED',
@@ -1120,7 +1149,7 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
                     id:returnId,
                     return_id:returnId,
                     sale_id:saleId,
-                    shift_id:activeShift?.id||'',
+                    shift_id:activeShift.id,
                     warehouse_id:targetWarehouse,
                     reason:`Đổi hàng: ${returnReason}`,
                     status:'CONFIRMED',
@@ -1137,12 +1166,55 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
 
                   const method=['cash','transfer','qr'].includes(paymentMethod)?paymentMethod:'cash';
                   const paymentStatus=method==='cash'?'PAID':'PENDING';
+
+                  // Build proper payment breakdown:
+                  // 1. Exchange credit voucher covers up to min(newSaleTotal, returnRefund)
+                  // 2. If newSaleTotal > returnRefund (diff > 0): customer pays diff
+                  // 3. If newSaleTotal < returnRefund (diff < 0): excess is refunded to customer
+                  const exchangePayments=[];
+                  if(returnRefund > 0){
+                    exchangePayments.push({
+                      id:uuid(),
+                      method:'exchange',
+                      amount:Math.min(newSaleTotal, returnRefund),
+                      status:'PAID',
+                      reference:`Khấu trừ từ phiếu trả ${returnId}`,
+                      shift_id:activeShift.id
+                    });
+                  }
+                  if(diff > 0){
+                    exchangePayments.push({
+                      id:uuid(),
+                      method,
+                      amount:diff,
+                      status:paymentStatus,
+                      reference:'',
+                      shift_id:activeShift.id
+                    });
+                  }
+
+                  if(diff < 0){
+                    const cashToRefund=Math.abs(diff);
+                    const excessRefundRecord={
+                      id:`${returnId}:excess_refund`,
+                      return_id:returnId,
+                      sale_id:saleId,
+                      shift_id:activeShift.id,
+                      method:method==='transfer'?'transfer':'cash',
+                      amount:cashToRefund,
+                      status:'RECORDED',
+                      created_at:stamp,
+                      operation_id:`${op}:excess_refund`
+                    };
+                    stores.refunds.put(excessRefundRecord);
+                  }
+
                   const newSale={
                     id:newSaleId,
                     sale_uuid:saleUuid,
                     device_id:deviceId,
                     register_id:registerId,
-                    shift_id:activeShift?.id||'',
+                    shift_id:activeShift.id,
                     local_sequence:localSequence,
                     operation_id:op,
                     code:newSaleCode,
@@ -1160,15 +1232,16 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
                     grand_total:newSaleTotal,
                     discount:0,
                     total:newSaleTotal,
-                    payments:[{
+                    payments:exchangePayments.length ? exchangePayments : [{
                       id:uuid(),
-                      method,
-                      amount:newSaleTotal,
-                      status:paymentStatus,
-                      reference:''
+                      method:'exchange',
+                      amount:0,
+                      status:'PAID',
+                      reference:'',
+                      shift_id:activeShift.id
                     }],
-                    payment_method:method,
-                    payment_status:paymentStatus,
+                    payment_method:diff > 0 ? method : 'exchange',
+                    payment_status:diff > 0 ? paymentStatus : 'PAID',
                     items:saleItems,
                     exchange_return_id:returnId,
                     original_sale_id:saleId,

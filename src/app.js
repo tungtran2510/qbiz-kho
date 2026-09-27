@@ -1,4 +1,4 @@
-import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange } from './engine.js?v=feature-completion-7';
+import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange } from './engine.js?v=20260927-v21-consistency-audit';
 import { clearAll,getAll,getOne,put,putMany,runTransaction } from './db.js';
 import { syncStatus,flushOutbox } from './sync.js';
 import { CONFIG } from './config.js';
@@ -259,7 +259,7 @@ function normalizeSaleCart(){const merged=new Map();for(const line of state.sale
 function saleStockLimit(id){const p=product(id);if(!p||p.type==='SERVICE'||p.trackInventory===false)return Infinity;const warehouseId=state.saleDraft.warehouseId||bestSaleWarehouse(state.saleCart);if(warehouseId){const level=(state.data.levels||[]).find(l=>l.productId===id&&l.warehouseId===warehouseId);return Math.max(0,levelAvail(level||{}));}return warehouseStock(id);}
 function allowSaleQuantity(id,next){const limit=saleStockLimit(id);if(next<=limit)return true;toast(`Chỉ còn ${fmt(limit)} sản phẩm trong kho`,'error');return false;}
 function saleLines(){normalizeSaleCart();return state.saleCart.map(line=>{const p=product(line.itemId);if(!p)return null;const qty=Number(line.quantity)||1,price=Number(line.unitPrice)||0,lineGross=qty*price,rawDisc=Number(line.discount)||0;const lineDiscount=line.discountMode==='percent'?Math.round(lineGross*Math.min(100,Math.max(0,rawDisc))/100):Math.min(lineGross,Math.max(0,rawDisc));const lineTotal=Math.max(0,lineGross-lineDiscount);return {...line,p,lineDiscount,lineTotal}}).filter(Boolean)}
-function saleTotals(){const lines=saleLines();const subtotal=lines.reduce((s,x)=>s+x.lineTotal,0);const tax=lines.reduce((s,x)=>s+Math.max(0,Number(x.tax_amount)||0),0);const raw=Number(state.saleDraft.discount)||0;const discount=Math.max(0,Math.min(subtotal,state.saleDraft.discountMode==='percent'?subtotal*Math.min(100,raw)/100:raw));const vatRate=Math.max(0,Math.min(100,Number(state.saleDraft.vatRate)||0));const vat=Math.round(Math.max(0,subtotal-discount)*vatRate/100);return {lines,subtotal,discount,tax,vatRate,vat,total:subtotal-discount+tax+vat};}
+function saleTotals(){const lines=saleLines();const subtotal=lines.reduce((s,x)=>s+x.lineTotal,0);const tax=lines.reduce((s,x)=>s+Math.max(0,Number(x.tax_amount)||0),0);const raw=Number(state.saleDraft.discount)||0;const discount=Math.round(Math.max(0,Math.min(subtotal,state.saleDraft.discountMode==='percent'?subtotal*Math.min(100,raw)/100:raw)));const vatRate=Math.max(0,Math.min(100,Number(state.saleDraft.vatRate)||0));const vat=Math.round(Math.max(0,subtotal-discount)*vatRate/100);return {lines,subtotal,discount,tax,vatRate,vat,total:Math.round(subtotal-discount+tax+vat)};}
 function paymentLabel(method){return ({cash:'Tiền mặt',transfer:'Chuyển khoản',qr:'QR'})[method]||'Chưa xác định'}
 function currentCustomer(){return state.saleCustomer||{name:'Khách lẻ',phone:'',code:'',id:''};}
 function normalizePhone(v){return String(v||'').replace(/\D/g,'');}
@@ -605,7 +605,7 @@ function renderDashboard(){
       <button class="dashboard-month" data-report-open="month"><span>Tháng này</span><strong>${fmt(reportMonth.net)} ₫</strong><small>${reportMonth.sales.length} phiếu · ${esc(compare)}</small></button>
       <div class="dashboard-sales-subcards">
         <button class="dashboard-sales-subcard" data-page="orders"><i>${icon('shopping-cart')}</i><span>Đơn hàng</span><b>${fmt(d.orders.length)} đơn</b><em>${icon('chevron-right')}</em></button>
-        <button class="dashboard-sales-subcard" data-report-open="month" ${reportMonth.hasCost ? '' : 'data-no-data="1"'}><i>${icon('trending-up')}</i><span>Lợi nhuận</span><b>${reportMonth.hasCost ? `${fmt(reportMonth.profit)} ₫` : 'Chưa đủ dữ liệu'}</b></button>
+        <button class="dashboard-sales-subcard" data-report-open="month" ${reportMonth.hasCost ? '' : 'data-no-data="1"'}><i>${icon('trending-up')}</i><span>Lợi nhuận</span><b>${!userCan('VIEW_COST') ? '***' : (reportMonth.hasCost ? `${fmt(reportMonth.profit)} ₫` : 'Chưa đủ dữ liệu')}</b></button>
       </div>
     </section>
 
@@ -837,6 +837,10 @@ function renderDashboard(){
   }
 
   $$('[data-report-open]').forEach(b=>b.onclick=()=>{
+    if(!userCan('VIEW_REPORT')){
+      toast('Tài khoản của bạn không có quyền xem báo cáo tài chính.','warn');
+      return;
+    }
     state.reportRange=b.dataset.reportOpen;
     state.reportTab='overview';
     state.page='reports';
@@ -2490,7 +2494,7 @@ function reportSales(range=state.reportRange){
   }));
   const allSales=[...sales,...completedOrders];
   const sum=key=>allSales.reduce((n,s)=>n+Number(s[key]||0),0);
-  const gross=sum('subtotal'),discount=sum('discount_total'),tax=sum('tax_total'),net=Math.max(0,gross-discount);
+  const gross=sum('subtotal'),discount=sum('discount_total'),tax=sum('tax_total');
   const costTotal = allSales.reduce((sumCost, s) => {
     const saleCost = (s.items || []).reduce((itemSum, item) => {
       const prod = product(item.item_id || item.itemId || item.productId || item.id);
@@ -2503,12 +2507,13 @@ function reportSales(range=state.reportRange){
     const rDate = new Date(r.created_at || r.createdAt || 0);
     return rDate >= start && rDate <= end;
   }).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  const net=Math.max(0,gross-discount-refundTotal);
   const hasCost = costTotal > 0;
-  const profit = hasCost ? Math.max(0, net - costTotal - refundTotal) : 0;
+  const profit = hasCost ? Math.max(0, net - costTotal) : 0;
   const paymentRows=allSales.flatMap(s=>(s.payments||[]).map(p=>({...p,sale:s})));
-  const collected=paymentRows.filter(p=>p.status==='PAID').reduce((n,p)=>n+Number(p.amount||0),0);
+  const collected=Math.max(0, paymentRows.filter(p=>p.status==='PAID').reduce((n,p)=>n+Number(p.amount||0),0) - refundTotal);
   const receivable=paymentRows.filter(p=>p.status==='PENDING').reduce((n,p)=>n+Number(p.amount||0),0);
-  return {sales:allSales,gross,discount,net,cost:costTotal,profit,hasCost,tax,collected,receivable,paymentRows};
+  return {sales:allSales,gross,discount,net,cost:costTotal,profit,hasCost,tax,collected,receivable,paymentRows,refundTotal};
 }
 function renderReports(){
   const r=reportSales(),productMap=new Map();
@@ -2563,12 +2568,11 @@ function featureReportSales(){
     is_order:true
   }));
   const allSales=[...sales,...completedOrders];
-  const sum=key=>allSales.reduce((n,s)=>n+Number(s[key]||0),0),gross=sum('subtotal'),discount=sum('discount_total'),tax=sum('tax_total'),net=Math.max(0,gross-discount),payments=allSales.flatMap(s=>(s.payments||[]).map(p=>({...p,sale:s}))),collected=payments.filter(p=>p.status==='PAID').reduce((n,p)=>n+Number(p.amount||0),0);
+  const sum=key=>allSales.reduce((n,s)=>n+Number(s[key]||0),0),gross=sum('subtotal'),discount=sum('discount_total'),tax=sum('tax_total');
 
   const prodMap = new Map((state.data.products || []).map(p => [p.id, p]));
-  let costTotal = 0, refundTotal = 0;
+  let costTotal = 0;
   for (const s of allSales) {
-    refundTotal += Number(s.refund_amount || s.refundTotal || 0);
     for (const item of (s.items || [])) {
       const pId = item.item_id || item.itemId || item.productId || item.product_id;
       const p = prodMap.get(pId);
@@ -2577,21 +2581,33 @@ function featureReportSales(){
       costTotal += (Number(item.cost_total) > 0 ? Number(item.cost_total) : (itemCost * qty));
     }
   }
+  const refundTotal = (state.data.refunds || []).filter(r => {
+    const rDate = new Date(r.created_at || r.createdAt || 0);
+    return rDate >= start && rDate <= end;
+  }).reduce((sum, r) => sum + Number(r.amount || 0), 0);
+  const net=Math.max(0,gross-discount-refundTotal);
   const hasCost = costTotal > 0;
-  const profit = hasCost ? Math.max(0, net - costTotal - refundTotal) : 0;
+  const profit = hasCost ? Math.max(0, net - costTotal) : 0;
+  const payments=allSales.flatMap(s=>(s.payments||[]).map(p=>({...p,sale:s})));
+  const collected=Math.max(0, payments.filter(p=>p.status==='PAID').reduce((n,p)=>n+Number(p.amount||0),0) - refundTotal);
 
-  return {sales:allSales,gross,discount,tax,net,cost:costTotal,profit,hasCost,payments,collected,receivable:payments.filter(p=>p.status==='PENDING').reduce((n,p)=>n+Number(p.amount||0),0)};
+  return {sales:allSales,gross,discount,tax,net,cost:costTotal,profit,hasCost,payments,collected,receivable:payments.filter(p=>p.status==='PENDING').reduce((n,p)=>n+Number(p.amount||0),0),refundTotal};
 }
 function preparedReport(title,reason){return `<section class="card feature-panel report-prepared"><div class="section-head"><div><h2>${title}</h2><p>${reason}</p></div>${surfaceStatus('prepared','Chưa đủ dữ liệu')}</div><div class="empty"><strong>Không tạo số liệu giả</strong><span>Khi contract và nguồn dữ liệu thật sẵn sàng, báo cáo này sẽ dùng cùng bộ lọc hiện tại.</span></div></section>`}
 function renderFeatureReports(){
-  setTitle('Báo cáo','QBiz');const r=featureReportSales(),productMap=new Map();
+  setTitle('Báo cáo','QBiz');
+  if(!userCan('VIEW_REPORT')){
+    $('#content').innerHTML=`<section class="card section-card" style="text-align:center;padding:48px 16px;max-width:560px;margin:32px auto"><div style="font-size:44px;margin-bottom:12px">🔒</div><h2 style="font-size:18px;margin-bottom:8px">Không có quyền xem báo cáo</h2><p style="color:var(--text-secondary)">Tài khoản của bạn không có quyền xem báo cáo tài chính & doanh thu.</p></section>`;
+    return;
+  }
+  const r=featureReportSales(),productMap=new Map();
   for(const s of r.sales)for(const i of s.items||[]){const key=i.item_id||i.itemId||i.sku||i.name,row=productMap.get(key)||{id:i.item_id||i.itemId,name:i.name||'Mặt hàng',qty:0,revenue:0};row.qty+=Number(i.quantity||0);row.revenue+=Number(i.line_total??i.lineTotal??0);productMap.set(key,row)}
   const products=[...productMap.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,20),inventory=state.data.products.filter(p=>p.type!=='SERVICE').map(p=>({p,t:stockView(p,state.reportWarehouse)})),low=inventory.filter(x=>x.t.available<=Number(x.p.lowStock||0));
   const tabs=[['overview','Tổng quan'],['revenue','Doanh thu'],['orders','Đơn hàng'],['products','Sản phẩm'],['inventory','Kho'],['payments','Thanh toán'],['returns','Trả hàng'],['debt','Công nợ'],['customers','Khách hàng'],['staff','Nhân viên / Ca'],['shipping','Vận chuyển']];
   const ranges=[['today','Hôm nay'],['yesterday','Hôm qua'],['7d','7 ngày'],['month','Tháng này'],['lastmonth','Tháng trước'],['custom','Tùy chọn']];
   const sourceRows=r.sales.map(s=>`<button class="transaction-row" data-sale-id="${s.id}"><span><strong>${esc(s.code||'Phiếu bán')}</strong><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at||s.createdAt)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch trong khoảng đã chọn.</div>';
   let body='';
-  if(['overview','revenue'].includes(state.reportTab))body=`<section class="report-metrics"><div><span>Doanh thu trước giảm</span><b>${fmt(r.gross)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(r.discount)} ₫</b></div><div><span>Doanh thu thuần</span><b>${fmt(r.net)} ₫</b></div><div><span>Thuế</span><b>${fmt(r.tax)} ₫</b></div><div><span>Đã thu</span><b>${fmt(r.collected)} ₫</b></div><div><span>Còn phải thu theo payment</span><b>${fmt(r.receivable)} ₫</b></div></section><section class="card feature-panel"><div class="section-head"><div><h2>Giao dịch nguồn</h2><p>${r.sales.length} phiếu hoàn tất trong bộ lọc.</p></div></div>${sourceRows}</section>${state.reportTab==='overview'?(r.hasCost?`<section class="card feature-panel"><div class="section-head"><div><h2>Lợi nhuận gộp</h2><p>Tính toán tự động từ doanh thu thuần trừ giá vốn và hoàn tiền.</p></div></div><div class="report-metrics" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:0"><div><span>Tổng giá vốn</span><b>${fmt(r.cost)} ₫</b></div><div><span>Lợi nhuận gộp</span><b style="color:#16a34a">${fmt(r.profit)} ₫</b></div><div><span>Tỷ suất lợi nhuận</span><b>${r.net>0?((r.profit/r.net)*100).toFixed(1):0}%</b></div></div></section>`:preparedReport('Lợi nhuận','Phiếu bán chưa có cost snapshot/expense ledger đủ để tính lợi nhuận an toàn.')):''}`;
+  if(['overview','revenue'].includes(state.reportTab))body=`<section class="report-metrics"><div><span>Doanh thu trước giảm</span><b>${fmt(r.gross)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(r.discount)} ₫</b></div><div><span>Doanh thu thuần</span><b>${fmt(r.net)} ₫</b></div><div><span>Thuế</span><b>${fmt(r.tax)} ₫</b></div><div><span>Đã thu</span><b>${fmt(r.collected)} ₫</b></div><div><span>Còn phải thu theo payment</span><b>${fmt(r.receivable)} ₫</b></div></section><section class="card feature-panel"><div class="section-head"><div><h2>Giao dịch nguồn</h2><p>${r.sales.length} phiếu hoàn tất trong bộ lọc.</p></div></div>${sourceRows}</section>${state.reportTab==='overview'?(userCan('VIEW_COST') && r.hasCost?`<section class="card feature-panel"><div class="section-head"><div><h2>Lợi nhuận gộp</h2><p>Tính toán tự động từ doanh thu thuần trừ giá vốn và hoàn tiền.</p></div></div><div class="report-metrics" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:0"><div><span>Tổng giá vốn</span><b>${fmt(r.cost)} ₫</b></div><div><span>Lợi nhuận gộp</span><b style="color:#16a34a">${fmt(r.profit)} ₫</b></div><div><span>Tỷ suất lợi nhuận</span><b>${r.net>0?((r.profit/r.net)*100).toFixed(1):0}%</b></div></div></section>`:(userCan('VIEW_COST')?preparedReport('Lợi nhuận','Phiếu bán chưa có cost snapshot/expense ledger đủ để tính lợi nhuận an toàn.'):'')):''}`;
   else if(state.reportTab==='orders')body=`<section class="card feature-panel"><div class="section-head"><div><h2>Đơn hàng</h2><p>Dữ liệu đơn hiện có; tap để xem chi tiết.</p></div></div>${(state.data.orders||[]).map(o=>`<button class="transaction-row" data-order-open="${o.id}"><span><strong>${esc(o.code||'Đơn hàng')}</strong><small>${esc(o.customer_label||'Khách lẻ')} · ${orderStatusLabel(o.status)}</small></span><b>${fmt(o.grand_total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có đơn hàng.</div>'}</section>`;
   else if(state.reportTab==='products')body=`<section class="card feature-panel"><div class="section-head"><div><h2>Top sản phẩm theo doanh thu</h2><p>Từ item snapshot của phiếu bán.</p></div></div>${products.map(x=>`<button class="transaction-row" ${x.id?`data-product="${x.id}"`:''}><span><strong>${esc(x.name)}</strong><small>${fmt(x.qty)} đã bán</small></span><b>${fmt(x.revenue)} ₫</b>${x.id?icon('chevron-right'):''}</button>`).join('')||'<div class="empty">Chưa có dữ liệu bán hàng.</div>'}</section>`;
   else if(state.reportTab==='inventory')body=`<section class="report-metrics"><div><span>Sản phẩm theo dõi tồn</span><b>${fmt(inventory.length)}</b></div><div><span>Sắp hết / hết</span><b>${fmt(low.length)}</b></div><div><span>Kho đang lọc</span><b>${esc(warehouse(state.reportWarehouse)?.name||'Tất cả')}</b></div></section><section class="card feature-panel">${inventory.map(({p,t})=>`<button class="transaction-row" data-product="${p.id}"><span><strong>${esc(p.name)}</strong><small>Thực ${fmt(t.onHand)} · Giữ ${fmt(t.reserved)}</small></span><b>Có thể bán ${fmt(t.available)}</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có dữ liệu tồn.</div>'}</section>`;
@@ -4751,7 +4767,33 @@ function openModal({title='',sub='',body='',submitText='Lưu',hideSubmit=false,f
   $$('[data-close]',root).forEach(b=>b.onclick=e=>{e.stopPropagation();closeModal();});
   const backdrop=root.querySelector('.modal-backdrop');
   if(backdrop) backdrop.onclick=e=>{if(e.target===backdrop){closeModal();}};
-  if(onSubmit) $('#modalSubmit',root).onclick=async()=>{ try{ await onSubmit(root); root.innerHTML=''; state.currentProductId=null;state.currentOrderId=null;state.currentSaleId=null;updateContextAndChips(); await refresh(); toast('Đã cập nhật.', 'ok'); } catch(e){ toast(e.message,'error'); } };
+  if(onSubmit){
+    const submitBtn = $('#modalSubmit', root);
+    if(submitBtn){
+      submitBtn.onclick=async()=>{
+        if(submitBtn.disabled) return;
+        const origText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+        submitBtn.innerHTML = 'Đang xử lý…';
+        try{
+          await onSubmit(root);
+          root.innerHTML='';
+          state.currentProductId=null;
+          state.currentOrderId=null;
+          state.currentSaleId=null;
+          updateContextAndChips();
+          await refresh();
+          toast('Đã cập nhật.', 'ok');
+        }catch(e){
+          submitBtn.disabled = false;
+          submitBtn.removeAttribute('aria-busy');
+          submitBtn.innerHTML = origText;
+          toast(e.message,'error');
+        }
+      };
+    }
+  }
 }
 
 function productOptions(selected=''){ return state.data.products.map(p=>`<option value="${p.id}" ${selected===p.id?'selected':''}>${esc(p.name)} · ${esc(p.sku)}</option>`).join(''); }
@@ -4869,19 +4911,45 @@ function openProduct(id){
   $$('[data-kind]',$('#modalRoot')).forEach(b=>b.onclick=()=>{const k=b.dataset.kind; $('#modalRoot').innerHTML=''; openQuick(k,id);});
 }
 function openEditItem(id){
+  if(!userCan('EDIT_PRODUCT')){
+    toast('Tài khoản của bạn không có quyền sửa sản phẩm.', 'error');
+    return;
+  }
+  const canEditPrice = userCan('EDIT_PRICE');
+  const canViewCost = userCan('VIEW_COST');
   const p=product(id),service=p.type==='SERVICE',type=service?'SERVICE':'PRODUCT',selectedCategory=p.categoryId||p.category||'';
-  const body=`<div class="compact-edit-form"><div class="form-grid edit-primary-grid"><div class="field full-span"><label>Tên</label><input id="editName" value="${esc(p.name)}" /></div><div class="field"><label>Giá bán</label><input id="editPrice" type="number" inputmode="decimal" value="${p.price??''}" /></div>${service?'':'<div class="field"><label>Giá nhập gần nhất</label><input id="editCost" type="number" min="0" inputmode="decimal" value="'+(p.purchase_price??'')+'" /></div>'}<div class="field"><label>Danh mục</label><select id="editCategory">${categoryOptions(type,selectedCategory)}</select></div>${service?'<div class="field"><label>Thời lượng (phút)</label><input id="editDuration" type="number" min="0" inputmode="numeric" value="'+(p.duration_minutes??'')+'" /></div>':'<div class="field"><label>SKU</label><input id="editSku" value="'+esc(p.sku||'')+'" readonly /></div>'}</div>${compactImagePickerMarkup()}<details class="edit-more"><summary>Thông tin thêm</summary><div class="form-grid">${service?'<label class="check-field"><input id="editBooking" type="checkbox" '+(p.booking_enabled?'checked':'')+' /> Cho phép đặt lịch</label><label class="check-field"><input id="editActive" type="checkbox" '+(p.active!==false?'checked':'')+' /> Đang hoạt động</label>':'<div class="field"><label>Barcode</label><input id="editBarcode" value="'+esc(p.barcode||'')+'" /></div><div class="field"><label>Tồn tối thiểu</label><input id="editLow" type="number" min="0" value="'+(p.lowStock??5)+'" /></div>'}<div class="field full-span"><label>Mô tả</label><textarea id="editDescription">${esc(p.description||'')}</textarea></div></div></details></div>`;
-  openModal({title:'Sửa mục',sub:service?'Dịch vụ':'Sản phẩm',body,submitText:'Lưu thay đổi',onSubmit:r=>{const imgs=r._getImages?.()||[];return updateItem({...p,name:$('#editName',r).value,price:$('#editPrice',r).value===''?null:Number($('#editPrice',r).value),categoryId:$('#editCategory',r).value,description:$('#editDescription',r).value,...(service?{image:imgs[0]||'',images:imgs,duration_minutes:$('#editDuration',r).value===''?null:Number($('#editDuration',r).value),booking_enabled:$('#editBooking',r).checked,active:$('#editActive',r).checked}:{image:imgs[0]||'',images:imgs,purchase_price:$('#editCost',r).value===''?null:Number($('#editCost',r).value),barcode:$('#editBarcode',r).value,lowStock:Number($('#editLow',r).value)})})}});
+  const priceInput = canEditPrice
+    ? `<input id="editPrice" type="number" inputmode="decimal" value="${p.price??''}" />`
+    : `<input id="editPrice" type="number" value="${p.price??''}" readonly disabled title="Không có quyền sửa giá bán" />`;
+  const costInput = service ? '' : (canViewCost
+    ? `<div class="field"><label>Giá nhập gần nhất</label><input id="editCost" type="number" min="0" inputmode="decimal" value="${p.purchase_price??''}" /></div>`
+    : '');
+  const body=`<div class="compact-edit-form"><div class="form-grid edit-primary-grid"><div class="field full-span"><label>Tên</label><input id="editName" value="${esc(p.name)}" /></div><div class="field"><label>Giá bán</label>${priceInput}</div>${costInput}<div class="field"><label>Danh mục</label><select id="editCategory">${categoryOptions(type,selectedCategory)}</select></div>${service?'<div class="field"><label>Thời lượng (phút)</label><input id="editDuration" type="number" min="0" inputmode="numeric" value="'+(p.duration_minutes??'')+'" /></div>':'<div class="field"><label>SKU</label><input id="editSku" value="'+esc(p.sku||'')+'" readonly /></div>'}</div>${compactImagePickerMarkup()}<details class="edit-more"><summary>Thông tin thêm</summary><div class="form-grid">${service?'<label class="check-field"><input id="editBooking" type="checkbox" '+(p.booking_enabled?'checked':'')+' /> Cho phép đặt lịch</label><label class="check-field"><input id="editActive" type="checkbox" '+(p.active!==false?'checked':'')+' /> Đang hoạt động</label>':'<div class="field"><label>Barcode</label><input id="editBarcode" value="'+esc(p.barcode||'')+'" /></div><div class="field"><label>Tồn tối thiểu</label><input id="editLow" type="number" min="0" value="'+(p.lowStock??5)+'" /></div>'}<div class="field full-span"><label>Mô tả</label><textarea id="editDescription">${esc(p.description||'')}</textarea></div></div></details></div>`;
+  openModal({title:'Sửa mục',sub:service?'Dịch vụ':'Sản phẩm',body,submitText:'Lưu thay đổi',onSubmit:r=>{const imgs=r._getImages?.()||[];const priceVal = canEditPrice ? ($('#editPrice',r).value===''?null:Number($('#editPrice',r).value)) : p.price; const costVal = canViewCost ? ($('#editCost',r)?.value===''?null:Number($('#editCost',r)?.value)) : p.purchase_price; return updateItem({...p,name:$('#editName',r).value,price:priceVal,categoryId:$('#editCategory',r).value,description:$('#editDescription',r).value,...(service?{image:imgs[0]||'',images:imgs,duration_minutes:$('#editDuration',r).value===''?null:Number($('#editDuration',r).value),booking_enabled:$('#editBooking',r).checked,active:$('#editActive',r).checked}:{image:imgs[0]||'',images:imgs,purchase_price:costVal,barcode:$('#editBarcode',r).value,lowStock:Number($('#editLow',r).value)})})}});
   bindCompactImagePicker($('#modalRoot'),p.images?.length?p.images:[p.image]);
 }
 function openQR(id){const p=product(id);if(!p)return;openModal({title:'Mã QR sản phẩm',sub:`${p.name} · ${p.sku}`,hideSubmit:true,body:`<div class="qr-card"><div id="qrCanvas" class="qr-canvas"><div class="empty-line">Đang tạo mã QR…</div></div><strong>${esc(p.name)}</strong><span>${esc(p.sku)}${p.barcode?` · ${esc(p.barcode)}`:''}</span><div class="qr-actions"><button class="secondary-btn" data-qr-download="png">Tải PNG</button><button class="primary-btn" data-qr-download="svg">Tải SVG</button></div></div>`});const host=$('#qrCanvas');if(!window.QRCodeStyling)return host.innerHTML='<div class="empty-line">Không tải được bộ tạo QR. Hãy mở lại khi có mạng.</div>';const qr=new QRCodeStyling({width:260,height:260,type:'svg',data:p.barcode||p.sku,image:'./icons/icon-192.png',dotsOptions:{color:'#102a56',type:'rounded'},cornersSquareOptions:{color:'#102a56',type:'extra-rounded'},cornersDotOptions:{color:'#16a77a',type:'dot'},backgroundOptions:{color:'#ffffff'},imageOptions:{crossOrigin:'anonymous',margin:8,hideBackgroundDots:true},qrOptions:{errorCorrectionLevel:'H'}});qr.append(host);host._qr=qr;$$('[data-qr-download]',$('#modalRoot')).forEach(b=>b.onclick=()=>qr.download({name:`qbiz-${p.sku}`,extension:b.dataset.qrDownload}));}
 function internalBarcode(){const base='200'+Array.from({length:9},()=>Math.floor(Math.random()*10)).join('');const sum=base.split('').reduce((s,c,i)=>s+Number(c)*(i%2?3:1),0);return base+String((10-sum%10)%10);}
-function openNewProduct(){ return state.productType==='SERVICE'?openNewServiceForm():openNewProductForm(); }
+function openNewProduct(){
+  if(!userCan('EDIT_PRODUCT')){
+    toast('Tài khoản của bạn không có quyền thêm sản phẩm.', 'error');
+    return;
+  }
+  return state.productType==='SERVICE'?openNewServiceForm():openNewProductForm();
+}
 function openNewServiceForm(){
   openModal({title:'Thêm dịch vụ',sub:'Dịch vụ không theo dõi tồn kho.',submitText:'Lưu dịch vụ',body:`<div class="form-grid"><div class="field full-span"><label for="name">Tên dịch vụ</label><input id="name" placeholder="VD: Tư vấn trị liệu" /></div><div class="field"><label for="price">Giá</label><input id="price" type="number" min="0" /></div><div class="field"><label for="categoryId">Danh mục dịch vụ</label><select id="categoryId">${categoryOptions('SERVICE')}</select></div><div class="field"><label for="duration">Thời lượng (phút, tùy chọn)</label><input id="duration" type="number" min="0" /></div><label class="check-field"><input id="booking" type="checkbox" /> Cho phép đặt lịch</label>${filePickerMarkup()}</div>`,onSubmit:r=>createService({name:$('#name',r).value,price:$('#price',r).value,categoryId:$('#categoryId',r).value,durationMinutes:$('#duration',r).value||null,bookingEnabled:$('#booking',r).checked,images:$('#modalRoot')._getImages?.()||[]})});
   bindImagePicker($('#modalRoot'));
 }
 function openNewProductForm(){
+  const canEditPrice = userCan('EDIT_PRICE');
+  const canViewCost = userCan('VIEW_COST');
+  const priceInputHtml = canEditPrice
+    ? `<div class="field"><label class="np-money" for="productPrice">Giá bán</label><input id="productPrice" type="number" min="0" inputmode="numeric" /></div>`
+    : `<div class="field"><label class="np-money" for="productPrice">Giá bán</label><input id="productPrice" type="number" min="0" value="0" readonly disabled title="Không có quyền sửa giá" /></div>`;
+  const costInputHtml = canViewCost
+    ? `<div class="field"><label class="np-money" for="productCost">Giá nhập <span class="np-lite">(gần nhất)</span></label><input id="productCost" type="number" min="0" inputmode="numeric" /></div>`
+    : '';
   const units=['Cái','Chiếc','Bộ','Hộp','Chai','Kg','Gói','Khác'];
   const cats=categoryTree('PRODUCT').map(x=>x.category);
   const catsHtml=cats.length?`<div class="np-chips" id="npCategories">${cats.map(c=>`<button type="button" class="np-chip" data-cat-id="${c.id}">${esc(c.name)}</button>`).join('')}</div><button type="button" class="np-more" id="npMoreCats" hidden>thêm »</button>`:'<p class="field-limit">Chưa có danh mục. Tạo trong Hàng hóa → Danh mục.</p>';
@@ -4890,7 +4958,7 @@ function openNewProductForm(){
     <div class="field full-span"><label for="name">Tên sản phẩm</label><input id="name" placeholder="VD: Ghế N85" /></div>
     <div class="full-span">${imgBlock}</div>
     <div class="full-span"><label class="np-label">Danh mục (chọn được nhiều)</label>${catsHtml}</div>
-    <div class="np-row2"><div class="field"><label class="np-money" for="productPrice">Giá bán</label><input id="productPrice" type="number" min="0" inputmode="numeric" /></div><div class="field"><label class="np-money" for="productCost">Giá nhập <span class="np-lite">(gần nhất)</span></label><input id="productCost" type="number" min="0" inputmode="numeric" /></div></div>
+    <div class="np-row2">${priceInputHtml}${costInputHtml}</div>
     <div class="np-row2"><div class="field"><label for="stockNow">Tồn hiện tại</label><input id="stockNow" type="number" min="0" inputmode="numeric" value="0" /></div><div class="field"><label for="unit">Đơn vị tính</label><select id="unit">${units.map(u=>`<option>${u}</option>`).join('')}</select></div></div>
     <div class="field full-span"><label for="low">Cảnh báo khi còn</label><input id="low" type="number" min="0" inputmode="numeric" placeholder="0" /></div>
     <div class="full-span"><label class="np-label">Biến thể (màu / size / thuộc tính)</label><div class="np-chips" id="npVariants"></div><div class="np-variant-add"><input id="npVariantName" placeholder="Tên: Size" /><input id="npVariantValues" placeholder="Giá trị: S, M, L" /></div><button type="button" class="secondary-btn np-variant-btn" id="npVariantAdd">${icon('package-plus')} Thêm biến thể</button></div>
@@ -4908,9 +4976,10 @@ function openNewProductForm(){
     if(!barcode){let t=0;do{barcode=internalBarcode();t++;}while(t<6&&existing.some(p=>String(p.barcode||'')===barcode));}
     const imgs=(mountImages()||[]);
     const catIds=[...selectedCats];
-    const created=await createProduct({name,price:$('#productPrice',r).value,categoryId:catIds[0]||'',sku,barcode,lowStock:$('#low',r).value,image:imgs[0]||'',images:imgs,variants});
+    const priceVal=canEditPrice ? $('#productPrice',r).value : 0;
+    const created=await createProduct({name,price:priceVal,categoryId:catIds[0]||'',sku,barcode,lowStock:$('#low',r).value,image:imgs[0]||'',images:imgs,variants});
     const patch={};if(catIds.length)patch.categoryIds=catIds;
-    const cost=$('#productCost',r).value;if(cost!=='')patch.purchase_price=Number(cost);
+    if(canViewCost){const cost=$('#productCost',r)?.value;if(cost!==''&&cost!=null)patch.purchase_price=Number(cost);}
     const unit=$('#unit',r).value;if(unit)patch.unit=unit;
     if(Object.keys(patch).length)await updateItem({...created,...patch});
     const qty=Number($('#stockNow',r).value)||0,wh=state.data.warehouses[0];
@@ -5940,20 +6009,52 @@ document.addEventListener('click', async e=>{
   if(action==='export-csv') return exportProductsCsv();
   if(action==='sync-now'){ try{ const r=await flushOutbox(); toast(r.skipped?'Bản local: chưa bật API QBiz.':`Đã gửi ${r.sent} thay đổi.`,'ok'); } catch(err){ toast(err.message,'error'); } return; }
   if(action==='reset-demo'){ if(confirm('Khôi phục dữ liệu demo? Dữ liệu hiện tại trên thiết bị sẽ bị xóa.')){ await clearAll(); await ensureSeed(); await refresh(); toast('Đã khôi phục dữ liệu demo.','ok'); } return; }
-  const orderAction=e.target.closest('[data-order-action]')?.dataset.orderAction; const orderId=e.target.closest('[data-order-id]')?.dataset.orderId;
-  if(orderAction&&orderId){try{const fn={confirm:confirmOrder,process:processOrder,complete:completeOrder,cancel:cancelOrder}[orderAction];if(fn){await fn(orderId);await refresh();toast(orderAction==='cancel'?'Đã hủy đơn.':'Đã cập nhật đơn.','ok');}}catch(err){toast(err.message,'error')}return;}
+  const orderActionBtn=e.target.closest('[data-order-action]');
+  const orderAction=orderActionBtn?.dataset.orderAction; const orderId=e.target.closest('[data-order-id]')?.dataset.orderId;
+  if(orderAction&&orderId){
+    if(orderActionBtn.disabled) return;
+    orderActionBtn.disabled = true;
+    try{
+      const fn={confirm:confirmOrder,process:processOrder,complete:completeOrder,cancel:cancelOrder}[orderAction];
+      if(fn){
+        await fn(orderId);
+        await refresh();
+        toast(orderAction==='cancel'?'Đã hủy đơn.':'Đã cập nhật đơn.','ok');
+      }
+    }catch(err){
+      orderActionBtn.disabled = false;
+      toast(err.message,'error');
+    }
+    return;
+  }
   const p=e.target.closest('[data-product]')?.dataset.product; if(p){ if(state.productSelecting&&state.page==='products')return toggleProductSelection(p); return openProduct(p); }
-  const tr=e.target.closest('[data-receive-transfer]')?.dataset.receiveTransfer; if(tr){ try{ await receiveTransfer(tr); await refresh(); toast('Kho nhận đã xác nhận hàng.','ok'); } catch(err){ toast(err.message,'error'); } }
-  const cancelTr=e.target.closest('[data-cancel-transfer]')?.dataset.cancelTransfer;
+  const trBtn=e.target.closest('[data-receive-transfer]');
+  const tr=trBtn?.dataset.receiveTransfer;
+  if(tr){
+    if(trBtn.disabled) return;
+    trBtn.disabled = true;
+    try{ await receiveTransfer(tr); await refresh(); toast('Kho nhận đã xác nhận hàng.','ok'); } catch(err){ trBtn.disabled = false; toast(err.message,'error'); }
+    return;
+  }
+  const cancelTrBtn=e.target.closest('[data-cancel-transfer]');
+  const cancelTr=cancelTrBtn?.dataset.cancelTransfer;
   if(cancelTr){
+    if(cancelTrBtn.disabled) return;
+    cancelTrBtn.disabled = true;
     try{
       await cancelTransfer(cancelTr);
       await refresh();
       toast('Đã hủy phiếu chuyển và hoàn trả tồn kho xuất.','ok');
-    }catch(err){toast(err.message,'error');}
+    }catch(err){
+      cancelTrBtn.disabled = false;
+      toast(err.message,'error');
+    }
     return;
   }
   if(action==='mark-sale-paid'){
+    const btn = e.target.closest('button');
+    if(btn?.disabled) return;
+    if(btn) btn.disabled = true;
     const saleId=e.target.closest('[data-sale-id]')?.dataset.saleId;
     if(saleId){
       try{
@@ -5961,11 +6062,17 @@ document.addEventListener('click', async e=>{
         $('#modalRoot').innerHTML='';
         await refresh();
         toast('Đã xác nhận thu tiền phiếu bán.','ok');
-      }catch(err){toast(err.message,'error');}
+      }catch(err){
+        if(btn) btn.disabled = false;
+        toast(err.message,'error');
+      }
     }
     return;
   }
   if(action==='mark-order-paid'){
+    const btn = e.target.closest('button');
+    if(btn?.disabled) return;
+    if(btn) btn.disabled = true;
     const orderId=e.target.closest('[data-order-id]')?.dataset.orderId;
     if(orderId){
       try{
@@ -5973,7 +6080,10 @@ document.addEventListener('click', async e=>{
         $('#modalRoot').innerHTML='';
         await refresh();
         toast('Đã xác nhận thanh toán đơn hàng.','ok');
-      }catch(err){toast(err.message,'error');}
+      }catch(err){
+        if(btn) btn.disabled = false;
+        toast(err.message,'error');
+      }
     }
     return;
   }
