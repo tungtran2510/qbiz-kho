@@ -345,6 +345,51 @@ export function isIssueOrStockReductionQuery(pNorm, rawPrompt = '') {
   const raw = String(rawPrompt || '').toLowerCase();
   if (!p) return false;
 
+  // HARD INVARIANT: Cấm tuyệt đối câu xuất báo cáo/file/Excel/CSV/PDF/dữ liệu/sổ sách rơi vào nghiệp vụ xuất kho!
+  const isDocumentOrExportQuery = (
+    p.includes('bao cao') ||
+    p.includes('report') ||
+    p.includes('excel') ||
+    p.includes('xlsx') ||
+    p.includes('csv') ||
+    p.includes('pdf') ||
+    p.includes('file') ||
+    p.includes('tep') ||
+    p.includes('tap tin') ||
+    p.includes('download') ||
+    p.includes('tai ve') ||
+    p.includes('tai xuong') ||
+    p.includes('tai bao cao') ||
+    p.includes('ket xuat') ||
+    p.includes('trich xuat') ||
+    p.includes('so sach') ||
+    p.includes('so chi tiet') ||
+    p.includes('so quy') ||
+    p.includes('thong ke') ||
+    p.includes('bieu mau') ||
+    p.includes('bang ke') ||
+    p.includes('s2b') ||
+    p.includes('tt88') ||
+    p.includes('tt200') ||
+    p.includes('tt133') ||
+    p.includes('du lieu') ||
+    p.includes('xuat ra') ||
+    p.includes('xuat file') ||
+    p.includes('xuat danh sach') ||
+    p.includes('xuat data') ||
+    raw.includes('báo cáo') ||
+    raw.includes('tệp') ||
+    raw.includes('tập tin') ||
+    raw.includes('kết xuất') ||
+    raw.includes('trích xuất') ||
+    raw.includes('biểu mẫu') ||
+    raw.includes('bảng kê') ||
+    raw.includes('dữ liệu')
+  );
+  if (isDocumentOrExportQuery) {
+    return false;
+  }
+
   // Never match price decrease or discount queries
   const isPriceQuery = (
     p.includes('giam gia') || p.includes('ha gia') || p.includes('doi gia') ||
@@ -388,6 +433,87 @@ export function isIssueOrStockReductionQuery(pNorm, rawPrompt = '') {
   }
 
   return false;
+}
+
+export function isExportReportQuery(pNorm, rawPrompt = '') {
+  const p = norm(pNorm);
+  const raw = String(rawPrompt || '').toLowerCase();
+  if (!p) return false;
+
+  const hasExportVerb = (
+    p.includes('xuat ') || p.startsWith('xuat') || p.includes('ket xuat') ||
+    p.includes('trich xuat') || p.includes('tai ') || p.includes('download') ||
+    p.includes('in ra file') || p.includes('chuyen ra file')
+  );
+  const hasReportOrFileType = (
+    p.includes('bao cao') || p.includes('excel') || p.includes('xlsx') ||
+    p.includes('csv') || p.includes('pdf') || p.includes('file') ||
+    p.includes('tep') || p.includes('du lieu') || p.includes('bang ke') ||
+    p.includes('so chi tiet') || p.includes('s2b') || p.includes('tt88') ||
+    p.includes('tt200') || raw.includes('báo cáo') || raw.includes('dữ liệu')
+  );
+
+  if (hasExportVerb && hasReportOrFileType) return true;
+
+  if (
+    p.includes('bao cao') &&
+    (p.includes('xuat') || p.includes('excel') || p.includes('file') || p.includes('csv'))
+  ) {
+    return true;
+  }
+
+  if (
+    p.includes('xuat file') || p.includes('xuat excel') || p.includes('xuat csv') ||
+    p.includes('tai file') || p.includes('tai excel') || p.includes('tai bao cao')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function isOperationalAuditQuery(pNorm, rawPrompt = '') {
+  const p = norm(pNorm);
+  if (!p) return false;
+
+  return (
+    p.includes('kiem toan') ||
+    p.includes('doi soat') ||
+    p.includes('ra soat so lieu') ||
+    p.includes('ra soat du lieu') ||
+    p.includes('kiem tra so lieu') ||
+    p.includes('doi chieu so lieu') ||
+    p.includes('audit') ||
+    p.includes('reconcile') ||
+    p.includes('reconciliation') ||
+    (p.includes('ra soat') && (p.includes('thang') || p.includes('ky') || p.includes('tuan') || p.includes('hom nay')))
+  );
+}
+
+export function isAccountingGuidanceQuery(pNorm, rawPrompt = '') {
+  const p = norm(pNorm);
+  if (!p) return false;
+
+  if (isExportReportQuery(pNorm, rawPrompt) || isOperationalAuditQuery(pNorm, rawPrompt)) {
+    return false;
+  }
+
+  return (
+    p.includes('nghiep vu ke toan') ||
+    p.includes('chuc nang ke toan') ||
+    p.includes('he thong ke toan') ||
+    p.includes('mo ke toan') ||
+    p.includes('vao ke toan') ||
+    p.includes('phan he ke toan') ||
+    p.includes('dinh khoan') ||
+    p.includes('hach toan ke toan') ||
+    p.includes('so cai ke toan') ||
+    p.includes('tai khoan ke toan') ||
+    p === 'ke toan' ||
+    p === 'mo nghiep vu ke toan' ||
+    p === 'nghiep vu ke toan' ||
+    p === 'ke toan kho'
+  );
 }
 
 export function isLatestTransactionQuery(pNorm, rawPrompt = '') {
@@ -1933,6 +2059,93 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       skillId: 'help-clarification',
       tier: 0,
       provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // 0.000035 Report Export Fast-Path ("xuất báo cáo tháng này", "báo cáo tháng này xuất ra file Excel", "xuất file excel", "tải báo cáo excel")
+  if (isExportReportQuery(pNorm, rawPrompt)) {
+    let period = 'month';
+    if (pNorm.includes('hom nay') || pNorm.includes('ngay nay') || pNorm.includes('today')) {
+      period = 'today';
+    } else if (pNorm.includes('hom qua') || pNorm.includes('yesterday')) {
+      period = 'yesterday';
+    } else if (pNorm.includes('tuan nay') || pNorm.includes('7 ngay')) {
+      period = '7d';
+    } else if (pNorm.includes('thang truoc') || pNorm.includes('thang vua roi')) {
+      period = 'lastmonth';
+    } else if (pNorm.includes('thang nay') || pNorm.includes('thang hien tai') || pNorm.includes('dau thang')) {
+      period = 'month';
+    }
+
+    let reportType = 'sales';
+    if (pNorm.includes('ton') || pNorm.includes('nhap xuat ton') || pNorm.includes('kho')) {
+      reportType = 'inventory';
+    } else if (pNorm.includes('tt88') || pNorm.includes('s2b')) {
+      reportType = 'revenue_tt88';
+    } else if (pNorm.includes('tt200') || pNorm.includes('bang ke') || pNorm.includes('xuat kho')) {
+      reportType = 'issue_tt200';
+    }
+
+    const res = await executeSkill('export-report', { reportType, period }, context, state);
+    return {
+      ...res,
+      intent: 'EXPORT_REPORT',
+      skillId: 'export-report',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // 0.000036 Operational Audit Fast-Path ("kiểm toán tháng này", "đối soát tháng này", "rà soát số liệu", "audit")
+  if (isOperationalAuditQuery(pNorm, rawPrompt)) {
+    let period = 'month';
+    if (pNorm.includes('hom nay') || pNorm.includes('ngay nay') || pNorm.includes('today')) {
+      period = 'today';
+    } else if (pNorm.includes('hom qua') || pNorm.includes('yesterday')) {
+      period = 'yesterday';
+    } else if (pNorm.includes('tuan nay') || pNorm.includes('7 ngay')) {
+      period = '7d';
+    } else if (pNorm.includes('thang truoc') || pNorm.includes('thang vua roi')) {
+      period = 'lastmonth';
+    } else if (pNorm.includes('thang nay') || pNorm.includes('thang hien tai') || pNorm.includes('dau thang')) {
+      period = 'month';
+    }
+
+    const res = await executeSkill('operational-audit', { period }, context, state);
+    return {
+      ...res,
+      intent: 'OPERATIONAL_AUDIT',
+      skillId: 'operational-audit',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  // 0.000037 Accounting Guidance Fast-Path ("mở nghiệp vụ kế toán", "kế toán", "nghiệp vụ kế toán", "định khoản kế toán")
+  if (isAccountingGuidanceQuery(pNorm, rawPrompt)) {
+    return {
+      text: `📌 **Về nghiệp vụ kế toán trên hệ thống QBiz Kho:**\n\n` +
+        `QBiz Kho là hệ thống **Quản lý Bán hàng & Kho vận nội bộ (Local POS & Inventory)**. Hệ thống không phải là phần mềm kế toán tài chính độc lập (không hạch toán sổ cái General Ledger, định khoản kép Nợ/Có tài khoản 111, 156, 511, 632...).\n\n` +
+        `Tuy nhiên, QBiz Kho cung cấp đầy đủ các phân hệ phục vụ số liệu và chứng từ cho bộ phận kế toán:\n\n` +
+        `• 📊 **1. Báo cáo Doanh thu & Lợi nhuận:** Xem tổng doanh thu trước giảm, thuế GTGT, chiết khấu, giá vốn hàng bán và lợi nhuận gộp theo kỳ.\n` +
+        `• 💵 **2. Sổ quỹ & Quản lý Ca bán hàng:** Kiểm soát tiền mặt đầu ca, tiền thu trong ca, tiền bàn giao và phát hiện chênh lệch ca.\n` +
+        `• 📑 **3. Trung tâm Xuất dữ liệu & Biểu mẫu Kế toán:**\n` +
+        `  - Sổ chi tiết doanh thu bán hàng (**Mẫu S2b-HKD** theo Thông tư 88/2021/TT-BTC dành cho Hộ KD).\n` +
+        `  - Bảng kê chứng từ xuất kho (**Thông tư 200/2014 & TT 133/2016** dành cho Doanh nghiệp).\n` +
+        `  - Báo cáo Nhập - Xuất - Tồn tổng hợp chuẩn in A4 & file Excel UTF-8 BOM.\n\n` +
+        `*Bạn có thể bấm các nút bên dưới để chuyển nhanh đến phân hệ cần làm việc:*`,
+      status: 'SUCCESS',
+      intent: 'ACCOUNTING_GUIDANCE',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      actions: [
+        { id: 'open_reports', label: 'Xem Báo cáo', screen: 'reports' },
+        { id: 'open_cash', label: 'Xem Sổ quỹ', screen: 'cash' },
+        { id: 'open_exports', label: 'Mở Xuất dữ liệu kế toán', screen: 'exports' }
+      ],
       compactTrace: 'Rule exact'
     };
   }

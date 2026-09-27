@@ -3,7 +3,7 @@
  * Executes Tier 0 deterministic logic or maps to structured domain proposals.
  */
 
-import { executeTool } from './tools.js';
+import { executeTool, resolveDateInterval } from './tools.js';
 import { queryMemory, proposeMemorySave } from './memory.js';
 import { resolveProduct } from './resolver.js';
 
@@ -13,6 +13,33 @@ function norm(str) {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+}
+
+function csvCell(v) {
+  const x = String(v ?? '');
+  return /[",\n\r]/.test(x) ? `"${x.replaceAll('"', '""')}"` : x;
+}
+
+function triggerBrowserDownload(filename, content, mimeType = 'text/csv;charset=utf-8') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  try {
+    const textContent = (mimeType.includes('csv') && !content.startsWith('\uFEFF')) ? '\uFEFF' + content : content;
+    const blob = new Blob([textContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+    return true;
+  } catch (e) {
+    console.error('[QBiz AI] Browser download error:', e);
+    return false;
+  }
 }
 
 export const SKILL_REGISTRY = {
@@ -1324,6 +1351,318 @@ export const SKILL_REGISTRY = {
         tier: 0,
       };
     },
+  },
+
+  // 36. export-report
+  'export-report': {
+    id: 'export-report',
+    name: 'Xuất báo cáo ra Excel/CSV',
+    description: 'Xuất dữ liệu bán hàng, nhập xuất tồn, doanh thu ra file Excel chuẩn UTF-8 BOM',
+    async execute({ reportType = 'sales', period = 'month', customStart = null, customEnd = null }, context, state) {
+      const interval = resolveDateInterval(period, new Date(), customStart, customEnd);
+      const fmtNumber = new Intl.NumberFormat('vi-VN');
+      const now = new Date();
+      const dateTag = now.toISOString().slice(0, 10);
+      let filename = `qbiz-bao-cao-ban-hang-${dateTag}.csv`;
+      let header = [];
+      let rows = [];
+      let summaryText = '';
+      let totalValue = 0;
+
+      const pNorm = norm(reportType || '');
+      const isInventory = pNorm.includes('ton') || pNorm.includes('nhap xuat ton') || pNorm.includes('kho');
+      const isTt88 = pNorm.includes('tt88') || pNorm.includes('s2b');
+      const isTt200 = pNorm.includes('tt200') || pNorm.includes('bang ke') || pNorm.includes('xuat kho');
+
+      if (isInventory) {
+        filename = `qbiz-nhap-xuat-ton-${dateTag}.csv`;
+        header = ['STT', 'Mã SKU', 'Tên sản phẩm', 'ĐVT', 'Tồn đầu', 'Nhập trong kỳ', 'Xuất trong kỳ', 'Tồn cuối', 'Đơn giá vốn', 'Giá trị tồn'];
+        const prods = (state?.data?.products || []).filter(p => p.type !== 'SERVICE');
+        const levels = state?.data?.levels || [];
+        const movements = state?.data?.movements || [];
+
+        const totals = new Map();
+        for (const p of prods) {
+          totals.set(p.id, { p, inQty: 0, outQty: 0 });
+        }
+        for (const m of movements) {
+          const row = totals.get(m.productId);
+          if (!row) continue;
+          const q = Number(m.qty || 0);
+          if (q > 0) row.inQty += q;
+          else if (q < 0) row.outQty += Math.abs(q);
+        }
+
+        let idx = 1;
+        for (const item of totals.values()) {
+          const p = item.p;
+          const onHand = levels.filter(l => l.productId === p.id).reduce((s, l) => s + Number(l.onHand || 0), 0);
+          const opening = Math.max(0, onHand - item.inQty + item.outQty);
+          const cost = Number(p.purchase_price || p.price || 0);
+          const val = onHand * cost;
+          totalValue += val;
+          rows.push([
+            idx++,
+            p.sku || '—',
+            p.name,
+            p.unit || 'cái',
+            opening,
+            item.inQty,
+            item.outQty,
+            onHand,
+            cost,
+            val
+          ]);
+        }
+        summaryText = `Tổng số lượng: **${rows.length} mặt hàng**, tổng giá trị tồn kho: **${fmtNumber.format(totalValue)} ₫**`;
+      } else if (isTt88) {
+        filename = `qbiz-so-chi-tiet-doanh-thu-tt88-${dateTag}.csv`;
+        header = ['STT', 'Ngày ghi sổ', 'Số chứng từ', 'Diễn giải', 'Khách hàng', 'Doanh thu hàng hóa', 'Doanh thu dịch vụ', 'Tiền thuế GTGT', 'Tổng cộng'];
+        const sales = (state?.data?.sales || []).filter(s => {
+          const dt = new Date(s.created_at || s.createdAt || 0);
+          return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= interval.start && dt <= interval.end;
+        });
+        sales.sort((a, b) => String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || '')));
+
+        let idx = 1;
+        for (const s of sales) {
+          let goods = 0, serv = 0;
+          for (const it of (s.items || [])) {
+            const lt = Number(it.line_total ?? (Number(it.quantity || 0) * Number(it.unit_price || 0)));
+            if (it.type === 'SERVICE') serv += lt;
+            else goods += lt;
+          }
+          const tax = Number(s.tax_total || 0);
+          const grand = Number(s.grand_total ?? (goods + serv + tax));
+          totalValue += grand;
+          rows.push([
+            idx++,
+            s.created_at ? new Date(s.created_at).toLocaleDateString('vi-VN') : '',
+            s.code || s.id,
+            'Bán hàng theo phiếu',
+            s.customer_label || 'Khách lẻ',
+            goods,
+            serv,
+            tax,
+            grand
+          ]);
+        }
+        summaryText = `Tổng cộng: **${rows.length} phiếu bán**, tổng doanh thu: **${fmtNumber.format(totalValue)} ₫** (theo chuẩn S2b-HKD TT 88/2021)`;
+      } else {
+        // Default: Sales / Revenue Report for period
+        filename = `qbiz-bao-cao-doanh-thu-${dateTag}.csv`;
+        header = ['STT', 'Mã chứng từ', 'Thời gian', 'Khách hàng', 'Tổng tiền hàng', 'Giảm giá', 'Thuế GTGT', 'Thành tiền', 'Phương thức TT', 'Trạng thái TT', 'Chi tiết sản phẩm'];
+        
+        const sales = (state?.data?.sales || []).filter(s => {
+          const dt = new Date(s.created_at || s.createdAt || 0);
+          return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= interval.start && dt <= interval.end;
+        });
+        const saleCodes = new Set(sales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
+        const completedOrders = (state?.data?.orders || []).filter(o => {
+          if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
+          const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
+          if (dt < interval.start || dt > interval.end) return false;
+          if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
+          if (o.sale_id && sales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
+          return true;
+        });
+
+        const allSales = [
+          ...sales.map(s => ({
+            code: s.code || s.id,
+            created_at: s.created_at || s.createdAt,
+            customer: s.customer_label || 'Khách lẻ',
+            subtotal: Number(s.subtotal || s.total || 0),
+            discount: Number(s.discount_total || 0),
+            tax: Number(s.tax_total || 0),
+            grand: Number(s.grand_total ?? s.total ?? 0),
+            paymentMethod: s.payment_method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt',
+            paymentStatus: s.payment_status === 'PAID' ? 'Đã thu' : 'Chờ xác nhận',
+            items: (s.items || []).map(i => `${i.name || 'SP'} (${i.quantity || 1})`).join('; ')
+          })),
+          ...completedOrders.map(o => ({
+            code: o.code || o.id,
+            created_at: o.created_at || o.createdAt,
+            customer: o.customer_label || 'Khách lẻ',
+            subtotal: Number(o.subtotal || o.grand_total || 0),
+            discount: Number(o.discount_total || 0),
+            tax: Number(o.tax_total || 0),
+            grand: Number(o.grand_total || 0),
+            paymentMethod: o.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản',
+            paymentStatus: o.payment_status === 'PAID' ? 'Đã thu' : 'Chưa thanh toán',
+            items: (o.items || []).map(i => `${i.name || 'SP'} (${i.quantity || 1})`).join('; ')
+          }))
+        ];
+
+        allSales.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+
+        let idx = 1;
+        for (const item of allSales) {
+          totalValue += item.grand;
+          rows.push([
+            idx++,
+            item.code,
+            item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : '',
+            item.customer,
+            item.subtotal,
+            item.discount,
+            item.tax,
+            item.grand,
+            item.paymentMethod,
+            item.paymentStatus,
+            item.items
+          ]);
+        }
+        summaryText = `Tổng số: **${rows.length} phiếu bán / đơn hàng**, tổng doanh thu: **${fmtNumber.format(totalValue)} ₫**`;
+      }
+
+      const csvContent = [
+        header.map(csvCell).join(','),
+        ...rows.map(r => r.map(csvCell).join(','))
+      ].join('\n');
+
+      const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+      const downloaded = isBrowser ? triggerBrowserDownload(filename, csvContent, 'text/csv;charset=utf-8') : false;
+
+      return {
+        text: `📊 **Đã xuất dữ liệu ra file Excel thành công!**\n\n` +
+          `• 📁 **Tên file:** \`${filename}\`\n` +
+          `• 🕒 **Khoảng thời gian:** **${interval.label}**\n` +
+          `• 📑 **Chi tiết:** ${summaryText}\n` +
+          `• ⚡ **Định dạng:** CSV chuẩn **UTF-8 BOM** (mở trực tiếp bằng Microsoft Excel không lỗi font tiếng Việt)\n` +
+          (downloaded ? `• ⬇️ **Trạng thái:** Tệp đã tự động tải xuống máy tính của bạn.\n` : '') +
+          `\n💡 *Gợi ý: Bạn có thể vào mục **Xuất dữ liệu** trong menu để tải các mẫu sổ kế toán S2b-HKD (TT88) hoặc Bảng kê xuất kho (TT200).*`,
+        exportedFile: filename,
+        rowCount: rows.length,
+        totalValue,
+        period: interval.periodKey,
+        periodLabel: interval.label,
+        downloaded,
+        tier: 0,
+        provider: 'DETERMINISTIC',
+        actions: [
+          { id: 'open_reports', label: 'Xem Báo cáo', screen: 'reports' },
+          { id: 'open_exports', label: 'Mở Trung tâm Xuất dữ liệu', screen: 'exports' }
+        ]
+      };
+    }
+  },
+
+  // 37. operational-audit
+  'operational-audit': {
+    id: 'operational-audit',
+    name: 'Đối soát số liệu vận hành',
+    description: 'Đối soát tự động giữa doanh thu, sổ ca, tồn kho, đơn hàng và phát hiện bất thường',
+    async execute({ period = 'month', customStart = null, customEnd = null }, context, state) {
+      const interval = resolveDateInterval(period, new Date(), customStart, customEnd);
+      const fmtNumber = new Intl.NumberFormat('vi-VN');
+
+      // 1. Doanh thu & Phiếu bán
+      const sales = (state?.data?.sales || []).filter(s => {
+        const dt = new Date(s.created_at || s.createdAt || 0);
+        return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= interval.start && dt <= interval.end;
+      });
+      const saleCodes = new Set(sales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
+      const completedOrders = (state?.data?.orders || []).filter(o => {
+        if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
+        const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
+        if (dt < interval.start || dt > interval.end) return false;
+        if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
+        if (o.sale_id && sales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
+        return true;
+      });
+
+      const totalSalesRevenue = sales.reduce((sum, s) => sum + Number(s.grand_total ?? s.total ?? 0), 0);
+      const totalOrdersRevenue = completedOrders.reduce((sum, o) => sum + Number(o.grand_total || 0), 0);
+      const netRevenue = totalSalesRevenue + totalOrdersRevenue;
+
+      // 2. Dòng tiền & Sổ ca
+      const shifts = (state?.data?.shifts || []).filter(sh => {
+        const dt = new Date(sh.created_at || sh.opened_at || 0);
+        return dt >= interval.start && dt <= interval.end;
+      });
+      const unbalancedShifts = shifts.filter(sh => Number(sh.difference || 0) !== 0);
+      const totalShiftDiff = unbalancedShifts.reduce((sum, sh) => sum + Number(sh.difference || 0), 0);
+
+      // 3. Tồn kho & Biến động
+      const levels = state?.data?.levels || [];
+      const negativeStock = levels.filter(l => Number(l.onHand || 0) < 0 || Number(l.available || 0) < 0);
+      const movements = (state?.data?.movements || []).filter(m => {
+        const dt = new Date(m.created_at || m.createdAt || 0);
+        return dt >= interval.start && dt <= interval.end;
+      });
+
+      // 4. Đơn hàng chưa thanh toán
+      const unpaidOrders = (state?.data?.orders || []).filter(o => {
+        const dt = new Date(o.created_at || o.createdAt || 0);
+        return dt >= interval.start && dt <= interval.end && o.payment_status === 'UNPAID';
+      });
+
+      // 5. Hoàn tiền
+      const refunds = (state?.data?.refunds || []).filter(r => {
+        const dt = new Date(r.created_at || r.createdAt || 0);
+        return dt >= interval.start && dt <= interval.end;
+      });
+      const totalRefundAmt = refunds.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+      // 6. Tổng hợp phát hiện & bất thường (Anomalies)
+      const anomalies = [];
+      if (negativeStock.length > 0) {
+        anomalies.push(`⚠️ Có **${negativeStock.length} điểm tồn kho âm** (thực tồn < 0 hoặc khả dụng < 0) cần kiểm kê cân bằng.`);
+      }
+      if (unbalancedShifts.length > 0) {
+        anomalies.push(`⚠️ Có **${unbalancedShifts.length} ca bán hàng bị lệch tiền** với tổng chênh lệch **${fmtNumber.format(totalShiftDiff)} ₫**.`);
+      }
+      if (unpaidOrders.length > 0) {
+        anomalies.push(`ℹ️ Có **${unpaidOrders.length} đơn hàng chưa thanh toán** trong kỳ.`);
+      }
+      if (refunds.length > 0) {
+        anomalies.push(`ℹ️ Có **${refunds.length} giao dịch hoàn tiền** với tổng số tiền **${fmtNumber.format(totalRefundAmt)} ₫**.`);
+      }
+
+      let auditStatus = anomalies.length === 0 ? '✅ **TRẠNG THÁI: KHỚP VẬN HÀNH (KHÔNG PHÁT HIỆN LỆCH)**' : '⚠️ **TRẠNG THÁI: CẦN RÀ SOÁT MỘT SỐ ĐIỂM CHÊNH LỆCH**';
+
+      const text = `📋 **KẾT QUẢ ĐỐI SOÁT VẬN HÀNH NỘI BỘ (${interval.label.toUpperCase()})**\n\n` +
+        `${auditStatus}\n\n` +
+        `**1. Bán hàng & Doanh thu:**\n` +
+        `• Tổng doanh thu ghi nhận: **${fmtNumber.format(netRevenue)} ₫**\n` +
+        `• Phiếu bán hoàn tất: **${sales.length}** phiếu (Doanh số: ${fmtNumber.format(totalSalesRevenue)} ₫)\n` +
+        `• Đơn hàng hoàn tất: **${completedOrders.length}** đơn (Doanh số: ${fmtNumber.format(totalOrdersRevenue)} ₫)\n\n` +
+        `**2. Quản lý Ca & Dòng tiền két:**\n` +
+        `• Số ca phát sinh: **${shifts.length}** ca\n` +
+        `• Ca chênh lệch tiền mặt: **${unbalancedShifts.length}** ca (Chênh lệch: ${fmtNumber.format(totalShiftDiff)} ₫)\n\n` +
+        `**3. Kho vận & Hàng hóa:**\n` +
+        `• Số lượt biến động kho: **${movements.length}** lượt\n` +
+        `• Tồn kho âm: **${negativeStock.length}** mặt hàng\n\n` +
+        `**4. Điểm bất thường cần xử lý:**\n` +
+        (anomalies.length > 0 ? anomalies.map(a => `• ${a}`).join('\n') : `• ✅ Dữ liệu doanh thu, ca bán hàng và tồn kho đồng bộ, không phát sinh tồn âm hay lệch két.`) +
+        `\n\n────────────────\n` +
+        `ℹ️ *Lưu ý: Đây là báo cáo **Đối soát vận hành nội bộ (Internal Operational Reconciliation)** của QBiz Kho. Hệ thống không thay thế báo cáo kiểm toán tài chính độc lập theo luật kế toán.*`;
+
+      return {
+        text,
+        period: interval.periodKey,
+        periodLabel: interval.label,
+        metrics: {
+          netRevenue,
+          salesCount: sales.length,
+          ordersCount: completedOrders.length,
+          shiftsCount: shifts.length,
+          unbalancedShiftsCount: unbalancedShifts.length,
+          negativeStockCount: negativeStock.length,
+          refundsCount: refunds.length,
+          refundsAmount: totalRefundAmt
+        },
+        anomalies,
+        tier: 0,
+        provider: 'DETERMINISTIC',
+        actions: [
+          { id: 'open_reports', label: 'Xem Báo cáo chi tiết', screen: 'reports' },
+          { id: 'open_cash', label: 'Xem Sổ quỹ & Ca', screen: 'cash' },
+          { id: 'open_exports', label: 'Xuất Excel đối soát', screen: 'exports' }
+        ]
+      };
+    }
   },
 };
 

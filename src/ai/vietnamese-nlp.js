@@ -888,6 +888,15 @@ export function parseAppNavigationAction(text) {
     return { actionId: 'open_reports', label: 'Đã mở Trung tâm Báo cáo.' };
   }
 
+  // 17b. Xuất dữ liệu & Chứng từ kế toán
+  if (
+    clean === 'mo xuat du lieu' || clean === 'vao xuat du lieu' || clean === 'xuat du lieu' ||
+    clean === 'trung tam xuat du lieu' || clean === 'exports' || clean === 'bieu mau ke toan' ||
+    clean === 'mau bieu ke toan' || clean === 'chung tu ke toan'
+  ) {
+    return { actionId: 'open_exports', label: 'Đã mở Trung tâm Xuất dữ liệu & Biểu mẫu kế toán.' };
+  }
+
   // 18. Đổi trả
   if (
     clean === 'doi tra' || clean === 'tra hang' || clean === 'mo doi tra' ||
@@ -1332,6 +1341,31 @@ export function parseContextualStockDecreaseOrZero(text) {
     };
   }
 
+  // HARD INVARIANT: Block export / report / document queries from contextual stock decrease
+  const isDocOrExport = (
+    c.includes('bao cao') ||
+    c.includes('report') ||
+    c.includes('excel') ||
+    c.includes('xlsx') ||
+    c.includes('csv') ||
+    c.includes('pdf') ||
+    c.includes('file') ||
+    c.includes('tep') ||
+    c.includes('tai ve') ||
+    c.includes('tai xuong') ||
+    c.includes('tai bao cao') ||
+    c.includes('download') ||
+    c.includes('so sach') ||
+    c.includes('bang ke') ||
+    c.includes('du lieu') ||
+    c.includes('xuat ra') ||
+    c.includes('xuat file') ||
+    c.includes('xuat danh sach')
+  );
+  if (isDocOrExport) {
+    return null;
+  }
+
   const isDecrease = (
     c.startsWith('giam ') ||
     c.startsWith('xuat ') ||
@@ -1345,10 +1379,10 @@ export function parseContextualStockDecreaseOrZero(text) {
     const qty = parseVietnameseNumberWord(c);
     if (qty !== null && qty > 0) {
       let prodQuery = null;
-      const matchProd = c.match(/(?:giam|xuat|bot|tru|hong)\s+(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)?\s*(?:cai|chiec|hop|goi|sp)?\s+(.+)$/i);
+      const matchProd = c.match(/(?:giam kho|xuat kho|tru kho|giam ton|tru ton|xuat bot|giam|xuat|bot|tru|hong)\s+(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)?\s*(?:cai|chiec|hop|goi|sp)?\s+(.+)$/i);
       if (matchProd) {
         let p = matchProd[1].trim();
-        p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay)\b/gi, '').trim();
+        p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay|kho)\b/gi, '').trim();
         if (p.length >= 2) prodQuery = p;
       }
       return {

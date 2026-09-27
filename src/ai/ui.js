@@ -21,6 +21,11 @@ let lastResult = null;
 let devInspectorOpen = false;
 let messageHistory = [];
 let activeAttachments = [];
+let inFlightQuery = null;
+let lastSubmittedPrompt = '';
+let lastSubmittedTimestamp = 0;
+let requestCounter = 0;
+const DEDUPLICATION_WINDOW_MS = 1500;
 
 const ROUTE_CHIPS = {
   dashboard: [
@@ -320,6 +325,7 @@ export function initAiUI(state) {
     isVoiceMuted,
     stopSpeaking,
     routeIntent,
+    getMessageHistory: () => [...messageHistory],
     submitVoiceTranscript: async (text) => {
       setMicState('recognized', text);
       const input = document.getElementById('aiTextInput');
@@ -649,8 +655,8 @@ function initVoiceInput() {
       };
 
       recognitionInstance.onend = () => {
-        const text = input.value.trim();
-        if (text) {
+        const text = input ? input.value.trim() : '';
+        if (text && !inFlightQuery) {
           setMicState('recognized', text);
           if (input) input.value = '';
           handleUserMessage(text);
@@ -1230,6 +1236,9 @@ function renderChips() {
 
   bar.querySelectorAll('[data-chip-query]').forEach(btn => {
     btn.onclick = () => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 1000);
       const query = btn.dataset.chipQuery;
       handleUserMessage(query);
     };
@@ -1237,39 +1246,63 @@ function renderChips() {
 }
 
 /**
- * Handle incoming user query.
+ * Handle incoming user query with in-flight guard and deduplication window.
  */
 async function handleUserMessage(query) {
+  const trimmedQuery = String(query || '').trim();
+  const now = Date.now();
+
+  // 1. Deduplication check: drop rapid duplicate submissions within debounce window
+  if (trimmedQuery && trimmedQuery === lastSubmittedPrompt && (now - lastSubmittedTimestamp) < DEDUPLICATION_WINDOW_MS) {
+    console.warn('[QBiz AI UI] Duplicate submission ignored within debounce window:', trimmedQuery);
+    return lastResult;
+  }
+
+  // 2. In-flight guard: if identical request is currently processing, drop duplicate
+  if (inFlightQuery && trimmedQuery && trimmedQuery === inFlightQuery) {
+    console.warn('[QBiz AI UI] Identical request already in flight, dropping duplicate:', trimmedQuery);
+    return lastResult;
+  }
+
+  inFlightQuery = trimmedQuery;
+  lastSubmittedPrompt = trimmedQuery;
+  lastSubmittedTimestamp = now;
+  const requestId = ++requestCounter;
+
   const currentAttachments = [...activeAttachments];
   activeAttachments = [];
   renderAttachmentTray();
 
   const isVoiceTranscript = micState === 'recognized';
   const inputType = currentAttachments.length > 0
-    ? (query ? 'mixed' : currentAttachments[0].type)
+    ? (trimmedQuery ? 'mixed' : currentAttachments[0].type)
     : (isVoiceTranscript ? 'voice_transcript' : 'text');
 
   micState = 'idle';
   const statusEl = document.getElementById('aiVoiceStatus');
   if (statusEl) statusEl.style.display = 'none';
 
-  // Add user bubble
-  messageHistory.push({
-    role: 'user',
-    text: query,
-    attachments: currentAttachments,
-    time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-  });
-  renderMessages();
-
-  // Scroll to bottom
-  scrollMessagesToBottom();
+  // Add user bubble (with strict deduplication check against immediate preceding bubble)
+  const lastMsg = messageHistory[messageHistory.length - 1];
+  const isDuplicateUserMsg = lastMsg && lastMsg.role === 'user' && lastMsg.text === trimmedQuery && (now - (lastMsg._ts || 0) < 2000);
+  if (!isDuplicateUserMsg && (trimmedQuery || currentAttachments.length > 0)) {
+    messageHistory.push({
+      role: 'user',
+      text: trimmedQuery,
+      attachments: currentAttachments,
+      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      _ts: now,
+      _reqId: requestId,
+    });
+    renderMessages();
+    scrollMessagesToBottom();
+  }
 
   // Refresh context right before execution
   currentEnvelope = buildContextEnvelope(appStateRef);
 
   try {
-    const res = await routeIntent(query, currentEnvelope, appStateRef, {
+    const res = await routeIntent(trimmedQuery, currentEnvelope, appStateRef, {
       inputType,
       attachments: currentAttachments,
     });
@@ -1280,41 +1313,54 @@ async function handleUserMessage(query) {
       activeProposal = res.proposal;
     }
 
-    messageHistory.push({
-      role: 'assistant',
-      text: res.text,
-      reviewCard: res.reviewCard || null,
-      importAssistant: res.importAssistant || null,
-      candidates: res.candidates || null,
-      warehouseCandidates: res.warehouseCandidates || null,
-      actions: res.actions || null,
-      proposal: res.proposal || null,
-      digest: res.digest || null,
-      suggestions: res.suggestions || null,
-      findings: res.findings || null,
-      structured: res.structured || null,
-      actionId: res.actionId || null,
-      actionResult: res.actionResult || null,
-      intent: res.intent || null,
-      skillId: res.skillId || null,
-      summary: res.summary || null,
-      hasCost: res.hasCost ?? null,
-      permissionDenied: res.permissionDenied || null,
-      tier: res.tier,
-      provider: res.provider,
-      trace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
-      compactTrace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
-      fallbackTriggered: Boolean(res.fallbackTriggered),
-      fallbackReason: res.fallbackReason || null,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-    });
+    // Check if duplicate assistant response before pushing
+    const lastAssistantMsg = messageHistory[messageHistory.length - 1];
+    const isDuplicateAssistant = lastAssistantMsg && lastAssistantMsg.role === 'assistant' && lastAssistantMsg.text === res.text;
+    if (!isDuplicateAssistant) {
+      messageHistory.push({
+        role: 'assistant',
+        text: res.text,
+        reviewCard: res.reviewCard || null,
+        importAssistant: res.importAssistant || null,
+        candidates: res.candidates || null,
+        warehouseCandidates: res.warehouseCandidates || null,
+        actions: res.actions || null,
+        proposal: res.proposal || null,
+        digest: res.digest || null,
+        suggestions: res.suggestions || null,
+        findings: res.findings || null,
+        structured: res.structured || null,
+        actionId: res.actionId || null,
+        actionResult: res.actionResult || null,
+        intent: res.intent || null,
+        skillId: res.skillId || null,
+        summary: res.summary || null,
+        hasCost: res.hasCost ?? null,
+        permissionDenied: res.permissionDenied || null,
+        tier: res.tier,
+        provider: res.provider,
+        trace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
+        compactTrace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
+        fallbackTriggered: Boolean(res.fallbackTriggered),
+        fallbackReason: res.fallbackReason || null,
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        _ts: Date.now(),
+        _reqId: requestId,
+      });
+    }
   } catch (err) {
     messageHistory.push({
       role: 'assistant',
       text: `⚠️ **Lỗi xử lý yêu cầu:** ${err.message}`,
       isError: true,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      _ts: Date.now(),
+      _reqId: requestId,
     });
+  } finally {
+    if (inFlightQuery === trimmedQuery) {
+      inFlightQuery = null;
+    }
   }
 
   renderMessages();
@@ -1339,6 +1385,8 @@ async function handleUserMessage(query) {
     }
     setTimeout(() => { closeSheet({ preserveSpeech: true }); }, 400);
   }
+
+  return lastResult;
 }
 
 function addAssistantMessage(text) {
@@ -1820,6 +1868,9 @@ function renderMessages() {
   // Bind candidate picks with multi-turn intent resumption
   container.querySelectorAll('[data-pick-candidate]').forEach(btn => {
     btn.onclick = async () => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 1000);
       const candId = btn.dataset.pickCandidate;
       const candName = btn.dataset.candidateName || '';
       const candVariant = btn.dataset.candidateVariant || '';
@@ -1926,6 +1977,9 @@ function renderMessages() {
   // Bind warehouse candidate picks
   container.querySelectorAll('[data-pick-warehouse]').forEach(btn => {
     btn.onclick = async () => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 1000);
       const whId = btn.dataset.pickWarehouse;
       const whName = btn.dataset.warehouseName;
       const pending = getPendingIntent();

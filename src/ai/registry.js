@@ -971,6 +971,21 @@ export const ACTION_REGISTRY = {
     },
   },
 
+  open_exports: {
+    id: 'open_exports', name: 'Mở trung tâm xuất dữ liệu & chứng từ kế toán', feature_id: null,
+    route: 'exports', screen: 'Exports',
+    required_capabilities: [PERMISSIONS.VIEW_SALES],
+    execution_mode: EXECUTION_MODE.NAVIGATE, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['xuat du lieu', 'trung tam xuat du lieu', 'xuat bao cao', 'mau bieu ke toan', 'chung tu ke toan'],
+    example_phrases: ['mở xuất dữ liệu', 'vào xuất dữ liệu', 'xuất chứng từ kế toán'],
+    contexts: ['dashboard', 'reports', 'settings'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.navigate) { window.__qbiz_app__.navigate('exports'); return { success: true, message: 'Đã mở Trung tâm Xuất dữ liệu & Biểu mẫu kế toán.' }; }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
   open_returns: {
     id: 'open_returns', name: 'Mở đổi trả hàng', feature_id: null,
     route: 'returns', screen: 'ReturnCenter',
