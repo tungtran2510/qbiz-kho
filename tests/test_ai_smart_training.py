@@ -7,8 +7,10 @@ def run_tests():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={'width': 390, 'height': 844})
         
-        # 1. Open app on local port 4180
-        page.goto('http://localhost:4180/')
+        # 1. Open app
+        target_url = sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:4180/'
+        print(f"Testing against target: {target_url}")
+        page.goto(target_url)
         page.wait_for_function('() => window.__qbiz_app__ && window.__qbiz_app__.ai')
         page.evaluate("() => window.__qbiz_app__.previewDemo('retail')")
         page.wait_for_timeout(600)
