@@ -4,7 +4,7 @@
  * All tools wrap existing business engine read functions and produce Structured Proposals.
  */
 
-import { totalFor, levelFor, available } from '../engine.js';
+import { totalFor, levelFor, available, calculateSalesMetrics } from '../engine.js';
 import { createProposal } from './proposals.js';
 import { isToolAllowed, hasCapability, PERMISSIONS, OPERATIONAL_THRESHOLDS } from './policy.js';
 import { getCurrentActor } from './context.js';
@@ -280,68 +280,26 @@ export const TOOLS = {
    */
   get_sales_summary({ period = 'today', customStart = null, customEnd = null }, state) {
     const { start, end, label } = resolveDateInterval(period, new Date(), customStart, customEnd);
-    const sales = state?.data?.sales || [];
-    const completedOrders = state?.data?.orders || [];
-
-    const relevantSales = sales.filter(s => {
-      const dt = new Date(s.created_at || s.createdAt || s.date || 0);
-      return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= start && dt <= end;
+    const metrics = calculateSalesMetrics({
+      sales: state?.data?.sales || [],
+      orders: state?.data?.orders || [],
+      refunds: state?.data?.refunds || [],
+      products: state?.data?.products || [],
+      startDate: start,
+      endDate: end
     });
-
-    const saleCodes = new Set(relevantSales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
-    const relevantOrders = completedOrders.filter(o => {
-      if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
-      const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
-      if (dt < start || dt > end) return false;
-      if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
-      if (o.sale_id && relevantSales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
-      return true;
-    });
-
-    let completedCount = 0;
-    let totalRevenue = 0;
-    let unpaidCount = 0;
-    let unpaidTotal = 0;
-    const paymentMethods = { cash: 0, transfer: 0, qr: 0 };
-
-    for (const s of relevantSales) {
-      const amt = Number(s.grand_total ?? s.total ?? 0);
-      const isPaid = s.payment_status === 'PAID' || s.status === 'PAID';
-      if (isPaid) {
-        completedCount++;
-        totalRevenue += amt;
-        const method = s.payment_method || 'cash';
-        if (paymentMethods[method] !== undefined) paymentMethods[method] += amt;
-        else paymentMethods.cash += amt;
-      } else {
-        unpaidCount++;
-        unpaidTotal += amt;
-      }
-    }
-
-    for (const o of relevantOrders) {
-      const amt = Number(o.grand_total ?? o.total ?? 0);
-      if (o.payment_status === 'PAID') {
-        completedCount++;
-        totalRevenue += amt;
-        const method = o.payment_method || 'transfer';
-        if (paymentMethods[method] !== undefined) paymentMethods[method] += amt;
-        else paymentMethods.transfer += amt;
-      } else {
-        unpaidCount++;
-        unpaidTotal += amt;
-      }
-    }
 
     return {
       period,
       periodLabel: label,
-      completedCount,
-      totalRevenue,
-      unpaidCount,
-      unpaidTotal,
-      paymentMethods,
-      formattedRevenue: new Intl.NumberFormat('vi-VN').format(totalRevenue) + ' ₫',
+      completedCount: metrics.paidCount,
+      totalRevenue: metrics.net,
+      grossRevenue: metrics.gross,
+      refundTotal: metrics.refundTotal,
+      unpaidCount: metrics.unpaidCount,
+      unpaidTotal: metrics.unpaidTotal,
+      paymentMethods: metrics.paymentMethods,
+      formattedRevenue: new Intl.NumberFormat('vi-VN').format(metrics.net) + ' ₫',
     };
   },
 

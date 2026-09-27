@@ -670,13 +670,98 @@ async function mutateOrder(orderId,nextStatus,requestedOperationId=''){
         try{
           const order=orderReq.result;if(!order)throw new Error('Không tìm thấy đơn hàng.');if(order.status===nextStatus){result=order;return;}
           const allowed={NEW:['CONFIRMED','PROCESSING','COMPLETED','CANCELLED'],CONFIRMED:['PROCESSING','COMPLETED','CANCELLED'],PROCESSING:['COMPLETED','CANCELLED'],COMPLETED:[],CANCELLED:[]};if(!allowed[order.status]?.includes(nextStatus))throw new Error(`Không thể chuyển đơn từ ${order.status} sang ${nextStatus}.`);
-          const productTotals=new Map();for(const line of order.items||[])if(line.type==='PRODUCT'&&line.track_inventory!==false){productTotals.set(line.item_id,(productTotals.get(line.item_id)||0)+line.quantity);}
+          const isItemTracked = (line) => {
+            const isProduct = line.type ? String(line.type).toUpperCase() !== 'SERVICE' : true;
+            const isTracked = line.track_inventory !== false && line.trackInventory !== false;
+            return isProduct && isTracked;
+          };
+          const getItemId = (line) => line.item_id || line.itemId || line.productId || line.id;
+          const productTotals=new Map();
+          for(const line of order.items||[]){
+            if(isItemTracked(line)){
+              const itemId = getItemId(line);
+              const qty = Number(line.quantity || 0);
+              if(itemId && qty > 0){
+                productTotals.set(itemId,(productTotals.get(itemId)||0)+qty);
+              }
+            }
+          }
           const levelOps=[],movementOps=[];const reservationType=nextStatus==='CONFIRMED'?'reserve':nextStatus==='CANCELLED'&&(order.status==='CONFIRMED'||order.status==='PROCESSING')?'release':nextStatus==='COMPLETED'?'sale':null;const entries=reservationType?[...productTotals.entries()]:[];let index=0;
-          const whId=order.warehouseId||order.warehouse_id||order.location_id;
-          const reservationIdFor=(line)=>`${order.order_uuid}:${line.item_id}:${whId}`;
-          const nextItems=(order.items||[]).map(line=>{if(line.type!=='PRODUCT'||line.track_inventory===false)return {...line,reserved_qty:0};const held=Number(line.reserved_qty||line.quantity);const reservedQty=nextStatus==='CONFIRMED'||nextStatus==='PROCESSING'?held:0;return {...line,reserved_qty:reservedQty,reservation_id:reservationIdFor(line),warehouse_id:whId,location_id:whId};});
-          const finish=()=>{const stamp=orderNow();const next={...order,device_id:deviceId,register_id:registerId,operation_id:operationId,version:Number(order.version||1)+1,items:nextItems,status:nextStatus,updated_at:stamp};const action=nextStatus==='CONFIRMED'?'reserve':nextStatus==='PROCESSING'?'process':nextStatus==='COMPLETED'?'complete':'cancel';const outboxEvent=makeOutbox({operationId,eventId,entityType:'order',entityId:order.order_uuid,action,version:next.version,deviceId,registerId,type:`order.${nextStatus.toLowerCase()}`,createdAt:stamp,payload:{order:next,inventory_movements:movementOps}});stores.orders.put(next);levelOps.forEach(x=>stores.levels.put(x));movementOps.forEach(x=>stores.movements.put(x));stores.outbox.put(outboxEvent);result=next;};
-          const readNext=()=>{if(index>=entries.length){finish();return;}const [productId,quantity]=entries[index++];const levelId=`${productId}:${whId}`;const levelReq=stores.levels.get(levelId);levelReq.onerror=()=>context.abort(levelReq.error);levelReq.onsuccess=()=>{try{const cur=levelReq.result||{id:levelId,productId,warehouseId:whId,onHand:0,reserved:0,damaged:0,version:0};const heldReserved=(order.items||[]).filter(x=>x.item_id===productId).reduce((s,x)=>s+Number(x.reserved_qty||0),0);let reservedDelta=0,onHandDelta=0;if(reservationType==='reserve'){if(available(cur)<quantity)throw new Error(`Không đủ tồn để giữ ${order.items.find(x=>x.item_id===productId)?.name||'sản phẩm'}.`);reservedDelta=quantity;}else if(reservationType==='release'){reservedDelta=-Math.min(cur.reserved||0,heldReserved||quantity);}else if(reservationType==='sale'){if(cur.onHand<quantity)throw new Error(`Không đủ tồn kho để hoàn tất đơn hàng ${order.code||order.id}.`);onHandDelta=-quantity;if(heldReserved>0||order.status==='CONFIRMED'||order.status==='PROCESSING'){reservedDelta=-Math.min(cur.reserved||0,heldReserved||quantity);}}const next={...cur,onHand:cur.onHand+onHandDelta,reserved:Math.max(0,(cur.reserved||0)+reservedDelta),version:Number(cur.version||0)+1,updatedAt:orderNow()};if(next.onHand<0||next.reserved<0||(next.reserved+next.damaged>next.onHand))throw new Error('Tồn kho không hợp lệ cho đơn hàng.');const reservationId=`${order.order_uuid}:${productId}:${whId}`;const movement={id:`${operationId}:movement:${productId}`,groupId:order.order_uuid,type:reservationType==='sale'?'sale':reservationType,productId,warehouseId:whId,qty:reservationType==='reserve'?quantity:-quantity,reason:reservationType==='reserve'?'Giữ cho đơn hàng':reservationType==='release'?'Hủy đơn - trả giữ':'Hoàn tất đơn hàng - xuất kho',reference:order.code||order.id,reference_type:'order',reference_id:order.id,order_uuid:order.order_uuid,source:order.source||SYNC_SOURCE,channel:order.channel||'DIRECT',reservation_id:reservationId,reserved_qty:quantity,operation_id:operationId,event_id:eventId,source_event_id:eventId,version:next.version,createdAt:orderNow(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};levelOps.push(next);movementOps.push(movement);readNext();}catch(error){context.abort(error);}};};
+          const whId=order.warehouseId||order.warehouse_id||order.location_id||'wh_retail_main';
+          const reservationIdFor=(line)=>`${order.order_uuid||order.id}:${getItemId(line)}:${whId}`;
+          const nextItems=(order.items||[]).map(line=>{
+            const itemId = getItemId(line);
+            if(!isItemTracked(line)||!itemId)return {...line,reserved_qty:0};
+            const held=Number(line.reserved_qty||(order.status==='CONFIRMED'||order.status==='PROCESSING'?line.quantity:0));
+            const reservedQty=(nextStatus==='CONFIRMED'||nextStatus==='PROCESSING')?(Number(line.reserved_qty)||Number(line.quantity)||0):0;
+            return {...line,item_id:itemId,type:line.type||'PRODUCT',track_inventory:true,reserved_qty:reservedQty,reservation_id:reservationIdFor({...line,item_id:itemId}),warehouse_id:whId,location_id:whId};
+          });
+          const finish=()=>{
+            const stamp=orderNow();
+            const next={...order,device_id:deviceId,register_id:registerId,operation_id:operationId,version:Number(order.version||1)+1,items:nextItems,status:nextStatus,updated_at:stamp};
+            const action=nextStatus==='CONFIRMED'?'reserve':nextStatus==='PROCESSING'?'process':nextStatus==='COMPLETED'?'complete':'cancel';
+            const outboxEvent=makeOutbox({operationId,eventId,entityType:'order',entityId:order.order_uuid||order.id,action,version:next.version,deviceId,registerId,type:`order.${nextStatus.toLowerCase()}`,createdAt:stamp,payload:{order:next,inventory_movements:movementOps}});
+            stores.orders.put(next);
+            levelOps.forEach(x=>stores.levels.put(x));
+            movementOps.forEach(x=>stores.movements.put(x));
+            stores.outbox.put(outboxEvent);
+            result=next;
+          };
+          const readNext=()=>{
+            if(index>=entries.length){finish();return;}
+            const [productId,quantity]=entries[index++];
+            const levelId=`${productId}:${whId}`;
+            const levelReq=stores.levels.get(levelId);
+            levelReq.onerror=()=>context.abort(levelReq.error);
+            levelReq.onsuccess=()=>{
+              try{
+                const cur=levelReq.result||{id:levelId,productId,warehouseId:whId,onHand:0,reserved:0,damaged:0,version:0};
+                const heldReserved=(order.items||[]).filter(x=>getItemId(x)===productId).reduce((s,x)=>s+Number(x.reserved_qty||0),0);
+                let reservedDelta=0,onHandDelta=0;
+                if(reservationType==='reserve'){
+                  if(available(cur)<quantity)throw new Error(`Không đủ tồn để giữ ${order.items.find(x=>getItemId(x)===productId)?.name||'sản phẩm'}.`);
+                  reservedDelta=quantity;
+                }else if(reservationType==='release'){
+                  reservedDelta=-Math.min(cur.reserved||0,heldReserved||quantity);
+                }else if(reservationType==='sale'){
+                  if(cur.onHand<quantity)throw new Error(`Không đủ tồn kho để hoàn tất đơn hàng ${order.code||order.id}.`);
+                  onHandDelta=-quantity;
+                  if(heldReserved>0||order.status==='CONFIRMED'||order.status==='PROCESSING'){
+                    reservedDelta=-Math.min(cur.reserved||0,heldReserved||quantity);
+                  }
+                }
+                const next={...cur,onHand:cur.onHand+onHandDelta,reserved:Math.max(0,(cur.reserved||0)+reservedDelta),version:Number(cur.version||0)+1,updatedAt:orderNow()};
+                if(next.onHand<0||next.reserved<0||(next.reserved+next.damaged>next.onHand))throw new Error('Tồn kho không hợp lệ cho đơn hàng.');
+                const reservationId=`${order.order_uuid||order.id}:${productId}:${whId}`;
+                const movement={
+                  id:`${operationId}:movement:${productId}`,
+                  groupId:order.order_uuid||order.id,
+                  type:reservationType==='sale'?'sale':reservationType,
+                  productId,
+                  warehouseId:whId,
+                  qty:reservationType==='reserve'?quantity:-quantity,
+                  reason:reservationType==='reserve'?'Giữ cho đơn hàng':reservationType==='release'?'Hủy đơn - trả giữ':'Hoàn tất đơn hàng - xuất kho',
+                  reference:order.code||order.id,
+                  reference_type:'order',
+                  reference_id:order.id,
+                  order_uuid:order.order_uuid||order.id,
+                  source:order.source||SYNC_SOURCE,
+                  channel:order.channel||'DIRECT',
+                  reservation_id:reservationId,
+                  reserved_qty:quantity,
+                  operation_id:operationId,
+                  event_id:eventId,
+                  source_event_id:eventId,
+                  version:next.version,
+                  createdAt:orderNow(),
+                  after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}
+                };
+                levelOps.push(next);
+                movementOps.push(movement);
+                readNext();
+              }catch(error){context.abort(error);}
+            };
+          };
           readNext();
         }catch(error){context.abort(error);}
       };
@@ -1318,4 +1403,199 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
 
   return exchangeResult;
 }
+
+export function calculateSalesMetrics({
+  sales = [],
+  orders = [],
+  refunds = [],
+  products = [],
+  range = 'today',
+  customStart = null,
+  customEnd = null,
+  startDate = null,
+  endDate = null
+} = {}) {
+  let start, end;
+  if (startDate && endDate) {
+    start = new Date(startDate);
+    end = new Date(endDate);
+  } else {
+    const now = new Date();
+    start = new Date(now);
+    end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    const rNorm = String(range || 'today').toLowerCase().trim();
+
+    if (rNorm === 'today' || rNorm === 'hom nay' || rNorm === 'nay' || rNorm === 'ngay hom nay') {
+      start.setHours(0, 0, 0, 0);
+    } else if (rNorm === 'yesterday' || rNorm === 'hom qua') {
+      start.setDate(now.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(now.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+    } else if (
+      rNorm === '2_days' || rNorm === '2d' ||
+      rNorm.includes('hai ngay') || rNorm.includes('2 ngay') ||
+      rNorm.includes('hom qua den nay') || rNorm.includes('hom qua den gio') ||
+      rNorm.includes('tu hom qua')
+    ) {
+      start.setDate(now.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+    } else if (
+      rNorm === '3_days' || rNorm === '3d' ||
+      rNorm.includes('3 ngay') || rNorm.includes('ba ngay')
+    ) {
+      start.setDate(now.getDate() - 2);
+      start.setHours(0, 0, 0, 0);
+    } else if (
+      rNorm === '7d' || rNorm === 'week' ||
+      rNorm.includes('tuan nay') || rNorm.includes('7 ngay')
+    ) {
+      start.setDate(now.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+    } else if (rNorm === 'last_week' || rNorm.includes('tuan truoc')) {
+      start.setDate(now.getDate() - 13);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(now.getDate() - 7);
+      end.setHours(23, 59, 59, 999);
+    } else if (rNorm === '30d' || rNorm.includes('30 ngay')) {
+      start.setDate(now.getDate() - 29);
+      start.setHours(0, 0, 0, 0);
+    } else if (
+      rNorm === 'month' || rNorm.includes('thang nay') ||
+      rNorm.includes('tu dau thang') || rNorm.includes('dau thang den nay') ||
+      rNorm.includes('thang hien tai')
+    ) {
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+    } else if (rNorm === 'last_month' || rNorm === 'lastmonth' || rNorm.includes('thang truoc')) {
+      start.setMonth(now.getMonth() - 1, 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(0);
+      end.setHours(23, 59, 59, 999);
+    } else if (rNorm === 'custom' || customStart) {
+      if (customStart) start.setTime(new Date(`${customStart}T00:00:00`).getTime());
+      else start.setFullYear(2000);
+      if (customEnd) end.setTime(new Date(`${customEnd}T23:59:59.999`).getTime());
+    } else {
+      start.setHours(0, 0, 0, 0);
+    }
+  }
+
+  const relevantSales = (sales || []).filter(s => {
+    const dt = new Date(s.created_at || s.createdAt || s.date || 0);
+    return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= start && dt <= end;
+  });
+
+  const saleCodes = new Set(relevantSales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
+
+  const relevantOrders = (orders || []).filter(o => {
+    if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
+    const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
+    if (dt < start || dt > end) return false;
+    if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
+    if (o.sale_id && relevantSales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
+    return true;
+  }).map(o => ({
+    id: o.id,
+    code: o.code || o.id,
+    customer_label: o.customer_label || 'Khách lẻ',
+    created_at: o.created_at || o.createdAt || o.updated_at,
+    subtotal: Number(o.subtotal || o.grand_total || 0),
+    discount_total: Number(o.discount_total || 0),
+    tax_total: Number(o.tax_total || 0),
+    grand_total: Number(o.grand_total || 0),
+    total: Number(o.grand_total || 0),
+    status: 'COMPLETED',
+    payment_status: o.payment_status || 'UNPAID',
+    payment_method: o.payment_method || 'transfer',
+    payments: o.payment_status === 'PAID'
+      ? [{ method: o.payment_method || 'transfer', amount: Number(o.grand_total || 0), status: 'PAID' }]
+      : [{ method: o.payment_method || 'transfer', amount: Number(o.grand_total || 0), status: 'PENDING' }],
+    items: (o.items || []).map(i => ({
+      item_id: i.item_id || i.itemId,
+      name: i.name || 'Sản phẩm',
+      quantity: Number(i.quantity || 0),
+      line_total: Number(i.line_total ?? (Number(i.quantity || 0) * Number(i.unit_price || 0)) ?? 0)
+    })),
+    is_order: true
+  }));
+
+  const allSales = [...relevantSales, ...relevantOrders];
+  const gross = allSales.reduce((n, s) => n + Number(s.subtotal || (s.grand_total ?? s.total ?? 0)), 0);
+  const discount = allSales.reduce((n, s) => n + Number(s.discount_total || 0), 0);
+  const tax = allSales.reduce((n, s) => n + Number(s.tax_total || 0), 0);
+  const grandTotalGross = allSales.reduce((n, s) => n + Number(s.grand_total ?? s.total ?? 0), 0);
+
+  const relevantRefunds = (refunds || []).filter(r => {
+    const rDate = new Date(r.created_at || r.createdAt || 0);
+    return rDate >= start && rDate <= end;
+  });
+  const refundTotal = relevantRefunds.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+  const net = Math.max(0, gross - discount - refundTotal);
+
+  const prodMap = new Map((products || []).map(p => [p.id, p]));
+  const costTotal = allSales.reduce((sumCost, s) => {
+    const saleCost = (s.items || []).reduce((itemSum, item) => {
+      const prod = prodMap.get(item.item_id || item.itemId || item.productId || item.id);
+      const unitCost = Number(item.cost_price ?? prod?.cost_price ?? prod?.cost ?? prod?.purchase_price ?? 0);
+      return itemSum + (unitCost * Number(item.quantity || 1));
+    }, 0);
+    return sumCost + saleCost;
+  }, 0);
+
+  const hasCost = costTotal > 0;
+  const profit = hasCost ? Math.max(0, net - costTotal) : 0;
+
+  const paymentRows = allSales.flatMap(s => (s.payments || []).map(p => ({ ...p, sale: s })));
+  const collected = Math.max(0, paymentRows.filter(p => p.status === 'PAID').reduce((n, p) => n + Number(p.amount || 0), 0) - refundTotal);
+  const receivable = paymentRows.filter(p => p.status === 'PENDING').reduce((n, p) => n + Number(p.amount || 0), 0);
+
+  const paymentMethods = { cash: 0, transfer: 0, qr: 0 };
+  let paidCount = 0;
+  let unpaidCount = 0;
+  let unpaidTotal = 0;
+
+  for (const s of allSales) {
+    const amt = Number(s.grand_total ?? s.total ?? 0);
+    const isPaid = s.payment_status === 'PAID' || s.status === 'PAID';
+    if (isPaid) {
+      paidCount++;
+      const method = s.payment_method || 'cash';
+      if (paymentMethods[method] !== undefined) paymentMethods[method] += amt;
+      else paymentMethods.cash += amt;
+    } else {
+      unpaidCount++;
+      unpaidTotal += amt;
+    }
+  }
+
+  return {
+    start,
+    end,
+    sales: allSales,
+    relevantSales,
+    completedOrders: relevantOrders,
+    refunds: relevantRefunds,
+    ticketCount: allSales.length,
+    paidCount,
+    unpaidCount,
+    unpaidTotal,
+    paymentMethods,
+    paymentRows,
+    gross,
+    discount,
+    tax,
+    grandTotalGross,
+    refundTotal,
+    net,
+    cost: costTotal,
+    profit,
+    hasCost,
+    collected,
+    receivable
+  };
+}
+
 

@@ -4,6 +4,7 @@
  */
 
 import { executeTool, resolveDateInterval } from './tools.js';
+import { calculateSalesMetrics } from '../engine.js';
 import { queryMemory, proposeMemorySave } from './memory.js';
 import { resolveProduct } from './resolver.js';
 
@@ -1453,67 +1454,56 @@ export const SKILL_REGISTRY = {
         filename = `qbiz-bao-cao-doanh-thu-${dateTag}.csv`;
         header = ['STT', 'Mã chứng từ', 'Thời gian', 'Khách hàng', 'Tổng tiền hàng', 'Giảm giá', 'Thuế GTGT', 'Thành tiền', 'Phương thức TT', 'Trạng thái TT', 'Chi tiết sản phẩm'];
         
-        const sales = (state?.data?.sales || []).filter(s => {
-          const dt = new Date(s.created_at || s.createdAt || 0);
-          return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= interval.start && dt <= interval.end;
-        });
-        const saleCodes = new Set(sales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
-        const completedOrders = (state?.data?.orders || []).filter(o => {
-          if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
-          const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
-          if (dt < interval.start || dt > interval.end) return false;
-          if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
-          if (o.sale_id && sales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
-          return true;
+        const metrics = calculateSalesMetrics({
+          sales: state?.data?.sales || [],
+          orders: state?.data?.orders || [],
+          refunds: state?.data?.refunds || [],
+          products: state?.data?.products || [],
+          startDate: interval.start,
+          endDate: interval.end
         });
 
-        const allSales = [
-          ...sales.map(s => ({
-            code: s.code || s.id,
-            created_at: s.created_at || s.createdAt,
-            customer: s.customer_label || 'Khách lẻ',
-            subtotal: Number(s.subtotal || s.total || 0),
-            discount: Number(s.discount_total || 0),
-            tax: Number(s.tax_total || 0),
-            grand: Number(s.grand_total ?? s.total ?? 0),
-            paymentMethod: s.payment_method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt',
-            paymentStatus: s.payment_status === 'PAID' ? 'Đã thu' : 'Chờ xác nhận',
-            items: (s.items || []).map(i => `${i.name || 'SP'} (${i.quantity || 1})`).join('; ')
-          })),
-          ...completedOrders.map(o => ({
-            code: o.code || o.id,
-            created_at: o.created_at || o.createdAt,
-            customer: o.customer_label || 'Khách lẻ',
-            subtotal: Number(o.subtotal || o.grand_total || 0),
-            discount: Number(o.discount_total || 0),
-            tax: Number(o.tax_total || 0),
-            grand: Number(o.grand_total || 0),
-            paymentMethod: o.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản',
-            paymentStatus: o.payment_status === 'PAID' ? 'Đã thu' : 'Chưa thanh toán',
-            items: (o.items || []).map(i => `${i.name || 'SP'} (${i.quantity || 1})`).join('; ')
-          }))
-        ];
-
-        allSales.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+        const allSales = [...metrics.sales];
+        allSales.sort((a, b) => String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || '')));
 
         let idx = 1;
         for (const item of allSales) {
-          totalValue += item.grand;
+          const grand = Number(item.grand_total ?? item.total ?? 0);
           rows.push([
             idx++,
-            item.code,
+            item.code || item.id,
             item.created_at ? new Date(item.created_at).toLocaleString('vi-VN') : '',
-            item.customer,
-            item.subtotal,
-            item.discount,
-            item.tax,
-            item.grand,
-            item.paymentMethod,
-            item.paymentStatus,
-            item.items
+            item.customer_label || 'Khách lẻ',
+            Number(item.subtotal || item.total || grand),
+            Number(item.discount_total || 0),
+            Number(item.tax_total || 0),
+            grand,
+            item.payment_method === 'transfer' ? 'Chuyển khoản' : 'Tiền mặt',
+            item.payment_status === 'PAID' ? 'Đã thu' : 'Chờ xác nhận',
+            (item.items || []).map(i => `${i.name || 'SP'} (${i.quantity || 1})`).join('; ')
           ]);
         }
-        summaryText = `Tổng số: **${rows.length} phiếu bán / đơn hàng**, tổng doanh thu: **${fmtNumber.format(totalValue)} ₫**`;
+
+        if (metrics.refunds && metrics.refunds.length > 0) {
+          for (const r of metrics.refunds) {
+            rows.push([
+              idx++,
+              r.code || r.id,
+              r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+              r.customer_label || 'Khách hoàn/trả',
+              0,
+              0,
+              0,
+              -Number(r.amount || 0),
+              'Hoàn tiền',
+              'Đã hoàn',
+              `Hoàn tiền phiếu: ${r.sale_id || r.reference || ''}`
+            ]);
+          }
+        }
+
+        totalValue = metrics.net;
+        summaryText = `Tổng số: **${metrics.ticketCount} phiếu bán / đơn hàng**${metrics.refundTotal > 0 ? ` (đã trừ hoàn tiền **−${fmtNumber.format(metrics.refundTotal)} ₫**)` : ''}, tổng doanh thu thuần: **${fmtNumber.format(totalValue)} ₫**`;
       }
 
       const csvContent = [
@@ -1529,7 +1519,7 @@ export const SKILL_REGISTRY = {
           `• 📁 **Tên file:** \`${filename}\`\n` +
           `• 🕒 **Khoảng thời gian:** **${interval.label}**\n` +
           `• 📑 **Chi tiết:** ${summaryText}\n` +
-          `• ⚡ **Định dạng:** CSV chuẩn **UTF-8 BOM** (mở trực tiếp bằng Microsoft Excel không lỗi font tiếng Việt)\n` +
+          `• ⚡ **Định dạng:** file CSV (tương thích mở bằng Excel chuẩn UTF-8 BOM)\n` +
           (downloaded ? `• ⬇️ **Trạng thái:** Tệp đã tự động tải xuống máy tính của bạn.\n` : '') +
           `\n💡 *Gợi ý: Bạn có thể vào mục **Xuất dữ liệu** trong menu để tải các mẫu sổ kế toán S2b-HKD (TT88) hoặc Bảng kê xuất kho (TT200).*`,
         exportedFile: filename,
@@ -1558,23 +1548,19 @@ export const SKILL_REGISTRY = {
       const fmtNumber = new Intl.NumberFormat('vi-VN');
 
       // 1. Doanh thu & Phiếu bán
-      const sales = (state?.data?.sales || []).filter(s => {
-        const dt = new Date(s.created_at || s.createdAt || 0);
-        return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && dt >= interval.start && dt <= interval.end;
+      const metrics = calculateSalesMetrics({
+        sales: state?.data?.sales || [],
+        orders: state?.data?.orders || [],
+        refunds: state?.data?.refunds || [],
+        products: state?.data?.products || [],
+        startDate: interval.start,
+        endDate: interval.end
       });
-      const saleCodes = new Set(sales.flatMap(s => [s.code, s.id, s.sale_uuid, s.order_id, s.order_code, s.reference, s.reference_id].filter(Boolean)));
-      const completedOrders = (state?.data?.orders || []).filter(o => {
-        if (String(o.status || '').toUpperCase() !== 'COMPLETED') return false;
-        const dt = new Date(o.created_at || o.createdAt || o.updated_at || 0);
-        if (dt < interval.start || dt > interval.end) return false;
-        if (saleCodes.has(o.code) || saleCodes.has(o.id) || saleCodes.has(o.order_uuid)) return false;
-        if (o.sale_id && sales.some(s => s.id === o.sale_id || s.sale_uuid === o.sale_id)) return false;
-        return true;
-      });
-
+      const sales = metrics.relevantSales;
+      const completedOrders = metrics.completedOrders;
       const totalSalesRevenue = sales.reduce((sum, s) => sum + Number(s.grand_total ?? s.total ?? 0), 0);
       const totalOrdersRevenue = completedOrders.reduce((sum, o) => sum + Number(o.grand_total || 0), 0);
-      const netRevenue = totalSalesRevenue + totalOrdersRevenue;
+      const netRevenue = metrics.net;
 
       // 2. Dòng tiền & Sổ ca
       const shifts = (state?.data?.shifts || []).filter(sh => {

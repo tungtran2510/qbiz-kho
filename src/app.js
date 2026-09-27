@@ -1,4 +1,4 @@
-import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange } from './engine.js?v=20260927-v21-consistency-audit';
+import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics } from './engine.js?v=20260927-v21-consistency-audit';
 import { clearAll,getAll,getOne,put,putMany,runTransaction } from './db.js';
 import { syncStatus,flushOutbox } from './sync.js';
 import { CONFIG } from './config.js';
@@ -2455,65 +2455,29 @@ async function printDocument({type='receipt',documentId='',saleId='',orderId='',
 }
 
 function reportSales(range=state.reportRange){
-  const now=new Date(),start=new Date(now),end=new Date(now);end.setHours(23,59,59,999);
-  if(range==='today')start.setHours(0,0,0,0);
-  else if(range==='yesterday'){start.setDate(now.getDate()-1);start.setHours(0,0,0,0);end.setDate(now.getDate()-1);end.setHours(23,59,59,999);}
-  else if(range==='2_days'||range==='2d'){start.setDate(now.getDate()-1);start.setHours(0,0,0,0);}
-  else if(range==='3_days'||range==='3d'){start.setDate(now.getDate()-2);start.setHours(0,0,0,0);}
-  else if(range==='7d'||range==='week')start.setDate(now.getDate()-6),start.setHours(0,0,0,0);
-  else if(range==='last_week'){start.setDate(now.getDate()-13);start.setHours(0,0,0,0);end.setDate(now.getDate()-7);end.setHours(23,59,59,999);}
-  else if(range==='30d')start.setDate(now.getDate()-29),start.setHours(0,0,0,0);
-  else if(range==='month')start.setDate(1),start.setHours(0,0,0,0);
-  else if(range==='last_month'){start.setMonth(now.getMonth()-1,1);start.setHours(0,0,0,0);end.setDate(0);end.setHours(23,59,59,999);}
-  else if(range==='custom'){ if(state.reportCustomStart)start.setTime(new Date(`${state.reportCustomStart}T00:00:00`).getTime()); else start.setFullYear(2000); if(state.reportCustomEnd)end.setTime(new Date(`${state.reportCustomEnd}T23:59:59.999`).getTime()); }
-  else start.setFullYear(2000);
-  const sales=(state.data.sales||[]).filter(s=>{const date=new Date(s.created_at||s.createdAt);return ['COMPLETED','PAID'].includes(s.status)&&date>=start&&date<=end});
-  const saleCodes=new Set(sales.flatMap(s=>[s.code,s.id,s.sale_uuid,s.order_id,s.order_code,s.reference,s.reference_id].filter(Boolean)));
-  const completedOrders=(state.data.orders||[]).filter(o=>{
-    if(o.status!=='COMPLETED')return false;
-    const date=new Date(o.created_at||o.createdAt||o.updated_at||0);
-    if(date<start||date>end)return false;
-    if(saleCodes.has(o.code)||saleCodes.has(o.id)||saleCodes.has(o.order_uuid))return false;
-    if(o.sale_id && sales.some(s=>s.id===o.sale_id||s.sale_uuid===o.sale_id))return false;
-    return true;
-  }).map(o=>({
-    id:o.id,
-    code:o.code||o.id,
-    customer_label:o.customer_label||'Khách lẻ',
-    created_at:o.created_at||o.createdAt,
-    subtotal:Number(o.subtotal||0),
-    discount_total:Number(o.discount_total||0),
-    tax_total:Number(o.tax_total||0),
-    grand_total:Number(o.grand_total||0),
-    total:Number(o.grand_total||0),
-    status:'COMPLETED',
-    payment_status:o.payment_status||'UNPAID',
-    payments:o.payment_status==='PAID'?[{method:o.payment_method||'transfer',amount:Number(o.grand_total||0),status:'PAID'}]:[{method:o.payment_method||'transfer',amount:Number(o.grand_total||0),status:'PENDING'}],
-    items:(o.items||[]).map(i=>({item_id:i.item_id||i.itemId,name:i.name||product(i.item_id||i.itemId)?.name||'Sản phẩm',quantity:Number(i.quantity||0),line_total:Number(i.line_total??(Number(i.quantity||0)*Number(i.unit_price||0))??0)})),
-    is_order:true
-  }));
-  const allSales=[...sales,...completedOrders];
-  const sum=key=>allSales.reduce((n,s)=>n+Number(s[key]||0),0);
-  const gross=sum('subtotal'),discount=sum('discount_total'),tax=sum('tax_total');
-  const costTotal = allSales.reduce((sumCost, s) => {
-    const saleCost = (s.items || []).reduce((itemSum, item) => {
-      const prod = product(item.item_id || item.itemId || item.productId || item.id);
-      const unitCost = Number(item.cost_price ?? prod?.cost_price ?? prod?.cost ?? prod?.purchase_price ?? 0);
-      return itemSum + (unitCost * Number(item.quantity || 1));
-    }, 0);
-    return sumCost + saleCost;
-  }, 0);
-  const refundTotal = (state.data.refunds || []).filter(r => {
-    const rDate = new Date(r.created_at || r.createdAt || 0);
-    return rDate >= start && rDate <= end;
-  }).reduce((sum, r) => sum + Number(r.amount || 0), 0);
-  const net=Math.max(0,gross-discount-refundTotal);
-  const hasCost = costTotal > 0;
-  const profit = hasCost ? Math.max(0, net - costTotal) : 0;
-  const paymentRows=allSales.flatMap(s=>(s.payments||[]).map(p=>({...p,sale:s})));
-  const collected=Math.max(0, paymentRows.filter(p=>p.status==='PAID').reduce((n,p)=>n+Number(p.amount||0),0) - refundTotal);
-  const receivable=paymentRows.filter(p=>p.status==='PENDING').reduce((n,p)=>n+Number(p.amount||0),0);
-  return {sales:allSales,gross,discount,net,cost:costTotal,profit,hasCost,tax,collected,receivable,paymentRows,refundTotal};
+  const metrics = calculateSalesMetrics({
+    sales: state.data.sales,
+    orders: state.data.orders,
+    refunds: state.data.refunds,
+    products: state.data.products,
+    range,
+    customStart: state.reportCustomStart,
+    customEnd: state.reportCustomEnd
+  });
+  return {
+    sales: metrics.sales,
+    gross: metrics.gross,
+    discount: metrics.discount,
+    net: metrics.net,
+    cost: metrics.cost,
+    profit: metrics.profit,
+    hasCost: metrics.hasCost,
+    tax: metrics.tax,
+    collected: metrics.collected,
+    receivable: metrics.receivable,
+    paymentRows: metrics.paymentRows,
+    refundTotal: metrics.refundTotal
+  };
 }
 function renderReports(){
   const r=reportSales(),productMap=new Map();
@@ -4777,14 +4741,16 @@ function openModal({title='',sub='',body='',submitText='Lưu',hideSubmit=false,f
         submitBtn.setAttribute('aria-busy', 'true');
         submitBtn.innerHTML = 'Đang xử lý…';
         try{
-          await onSubmit(root);
+          const submitRes = await onSubmit(root);
           root.innerHTML='';
           state.currentProductId=null;
           state.currentOrderId=null;
           state.currentSaleId=null;
           updateContextAndChips();
           await refresh();
-          toast('Đã cập nhật.', 'ok');
+          if(!submitRes || !submitRes.customToast){
+            toast('Đã cập nhật.', 'ok');
+          }
         }catch(e){
           submitBtn.disabled = false;
           submitBtn.removeAttribute('aria-busy');
@@ -4851,41 +4817,128 @@ function openQuick(kind='receive',preProduct=''){
     ${kind==='receive'||kind==='issue'?`<div class="field"><label>${kind==='receive'?'Người giao hàng':'Người nhận hàng'}</label><input id="stockPerson" placeholder="${kind==='receive'?'Họ tên người giao / đại diện NCC':'Họ tên người nhận / bộ phận tiếp nhận'}"/></div>`:''}
   `;
   const body=`<div class="stock-flow"><div class="field"><label>Quét mã / Tìm sản phẩm</label><div class="stock-search"><input id="stockProductSearch" value="${esc(preProduct?product(preProduct)?.name||'':'')}" placeholder="Tên / SKU / barcode..." autocomplete="off"/>${icon('scan-line')}</div><div id="stockProductResults" class="stock-product-results"></div></div>${extra}<div id="selectedStockProduct" class="selected-stock-product"></div><div class="stock-entry-row"><label>${kind==='count'?'Số lượng thực tế':'Số lượng'}<div class="quantity-control"><button type="button" id="stockMinus">−</button><input id="qty" type="number" inputmode="numeric" min="0" value="${kind==='count'?0:1}"/><button type="button" id="stockPlus">+</button></div></label>${kind==='receive'?'<label>Giá nhập<input id="purchasePrice" type="number" inputmode="decimal" min="0" placeholder="0"/></label>':''}</div>${kind==='count'?'<div class="count-compare"><div><span>Tồn hệ thống</span><strong id="systemQty">0</strong></div><div><span>Thực tế</span><strong id="actualQty">0</strong></div><div><span>Chênh lệch</span><strong id="countDiff">0</strong></div></div>':''}<button type="button" class="secondary-btn full" id="addLine">${kind==='count'?'Lưu dòng này':'+ Thêm dòng'}</button><div class="field"><label>Số chứng từ / Ghi chú</label><input id="ref" placeholder="VD: PN-001, PX-001, HĐ-882..."/></div><div id="lineList" class="line-list"></div>${kind==='count'?'<div id="countSummary" class="count-summary"><span>Đã kiểm <b>0</b></span><span>Chưa khớp <b>0</b></span><span>Tạm chênh lệch <b>0</b></span></div>':''}</div>`;
-  openModal({title,sub,body,submitText:kind==='count'?'Chốt kiểm kho':'Xác nhận lưu',onSubmit:async r=>{if(!lines.length)throw new Error('Hãy thêm ít nhất một sản phẩm.');const ref=$('#ref',r).value,warehouseId=$('#wh',r)?.value,fromWarehouseId=$('#fromWh',r)?.value,toWarehouseId=$('#toWh',r)?.value;if(kind==='transfer'&&fromWarehouseId===toWarehouseId)throw new Error('Kho đi và kho nhận phải khác nhau.');for(const line of lines){const wid=kind==='transfer'?fromWarehouseId:warehouseId,lv=state.data.levels.find(x=>x.productId===line.productId&&x.warehouseId===wid)||{};if((kind==='issue'||kind==='transfer')&&available(lv)<line.qty)throw new Error(`Không đủ tồn cho ${product(line.productId)?.name}.`);if(kind==='count'&&line.qty<(lv.reserved||0)+(lv.damaged||0))throw new Error(`Số kiểm của ${product(line.productId)?.name} không hợp lệ.`)}if(kind==='transfer'){await createTransfer({lines,fromWarehouseId,toWarehouseId,note:ref});return;}}});
+  openModal({
+    title,
+    sub,
+    body,
+    submitText: kind === 'count' ? 'Chốt kiểm kho' : 'Xác nhận lưu',
+    onSubmit: async (root) => {
+      if (!lines.length) throw new Error('Hãy thêm ít nhất một sản phẩm.');
+      const ref = $('#ref', root).value.trim();
+      const warehouseId = $('#wh', root)?.value;
+      const fromWarehouseId = $('#fromWh', root)?.value;
+      const toWarehouseId = $('#toWh', root)?.value;
+      const subType = $('#stockSubType', root)?.value || '';
+      const person = $('#stockPerson', root)?.value.trim() || '';
 
-  $('#modalSubmit',$('#modalRoot')).onclick=async()=>{try{
-    if(!lines.length)throw new Error('Hãy thêm ít nhất một sản phẩm.');
-    const root=$('#modalRoot'),ref=$('#ref',root).value.trim(),warehouseId=$('#wh',root)?.value,fromWarehouseId=$('#fromWh',root)?.value,toWarehouseId=$('#toWh',root)?.value;
-    const subType = $('#stockSubType', root)?.value || '';
-    const person = $('#stockPerson', root)?.value.trim() || '';
-    if(kind==='transfer'){
-      if(fromWarehouseId===toWarehouseId)throw new Error('Kho đi và kho nhận phải khác nhau.');
-      await createTransfer({lines,fromWarehouseId,toWarehouseId,note:ref});
-      root.innerHTML='';await refresh();toast('Đã tạo phiếu chuyển kho.','ok');
-    }else{
-      const doc = await applyWarehouseBatch({
-        kind,
-        warehouseId,
-        lines,
-        reference: ref,
-        supplierId: kind==='receive'?($('#supplierId',root)?.value||''):'',
-        subType,
-        delivererName: kind==='receive' ? person : '',
-        receiverName: kind==='issue' ? person : ''
-      });
-      root.innerHTML='';
-      await refresh();
-      toast(kind==='count'?'Đã chốt kiểm kho.':(kind==='receive'?'Đã lưu Phiếu Nhập Kho.':'Đã lưu Phiếu Xuất Kho.'),'ok');
-      if(kind==='receive'||kind==='issue'){
-        openWarehouseVoucherModal(doc, kind);
+      for (const line of lines) {
+        const wid = kind === 'transfer' ? fromWarehouseId : warehouseId;
+        const lv = state.data.levels.find(x => x.productId === line.productId && x.warehouseId === wid) || {};
+        if ((kind === 'issue' || kind === 'transfer') && available(lv) < line.qty) {
+          throw new Error(`Không đủ tồn cho ${product(line.productId)?.name}.`);
+        }
+        if (kind === 'count' && line.qty < (lv.reserved || 0) + (lv.damaged || 0)) {
+          throw new Error(`Số kiểm của ${product(line.productId)?.name} không hợp lệ.`);
+        }
+      }
+
+      if (kind === 'transfer') {
+        if (fromWarehouseId === toWarehouseId) throw new Error('Kho đi và kho nhận phải khác nhau.');
+        await createTransfer({ lines, fromWarehouseId, toWarehouseId, note: ref });
+        toast('Đã tạo phiếu chuyển kho.', 'ok');
+        return { customToast: true };
+      } else {
+        const doc = await applyWarehouseBatch({
+          kind,
+          warehouseId,
+          lines,
+          reference: ref,
+          supplierId: kind === 'receive' ? ($('#supplierId', root)?.value || '') : '',
+          subType,
+          delivererName: kind === 'receive' ? person : '',
+          receiverName: kind === 'issue' ? person : ''
+        });
+        toast(kind === 'count' ? 'Đã chốt kiểm kho.' : (kind === 'receive' ? 'Đã lưu Phiếu Nhập Kho.' : 'Đã lưu Phiếu Xuất Kho.'), 'ok');
+        if (kind === 'receive' || kind === 'issue') {
+          openWarehouseVoucherModal(doc, kind);
+        }
+        return { customToast: true };
       }
     }
-  }catch(error){toast(error.message,'error')}};
-  const results=$('#stockProductResults'),search=$('#stockProductSearch'),list=$('#lineList'),wid=()=>$('#wh')?.value||$('#fromWh')?.value;
-  const sync=()=>{const p=product(selectedId),lv=p&&state.data.levels.find(x=>x.productId===p.id&&x.warehouseId===wid())||{onHand:0},actual=Number($('#qty').value)||0;$('#selectedStockProduct').innerHTML=p?`<div class="product-photo tiny">${p.image?`<img src="${p.image}" alt="${esc(p.name)}"/>`:esc(p.name.slice(0,1))}</div><span><strong>${esc(p.name)}</strong><small>${esc(p.sku||'')} · Tồn ${fmt(lv.onHand)}</small></span>`:'<span>Chưa chọn sản phẩm</span>';if(kind==='count'){$('#systemQty').textContent=fmt(lv.onHand);$('#actualQty').textContent=fmt(actual);$('#countDiff').textContent=(actual-lv.onHand>0?'+':'')+fmt(actual-lv.onHand)}};
-  const redraw=()=>{list.innerHTML=lines.map((x,i)=>`<div class="line-item"><span><strong>${esc(product(x.productId)?.name)}</strong><small>${fmt(x.qty)}${kind==='receive'&&x.price!==null?` · ${fmt(x.price)} ₫`:''}${kind==='count'?` · chênh ${(x.diff>0?'+':'')+fmt(x.diff)}`:''}</small></span><button type="button" data-remove-line="${i}">×</button></div>`).join('')||'<div class="empty-line">Chưa có dòng nào</div>';$$('[data-remove-line]',list).forEach(b=>b.onclick=()=>{lines.splice(Number(b.dataset.removeLine),1);redraw()});if(kind==='count'){const mismatch=lines.filter(x=>x.diff),sum=mismatch.reduce((n,x)=>n+x.diff,0),boxes=$$('#countSummary b');boxes[0].textContent=lines.length;boxes[1].textContent=mismatch.length;boxes[2].textContent=(sum>0?'+':'')+fmt(sum)}};
-  search.oninput=()=>{const q=search.value.toLowerCase().trim(),rows=state.data.products.filter(p=>p.type!=='SERVICE'&&q&&[p.name,p.sku,p.barcode].some(v=>String(v||'').toLowerCase().includes(q)||norm(v).includes(norm(q)))).slice(0,8);results.innerHTML=rows.map(p=>`<button data-stock-product="${p.id}"><strong>${esc(p.name)}</strong><small>${esc(p.sku||'')} · ${fmt(stockView(p,$('#wh')?.value||$('#fromWh')?.value||'').available)} có thể bán</small></button>`).join('');$$('[data-stock-product]',results).forEach(b=>b.onclick=()=>{selectedId=b.dataset.stockProduct;search.value=product(selectedId).name;results.innerHTML='';sync()})};
-  $('#wh')?.addEventListener('change',sync);$('#fromWh')?.addEventListener('change',sync);$('#qty').oninput=sync;$('#stockMinus').onclick=()=>{$('#qty').value=Math.max(0,Number($('#qty').value)-1);sync()};$('#stockPlus').onclick=()=>{$('#qty').value=Number($('#qty').value)+1;sync()};$('#addLine').onclick=()=>{const qty=Number($('#qty').value);if(!selectedId||(kind==='count'?qty<0:!(qty>0)))return toast('Chọn sản phẩm và nhập số lượng hợp lệ.','error');const lv=state.data.levels.find(x=>x.productId===selectedId&&x.warehouseId===wid())||{onHand:0};lines.push({productId:selectedId,qty,price:kind==='receive'&&$('#purchasePrice').value!==''?Number($('#purchasePrice').value):null,diff:qty-lv.onHand});selectedId='';search.value='';$('#qty').value=kind==='count'?0:1;if($('#purchasePrice'))$('#purchasePrice').value='';sync();redraw()};sync();redraw();
+  });
+
+  const results = $('#stockProductResults');
+  const search = $('#stockProductSearch');
+  const list = $('#lineList');
+  const wid = () => $('#wh')?.value || $('#fromWh')?.value;
+
+  const sync = () => {
+    const p = product(selectedId);
+    const lv = p && state.data.levels.find(x => x.productId === p.id && x.warehouseId === wid()) || { onHand: 0 };
+    const actual = Number($('#qty').value) || 0;
+    $('#selectedStockProduct').innerHTML = p
+      ? `<div class="product-photo tiny">${p.image ? `<img src="${p.image}" alt="${esc(p.name)}"/>` : esc(p.name.slice(0, 1))}</div><span><strong>${esc(p.name)}</strong><small>${esc(p.sku || '')} · Tồn ${fmt(lv.onHand)}</small></span>`
+      : '<span>Chưa chọn sản phẩm</span>';
+    if (kind === 'count') {
+      $('#systemQty').textContent = fmt(lv.onHand);
+      $('#actualQty').textContent = fmt(actual);
+      $('#countDiff').textContent = (actual - lv.onHand > 0 ? '+' : '') + fmt(actual - lv.onHand);
+    }
+  };
+
+  const redraw = () => {
+    list.innerHTML = lines.map((x, i) => `<div class="line-item"><span><strong>${esc(product(x.productId)?.name)}</strong><small>${fmt(x.qty)}${kind === 'receive' && x.price !== null ? ` · ${fmt(x.price)} ₫` : ''}${kind === 'count' ? ` · chênh ${(x.diff > 0 ? '+' : '') + fmt(x.diff)}` : ''}</small></span><button type="button" data-remove-line="${i}">×</button></div>`).join('') || '<div class="empty-line">Chưa có dòng nào</div>';
+    $$('[data-remove-line]', list).forEach(b => b.onclick = () => {
+      lines.splice(Number(b.dataset.removeLine), 1);
+      redraw();
+    });
+    if (kind === 'count') {
+      const mismatch = lines.filter(x => x.diff);
+      const sum = mismatch.reduce((n, x) => n + x.diff, 0);
+      const boxes = $$('#countSummary b');
+      if (boxes.length >= 3) {
+        boxes[0].textContent = lines.length;
+        boxes[1].textContent = mismatch.length;
+        boxes[2].textContent = (sum > 0 ? '+' : '') + fmt(sum);
+      }
+    }
+  };
+
+  const renderProductSuggestions = (q = '') => {
+    const filterQ = q.toLowerCase().trim();
+    const rows = state.data.products.filter(p => p.type !== 'SERVICE' && (!filterQ || [p.name, p.sku, p.barcode].some(v => String(v || '').toLowerCase().includes(filterQ) || norm(v).includes(norm(filterQ))))).slice(0, 8);
+    results.innerHTML = rows.map(p => `<button type="button" data-stock-product="${p.id}"><strong>${esc(p.name)}</strong><small>${esc(p.sku || '')} · ${fmt(stockView(p, wid()).available)} có thể bán</small></button>`).join('');
+    $$('[data-stock-product]', results).forEach(b => b.onclick = () => {
+      selectedId = b.dataset.stockProduct;
+      search.value = product(selectedId)?.name || '';
+      results.innerHTML = '';
+      sync();
+    });
+  };
+
+  search.oninput = () => renderProductSuggestions(search.value);
+  search.onfocus = () => { if (!results.children.length) renderProductSuggestions(search.value); };
+  $('#wh')?.addEventListener('change', () => { sync(); if (!selectedId) renderProductSuggestions(search.value); });
+  $('#fromWh')?.addEventListener('change', () => { sync(); if (!selectedId) renderProductSuggestions(search.value); });
+  $('#qty').oninput = sync;
+  $('#stockMinus').onclick = () => { $('#qty').value = Math.max(0, Number($('#qty').value) - 1); sync(); };
+  $('#stockPlus').onclick = () => { $('#qty').value = Number($('#qty').value) + 1; sync(); };
+  $('#addLine').onclick = () => {
+    const qty = Number($('#qty').value);
+    if (!selectedId || (kind === 'count' ? qty < 0 : !(qty > 0))) return toast('Chọn sản phẩm và nhập số lượng hợp lệ.', 'error');
+    const lv = state.data.levels.find(x => x.productId === selectedId && x.warehouseId === wid()) || { onHand: 0 };
+    lines.push({ productId: selectedId, qty, price: kind === 'receive' && $('#purchasePrice')?.value !== '' ? Number($('#purchasePrice').value) : null, diff: qty - lv.onHand });
+    selectedId = '';
+    search.value = '';
+    $('#qty').value = kind === 'count' ? 0 : 1;
+    if ($('#purchasePrice')) $('#purchasePrice').value = '';
+    sync();
+    redraw();
+    renderProductSuggestions('');
+  };
+  sync();
+  redraw();
+  if (!selectedId) renderProductSuggestions('');
 }
 function openProduct(id){
   state.currentProductId=id;updateContextAndChips();
@@ -5938,6 +5991,7 @@ document.addEventListener('click', async e=>{
   }
   if(action==='prepare-sync-info') return openSyncInfoModal();
   if(action==='return-center') return navigate('returns');
+  if(action==='stocktake' || action==='count' || (action==='quick-action' && kind==='count')) return openQuick('count');
   if(action==='quick-action') return openQuick(kind||'receive');
   if(action==='notifications') return navigate('notifications');
   if(action==='customer-picker') return openCustomerPicker();
