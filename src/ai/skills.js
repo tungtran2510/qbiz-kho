@@ -636,36 +636,33 @@ export const SKILL_REGISTRY = {
     },
   },
 
-  // 13. replenishment-suggestion (Batch 2B)
+  // 13. replenishment-suggestion (Batch 2B + Merchandising Intelligence)
   'replenishment-suggestion': {
     id: 'replenishment-suggestion',
     name: 'Gợi ý nhập hàng',
-    description: 'Tính toán đề xuất nhập hàng dựa trên tốc độ bán và tồn khả dụng',
+    description: 'Tính toán đề xuất nhập hàng dựa trên tốc độ bán, tồn khả dụng và dự báo nhu cầu',
     async execute(params, context, state) {
       const warehouseId = params.warehouseId || context?.warehouse_id || (state?.data?.warehouses || [])[0]?.id;
-      const res = executeTool('get_replenishment_suggestions', {
+      const res = executeTool('get_replenishment_candidates', {
         warehouseId,
-        windowDays: params.windowDays || 14,
+        limit: params.limit || 5,
       }, state, context);
 
-      if (res.isClean || !res.suggestions.length) {
+      if (res.isClean || !res.candidates.length) {
         return {
-          text: 'Tồn kho các mặt hàng hiện ở mức tối ưu. Chưa cần tạo đề xuất nhập thêm hàng.',
+          text: '✅ **Tồn kho các mặt hàng hiện ở mức an toàn.** Chưa cần tạo đề xuất nhập thêm hàng.',
           result: res,
+          candidates: [],
           suggestions: [],
           tier: 0,
         };
       }
 
-      const lines = res.suggestions.map(s => {
-        const dataNote = s.hasLowData ? ' *(Mới có ít dữ liệu bán, đề xuất theo định mức an toàn)*' : '';
-        return `• **${s.productName}** (SKU: ${s.sku || '—'}): Khả dụng **${s.availableStock}**, Tốc độ bán **${s.dailyVelocity} ${s.unit}/ngày**. Đề xuất nhập: **${s.suggestedQuantity} ${s.unit}**${dataNote}`;
-      });
-
       return {
-        text: `**GỢI Ý NHẬP HÀNG (${res.suggestions.length} mặt hàng)**:\n${lines.join('\n')}\n\n*Bạn có thể bấm trực tiếp vào gợi ý để tạo đề xuất nhập kho ngay.*`,
+        text: res.markdown,
         result: res,
-        suggestions: res.suggestions,
+        candidates: res.candidates,
+        suggestions: res.candidates,
         tier: 0,
       };
     },
@@ -1116,6 +1113,214 @@ export const SKILL_REGISTRY = {
         text: `Tìm thấy **${res.count} hóa đơn** phù hợp với "${query}":\n${lines}\n\n*(Đã lọc danh sách trên màn hình Giao dịch & phiếu)*`,
         candidates: res.transactions,
         count: res.count,
+        tier: 0,
+      };
+    },
+  },
+
+  // 24. product-replenishment-inquiry
+  'product-replenishment-inquiry': {
+    id: 'product-replenishment-inquiry',
+    name: 'Tư vấn nhập hàng theo sản phẩm',
+    description: 'Đánh giá chi tiết một sản phẩm có nên nhập thêm không, cần nhập bao nhiêu và căn cứ số liệu',
+    async execute({ productId, query = '' }, context, state) {
+      let targetId = productId || null;
+      if (!targetId && context?.current_product_id) {
+        targetId = context.current_product_id;
+      }
+      if (!targetId && query) {
+        const resolved = resolveProduct(query, state?.data?.products || [], context);
+        if (resolved.isExact || resolved.candidates.length === 1) {
+          targetId = resolved.bestMatch?.id || resolved.candidates[0]?.id;
+        } else if (resolved.candidates.length > 1) {
+          return {
+            text: `Tìm thấy ${resolved.candidates.length} sản phẩm phù hợp. Vui lòng chọn sản phẩm cần đánh giá nhập hàng:`,
+            candidates: resolved.candidates,
+            isAmbiguous: true,
+            tier: 0,
+          };
+        }
+      }
+
+      if (!targetId) {
+        const candidatesRes = executeTool('get_replenishment_candidates', { limit: 1 }, state, context);
+        if (candidatesRes.candidates?.length) {
+          targetId = candidatesRes.candidates[0].productId;
+        } else {
+          const sampleProd = (state?.data?.products || []).find(p => p.trackInventory !== false && p.type !== 'SERVICE');
+          if (sampleProd) targetId = sampleProd.id;
+        }
+      }
+
+      if (!targetId) {
+        return {
+          text: 'Vui lòng cung cấp tên sản phẩm hoặc chọn sản phẩm cần đánh giá nhập hàng.',
+          tier: 0,
+        };
+      }
+
+      const res = executeTool('explain_replenishment', { productId: targetId }, state, context);
+      return {
+        text: res.explanation.markdown,
+        explanation: res.explanation,
+        bundle: res.bundle,
+        tier: 0,
+      };
+    },
+  },
+
+  // 25. product-viability
+  'product-viability': {
+    id: 'product-viability',
+    name: 'Đánh giá sức sống sản phẩm',
+    description: 'Đánh giá sản phẩm có nên tiếp tục kinh doanh, duy trì, giảm nhập hay xả hàng/dừng nhập',
+    async execute({ productId, query = '' }, context, state) {
+      let targetId = productId || null;
+      if (!targetId && context?.current_product_id) {
+        targetId = context.current_product_id;
+      }
+      if (!targetId && query) {
+        const resolved = resolveProduct(query, state?.data?.products || [], context);
+        if (resolved.isExact || resolved.candidates.length === 1) {
+          targetId = resolved.bestMatch?.id || resolved.candidates[0]?.id;
+        } else if (resolved.candidates.length > 1) {
+          return {
+            text: `Tìm thấy ${resolved.candidates.length} sản phẩm. Vui lòng chọn sản phẩm cần đánh giá hiệu quả kinh doanh:`,
+            candidates: resolved.candidates,
+            isAmbiguous: true,
+            tier: 0,
+          };
+        }
+      }
+
+      if (!targetId) {
+        const sampleProd = (state?.data?.products || []).find(p => p.trackInventory !== false && p.type !== 'SERVICE');
+        if (sampleProd) targetId = sampleProd.id;
+      }
+
+      if (!targetId) {
+        return {
+          text: 'Vui lòng cung cấp tên sản phẩm cần đánh giá kinh doanh.',
+          tier: 0,
+        };
+      }
+
+      const res = executeTool('evaluate_product_viability', { productId: targetId }, state, context);
+      return {
+        text: res.markdown,
+        viability: res.viability,
+        tier: 0,
+      };
+    },
+  },
+
+  // 26. slow-moving-products
+  'slow-moving-products': {
+    id: 'slow-moving-products',
+    name: 'Mặt hàng bán chậm & chôn vốn',
+    description: 'Thống kê các sản phẩm tồn lâu ngày, tốc độ bán chậm và vốn hàng hóa bị ứ đọng',
+    async execute(params, context, state) {
+      const res = executeTool('get_slow_movers', { limit: params.limit || 5 }, state, context);
+      return {
+        text: res.markdown,
+        slowMovers: res.slowMovers,
+        totalCapitalTiedUp: res.totalCapitalTiedUp,
+        tier: 0,
+      };
+    },
+  },
+
+  // 27. high-revenue-low-margin
+  'high-revenue-low-margin': {
+    id: 'high-revenue-low-margin',
+    name: 'Mặt hàng bán chạy nhưng lời thấp',
+    description: 'Phát hiện các mặt hàng có doanh thu lớn nhưng tỷ suất biên lợi nhuận mỏng',
+    async execute(params, context, state) {
+      const res = executeTool('get_high_revenue_low_margin', { limit: params.limit || 5 }, state, context);
+      return {
+        text: res.markdown,
+        items: res.items,
+        tier: 0,
+      };
+    },
+  },
+
+  // 28. budget-replenishment
+  'budget-replenishment': {
+    id: 'budget-replenishment',
+    name: 'Phân bổ nhập hàng theo ngân sách',
+    description: 'Tối ưu danh mục và số lượng nhập hàng với ngân sách tài chính giới hạn',
+    async execute({ budgetAmount = 5000000 }, context, state) {
+      const res = executeTool('optimize_replenishment_budget', { budgetAmount }, state, context);
+      return {
+        text: res.markdown,
+        allocation: res.allocation,
+        tier: 0,
+      };
+    },
+  },
+
+  // 29. five-actions-today
+  'five-actions-today': {
+    id: 'five-actions-today',
+    name: '5 việc cần làm hôm nay',
+    description: 'Đưa ra danh sách 3-5 hành động cấp thiết trong ngày cho chủ cửa hàng',
+    async execute(params, context, state) {
+      const res = executeTool('get_five_actions_today', {}, state, context);
+      return {
+        text: res.markdown,
+        actions: res.actions,
+        tier: 0,
+      };
+    },
+  },
+
+  // 30. business-period-review
+  'business-period-review': {
+    id: 'business-period-review',
+    name: 'Tổng kết kinh doanh & tồn kho',
+    description: 'Báo cáo tổng kết tuần/tháng tích hợp giữa doanh thu, sản phẩm và cảnh báo tồn kho',
+    async execute({ period = 'month', customStart, customEnd }, context, state) {
+      const res = executeTool('summarize_business_period', { period, customStart, customEnd }, state, context);
+      return {
+        text: res.markdown,
+        result: res,
+        tier: 0,
+      };
+    },
+  },
+
+  // 31. create-replenishment-draft
+  'create-replenishment-draft': {
+    id: 'create-replenishment-draft',
+    name: 'Tạo đề xuất nhập hàng (Nháp)',
+    description: 'Sinh phiếu đề xuất nhập kho nháp (Proposal Envelope) cho các mặt hàng cấp thiết nhất mà không sửa đổi trực tiếp dữ liệu',
+    async execute({ limit = 3, items = [] }, context, state) {
+      let draftItems = items;
+      if (!draftItems.length) {
+        const candidatesRes = executeTool('get_replenishment_candidates', { limit }, state, context);
+        draftItems = (candidatesRes.candidates || []).slice(0, limit).map(c => ({
+          productId: c.productId,
+          productName: c.productName,
+          sku: c.sku,
+          suggestedQuantity: c.suggestedQuantity,
+        }));
+      }
+
+      if (!draftItems.length) {
+        return {
+          text: 'Tất cả mặt hàng hiện tại đều đủ tồn, không có sản phẩm nào cần lập đề xuất nhập.',
+          tier: 0,
+        };
+      }
+
+      const proposal = executeTool('create_replenishment_plan_draft', { items: draftItems }, state, context);
+      return {
+        text: `Đã tạo **Phiếu đề xuất nhập hàng nháp** cho ${draftItems.length} mặt hàng:\n` +
+          draftItems.map(it => `• **${it.productName}**: Số lượng đề xuất nhập **${it.suggestedQuantity}**`).join('\n') +
+          `\n\n*Vui lòng xem và bấm "Xác nhận duyệt" trên phiếu để ghi sổ cái nhập kho.*`,
+        proposal,
+        proposals: [proposal],
         tier: 0,
       };
     },

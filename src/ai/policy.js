@@ -149,6 +149,7 @@ const DRAFT_ACTIONS = new Set([
   'create_update_product_status_proposal',
   'create_update_product_price_proposal',
   'create_warehouse_proposal',
+  'create_replenishment_draft',
   'propose_memory_save',
 ]);
 
@@ -167,22 +168,24 @@ export function evaluateRisk(actionName, params = {}, context = {}, state = {}) 
   let requiresRevalidation = false;
   let autoExecutable = true;
 
-  if (HIGH_RISK_ACTIONS.has(actionName)) {
+  const safeAction = String(actionName || '');
+
+  if (HIGH_RISK_ACTIONS.has(safeAction)) {
     riskLevel = RISK_LEVELS.HIGH_RISK_WRITE;
     requiresConfirmation = true;
     requiresRevalidation = true;
     autoExecutable = false;
-  } else if (WRITE_ACTIONS.has(actionName)) {
+  } else if (WRITE_ACTIONS.has(safeAction)) {
     riskLevel = RISK_LEVELS.WRITE;
     requiresConfirmation = true;
     requiresRevalidation = true;
     autoExecutable = false;
-  } else if (DRAFT_ACTIONS.has(actionName)) {
+  } else if (DRAFT_ACTIONS.has(safeAction)) {
     riskLevel = RISK_LEVELS.DRAFT;
     requiresConfirmation = false;
     requiresRevalidation = false;
     autoExecutable = true;
-  } else if (actionName.startsWith('navigate_')) {
+  } else if (safeAction.startsWith('navigate_')) {
     riskLevel = RISK_LEVELS.NAVIGATE;
     requiresConfirmation = false;
     requiresRevalidation = false;
@@ -231,6 +234,15 @@ export function computeAllowedTools(actor = {}, context = {}) {
   tools.add('diagnose_stock');
   tools.add('diagnose_transfer');
   tools.add('reconcile_ledger');
+  tools.add('get_product_decision_snapshot');
+  tools.add('get_replenishment_candidates');
+  tools.add('explain_replenishment');
+  tools.add('get_slow_movers');
+  tools.add('get_stockout_risk');
+  tools.add('evaluate_product_viability');
+  tools.add('get_abc_xyz');
+  tools.add('forecast_product_demand');
+  tools.add('get_five_actions_today');
 
   // Sales summary & order diagnosis
   if (roleDef.permissions.has(PERMISSIONS.VIEW_SALES)) {
@@ -246,17 +258,22 @@ export function computeAllowedTools(actor = {}, context = {}) {
     tools.add('get_latest_transaction');
     tools.add('search_transactions');
     tools.add('get_transaction');
+    tools.add('summarize_business_period');
+    tools.add('get_sales_mix');
   }
 
   // Cost & Profit inquiry (strictly requires VIEW_COST)
   if (roleDef.permissions.has(PERMISSIONS.VIEW_COST)) {
     tools.add('get_profit_summary');
+    tools.add('get_high_revenue_low_margin');
+    tools.add('optimize_replenishment_budget');
   }
 
   // Stock operations (only if role has permission)
   if (roleDef.permissions.has(PERMISSIONS.RECEIVE_STOCK) || roleKey === 'OWNER') {
     tools.add('create_receipt_proposal');
     tools.add('create_issue_proposal');
+    tools.add('create_replenishment_plan_draft');
   }
   if (roleDef.permissions.has(PERMISSIONS.TRANSFER_STOCK)) {
     tools.add('create_transfer_proposal');

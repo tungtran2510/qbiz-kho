@@ -242,7 +242,7 @@ export function isTopSellingQuery(pNorm) {
   const p = norm(pNorm);
   if (!p) return false;
 
-  if (p.includes('tra loi') || p.includes('loi khuyen') || p.includes('loi he thong')) return false;
+  if (p.includes('tra loi') || p.includes('loi khuyen') || p.includes('loi he thong') || p.includes('loi thap') || p.includes('loi it') || p.includes('bien thap') || p.includes('lai it') || p.includes('lai thap')) return false;
 
   // 1. Nhóm từ bán chạy truyền thống & hot
   if (
@@ -613,6 +613,194 @@ export function dictionaryRoute(rawPrompt, context, state) {
   // Ví dụ: "báo cáo dịch vụ nào được bán nhiều nhất" -> pClean = "dịch vụ nào được bán nhiều nhất"
   const pClean = p.replace(/^(?:bao cao|thong ke|cho xem|xem|tong hop)\s+(?:cho toi\s+)?/i, '').trim();
 
+  // M1. High Revenue Low Margin (Guarded by VIEW_COST, must run BEFORE top_selling)
+  if (
+    (p.includes('loi thap') || p.includes('loi it') || p.includes('bien thap') || p.includes('lai it') || p.includes('lai thap')) &&
+    (p.includes('ban chay') || p.includes('ban nhieu') || p.includes('doanh thu cao') || p.includes('doanh so cao'))
+  ) {
+    const actor = context?.actor_role ? { id: context.actor_id, role: context.actor_role } : getCurrentActor();
+    if (!hasCapability(actor, PERMISSIONS.VIEW_COST)) {
+      return {
+        type: 'HARD_DENY',
+        message: `⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò **${actor.role}** không được cấp quyền xem giá vốn và phân tích biên lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).`,
+        permissionDenied: true,
+      };
+    }
+    return {
+      type: 'ACTION',
+      action_id: 'high_revenue_low_margin',
+      action: {
+        id: 'high_revenue_low_margin',
+        name: 'Mặt hàng bán chạy nhưng lời thấp',
+        async execute(params, state, context) {
+          return await executeSkill('high-revenue-low-margin', {}, context, state);
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill',
+    };
+  }
+
+  // M2. Budget-Constrained Replenishment
+  if (
+    ((p.includes('ngan sach') || p.includes('trieu') || p.includes('co ')) && (p.includes('uu tien nhap') || p.includes('nen nhap') || p.includes('nhap gi'))) ||
+    (p.includes('trieu') && p.includes('nhap'))
+  ) {
+    let budgetAmount = 5000000;
+    const matchBudget = p.match(/(\d+([\.,]\d+)?)\s*(trieu|tr|m)/i);
+    if (matchBudget) {
+      budgetAmount = parseFloat(matchBudget[1].replace(',', '.')) * 1000000;
+    }
+    return {
+      type: 'ACTION',
+      action_id: 'budget_replenishment',
+      action: {
+        id: 'budget_replenishment',
+        name: 'Phân bổ nhập hàng theo ngân sách',
+        async execute(params, state, context) {
+          return await executeSkill('budget-replenishment', { budgetAmount }, context, state);
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill',
+    };
+  }
+
+  // M3. Create Replenishment Draft Proposal (Draft only)
+  if (
+    p.includes('tao de xuat nhap') || p.includes('lap de xuat nhap') || p.includes('tao phieu nhap nhap') || (p.includes('tao de xuat') && p.includes('nhap'))
+  ) {
+    let limit = 3;
+    const matchLimit = p.match(/(\d+)\s*(mat hang|san pham|mon)/);
+    if (matchLimit) limit = parseInt(matchLimit[1], 10);
+    return {
+      type: 'ACTION',
+      action_id: 'create_replenishment_draft',
+      action: {
+        id: 'create_replenishment_draft',
+        name: 'Tạo đề xuất nhập hàng (Nháp)',
+        async execute(params, state, context) {
+          return await executeSkill('create-replenishment-draft', { limit }, context, state);
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill',
+    };
+  }
+
+  // M4. Product Viability: Keep selling, reduce buying, discontinue
+  if (
+    p.includes('tiep tuc kinh doanh') ||
+    p.includes('giam nhap') ||
+    p.includes('dung nhap') ||
+    p.includes('ngung kinh doanh') ||
+    p.includes('nen bo') ||
+    p.includes('co nen ban nua') ||
+    p.includes('co nen tiep tuc')
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'product_viability',
+      action: {
+        id: 'product_viability',
+        name: 'Đánh giá sức sống sản phẩm',
+        async execute(params, state, context) {
+          return await executeSkill('product-viability', { query: rawPrompt }, context, state);
+        }
+      },
+      confidence: 98,
+      source: 'domain_skill',
+    };
+  }
+
+  // M5. Why / Evidence / Replenishment Explanation for Product
+  if (
+    (p.includes('tai sao') || p.includes('vi sao') || p.includes('can cu') || p.includes('dua vao dau') || p.includes('co nen nhap')) &&
+    (p.includes('de xuat nhap') || p.includes('nhap tiep') || p.includes('nhap them') || p.includes('mat hang nay') || p.includes('san pham nay') || p.includes('cai nay'))
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'product_replenishment_inquiry',
+      action: {
+        id: 'product_replenishment_inquiry',
+        name: 'Tư vấn nhập hàng theo sản phẩm',
+        async execute(params, state, context) {
+          return await executeSkill('product-replenishment-inquiry', { query: rawPrompt }, context, state);
+        }
+      },
+      confidence: 98,
+      source: 'domain_skill',
+    };
+  }
+
+  // M6. Slow Moving & Capital Tied Up
+  if (
+    p.includes('ban cham') ||
+    p.includes('chon von') ||
+    p.includes('dong von') ||
+    p.includes('ton lau') ||
+    p.includes('ton dong') ||
+    p.includes('kho ban')
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'slow_moving_products',
+      action: {
+        id: 'slow_moving_products',
+        name: 'Mặt hàng bán chậm & chôn vốn',
+        async execute(params, state, context) {
+          return await executeSkill('slow-moving-products', {}, context, state);
+        }
+      },
+      confidence: 98,
+      source: 'domain_skill',
+    };
+  }
+
+  // M7. 5 Things to Do Today
+  if (
+    p.includes('5 viec') ||
+    p.includes('nam viec') ||
+    p.includes('viec can lam hom nay') ||
+    (p.includes('viec can lam') && p.includes('hom nay')) ||
+    p.includes('5 viec can lam')
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'five_actions_today',
+      action: {
+        id: 'five_actions_today',
+        name: '5 việc cần làm hôm nay',
+        async execute(params, state, context) {
+          return await executeSkill('five-actions-today', {}, context, state);
+        }
+      },
+      confidence: 98,
+      source: 'domain_skill',
+    };
+  }
+
+  // M8. Business Period Review (Month / Week Review with reasons)
+  if (
+    p.includes('tong ket') &&
+    (p.includes('thang') || p.includes('tuan') || p.includes('vi sao') || p.includes('tinh hinh'))
+  ) {
+    const period = extractRelativePeriod(rawPrompt) || extractRelativePeriod(p) || 'month';
+    return {
+      type: 'ACTION',
+      action_id: 'business_period_review',
+      action: {
+        id: 'business_period_review',
+        name: 'Tổng kết kinh doanh & tồn kho',
+        async execute(params, state, context) {
+          return await executeSkill('business-period-review', { period }, context, state);
+        }
+      },
+      confidence: 98,
+      source: 'domain_skill',
+    };
+  }
+
   // 1. Top Selling / Top Services (Ưu tiên cao nhất cho câu hỏi xếp hạng / bán chạy)
   if (isTopSellingQuery(p) || (pClean && isTopSellingQuery(pClean))) {
     const queryEffective = pClean || p;
@@ -656,11 +844,31 @@ export function dictionaryRoute(rawPrompt, context, state) {
   }
   if (
     (p.includes('de xuat') && (p.includes('nhap') || p.includes('can nhap'))) ||
-    p.includes('hang nao can nhap') || p.includes('mat hang nao can nhap') ||
+    p.includes('hang nao can nhap') ||
+    p.includes('hang nao nen nhap') ||
+    p.includes('mat hang nao can nhap') ||
+    p.includes('mat hang nao nen nhap') ||
+    p.includes('nhung mat hang nao can nhap') ||
     p.includes('can nhap hang') || p.includes('bo sung hang') || p.includes('goi y nhap') ||
-    p.includes('can nhap gi') || p.includes('can nhap them')
+    p.includes('can nhap gi') || p.includes('can nhap them') ||
+    p.includes('thuong xuyen sap het') || p.includes('thuong xuyen het') ||
+    p.includes('ban tot nhung sap het') || p.includes('ban chay nhung sap het') ||
+    p.includes('hang nao sap thieu') ||
+    (p.includes('nen nhap') && (p.includes('hang') || p.includes('mon') || p.includes('gi') || p.includes('them')))
   ) {
-    return { type: 'ACTION', action_id: 'replenishment_suggestion', action: ACTION_REGISTRY['replenishment_suggestion'], confidence: 95, source: 'domain_skill' };
+    return {
+      type: 'ACTION',
+      action_id: 'replenishment_suggestion',
+      action: {
+        id: 'replenishment_suggestion',
+        name: 'Gợi ý nhập hàng',
+        async execute(params, state, context) {
+          return await executeSkill('replenishment-suggestion', {}, context, state);
+        }
+      },
+      confidence: 95,
+      source: 'domain_skill',
+    };
   }
   if (
     (p.includes('nhap') || p.includes('nhap vao') || p.includes('nhap hang')) &&
@@ -2996,6 +3204,133 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
+  // 0.05 Merchandising & Replenishment Intelligence Fast-Paths (Tier 0 Deterministic)
+  // M1. High Revenue Low Margin (Guarded by VIEW_COST)
+  if (
+    (pNorm.includes('loi thap') || pNorm.includes('loi it') || pNorm.includes('bien thap') || pNorm.includes('lai it') || pNorm.includes('lai thap')) &&
+    (pNorm.includes('ban chay') || pNorm.includes('ban nhieu') || pNorm.includes('doanh thu cao') || pNorm.includes('doanh so cao'))
+  ) {
+    const actor = context?.actor_role ? { id: context.actor_id, role: context.actor_role } : getCurrentActor();
+    if (!hasCapability(actor, PERMISSIONS.VIEW_COST)) {
+      return {
+        text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò **${actor.role}** không được cấp quyền xem giá vốn và phân tích biên lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).`,
+        tier: 0,
+        isError: true,
+        permissionDenied: true,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    const res = await executeSkill('high-revenue-low-margin', {}, context, state);
+    return { ...res, intent: 'HIGH_REVENUE_LOW_MARGIN', skillId: 'high-revenue-low-margin', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M2. Budget-Constrained Replenishment
+  if (
+    ((pNorm.includes('ngan sach') || pNorm.includes('trieu') || pNorm.includes('co ')) && (pNorm.includes('uu tien nhap') || pNorm.includes('nen nhap') || pNorm.includes('nhap gi'))) ||
+    (pNorm.includes('trieu') && pNorm.includes('nhap'))
+  ) {
+    let budgetAmount = 5000000;
+    const matchBudget = pNorm.match(/(\d+([\.,]\d+)?)\s*(trieu|tr|m)/i);
+    if (matchBudget) {
+      budgetAmount = parseFloat(matchBudget[1].replace(',', '.')) * 1000000;
+    }
+    const res = await executeSkill('budget-replenishment', { budgetAmount }, context, state);
+    return { ...res, intent: 'BUDGET_REPLENISHMENT', skillId: 'budget-replenishment', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M3. Create Replenishment Draft Proposal (Draft only)
+  if (
+    pNorm.includes('tao de xuat nhap') || pNorm.includes('lap de xuat nhap') || pNorm.includes('tao phieu nhap nhap') || (pNorm.includes('tao de xuat') && pNorm.includes('nhap'))
+  ) {
+    let limit = 3;
+    const matchLimit = pNorm.match(/(\d+)\s*(mat hang|san pham|mon)/);
+    if (matchLimit) limit = parseInt(matchLimit[1], 10);
+    const res = await executeSkill('create-replenishment-draft', { limit }, context, state);
+    return { ...res, intent: 'CREATE_REPLENISHMENT_DRAFT', skillId: 'create-replenishment-draft', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M4. Product Viability: Keep selling, reduce buying, discontinue
+  if (
+    pNorm.includes('tiep tuc kinh doanh') ||
+    pNorm.includes('giam nhap') ||
+    pNorm.includes('dung nhap') ||
+    pNorm.includes('ngung kinh doanh') ||
+    pNorm.includes('nen bo') ||
+    pNorm.includes('co nen ban nua') ||
+    pNorm.includes('co nen tiep tuc')
+  ) {
+    const res = await executeSkill('product-viability', { query: rawPrompt }, context, state);
+    return { ...res, intent: 'PRODUCT_VIABILITY', skillId: 'product-viability', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M5. Why / Evidence / Replenishment Explanation for Product
+  if (
+    (pNorm.includes('tai sao') || pNorm.includes('vi sao') || pNorm.includes('can cu') || pNorm.includes('dua vao dau') || pNorm.includes('co nen nhap')) &&
+    (pNorm.includes('de xuat nhap') || pNorm.includes('nhap tiep') || pNorm.includes('nhap them') || pNorm.includes('mat hang nay') || pNorm.includes('san pham nay') || pNorm.includes('cai nay'))
+  ) {
+    const res = await executeSkill('product-replenishment-inquiry', { query: rawPrompt }, context, state);
+    return { ...res, intent: 'REPLENISHMENT_EXPLANATION', skillId: 'product-replenishment-inquiry', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M6. Slow Moving & Capital Tied Up
+  if (
+    pNorm.includes('ban cham') ||
+    pNorm.includes('chon von') ||
+    pNorm.includes('dong von') ||
+    pNorm.includes('ton lau') ||
+    pNorm.includes('ton dong') ||
+    pNorm.includes('kho ban')
+  ) {
+    const res = await executeSkill('slow-moving-products', {}, context, state);
+    return { ...res, intent: 'SLOW_MOVING', skillId: 'slow-moving-products', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M7. 5 Things to Do Today
+  if (
+    pNorm.includes('5 viec') ||
+    pNorm.includes('nam viec') ||
+    pNorm.includes('viec can lam hom nay') ||
+    (pNorm.includes('viec can lam') && pNorm.includes('hom nay')) ||
+    pNorm.includes('5 viec can lam')
+  ) {
+    const res = await executeSkill('five-actions-today', {}, context, state);
+    return { ...res, intent: 'FIVE_ACTIONS_TODAY', skillId: 'five-actions-today', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M8. Business Period Review (Month / Week Review with reasons)
+  if (
+    pNorm.includes('tong ket') &&
+    (pNorm.includes('thang') || pNorm.includes('tuan') || pNorm.includes('vi sao') || pNorm.includes('tinh hinh'))
+  ) {
+    const period = extractRelativePeriod(rawPrompt) || extractRelativePeriod(pNorm) || 'month';
+    const res = await executeSkill('business-period-review', { period }, context, state);
+    return { ...res, intent: 'BUSINESS_PERIOD_REVIEW', skillId: 'business-period-review', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // M9. Replenishment Suggestions / Low Stock Inquiry
+  if (
+    (pNorm.includes('de xuat') && (pNorm.includes('nhap') || pNorm.includes('can nhap'))) ||
+    pNorm.includes('hang nao can nhap') ||
+    pNorm.includes('hang nao nen nhap') ||
+    pNorm.includes('mat hang nao can nhap') ||
+    pNorm.includes('mat hang nao nen nhap') ||
+    pNorm.includes('nhung mat hang nao can nhap') ||
+    pNorm.includes('can nhap hang') ||
+    pNorm.includes('nhap hang gi') ||
+    pNorm.includes('goi y nhap') ||
+    pNorm.includes('bo sung hang') ||
+    pNorm.includes('de xuat nhap') ||
+    pNorm.includes('thuong xuyen sap het') ||
+    pNorm.includes('thuong xuyen het') ||
+    pNorm.includes('ban tot nhung sap het') ||
+    pNorm.includes('ban chay nhung sap het') ||
+    pNorm.includes('hang nao sap thieu') ||
+    (pNorm.includes('nen nhap') && (pNorm.includes('hang') || pNorm.includes('mon') || pNorm.includes('gi') || pNorm.includes('them')))
+  ) {
+    const res = await executeSkill('replenishment-suggestion', {}, context, state);
+    return { ...res, intent: 'REPLENISHMENT_SUGGESTION', skillId: 'replenishment-suggestion', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
   // 0.1 Top Selling / Top Services Fast-Path ("dịch vụ nào được bán nhiều nhất", "báo cáo dịch vụ nào được bán nhiều nhất")
   const pCleanEarly = pNorm.replace(/^(?:bao cao|thong ke|cho xem|xem|tong hop)\s+(?:cho toi\s+)?/i, '').trim();
   if (isTopSellingQuery(pNorm) || (pCleanEarly && isTopSellingQuery(pCleanEarly))) {
@@ -4641,6 +4976,15 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // Input -> Context -> Trained Rules/Knowledge -> Tool Execution -> Live Data
   // ==========================================
   if (dictResult) {
+    if (dictResult.type === 'HARD_DENY') {
+      return {
+        text: dictResult.message,
+        isBlocked: true,
+        permissionDenied: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
     if (dictResult.type === 'ACTION' && dictResult.action) {
       try {
         const result = await dictResult.action.execute(dictResult.params || {}, state, context);
@@ -4648,6 +4992,15 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         const defaultIntent = dictResult.action_id === 'profit_inquiry' ? 'PROFIT_INQUIRY' : dictResult.action_id?.toUpperCase();
         return { text: msg, intent: result?.intent || defaultIntent, skillId: result?.skillId || dictResult.action_id, ...result, tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
       } catch (e) {
+        if (e.message && (e.message.includes('HARD DENY') || e.message.includes('VIEW_COST'))) {
+          return {
+            text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** ${e.message}`,
+            isBlocked: true,
+            permissionDenied: true,
+            tier: 0,
+            provider: PROVIDER_MODES.DETERMINISTIC,
+          };
+        }
         // Fall through to LLM planner on error
       }
     }
@@ -5720,6 +6073,116 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
+  // 1-M1. Create Replenishment Draft Proposal (Draft only, no DB write)
+  if (
+    (p.includes('tao de xuat nhap') || p.includes('lap de xuat nhap') || p.includes('tao phieu nhap nhap') || (p.includes('tao de xuat') && p.includes('nhap')))
+  ) {
+    let limit = 3;
+    const matchLimit = p.match(/(\d+)\s*(mat hang|san pham|mon)/);
+    if (matchLimit) limit = parseInt(matchLimit[1], 10);
+    const res = await executeSkill('create-replenishment-draft', { limit }, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'create-replenishment-draft', tier: 0 });
+    return { ...res, skillId: 'create-replenishment-draft', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1-M2. Budget-Constrained Purchase Suggestion
+  if (
+    ((p.includes('ngan sach') || p.includes('trieu') || p.includes('co ')) && (p.includes('uu tien nhap') || p.includes('nen nhap') || p.includes('nhap gi'))) ||
+    (p.includes('trieu') && p.includes('nhap'))
+  ) {
+    let budgetAmount = 5000000;
+    const matchBudget = p.match(/(\d+([\.,]\d+)?)\s*(trieu|tr|m)/i);
+    if (matchBudget) {
+      budgetAmount = parseFloat(matchBudget[1].replace(',', '.')) * 1000000;
+    }
+    const res = await executeSkill('budget-replenishment', { budgetAmount }, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'budget-replenishment', tier: 0 });
+    return { ...res, skillId: 'budget-replenishment', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1-M3. 5 Things to Do Today
+  if (
+    p.includes('5 viec') ||
+    p.includes('nam viec') ||
+    p.includes('viec can lam hom nay') ||
+    (p.includes('viec can lam') && p.includes('hom nay')) ||
+    p.includes('5 viec can lam')
+  ) {
+    const res = await executeSkill('five-actions-today', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'five-actions-today', tier: 0 });
+    return { ...res, skillId: 'five-actions-today', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1-M4. High Revenue Low Margin (VIEW_COST guarded)
+  if (
+    (p.includes('loi thap') || p.includes('loi it') || p.includes('bien thap') || p.includes('lai it') || p.includes('lai thap')) &&
+    (p.includes('ban chay') || p.includes('ban nhieu') || p.includes('doanh thu cao') || p.includes('doanh so cao'))
+  ) {
+    const actor = context.actor_role ? { id: context.actor_id, role: context.actor_role } : getCurrentActor();
+    if (!hasCapability(actor, PERMISSIONS.VIEW_COST)) {
+      return {
+        text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò **${actor.role}** không được cấp quyền xem giá vốn và phân tích biên lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).`,
+        tier: 0,
+        isError: true,
+        permissionDenied: true,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    const res = await executeSkill('high-revenue-low-margin', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'high-revenue-low-margin', tier: 0 });
+    return { ...res, skillId: 'high-revenue-low-margin', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1-M5. Slow Moving & Capital Tied Up
+  if (
+    p.includes('ban cham') ||
+    p.includes('chon von') ||
+    p.includes('dong von') ||
+    p.includes('ton lau') ||
+    p.includes('ton dong') ||
+    p.includes('kho ban')
+  ) {
+    const res = await executeSkill('slow-moving-products', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'slow-moving-products', tier: 0 });
+    return { ...res, skillId: 'slow-moving-products', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1-M6. Product Viability: Keep selling, reduce buying, discontinue
+  if (
+    p.includes('tiep tuc kinh doanh') ||
+    p.includes('giam nhap') ||
+    p.includes('dung nhap') ||
+    p.includes('ngung kinh doanh') ||
+    p.includes('nen bo') ||
+    p.includes('co nen ban nua') ||
+    p.includes('co nen tiep tuc')
+  ) {
+    const res = await executeSkill('product-viability', { query: rawPrompt }, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'product-viability', tier: 0 });
+    return { ...res, skillId: 'product-viability', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1-M7. Why / Evidence / Replenishment Explanation for Product
+  if (
+    (p.includes('tai sao') || p.includes('vi sao') || p.includes('can cu') || p.includes('dua vao dau') || p.includes('co nen nhap')) &&
+    (p.includes('de xuat nhap') || p.includes('nhap tiep') || p.includes('nhap them') || p.includes('mat hang nay') || p.includes('san pham nay') || p.includes('cai nay'))
+  ) {
+    const res = await executeSkill('product-replenishment-inquiry', { query: rawPrompt }, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'product-replenishment-inquiry', tier: 0 });
+    return { ...res, skillId: 'product-replenishment-inquiry', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1-M8. Business Period Review (Month / Week Review with reasons)
+  if (
+    p.includes('tong ket') &&
+    (p.includes('thang') || p.includes('tuan') || p.includes('vi sao') || p.includes('tinh hinh'))
+  ) {
+    const period = extractRelativePeriod(rawPrompt) || extractRelativePeriod(p) || 'month';
+    const res = await executeSkill('business-period-review', { period }, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'business-period-review', tier: 0 });
+    return { ...res, skillId: 'business-period-review', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
   // 1d. Daily Attention Digest (Batch 2B)
   if (
     p.includes('chu y') ||
@@ -5739,13 +6202,21 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   if (
     (p.includes('de xuat') && (p.includes('nhap') || p.includes('can nhap'))) ||
     p.includes('hang nao can nhap') ||
+    p.includes('hang nao nen nhap') ||
     p.includes('mat hang nao can nhap') ||
+    p.includes('mat hang nao nen nhap') ||
     p.includes('nhung mat hang nao can nhap') ||
     p.includes('can nhap hang') ||
     p.includes('nhap hang gi') ||
     p.includes('goi y nhap') ||
     p.includes('bo sung hang') ||
-    p.includes('de xuat nhap')
+    p.includes('de xuat nhap') ||
+    p.includes('thuong xuyen sap het') ||
+    p.includes('thuong xuyen het') ||
+    p.includes('ban tot nhung sap het') ||
+    p.includes('ban chay nhung sap het') ||
+    p.includes('hang nao sap thieu') ||
+    (p.includes('nen nhap') && (p.includes('hang') || p.includes('mon') || p.includes('gi') || p.includes('them')))
   ) {
     const res = await executeSkill('replenishment-suggestion', {}, context, state);
     logAuditEvent('SKILL_EXECUTED', { skillId: 'replenishment-suggestion', tier: 0 });
@@ -5818,7 +6289,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     return { ...res, skillId: 'shift-diagnosis', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
   }
 
-  // 1a. Sales Summary (Hôm nay bán bao nhiêu?, Doanh thu hôm nay, v.v.)
+  // 1a. Sales Summary (Hôm nay bán bao nhiêu?, Doanh thu hôm nay, Hôm nay cửa hàng thế nào?, v.v.)
   if (
     p.includes('ban bao nhieu') ||
     p.includes('ban duoc bao nhieu') ||
@@ -5831,7 +6302,10 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     p.includes('may don') ||
     p.includes('bao nhieu don') ||
     p.includes('tien ban') ||
-    p.includes('tinh hinh ban')
+    p.includes('tinh hinh ban') ||
+    p.includes('cua hang the nao') ||
+    p.includes('tinh hinh cua hang') ||
+    p.includes('ban the nao')
   ) {
     const period = extractRelativePeriod(rawPrompt) || extractRelativePeriod(p) || (p.includes('thang') ? 'month' : 'today');
     const res = await executeSkill('sales-summary', { period }, context, state);

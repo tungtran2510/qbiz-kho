@@ -8,6 +8,7 @@ import { totalFor, levelFor, available } from '../engine.js';
 import { createProposal } from './proposals.js';
 import { isToolAllowed, hasCapability, PERMISSIONS, OPERATIONAL_THRESHOLDS } from './policy.js';
 import { getCurrentActor } from './context.js';
+import { MERCHANDISING_TOOLS } from './merchandising/tools.js';
 
 /**
  * Normalizes a Vietnamese string for case and diacritic-insensitive matching.
@@ -105,6 +106,8 @@ export function resolveDateInterval(period = 'today', now = new Date(), customSt
 }
 
 export const TOOLS = {
+  ...MERCHANDISING_TOOLS,
+
   /**
    * Search products by text query (name, SKU, barcode).
    * If query is ambiguous (multiple matches), returns array of candidate items.

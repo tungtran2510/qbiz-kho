@@ -319,6 +319,7 @@ export function initAiUI(state) {
     setVoiceMuted,
     isVoiceMuted,
     stopSpeaking,
+    routeIntent,
     submitVoiceTranscript: async (text) => {
       setMicState('recognized', text);
       const input = document.getElementById('aiTextInput');
@@ -326,6 +327,9 @@ export function initAiUI(state) {
       return await handleUserMessage(text);
     }
   };
+  if (typeof window !== 'undefined' && window.__qbiz_app__) {
+    window.__qbiz_app__.ai = window.__qbiz_ai__;
+  }
 }
 
 /**
