@@ -414,10 +414,10 @@ function renderQuickActions(workspace){
     return `
         <div class="quick-tile quick-hero">
           <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon('shopping-cart')}</span><strong style="font-size:13px;line-height:1.2;white-space:normal;word-break:keep-all;text-align:center;display:block;overflow:visible;text-overflow:clip">Bán hàng</strong></button>
-          <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
+          <button class="quick-hero-sub" data-page="returns" data-action="return-center" aria-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
         </div>
         ${quickTile('receive','📥','Nhập kho','Thêm hàng vào kho')}
-        ${quickTile('count','✓','Kiểm kho','Xem tồn kho')}
+        ${quickTile('count','✓','Kiểm tồn','Kiểm tra tồn kho')}
         ${quickTile('transactions','▣','Hóa đơn','Xem phiếu bán')}
         ${quickTile('customers','◎','Khách hàng','Tìm và chọn khách')}
     `;
@@ -429,7 +429,7 @@ function renderQuickActions(workspace){
       return `
         <div class="quick-tile quick-hero">
           <button class="quick-hero-main" data-page="sales"><span class="qt-ico">${icon(act.icon || 'credit-card')}</span><strong style="font-size:13px;line-height:1.2;white-space:normal;word-break:keep-all;text-align:center;display:block;overflow:visible;text-overflow:clip">${esc(actTitle || 'Thanh toán')}</strong></button>
-          <button class="quick-hero-sub" data-action="future-action" data-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
+          <button class="quick-hero-sub" data-page="returns" data-action="return-center" aria-label="Đổi - Trả"><strong>Đổi - Trả</strong><em class="quick-hero-arrow">${icon('chevron-right')}</em></button>
         </div>
       `;
     }
@@ -2044,8 +2044,9 @@ function renderWarehouseVoucherHtml(doc = {}, kind = 'receive', { standard = 'en
   const typeLabel = doc.sub_type_label || (isReceive ? STOCK_IN_TYPES[subType] : STOCK_OUT_TYPES[subType]) || (isReceive ? 'Nhập hàng' : 'Xuất hàng');
 
   const companyName = profile.store_name || profile.display_name || 'DOANH NGHIỆP / CỬA HÀNG QBIZ';
-  const companyAddress = profile.address || 'Hà Nội, Việt Nam';
-  const taxCode = profile.tax_code || '';
+  const companyAddress = profile.address?.trim() || '';
+  const taxCode = profile.tax_code?.trim() || '';
+  const phone = (profile.hotline || profile.phone || '').trim();
   const dateObj = new Date(doc.created_at || doc.createdAt || Date.now());
   const day = String(dateObj.getDate()).padStart(2, '0');
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -2055,8 +2056,11 @@ function renderWarehouseVoucherHtml(doc = {}, kind = 'receive', { standard = 'en
 
   const wh = warehouse(doc.warehouse_id);
   const whName = wh?.name || 'Kho chính';
-  const deliverer = doc.deliverer_name || (isReceive ? (doc.supplier_id ? (supplier(doc.supplier_id)?.name || 'Nhà cung cấp') : 'Người giao hàng') : (profile.contact_name || 'Thủ kho'));
-  const receiver = doc.receiver_name || (isReceive ? (profile.contact_name || 'Bộ phận kho') : (doc.customer_label || 'Người nhận hàng'));
+  const deliverer = (doc.deliverer_name?.trim() || (isReceive ? (doc.supplier_id ? (supplier(doc.supplier_id)?.name || '') : '') : (profile.contact_name?.trim() || ''))).trim();
+  const receiver = (doc.receiver_name?.trim() || (isReceive ? (profile.contact_name?.trim() || '') : (doc.customer_label?.trim() || ''))).trim();
+  const activeUserName = (state.data?.settings||[]).find(x=>x.id==='active_user_name')?.value?.trim() || '';
+  const contactName = profile.contact_name?.trim() || '';
+  const partySigName = isReceive ? deliverer : receiver;
   const lines = Array.isArray(doc.lines) ? doc.lines : [];
 
   let formCodeBadge = '<b>Mẫu số 01 - VT</b><br><small>(Ban hành theo TT số 200/2014/TT-BTC & TT 133/2016/TT-BTC)</small>';
@@ -2105,25 +2109,25 @@ function renderWarehouseVoucherHtml(doc = {}, kind = 'receive', { standard = 'en
         <strong>Người lập biểu</strong>
         <small>(Ký, họ tên)</small>
         <div class="sig-space"></div>
-        <div class="sig-name">${esc((state.data?.settings||[]).find(x=>x.id==='active_user_name')?.value || 'Người lập')}</div>
+        <div class="sig-name">${esc(activeUserName)}</div>
       </div>
       <div class="sig-col">
         <strong>${isReceive ? 'Người giao hàng' : 'Người nhận hàng'}</strong>
         <small>(Ký, họ tên)</small>
         <div class="sig-space"></div>
-        <div class="sig-name">${esc(isReceive ? deliverer : receiver)}</div>
+        <div class="sig-name">${esc(partySigName)}</div>
       </div>
       <div class="sig-col">
         <strong>Thủ kho</strong>
         <small>(Ký, họ tên)</small>
         <div class="sig-space"></div>
-        <div class="sig-name">${esc(profile.contact_name || 'Thủ kho')}</div>
+        <div class="sig-name">${esc(contactName)}</div>
       </div>
       <div class="sig-col">
         <strong>${standard === 'enterprise' ? 'Kế toán trưởng / Giám đốc' : 'Chủ hộ kinh doanh'}</strong>
         <small>(Ký, họ tên, đóng dấu)</small>
         <div class="sig-space"></div>
-        <div class="sig-name">${esc(profile.contact_name || 'Đại diện đơn vị')}</div>
+        <div class="sig-name">${esc(contactName)}</div>
       </div>
     </div>
   `;
@@ -2135,19 +2139,19 @@ function renderWarehouseVoucherHtml(doc = {}, kind = 'receive', { standard = 'en
           <strong>Người lập biểu</strong>
           <small>(Ký, họ tên)</small>
           <div class="sig-space"></div>
-          <div class="sig-name">${esc((state.data?.settings||[]).find(x=>x.id==='active_user_name')?.value || 'Người lập')}</div>
+          <div class="sig-name">${esc(activeUserName)}</div>
         </div>
         <div class="sig-col">
           <strong>${isReceive ? 'Người giao hàng' : 'Người nhận hàng'}</strong>
           <small>(Ký, họ tên)</small>
           <div class="sig-space"></div>
-          <div class="sig-name">${esc(isReceive ? deliverer : receiver)}</div>
+          <div class="sig-name">${esc(partySigName)}</div>
         </div>
         <div class="sig-col">
           <strong>Chủ hộ kinh doanh</strong>
           <small>(Ký, họ tên)</small>
           <div class="sig-space"></div>
-          <div class="sig-name">${esc(profile.contact_name || 'Chủ hộ')}</div>
+          <div class="sig-name">${esc(contactName)}</div>
         </div>
       </div>
     `;
@@ -2158,9 +2162,9 @@ function renderWarehouseVoucherHtml(doc = {}, kind = 'receive', { standard = 'en
       <div class="voucher-top-grid">
         <div class="voucher-company-info">
           <strong>${esc(companyName)}</strong>
-          <span>Địa chỉ: ${esc(companyAddress)}</span>
+          <span>Địa chỉ: ${esc(companyAddress || '—')}</span>
           ${taxCode ? `<span>Mã số thuế: ${esc(taxCode)}</span>` : ''}
-          ${profile.hotline || profile.phone ? `<span>Điện thoại: ${esc(profile.hotline || profile.phone)}</span>` : ''}
+          ${phone ? `<span>Điện thoại: ${esc(phone)}</span>` : ''}
         </div>
         <div class="voucher-form-code">
           ${formCodeBadge}
@@ -2176,7 +2180,7 @@ function renderWarehouseVoucherHtml(doc = {}, kind = 'receive', { standard = 'en
       <div class="voucher-meta-info">
         <div class="v-row">
           <span class="v-label">- Họ và tên người ${isReceive ? 'giao hàng' : 'nhận hàng'}:</span>
-          <span class="v-val"><b>${esc(isReceive ? deliverer : receiver)}</b></span>
+          <span class="v-val"><b>${esc(isReceive ? (deliverer || '—') : (receiver || '—'))}</b></span>
         </div>
         <div class="v-row">
           <span class="v-label">- Hình thức & Lý do ${isReceive ? 'nhập' : 'xuất'}:</span>
@@ -4776,7 +4780,7 @@ function bindCompactImagePicker(root,existingImages=[]){
 }
 
 function openQuick(kind='receive',preProduct=''){
-  const labels={receive:['Nhập hàng','Tăng tồn thực tế · Chuẩn Mẫu 01-VT'],issue:['Xuất hàng','Giảm tồn thực tế · Chuẩn Mẫu 02-VT'],transfer:['Chuyển kho','Kho đi trừ ngay, kho nhận tăng khi xác nhận'],count:['Kiểm kho','Nhập số đếm thực tế']};
+  const labels={receive:['Nhập hàng','Tăng tồn thực tế · Chuẩn Mẫu 01-VT'],issue:['Xuất hàng','Giảm tồn thực tế · Chuẩn Mẫu 02-VT'],transfer:['Chuyển kho','Kho đi trừ ngay, kho nhận tăng khi xác nhận'],count:['Kiểm tồn kho','Nhập số đếm thực tế']};
   const [title,sub]=labels[kind]||labels.receive;
   const lines=[];let selectedId=preProduct||'';
   const subTypeOptions = kind==='receive' ? `
@@ -4801,7 +4805,7 @@ function openQuick(kind='receive',preProduct=''){
 
   const extra=kind==='transfer'?`<div class="form-grid"><div class="field"><label>Kho đi</label><select id="fromWh">${whOptions()}</select></div><div class="field"><label>Kho nhận</label><select id="toWh">${whOptions(state.data.warehouses[1]?.id)}</select></div></div>`:`
     ${subTypeOptions}
-    <div class="form-grid"><div class="field"><label>${kind==='receive'?'Kho nhận':'Kho xuất'}</label><select id="wh">${whOptions()}</select></div>${kind==='receive'?`<div class="field"><label>Nhà cung cấp <small>(tuỳ chọn)</small></label><select id="supplierId">${supplierOptions()}</select></div>`:''}</div>
+    <div class="form-grid"><div class="field"><label>${kind==='receive'?'Kho nhận':kind==='count'?'Kho kiểm kê':'Kho xuất'}</label><select id="wh">${whOptions()}</select></div>${kind==='receive'?`<div class="field"><label>Nhà cung cấp <small>(tuỳ chọn)</small></label><select id="supplierId">${supplierOptions()}</select></div>`:''}</div>
     ${kind==='receive'||kind==='issue'?`<div class="field"><label>${kind==='receive'?'Người giao hàng':'Người nhận hàng'}</label><input id="stockPerson" placeholder="${kind==='receive'?'Họ tên người giao / đại diện NCC':'Họ tên người nhận / bộ phận tiếp nhận'}"/></div>`:''}
   `;
   const body=`<div class="stock-flow"><div class="field"><label>Quét mã / Tìm sản phẩm</label><div class="stock-search"><input id="stockProductSearch" value="${esc(preProduct?product(preProduct)?.name||'':'')}" placeholder="Tên / SKU / barcode..." autocomplete="off"/>${icon('scan-line')}</div><div id="stockProductResults" class="stock-product-results"></div></div>${extra}<div id="selectedStockProduct" class="selected-stock-product"></div><div class="stock-entry-row"><label>${kind==='count'?'Số lượng thực tế':'Số lượng'}<div class="quantity-control"><button type="button" id="stockMinus">−</button><input id="qty" type="number" inputmode="numeric" min="0" value="${kind==='count'?0:1}"/><button type="button" id="stockPlus">+</button></div></label>${kind==='receive'?'<label>Giá nhập<input id="purchasePrice" type="number" inputmode="decimal" min="0" placeholder="0"/></label>':''}</div>${kind==='count'?'<div class="count-compare"><div><span>Tồn hệ thống</span><strong id="systemQty">0</strong></div><div><span>Thực tế</span><strong id="actualQty">0</strong></div><div><span>Chênh lệch</span><strong id="countDiff">0</strong></div></div>':''}<button type="button" class="secondary-btn full" id="addLine">${kind==='count'?'Lưu dòng này':'+ Thêm dòng'}</button><div class="field"><label>Số chứng từ / Ghi chú</label><input id="ref" placeholder="VD: PN-001, PX-001, HĐ-882..."/></div><div id="lineList" class="line-list"></div>${kind==='count'?'<div id="countSummary" class="count-summary"><span>Đã kiểm <b>0</b></span><span>Chưa khớp <b>0</b></span><span>Tạm chênh lệch <b>0</b></span></div>':''}</div>`;
@@ -5864,6 +5868,7 @@ document.addEventListener('click', async e=>{
     return;
   }
   if(action==='prepare-sync-info') return openSyncInfoModal();
+  if(action==='return-center') return navigate('returns');
   if(action==='quick-action') return openQuick(kind||'receive');
   if(action==='notifications') return navigate('notifications');
   if(action==='customer-picker') return openCustomerPicker();

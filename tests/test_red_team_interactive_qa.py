@@ -37,12 +37,16 @@ def run_red_team_qa():
         page.goto(base_url, wait_until="networkidle")
         page.wait_for_timeout(1000)
 
-        # ----------------------------------------------------
-        # SCENARIO 1: POS Retail Sale Interactive Flow & Edge Cases
-        # ----------------------------------------------------
         print("\n--- SCENARIO 1: POS Retail Sale Interactive Flow & Edge Cases ---")
         try:
-            page.evaluate("navigate('sales')")
+            page.evaluate('''async () => {
+                const { currentShift, openShift } = await import('./src/engine.js');
+                const cur = await currentShift();
+                if (!cur || cur.status !== 'OPEN') {
+                    await openShift({ openingCash: 100000 });
+                }
+                navigate('sales');
+            }''')
             page.wait_for_timeout(500)
 
             # Click first product tile to add to cart

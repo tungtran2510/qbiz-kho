@@ -1161,7 +1161,7 @@ export function resolveWorkspaceProfile(profileOrId = null) {
     primary_actions = [
       { id: 'sales', kind: 'sales', title: 'Bán hàng', sub: 'Tạo phiếu bán', icon: 'shopping-cart', page: 'sales' },
       { id: 'receive', kind: 'receive', title: 'Nhập kho', sub: 'Thêm hàng vào kho', icon: 'package-plus', action: 'quick-action' },
-      { id: 'count', kind: 'count', title: 'Kiểm kho', sub: 'Xem tồn kho', icon: 'clipboard-check', action: 'quick-action' },
+      { id: 'count', kind: 'count', title: 'Kiểm tồn', sub: 'Kiểm tra tồn kho', icon: 'clipboard-check', action: 'quick-action' },
       { id: 'transactions', kind: 'transactions', title: 'Hóa đơn', sub: 'Xem phiếu bán', icon: 'file-text', page: 'transactions' },
       { id: 'customers', kind: 'customers', title: 'Khách hàng', sub: 'Tìm và chọn khách', icon: 'user', action: 'customer-directory' },
     ];
