@@ -2066,7 +2066,7 @@ function renderWarehouseVoucherHtml(doc = {}, kind = 'receive', { standard = 'en
   if (standard === 'household') {
     formCodeBadge = `<b>Mẫu số ${isReceive ? '01-VT' : '02-VT'}</b><br><small>(Ban hành theo TT số 88/2021/TT-BTC Hộ KD)</small>`;
   } else if (standard === 'compact') {
-    formCodeBadge = `<b>${isReceive ? 'PHIẾU NHẬP' : 'PHIẾU XUẤT'}</b><br><small>Hệ thống QBiz Kho</small>`;
+    formCodeBadge = `<b>${isReceive ? 'PHIẾU NHẬP' : 'PHIẾU XUẤT'}</b><br><small>Mẫu lưu hành nội bộ · QBiz Kho</small>`;
   }
 
   const grandTotal = lines.reduce((sum, line) => {
@@ -3451,6 +3451,9 @@ async function renderBackupCenter(){
               <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M8.5 2h7l6.5 11.5H15z"/><path fill="#FFBA00" d="m2 19.5 3.5 4h13.5l3.5-4z"/><path fill="#00AC47" d="m2 19.5 6.5-11.5 3.5 6-6.5 11.5z"/><path fill="#EA4335" d="m15.5 14-3.5-6H5L2 14z"/></svg>
               Kết nối Google Drive
             </button>
+            <button class="secondary-btn" data-action="drive-backup-now" style="gap:6px">
+              ${icon('file-text')} Sao lưu ngay
+            </button>
             <button class="secondary-btn" data-action="drive-restore-list" style="gap:6px">
               ${icon('refresh-cw')} Khôi phục từ Google Drive
             </button>
@@ -3951,7 +3954,7 @@ function renderShippingCenter(){
   const allShipments = [...orders.map(o => ({ ...o, docType: 'order' })), ...sales.map(s => ({ ...s, docType: 'sale' }))];
 
   $('#content').innerHTML = `
-    <section class="feature-center">
+    <section class="feature-center shipping-center">
       <section class="card feature-panel">
         <div class="section-head">
           <div>
@@ -4050,24 +4053,27 @@ function renderShippingCenter(){
     btn.onclick = () => openCarrierConfigModal(btn.dataset.configureCarrier);
   });
   $$('[data-quick-track-carrier]').forEach(btn => {
-    const cId = btn.dataset.quickTrackCarrier;
-    const carrier = VN_CARRIERS[cId];
-    openModal({
-      title: `Tra cứu vận đơn ${carrier.shortName}`,
-      sub: 'Nhập mã vận đơn để mở trực tiếp trang hành trình của hãng',
-      body: `
-        <div class="field">
-          <label>Mã vận đơn</label>
-          <input id="quickTrackingInput" placeholder="Ví dụ: ${carrier.codePrefix}123456..."/>
-        </div>
-      `,
-      submitText: 'Tra cứu ngay',
-      onSubmit: () => {
-        const val = $('#quickTrackingInput')?.value.trim();
-        if (!val) return toast('Vui lòng nhập mã vận đơn.', 'error');
-        window.open(carrier.trackUrl(val), '_blank');
-      }
-    });
+    btn.onclick = () => {
+      const cId = btn.dataset.quickTrackCarrier;
+      const carrier = VN_CARRIERS[cId];
+      if (!carrier) return;
+      openModal({
+        title: `Tra cứu vận đơn ${carrier.shortName}`,
+        sub: 'Nhập mã vận đơn để mở trực tiếp trang hành trình của hãng',
+        body: `
+          <div class="field">
+            <label>Mã vận đơn</label>
+            <input id="quickTrackingInput" placeholder="Ví dụ: ${carrier.codePrefix}123456..."/>
+          </div>
+        `,
+        submitText: 'Tra cứu ngay',
+        onSubmit: () => {
+          const val = $('#quickTrackingInput')?.value.trim();
+          if (!val) return toast('Vui lòng nhập mã vận đơn.', 'error');
+          window.open(carrier.trackUrl(val), '_blank');
+        }
+      });
+    };
   });
 }
 
@@ -4227,7 +4233,7 @@ function renderChannelCenter(){
   const totalProducts = (state.data?.products || []).filter(p => p.active !== false).length;
 
   $('#content').innerHTML = `
-    <section class="feature-center">
+    <section class="feature-center channels-center">
       <section class="card feature-panel" style="border:1.5px solid var(--primary,#0284c7);border-radius:12px;padding:16px">
         <div class="section-head" style="display:flex;justify-content:space-between;align-items:flex-start">
           <div style="display:flex;align-items:center;gap:12px">
@@ -5790,7 +5796,7 @@ document.addEventListener('click', async e=>{
     }
     return;
   }
-  if(action==='drive-backup-now') {
+  if(action==='drive-backup-now' || action==='manual-backup') {
     const auth = getAuthState();
     if (!userCan('MANAGE_SETTINGS')) {
       return toast('Bạn không có quyền thực hiện sao lưu.', 'error');
