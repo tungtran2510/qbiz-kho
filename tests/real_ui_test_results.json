@@ -1,0 +1,110 @@
+[
+  {
+    "host": "PRIMARY (Vercel)",
+    "viewport": "Mobile 390px",
+    "ai_opened": true,
+    "chip_count": 4,
+    "chip_samples": [
+      "H\u00f4m nay c\u1ea7n ch\u00fa \u00fd",
+      "C\u00f3 g\u00ec b\u1ea5t th\u01b0\u1eddng",
+      "H\u00e0ng s\u1eafp h\u1ebft",
+      "Doanh thu"
+    ],
+    "user_messages": 2,
+    "assistant_messages": 4,
+    "idempotency_pass": true,
+    "overflow": false,
+    "console_errors": 0,
+    "screenshot": "tests/evidence/primary_mobile_390px_ui.png"
+  },
+  {
+    "host": "PRIMARY (Vercel)",
+    "viewport": "Mobile 412px",
+    "ai_opened": true,
+    "chip_count": 4,
+    "chip_samples": [
+      "H\u00f4m nay c\u1ea7n ch\u00fa \u00fd",
+      "C\u00f3 g\u00ec b\u1ea5t th\u01b0\u1eddng",
+      "H\u00e0ng s\u1eafp h\u1ebft",
+      "Doanh thu"
+    ],
+    "user_messages": 4,
+    "assistant_messages": 6,
+    "idempotency_pass": true,
+    "overflow": false,
+    "console_errors": 0,
+    "screenshot": "tests/evidence/primary_mobile_412px_ui.png"
+  },
+  {
+    "host": "PRIMARY (Vercel)",
+    "viewport": "Desktop 1440px",
+    "ai_opened": true,
+    "chip_count": 4,
+    "chip_samples": [
+      "H\u00f4m nay c\u1ea7n ch\u00fa \u00fd",
+      "C\u00f3 g\u00ec b\u1ea5t th\u01b0\u1eddng",
+      "H\u00e0ng s\u1eafp h\u1ebft",
+      "Doanh thu"
+    ],
+    "user_messages": 2,
+    "assistant_messages": 4,
+    "idempotency_pass": true,
+    "overflow": false,
+    "console_errors": 0,
+    "screenshot": "tests/evidence/primary_desktop_1440px_ui.png"
+  },
+  {
+    "host": "BACKUP (Netlify)",
+    "viewport": "Mobile 390px",
+    "ai_opened": true,
+    "chip_count": 4,
+    "chip_samples": [
+      "H\u00f4m nay c\u1ea7n ch\u00fa \u00fd",
+      "C\u00f3 g\u00ec b\u1ea5t th\u01b0\u1eddng",
+      "H\u00e0ng s\u1eafp h\u1ebft",
+      "Doanh thu"
+    ],
+    "user_messages": 2,
+    "assistant_messages": 4,
+    "idempotency_pass": true,
+    "overflow": false,
+    "console_errors": 0,
+    "screenshot": "tests/evidence/backup_mobile_390px_ui.png"
+  },
+  {
+    "host": "BACKUP (Netlify)",
+    "viewport": "Mobile 412px",
+    "ai_opened": true,
+    "chip_count": 4,
+    "chip_samples": [
+      "H\u00f4m nay c\u1ea7n ch\u00fa \u00fd",
+      "C\u00f3 g\u00ec b\u1ea5t th\u01b0\u1eddng",
+      "H\u00e0ng s\u1eafp h\u1ebft",
+      "Doanh thu"
+    ],
+    "user_messages": 2,
+    "assistant_messages": 4,
+    "idempotency_pass": true,
+    "overflow": false,
+    "console_errors": 0,
+    "screenshot": "tests/evidence/backup_mobile_412px_ui.png"
+  },
+  {
+    "host": "BACKUP (Netlify)",
+    "viewport": "Desktop 1440px",
+    "ai_opened": true,
+    "chip_count": 4,
+    "chip_samples": [
+      "H\u00f4m nay c\u1ea7n ch\u00fa \u00fd",
+      "C\u00f3 g\u00ec b\u1ea5t th\u01b0\u1eddng",
+      "H\u00e0ng s\u1eafp h\u1ebft",
+      "Doanh thu"
+    ],
+    "user_messages": 2,
+    "assistant_messages": 4,
+    "idempotency_pass": true,
+    "overflow": false,
+    "console_errors": 0,
+    "screenshot": "tests/evidence/backup_desktop_1440px_ui.png"
+  }
+]

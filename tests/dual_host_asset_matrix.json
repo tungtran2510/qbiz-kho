@@ -1,0 +1,101 @@
+[
+  {
+    "asset": "src/app.js",
+    "local_len": 532182,
+    "local_hash": "df263d14449d672c",
+    "primary_len": 532182,
+    "primary_hash": "df263d14449d672c",
+    "backup_len": 532182,
+    "backup_hash": "df263d14449d672c",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/skills.js",
+    "local_len": 94542,
+    "local_hash": "0694eebf4f29d012",
+    "primary_len": 94542,
+    "primary_hash": "0694eebf4f29d012",
+    "backup_len": 94542,
+    "backup_hash": "0694eebf4f29d012",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/router.js",
+    "local_len": 361882,
+    "local_hash": "5ca6e584a05ec8a0",
+    "primary_len": 361882,
+    "primary_hash": "5ca6e584a05ec8a0",
+    "backup_len": 361882,
+    "backup_hash": "5ca6e584a05ec8a0",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/ui.js",
+    "local_len": 91356,
+    "local_hash": "febc1bba4973759c",
+    "primary_len": 91356,
+    "primary_hash": "febc1bba4973759c",
+    "backup_len": 91356,
+    "backup_hash": "febc1bba4973759c",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/vietnamese-nlp.js",
+    "local_len": 62760,
+    "local_hash": "8435fe61e0f53cea",
+    "primary_len": 62760,
+    "primary_hash": "8435fe61e0f53cea",
+    "backup_len": 62760,
+    "backup_hash": "8435fe61e0f53cea",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/tools.js",
+    "local_len": 65556,
+    "local_hash": "091cd02406bd94ca",
+    "primary_len": 65556,
+    "primary_hash": "091cd02406bd94ca",
+    "backup_len": 65556,
+    "backup_hash": "091cd02406bd94ca",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/context.js",
+    "local_len": 11624,
+    "local_hash": "04a68f6926d5834c",
+    "primary_len": 11624,
+    "primary_hash": "04a68f6926d5834c",
+    "backup_len": 11624,
+    "backup_hash": "04a68f6926d5834c",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/proposals.js",
+    "local_len": 37211,
+    "local_hash": "47b606164cf39c77",
+    "primary_len": 37211,
+    "primary_hash": "47b606164cf39c77",
+    "backup_len": 37211,
+    "backup_hash": "47b606164cf39c77",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/policy.js",
+    "local_len": 20042,
+    "local_hash": "682b8b921733feb1",
+    "primary_len": 20042,
+    "primary_hash": "682b8b921733feb1",
+    "backup_len": 20042,
+    "backup_hash": "682b8b921733feb1",
+    "match_primary_backup": true,
+    "match_local_git": true
+  }
+]

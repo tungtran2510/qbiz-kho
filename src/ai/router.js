@@ -2975,6 +2975,21 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
+  const asksPronounTransfer = (
+    (pNorm.startsWith('chuyen') || pNorm.includes('chuyen kho')) &&
+    (isPronounReference(pNorm) || pNorm.includes('cai nay') || pNorm.includes('mon nay'))
+  );
+  if (asksPronounTransfer && !context?.current_product_id && !getLastResolvedProduct()) {
+    return {
+      text: 'Bạn muốn điều chuyển sản phẩm nào? Vui lòng chọn sản phẩm trên màn hình hoặc chỉ định tên/mã sản phẩm và kho đích.',
+      status: 'NEEDS_CLARIFICATION',
+      isAmbiguous: true,
+      candidates: (state?.data?.products || []).slice(0, 5),
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
   const stockIncreaseMatch = parseContextualStockIncrease(pNorm) || parseContextualStockIncrease(rawPrompt);
   if (stockIncreaseMatch) {
     const targetProd = resolveTargetProduct(stockIncreaseMatch.productQuery);
@@ -5416,6 +5431,105 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     return {
       text: 'Chưa có đơn bán hàng nào phát sinh gần đây.',
       intent: 'RECENT_SALES',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Chip 14: Orders -> "Thanh toán"
+  const isOrderPaymentChip = (
+    readClauseNorm === 'thanh toan' ||
+    readClauseNorm === 'thanh toan don' ||
+    readClauseNorm === 'thu tien' ||
+    (context.current_route === 'orders' && (readClauseNorm === 'thanh toan' || readClauseNorm === 'thanh toan?'))
+  );
+  if (isOrderPaymentChip) {
+    const boundOrderId = context.current_order_id;
+    const order = boundOrderId ? (state.data?.orders || []).find(o => o.id === boundOrderId || o.code === boundOrderId) : null;
+    if (order) {
+      const fmt = new Intl.NumberFormat('vi-VN');
+      return {
+        text: `Đơn hàng **${order.code || order.id}** (Tổng tiền: **${fmt.format(order.final_total || order.total || 0)} ₫**). Vui lòng bấm nút **Thanh toán** trên chi tiết đơn hàng để chọn phương thức thu tiền và hoàn tất an toàn.`,
+        intent: 'CHECKOUT_GUARD',
+        status: 'OK',
+        order,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    return {
+      text: 'Để đảm bảo an toàn tài chính, AI không tự ý hoàn tất thanh toán hoặc chốt đơn mà không có xác nhận trả tiền thật từ thu ngân.\nVui lòng chọn đơn hàng cụ thể từ danh sách để thanh toán, hoặc mở màn hình Bán hàng (POS) để tạo đơn thu tiền.',
+      intent: 'CHECKOUT_GUARD',
+      status: 'NEEDS_CLARIFICATION',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Chip 17: Warehouse / Transfers -> "Nhập"
+  const isWarehouseReceiptChip = (
+    (context.current_route === 'transfers' || context.current_route === 'warehouse') &&
+    (readClauseNorm === 'nhap' || readClauseNorm === 'nhap hang' || readClauseNorm === 'phieu nhap')
+  ) || (readClauseNorm === 'nhap' && !readClauseNorm.includes('vao') && !readClauseNorm.includes('cai') && !readClauseNorm.includes('them'));
+  if (isWarehouseReceiptChip) {
+    const boundProd = context.current_product_id ? (state.data?.products || []).find(p => p.id === context.current_product_id) : null;
+    if (boundProd) {
+      const targetWh = context?.warehouse_id || (state?.warehouse && state.warehouse !== 'all' ? state.warehouse : (state?.data?.warehouses || [])[0]?.id);
+      const res = await executeSkill('receipt-proposal', {
+        productId: boundProd.id,
+        warehouseId: targetWh,
+        qty: 5,
+        reason: 'Nhập hàng từ Quick Chip'
+      }, context, state);
+      return {
+        ...res,
+        intent: 'CREATE_RECEIPT_PROPOSAL',
+        status: 'OK',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    return {
+      text: 'Bạn muốn tạo phiếu nhập hàng? Vui lòng chọn sản phẩm trên màn hình hoặc chỉ định tên, số lượng và kho nhập.',
+      intent: 'CREATE_RECEIPT_PROPOSAL',
+      status: 'NEEDS_CLARIFICATION',
+      isAmbiguous: true,
+      candidates: (state.data?.products || []).slice(0, 5),
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // Chip 18: Warehouse / Transfers -> "Chuyển"
+  const isWarehouseTransferChip = (
+    (context.current_route === 'transfers' || context.current_route === 'warehouse') &&
+    (readClauseNorm === 'chuyen' || readClauseNorm === 'chuyen kho' || readClauseNorm === 'dieu chuyen')
+  ) || (readClauseNorm === 'chuyen' && !readClauseNorm.includes('sang') && !readClauseNorm.includes('cai') && !readClauseNorm.includes('vao'));
+  if (isWarehouseTransferChip) {
+    const boundProd = context.current_product_id ? (state.data?.products || []).find(p => p.id === context.current_product_id) : null;
+    const warehouses = state.data?.warehouses || [];
+    if (boundProd && warehouses.length >= 2) {
+      const fromWh = warehouses[0]?.id;
+      const toWh = warehouses[1]?.id;
+      const res = await executeSkill('transfer-proposal', {
+        fromWarehouseId: fromWh,
+        toWarehouseId: toWh,
+        lines: [{ productId: boundProd.id, qty: 5 }]
+      }, context, state);
+      return {
+        ...res,
+        intent: 'TRANSFER_PROPOSAL',
+        status: 'OK',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    return {
+      text: 'Bạn muốn điều chuyển hàng giữa các kho? Vui lòng chọn sản phẩm cần chuyển và chỉ định kho xuất, kho nhận.',
+      intent: 'TRANSFER_PROPOSAL',
+      status: 'NEEDS_CLARIFICATION',
+      isAmbiguous: true,
+      candidates: (state.data?.warehouses || []).slice(0, 5),
       tier: 0,
       provider: PROVIDER_MODES.DETERMINISTIC,
     };
