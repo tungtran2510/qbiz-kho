@@ -44,10 +44,13 @@ if (Test-Path $netlifyRunJs) {
         $deploySuccess = $true
     } else {
         Write-Host "Netlify --prod bao loi (co the do credit hoac lock). Dang chay phuong thuc deploy restore fallback..." -ForegroundColor Yellow
-        $draftLog = node $netlifyRunJs deploy --debug 2>&1
-        $deployIdMatch = [regex]::Match($draftLog, "deployId:\s*([a-f0-9]{24})")
+        $prevEAP = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        $draftLog = & node $netlifyRunJs deploy --dir=. 2>&1 | Out-String
+        $ErrorActionPreference = $prevEAP
+        $deployIdMatch = [regex]::Match($draftLog, "deployId:\s*([a-f0-9]{24})|https:\/\/([a-f0-9]{24})--qbiz-kho")
         if ($deployIdMatch.Success) {
-            $depId = $deployIdMatch.Groups[1].Value
+            $depId = if ($deployIdMatch.Groups[1].Value) { $deployIdMatch.Groups[1].Value } else { $deployIdMatch.Groups[2].Value }
             $cfgPath = "$HOME\AppData\Roaming\netlify\Config\config.json"
             if (Test-Path $cfgPath) {
                 $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
