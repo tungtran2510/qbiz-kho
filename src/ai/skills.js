@@ -1650,6 +1650,385 @@ export const SKILL_REGISTRY = {
       };
     }
   },
+
+  // 38. daily-ops-brief (Phase 2A Capability A)
+  'daily-ops-brief': {
+    id: 'daily-ops-brief',
+    name: 'Tổng hợp việc cần xử lý hôm nay',
+    description: 'Bản tóm tắt ưu tiên 3-6 việc vận hành cần giải quyết hôm nay kèm lý do và hành động an toàn',
+    async execute(params, context, state) {
+      const digest = executeTool('get_daily_attention_digest', params, state, context);
+      const rawItems = digest?.items || [];
+      const items = [];
+
+      for (const it of rawItems.slice(0, 6)) {
+        let what = it.title || it.summary || 'Việc cần xử lý';
+        let why = it.detail || it.evidence || 'Phát sinh từ dữ liệu vận hành thực tế';
+        let safeNextAction = it.action || 'Kiểm tra chi tiết';
+
+        if (it.type === 'out_of_stock') {
+          safeNextAction = 'Tạo đề xuất nhập hàng (Receipt Proposal) hoặc kiểm kho xác nhận.';
+        } else if (it.type === 'low_stock') {
+          safeNextAction = 'Xem xét bổ sung tồn kho an toàn cho các mặt hàng sắp hết.';
+        } else if (it.type === 'pending_orders') {
+          safeNextAction = 'Mở danh sách đơn hàng để duyệt xuất kho và giao hàng.';
+        } else if (it.type === 'unpaid_orders') {
+          safeNextAction = 'Xác nhận thanh toán hoặc đối soát với khách hàng.';
+        } else if (it.type === 'waiting_receive_transfers') {
+          safeNextAction = 'Vào phiếu chuyển kho để kiểm đếm thực nhận và nhập kho đích.';
+        } else if (it.type === 'shift_discrepancy') {
+          safeNextAction = 'Mở sổ quỹ & ca để đối chiếu tiền mặt thực tế với doanh thu.';
+        } else if (it.type === 'open_shift') {
+          safeNextAction = 'Tiếp tục theo dõi phiên bán hàng hoặc đóng ca khi kết thúc.';
+        }
+
+        items.push({
+          severity: it.severity || it.urgency || 'HIGH',
+          what,
+          why,
+          safeNextAction,
+        });
+      }
+
+      const products = state?.data?.products || [];
+      const missingCostProds = products.filter(p => p.active !== false && p.type !== 'SERVICE' && (p.cost == null || Number(p.cost) <= 0));
+      if (missingCostProds.length > 0 && items.length < 6) {
+        items.push({
+          severity: 'MEDIUM',
+          what: `${missingCostProds.length} sản phẩm chưa có giá vốn`,
+          why: 'Thiếu giá vốn sẽ làm báo cáo lợi nhuận và biên lãi gộp bị thiếu chính xác',
+          safeNextAction: 'Cập nhật giá vốn trong danh mục Hàng hóa để đối soát lợi nhuận chuẩn.',
+        });
+      }
+
+      if (items.length === 0) {
+        return {
+          text: 'Hiện chưa thấy việc vận hành nào cần xử lý gấp.',
+          items: [],
+          intent: 'DAILY_OPS_BRIEF',
+          status: 'SUCCESS',
+          tier: 0,
+          provider: 'DETERMINISTIC',
+          dbWriteCount: 0,
+        };
+      }
+
+      const formattedLines = items.map((it, idx) => {
+        const badge = it.severity === 'CRITICAL' ? '🔴 [GẤP]' : it.severity === 'HIGH' ? '🟠 [CẦN LÀM]' : '🔵 [LƯU Ý]';
+        return `${idx + 1}. ${badge} **${it.what}**\n   - **Lý do:** ${it.why}\n   - **Hành động an toàn:** ${it.safeNextAction}`;
+      });
+
+      const text = `📋 **TỔNG HỢP VIỆC VẬN HÀNH HÔM NAY (${items.length} việc ưu tiên)**:\n\n${formattedLines.join('\n\n')}\n\n*(Chế độ xem thông tin — Không tự động thay đổi dữ liệu cửa hàng)*`;
+
+      return {
+        text,
+        items,
+        intent: 'DAILY_OPS_BRIEF',
+        status: 'SUCCESS',
+        tier: 0,
+        provider: 'DETERMINISTIC',
+        dbWriteCount: 0,
+      };
+    },
+  },
+
+  // 39. operational-anomaly-scan (Phase 2A Capability B)
+  'operational-anomaly-scan': {
+    id: 'operational-anomaly-scan',
+    name: 'Rà soát bất thường vận hành',
+    description: 'Quét tự động các sai lệch tiền, tồn kho, đơn hàng và chứng từ theo dữ liệu thực tế',
+    async execute(params, context, state) {
+      const fmt = new Intl.NumberFormat('vi-VN');
+      const anomalies = [];
+
+      const sales = state?.data?.sales || [];
+      const orders = state?.data?.orders || [];
+      const shifts = state?.data?.shifts || [];
+      const levels = state?.data?.levels || [];
+      const movements = state?.data?.movements || [];
+      const refunds = state?.data?.refunds || [];
+      const products = state?.data?.products || [];
+
+      // 1. Paid sale missing shift
+      const paidSalesNoShift = sales.filter(s => (s.payment_status === 'PAID' || s.status === 'COMPLETED') && !s.shift_id);
+      if (paidSalesNoShift.length > 0) {
+        anomalies.push({
+          severity: 'CRITICAL',
+          entity: `Sales (${paidSalesNoShift.length} phiếu)`,
+          fact: `Phát hiện ${paidSalesNoShift.length} phiếu bán hoàn tất không gán ca bán hàng (shift_id rỗng).`,
+          expected: 'Mọi phiếu bán hàng hoàn tất phải được gán vào một ca bán hàng cụ thể.',
+          actual: `Các phiếu [${paidSalesNoShift.slice(0, 3).map(s => s.id).join(', ')}] không có shift_id.`,
+          safeNextStep: 'Mở sổ quỹ & ca để đối soát lại thời gian phát sinh của các phiếu bán này.',
+        });
+      }
+
+      // 2. Completed order missing inventory movement
+      const completedOrders = orders.filter(o => o.status === 'COMPLETED');
+      const completedNoMovements = completedOrders.filter(o => {
+        const hasMv = movements.some(m => (m.reference === o.id || m.groupId === o.id || m.order_id === o.id) && (m.type === 'out' || m.type === 'sale'));
+        return !hasMv;
+      });
+      if (completedNoMovements.length > 0) {
+        anomalies.push({
+          severity: 'HIGH',
+          entity: `Orders (${completedNoMovements.length} đơn)`,
+          fact: `${completedNoMovements.length} đơn hàng đã hoàn tất nhưng chưa ghi nhận phiếu xuất kho tương ứng.`,
+          expected: 'Đơn hàng hoàn tất phải sinh đúng 1 xuất kho bán hàng cho các sản phẩm quản lý tồn.',
+          actual: `Đơn [${completedNoMovements.slice(0, 3).map(o => o.code || o.id).join(', ')}] thiếu movement xuất kho.`,
+          safeNextStep: 'Kiểm tra lịch sử kho của đơn hàng hoặc lập phiếu xuất kho bổ sung thủ công nếu cần.',
+        });
+      }
+
+      // 3. Duplicate barcodes
+      const barcodeMap = new Map();
+      const duplicateBarcodes = [];
+      for (const p of products) {
+        if (p.barcode && p.active !== false) {
+          const b = String(p.barcode).trim();
+          if (barcodeMap.has(b)) {
+            duplicateBarcodes.push({ barcode: b, p1: barcodeMap.get(b), p2: p.name });
+          } else {
+            barcodeMap.set(b, p.name);
+          }
+        }
+      }
+      if (duplicateBarcodes.length > 0) {
+        anomalies.push({
+          severity: 'HIGH',
+          entity: 'Products (Mã vạch)',
+          fact: `Có ${duplicateBarcodes.length} mã vạch trùng lặp giữa các sản phẩm khác nhau.`,
+          expected: 'Mỗi mã vạch barcode phải là duy nhất trên toàn hệ thống.',
+          actual: `Mã trùng: ${duplicateBarcodes.slice(0, 2).map(d => `"${d.barcode}" (${d.p1} & ${d.p2})`).join(', ')}.`,
+          safeNextStep: 'Vào danh mục Hàng hóa chỉnh sửa lại mã vạch để tránh quét nhầm khi bán hàng.',
+        });
+      }
+
+      // 4. Negative stock
+      const negativeLevels = levels.filter(l => Number(l.on_hand ?? l.onHand ?? 0) < 0 || Number(l.available ?? 0) < 0);
+      if (negativeLevels.length > 0) {
+        anomalies.push({
+          severity: 'HIGH',
+          entity: `Stock Levels (${negativeLevels.length} điểm tồn)`,
+          fact: `Có ${negativeLevels.length} mặt hàng ghi nhận tồn kho âm (thực tồn < 0).`,
+          expected: 'Tồn kho không được âm khi chính sách bán hàng không cho phép xuất âm.',
+          actual: `Các mặt hàng [${negativeLevels.slice(0, 3).map(l => l.product_id || l.productId).join(', ')}] có số tồn âm.`,
+          safeNextStep: 'Tạo phiếu Kiểm kho (Stocktake) hoặc Nhập bổ sung để cân bằng tồn kho thực tế.',
+        });
+      }
+
+      // 5. Shift cash mismatch
+      const closedDiffShifts = shifts.filter(s => s.status === 'CLOSED' && s.difference != null && Number(s.difference) !== 0);
+      if (closedDiffShifts.length > 0) {
+        const lastDiff = closedDiffShifts[closedDiffShifts.length - 1];
+        anomalies.push({
+          severity: 'CRITICAL',
+          entity: `Shift (Ca ${lastDiff.id || 'gần nhất'})`,
+          fact: `Phát hiện chênh lệch tiền mặt lúc đóng ca: ${fmt.format(lastDiff.difference)} ₫.`,
+          expected: 'Tiền thực tế kiểm đếm phải bằng Tiền đầu ca + Doanh thu tiền mặt - Hoàn tiền mặt.',
+          actual: `Dự kiến: ${fmt.format(lastDiff.expected_cash || 0)} ₫ | Thực tế: ${fmt.format(lastDiff.counted_cash || 0)} ₫ (Lệch: ${fmt.format(lastDiff.difference)} ₫).`,
+          safeNextStep: 'Xem lại nhật ký thu chi tiền mặt trong ca và giải trình chênh lệch, không tự cân sổ.',
+        });
+      }
+
+      // 6. Missing cost when calculating profit
+      const missingCosts = products.filter(p => p.active !== false && p.type !== 'SERVICE' && (p.cost == null || Number(p.cost) <= 0));
+      if (missingCosts.length > 0) {
+        anomalies.push({
+          severity: 'MEDIUM',
+          entity: `Products (${missingCosts.length} sản phẩm)`,
+          fact: `Có ${missingCosts.length} sản phẩm chưa thiết lập giá vốn (cost = 0 hoặc null).`,
+          expected: 'Tất cả sản phẩm phải có giá vốn để tính toán chính xác lợi nhuận và giá trị tồn kho.',
+          actual: `Các sản phẩm [${missingCosts.slice(0, 3).map(p => p.name).join(', ')}] chưa có giá vốn.`,
+          safeNextStep: 'Bổ sung giá vốn trong màn hình Hàng hóa để số liệu lợi nhuận phản ánh đúng.',
+        });
+      }
+
+      // 7. Refund without shift attribution
+      const refundsWithoutShift = refunds.filter(r => !r.shift_id);
+      if (refundsWithoutShift.length > 0) {
+        anomalies.push({
+          severity: 'HIGH',
+          entity: `Refunds (${refundsWithoutShift.length} giao dịch)`,
+          fact: `${refundsWithoutShift.length} giao dịch hoàn tiền không được gắn vào ca mở.`,
+          expected: 'Mọi khoản chi hoàn tiền mặt phải được gắn vào ca đang hoạt động để trừ tiền két.',
+          actual: `Khoản hoàn tiền [${refundsWithoutShift.slice(0, 3).map(r => r.id).join(', ')}] thiếu shift_id.`,
+          safeNextStep: 'Đối soát các giao dịch đổi trả trong mục Sổ quỹ & Ca.',
+        });
+      }
+
+      if (anomalies.length === 0) {
+        return {
+          text: '✅ **TRẠNG THÁI: KHÔNG PHÁT HIỆN BẤT THƯỜNG VẬN HÀNH.**\nHiện tại các chỉ số tiền mặt, ca bán hàng, tồn kho và chứng từ đều khớp chuẩn với dữ liệu thực tế.',
+          anomalies: [],
+          status: 'SUCCESS',
+          intent: 'OPERATIONAL_ANOMALY_SCAN',
+          tier: 0,
+          provider: 'DETERMINISTIC',
+          autoRepairCount: 0,
+          dbWriteCount: 0,
+        };
+      }
+
+      const formatted = anomalies.map(a => {
+        return `• **SEVERITY**: ${a.severity}\n  **ENTITY / RECORD**: ${a.entity}\n  **FACT**: ${a.fact}\n  **EXPECTED**: ${a.expected}\n  **ACTUAL**: ${a.actual}\n  **SAFE_NEXT_STEP**: ${a.safeNextStep}`;
+      }).join('\n\n');
+
+      const text = `⚠️ **KẾT QUẢ RÀ SOÁT BẤT THƯỜNG VẬN HÀNH (${anomalies.length} điểm cần lưu ý)**:\n\n${formatted}\n\n────────────────\n*(Hệ thống không tự ý sửa đổi dữ liệu (AUTO_REPAIR_COUNT=0) — vui lòng kiểm tra theo các bước xử lý an toàn nêu trên)*`;
+
+      return {
+        text,
+        anomalies,
+        status: 'WARNING',
+        intent: 'OPERATIONAL_ANOMALY_SCAN',
+        tier: 0,
+        provider: 'DETERMINISTIC',
+        autoRepairCount: 0,
+        dbWriteCount: 0,
+      };
+    },
+  },
+
+  // 40. explain-blocking-condition (Phase 2A Capability D)
+  'explain-blocking-condition': {
+    id: 'explain-blocking-condition',
+    name: 'Giải thích điều kiện chặn thanh toán & POS',
+    description: 'Kiểm tra trạng thái ca, giỏ hàng, tồn kho và giải thích lý do không thanh toán được tại POS',
+    async execute(params, context, state) {
+      const openShift = (state?.data?.shifts || []).find(s => s.status === 'OPEN');
+      const cart = context?.cart || state?.cart || [];
+      const reasons = [];
+
+      // 1. Shift check
+      if (!openShift) {
+        reasons.push({
+          type: 'SHIFT_NOT_OPEN',
+          title: 'Chưa mở ca bán hàng',
+          explanation: 'Hệ thống yêu cầu phải có một ca bán hàng đang mở để ghi nhận dòng tiền két và nhân viên phụ trách.',
+          solution: 'Vui lòng bấm nút "Mở ca" hoặc vào mục Sổ quỹ & Ca để khai báo số tiền đầu ca trước khi lập đơn bán.',
+        });
+      }
+
+      // 2. Cart check
+      if (cart.length === 0) {
+        reasons.push({
+          type: 'CART_EMPTY',
+          title: 'Giỏ hàng đang trống',
+          explanation: 'Chưa có sản phẩm hoặc dịch vụ nào được thêm vào đơn bán.',
+          solution: 'Vui lòng chọn hoặc quét mã ít nhất một mặt hàng vào giỏ hàng.',
+        });
+      }
+
+      // 3. Stock availability check for cart items
+      for (const item of cart) {
+        const prod = (state?.data?.products || []).find(p => p.id === item.productId || p.id === item.id);
+        if (prod && prod.trackInventory !== false && prod.type !== 'SERVICE') {
+          const tot = (state?.data?.levels || []).filter(l => l.product_id === prod.id || l.productId === prod.id)
+            .reduce((sum, l) => sum + (Number(l.on_hand ?? l.onHand ?? 0) - Number(l.reserved || 0)), 0);
+          if (tot < (item.qty || 1)) {
+            reasons.push({
+              type: 'INSUFFICIENT_STOCK',
+              title: `Mặt hàng "${prod.name}" không đủ tồn khả dụng`,
+              explanation: `Số lượng yêu cầu (${item.qty || 1}) vượt quá tồn khả dụng (${tot}) và chính sách hệ thống không cho phép xuất âm.`,
+              solution: 'Giảm số lượng trong giỏ hoặc thực hiện phiếu nhập kho trước khi bán.',
+            });
+          }
+        }
+      }
+
+      if (reasons.length === 0) {
+        return {
+          text: `✅ **Hệ thống POS hiện đang ở trạng thái sẵn sàng thanh toán!**\n- Ca bán hàng: **ĐANG MỞ** (bởi ${openShift?.employee || 'nhân viên'})\n- Giỏ hàng: **${cart.length} mặt hàng** hợp lệ.\n\n*Nếu bạn vẫn gặp trở ngại khi bấm nút thanh toán, vui lòng kiểm tra kết nối thiết bị hoặc phương thức thanh toán đã chọn.*`,
+          reasons: [],
+          status: 'READY',
+          intent: 'EXPLAIN_BLOCKING_CONDITION',
+          tier: 0,
+          provider: 'DETERMINISTIC',
+        };
+      }
+
+      const formatted = reasons.map((r, i) => {
+        return `${i + 1}. ⚠️ **${r.title}**\n   - **Nguyên nhân:** ${r.explanation}\n   - **Hướng xử lý:** ${r.solution}`;
+      }).join('\n\n');
+
+      const text = `🔒 **GIẢI THÍCH LÝ DO CHƯA THỂ THANH TOÁN (${reasons.length} điểm vướng)**:\n\n${formatted}`;
+
+      return {
+        text,
+        reasons,
+        status: 'BLOCKED',
+        intent: 'EXPLAIN_BLOCKING_CONDITION',
+        tier: 0,
+        provider: 'DETERMINISTIC',
+      };
+    },
+  },
+
+  // 41. shift-cash-explanation (Phase 2A Capability E)
+  'shift-cash-explanation': {
+    id: 'shift-cash-explanation',
+    name: 'Giải thích dòng tiền & ca bán hàng',
+    description: 'Phân tích chi tiết doanh thu, tiền mặt két, chuyển khoản và lý do chênh lệch doanh thu vs tiền mặt',
+    async execute(params, context, state) {
+      const fmt = new Intl.NumberFormat('vi-VN');
+      const shifts = state?.data?.shifts || [];
+      const openShift = shifts.find(s => s.status === 'OPEN') || shifts[shifts.length - 1];
+
+      const period = params.period || 'today';
+      const revData = executeTool('get_sales_summary', { period }, state, context);
+
+      const grossSales = revData.totalRevenue || 0;
+      const cash = revData.paymentMethods?.cash || 0;
+      const transfer = revData.paymentMethods?.transfer || 0;
+      const qr = revData.paymentMethods?.qr || 0;
+      const count = revData.completedCount || 0;
+
+      const refunds = state?.data?.refunds || [];
+      const totalRefunds = refunds.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+      const netRevenue = Math.max(0, grossSales - totalRefunds);
+
+      const openingCash = openShift ? Number(openShift.opening_cash || 0) : 0;
+      const expectedCash = openShift ? Number(openShift.expected_cash ?? (openingCash + cash - totalRefunds)) : (openingCash + cash - totalRefunds);
+
+      let text = `💡 **PHÂN BIỆT DOANH THU & TIỀN MẶT TRONG KÉT (${revData.periodLabel || 'Hôm nay'}):**\n\n` +
+        `**1. Doanh thu bán hàng (Gross / Net Revenue):**\n` +
+        `• Tổng doanh số bán ra: **${fmt.format(grossSales)} ₫** (${count} giao dịch)\n` +
+        `• Hoàn trả hàng khách: **-${fmt.format(totalRefunds)} ₫**\n` +
+        `• Doanh thu thực nhận (Net): **${fmt.format(netRevenue)} ₫**\n\n` +
+        `**2. Phân bổ theo phương thức thanh toán:**\n` +
+        `• 💵 Tiền mặt thu ngân: **${fmt.format(cash)} ₫**\n` +
+        `• 💳 Chuyển khoản ngân hàng: **${fmt.format(transfer)} ₫**\n` +
+        `• 📱 Quét mã QR: **${fmt.format(qr)} ₫**\n\n` +
+        `**3. Dòng tiền két ca bán hàng (${openShift ? (openShift.status === 'OPEN' ? 'Ca đang mở' : 'Ca đã đóng') : 'Chưa mở ca'}):**\n` +
+        `• Tiền mặt đầu ca (mở két): **${fmt.format(openingCash)} ₫**\n` +
+        `• Thu tiền mặt trong ca: **+${fmt.format(cash)} ₫**\n` +
+        `• Hoàn tiền mặt cho khách: **-${fmt.format(totalRefunds)} ₫**\n` +
+        `• 💰 **Tiền mặt dự kiến có trong két:** **${fmt.format(expectedCash)} ₫**\n\n` +
+        `📌 **Vì sao Doanh thu (${fmt.format(grossSales)} ₫) và Tiền mặt két (${fmt.format(expectedCash)} ₫) khác nhau?**\n` +
+        `- Doanh thu tính **toàn bộ các phương thức thanh toán** (cả chuyển khoản, QR không vào két tiền mặt).\n` +
+        `- Tiền mặt két chỉ tính **tiền thực tế trong ngăn kéo**, bắt đầu từ Tiền mở ca (${fmt.format(openingCash)} ₫) cộng thu tiền mặt và trừ các khoản chi hoàn lại.`;
+
+      if (openShift && openShift.status === 'CLOSED' && openShift.difference != null && Number(openShift.difference) !== 0) {
+        text += `\n\n⚠️ *Lưu ý: Ca đóng gần nhất ghi nhận chênh lệch kiểm đếm là ${fmt.format(openShift.difference)} ₫ so với lý thuyết.*`;
+      }
+
+      return {
+        text,
+        grossSales,
+        netRevenue,
+        cash,
+        transfer,
+        qr,
+        openingCash,
+        expectedCash,
+        totalRefunds,
+        status: 'SUCCESS',
+        intent: 'SHIFT_CASH_EXPLANATION',
+        tier: 0,
+        provider: 'DETERMINISTIC',
+        dbWriteCount: 0,
+      };
+    },
+  },
 };
 
 /**

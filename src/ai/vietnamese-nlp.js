@@ -24,6 +24,12 @@ export function removeVietnameseDiacritics(str) {
  * Common Telex typos that occur when typing fast or with misconfigured IME
  */
 const TELEX_TYPOS = [
+  // Frequent mobile / no-diacritic misspellings observed in natural shop queries.
+  // Keep these token-bounded so product names, SKUs and phone numbers are untouched.
+  [/\bktra\b/gi, 'kiem tra'],
+  [/\bdoang\s+thu\b/gi, 'doanh thu'],
+  [/\bhum\s+nai\b/gi, 'hom nay'],
+
   // Trailing 'w' typos: hieuw -> hieu, muonw -> muon
   [/\bhieuw\b/gi, 'hieu'],
   [/\bmuonw\b/gi, 'muon'],
@@ -574,6 +580,10 @@ export function parseNaturalReceiptCommand(text) {
 export function isPaymentBreakdownQuery(text) {
   const c = canonicalizeVietnamese(text);
   if (!c) return false;
+
+  if (c.includes('doanh thu') && (c.includes('khac nhau') || c.includes('vi sao') || c.includes('tai sao') || c.includes('lech'))) {
+    return false;
+  }
 
   return (
     c.includes('tien mat') ||
@@ -1760,6 +1770,5 @@ export function parseSystemOrDataQuery(text) {
   }
   return null;
 }
-
 
 

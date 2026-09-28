@@ -742,7 +742,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
   // M1. High Revenue Low Margin (Guarded by VIEW_COST, must run BEFORE top_selling)
   if (
     (p.includes('loi thap') || p.includes('loi it') || p.includes('bien thap') || p.includes('lai it') || p.includes('lai thap')) &&
-    (p.includes('ban chay') || p.includes('ban nhieu') || p.includes('doanh thu cao') || p.includes('doanh so cao'))
+    (p.includes('ban chay') || p.includes('ban nhieu') || p.includes('doanh thu cao') || p.includes('doanh so cao') || p.includes('ban duoc') || p.includes('ban tot'))
   ) {
     const actor = context?.actor_role ? { id: context.actor_id, role: context.actor_role } : getCurrentActor();
     if (!hasCapability(actor, PERMISSIONS.VIEW_COST)) {
@@ -1015,9 +1015,131 @@ export function dictionaryRoute(rawPrompt, context, state) {
     const period = extractRelativePeriod(p) || extractRelativePeriod(pClean) || extractRelativePeriod(rawPrompt) || ((p.includes('thang') || p.includes('thang nay')) ? 'month' : 'today');
     return { type: 'ACTION', action_id: 'sales_summary', action: ACTION_REGISTRY['sales_summary'], params: { period }, confidence: 95, source: 'domain_skill' };
   }
-  if (p.includes('can chu y') || p.includes('tieu diem') || p.includes('cua hang hom nay the nao') || p.includes('cua hang the nao')) {
-    return { type: 'ACTION', action_id: 'daily_attention', action: ACTION_REGISTRY['daily_attention'], confidence: 95, source: 'domain_skill' };
+  // Phase 2A Capability A: Daily Ops Brief
+  if (
+    p.includes('can xu ly') || p.includes('can chu y') || p.includes('tieu diem') ||
+    p.includes('viec can lam') || p.includes('co viec gi can') ||
+    p.includes('tong hop tinh hinh hom nay') || p.includes('sang nay toi can xem') ||
+    p.includes('cua hang hom nay the nao') || p.includes('cua hang the nao') ||
+    p.includes('hom nay co van de gi') || p === 'hom nay can chu y' || p === 'tieu diem hom nay' ||
+    (p.includes('hom nay') && p.includes('can lam')) || (p.includes('hom nay') && p.includes('can xem'))
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'daily_ops_brief',
+      action: {
+        id: 'daily-ops-brief',
+        name: 'Tổng hợp việc cần xử lý hôm nay',
+        async execute(params, state, context) {
+          const { executeSkill } = await import('./skills.js');
+          return await executeSkill('daily-ops-brief', {}, context, state);
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill'
+    };
   }
+
+  // Phase 2A Capability B: Operational Anomaly Scan
+  if (
+    p.includes('bat thuong') || p.includes('co lech gi khong') || p.includes('ra soat cua hang') ||
+    (p.includes('kiem tra') && p.includes('ton va tien')) || (p.includes('loi van hanh') && p.includes('hom nay')) ||
+    p === 'co gi bat thuong'
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'operational_anomaly_scan',
+      action: {
+        id: 'operational-anomaly-scan',
+        name: 'Rà soát bất thường vận hành',
+        async execute(params, state, context) {
+          const { executeSkill } = await import('./skills.js');
+          return await executeSkill('operational-anomaly-scan', {}, context, state);
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill'
+    };
+  }
+
+  // Phase 2A Capability D: Contextual POS Blocking Condition Explanation
+  if (
+    (p.includes('tai sao') || p.includes('vi sao') || p.includes('sao') || p.includes('ly do')) &&
+    (p.includes('khong thanh toan duoc') || p.includes('khong checkout duoc') || p.includes('chua thanh toan duoc') || p.includes('khong cho thanh toan') || p.includes('bi chan thanh toan'))
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'explain_blocking_condition',
+      action: {
+        id: 'explain-blocking-condition',
+        name: 'Giải thích điều kiện chặn thanh toán',
+        async execute(params, state, context) {
+          const { executeSkill } = await import('./skills.js');
+          return await executeSkill('explain-blocking-condition', {}, context, state);
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill'
+    };
+  }
+
+  // Phase 2A Capability D: POS Check Shift Status ("ca mở chưa", "ca bán hàng mở chưa", "ca đang mở?")
+  if (
+    p === 'ca mo chua' || p === 'ca ban hang mo chua' || p === 'ca dang mo' || p === 'ca dang mo?' ||
+    p.includes('ca da mo chua') || p.includes('ca ban hang da mo chua')
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'check_shift_status',
+      action: {
+        id: 'check-shift-status',
+        name: 'Kiểm tra trạng thái ca',
+        async execute(params, state, context) {
+          const openShift = (state?.data?.shifts || []).find(s => s.status === 'OPEN');
+          if (openShift) {
+            const fmt = new Intl.NumberFormat('vi-VN');
+            return {
+              text: `✅ Ca bán hàng đang **MỞ** (Mở lúc: ${new Date(openShift.opened_at || openShift.created_at || Date.now()).toLocaleTimeString('vi-VN')}, Tiền đầu ca: **${fmt.format(openShift.opening_cash || 0)} ₫**${openShift.employee ? `, Nhân viên: ${openShift.employee}` : ''}). Bạn có thể thanh toán bán hàng bình thường.`,
+              isOpen: true,
+              shift: openShift,
+              tier: 0,
+              provider: 'DETERMINISTIC',
+            };
+          }
+          return {
+            text: `🔒 Hiện tại **CHƯA CÓ CA MỞ**. Bạn cần mở ca bán hàng trước khi thực hiện thu tiền đơn bán.`,
+            isOpen: false,
+            tier: 0,
+            provider: 'DETERMINISTIC',
+          };
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill'
+    };
+  }
+
+  // Phase 2A Capability E: Shift / Cash Explanation ("vì sao doanh thu và tiền mặt khác nhau", "giải thích ca này", "sao tiền ca lệch")
+  if (
+    (p.includes('doanh thu') && p.includes('tien mat') && (p.includes('khac nhau') || p.includes('lech nhau') || p.includes('vi sao') || p.includes('tai sao'))) ||
+    p.includes('giai thich ca') || p.includes('sao tien ca lech') || p.includes('tai sao tien ca lech')
+  ) {
+    return {
+      type: 'ACTION',
+      action_id: 'shift_cash_explanation',
+      action: {
+        id: 'shift-cash-explanation',
+        name: 'Giải thích dòng tiền & ca bán hàng',
+        async execute(params, state, context) {
+          const { executeSkill } = await import('./skills.js');
+          return await executeSkill('shift-cash-explanation', {}, context, state);
+        }
+      },
+      confidence: 99,
+      source: 'domain_skill'
+    };
+  }
+
   if (p.includes('kiem tra du lieu') || p.includes('suc khoe cua hang') || p.includes('kiem tra he thong') || p.includes('loi du lieu')) {
     return { type: 'ACTION', action_id: 'shop_health_check', action: ACTION_REGISTRY['shop_health_check'], confidence: 95, source: 'domain_skill' };
   }
@@ -1043,7 +1165,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
   }
 
   // 1c.0 Latest Transaction / Invoice Fast-Path (Tier 0)
-  if (isLatestTransactionQuery(p, prompt)) {
+  if (isLatestTransactionQuery(p, rawPrompt)) {
     const shouldPrint = p.includes('in') || p.includes('print');
     return {
       type: 'ACTION',
@@ -1056,7 +1178,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
           return await executeSkill('latest-transaction', { shouldPrint, ...params }, ctx, st);
         }
       },
-      params: { shouldPrint, query: prompt },
+      params: { shouldPrint, query: rawPrompt },
       confidence: 99,
       source: 'domain_skill'
     };
@@ -1265,6 +1387,15 @@ export function dictionaryRoute(rawPrompt, context, state) {
         params: { productId: resolvedProd?.id || activeProductId, warehouseId: targetWh, qty: q?.quantity || 20 },
         confidence: 95,
         source: 'receipt_pattern'
+      };
+    }
+    if (isPronounReference(p) || p.includes('cai nay') || p.includes('mon nay') || p.includes('san pham nay')) {
+      return {
+        text: 'Bạn muốn tạo đề xuất nhập kho cho sản phẩm nào? Vui lòng chọn sản phẩm cụ thể trên màn hình hoặc chỉ định tên/mã sản phẩm.',
+        status: 'NEEDS_CLARIFICATION',
+        isAmbiguous: true,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
       };
     }
     return null; // fall through to cloud/mock provider
@@ -2828,7 +2959,22 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
-  // Case 2: Contextual Stock Increase ("thêm 8 chiếc", "nhập thêm 5 cái")
+  // Case 2: Contextual Stock Increase ("thêm 8 chiếc", "nhập thêm 5 cái", "nhập thêm cái này")
+  const asksPronounReceipt = (
+    (pNorm.startsWith('nhap') || pNorm.includes('nhap them')) &&
+    (isPronounReference(pNorm) || pNorm.includes('cai nay') || pNorm.includes('mon nay'))
+  );
+  if (asksPronounReceipt && !context?.current_product_id && !getLastResolvedProduct()) {
+    return {
+      text: 'Bạn muốn tạo đề xuất nhập kho cho sản phẩm nào? Vui lòng chọn sản phẩm trên màn hình hoặc chỉ định tên/mã sản phẩm.',
+      status: 'NEEDS_CLARIFICATION',
+      isAmbiguous: true,
+      candidates: (state?.data?.products || []).slice(0, 5),
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
   const stockIncreaseMatch = parseContextualStockIncrease(pNorm) || parseContextualStockIncrease(rawPrompt);
   if (stockIncreaseMatch) {
     const targetProd = resolveTargetProduct(stockIncreaseMatch.productQuery);
@@ -2851,6 +2997,14 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         compactTrace: 'Rule exact'
       };
     }
+    return {
+      text: 'Bạn muốn tạo đề xuất nhập kho cho sản phẩm nào? Vui lòng chọn sản phẩm trên màn hình hoặc chỉ định tên/mã sản phẩm.',
+      status: 'NEEDS_CLARIFICATION',
+      isAmbiguous: true,
+      candidates: (state?.data?.products || []).slice(0, 5),
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
   }
 
   // Case 3: Contextual Stock Decrease / Zero ("hết hàng rồi", "báo hết hàng", "cho về 0", "giảm 2 chiếc")
@@ -4973,6 +5127,320 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     }
   }
 
+  // Read-only intent precedence.
+  // A read request must win over write-looking words that only describe the subject
+  // ("phiếu chuyển kho đang chờ") or a transition ("chuyển sang xem tồn").
+  // This guard deliberately executes only read skills and therefore cannot mutate data.
+  const readClauseNorm = dictNorm(contrastiveActiveClause || effectivePrompt);
+  const asksPendingTransfer = (
+    (readClauseNorm.includes('phieu chuyen') || readClauseNorm.includes('chuyen kho')) &&
+    (readClauseNorm.includes('dang cho') || readClauseNorm.includes('cho tiep nhan') ||
+      readClauseNorm.includes('chua tiep nhan') || readClauseNorm.includes('chua nhan')) &&
+    (readClauseNorm.includes('co ') || readClauseNorm.includes('nao') ||
+      readClauseNorm.includes('khong') || readClauseNorm.includes('xem'))
+  );
+  if (asksPendingTransfer) {
+    const res = await executeSkill('daily-attention', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'daily-attention', tier: 0, reason: 'pending-transfer-read' });
+    return { ...res, intent: 'DAILY_ATTENTION', skillId: 'daily-attention', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksDailyOps = (
+    readClauseNorm.includes('can xu ly') ||
+    readClauseNorm.includes('viec can lam') ||
+    readClauseNorm.includes('co viec gi can') ||
+    readClauseNorm.includes('tong hop tinh hinh hom nay') ||
+    readClauseNorm.includes('sang nay toi can xem') ||
+    readClauseNorm.includes('hom nay co van de gi') ||
+    (readClauseNorm.includes('hom nay') && readClauseNorm.includes('can chu y')) ||
+    readClauseNorm === 'hom nay can chu y' ||
+    readClauseNorm === 'tieu diem hom nay'
+  );
+  if (asksDailyOps) {
+    const res = await executeSkill('daily-ops-brief', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'daily-ops-brief', tier: 0, reason: 'daily-ops-brief-read' });
+    return { ...res, intent: 'DAILY_OPS_BRIEF', skillId: 'daily-ops-brief', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksAnomalyScan = (
+    readClauseNorm.includes('bat thuong') ||
+    readClauseNorm.includes('co lech gi khong') ||
+    readClauseNorm.includes('ra soat cua hang') ||
+    (readClauseNorm.includes('kiem tra') && readClauseNorm.includes('ton va tien')) ||
+    (readClauseNorm.includes('loi van hanh') && readClauseNorm.includes('hom nay')) ||
+    readClauseNorm === 'co gi bat thuong'
+  );
+  if (asksAnomalyScan) {
+    const res = await executeSkill('operational-anomaly-scan', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'operational-anomaly-scan', tier: 0, reason: 'anomaly-scan-read' });
+    return { ...res, intent: 'OPERATIONAL_ANOMALY_SCAN', skillId: 'operational-anomaly-scan', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksBlockingExplanation = (
+    (readClauseNorm.includes('tai sao') || readClauseNorm.includes('vi sao') || readClauseNorm.includes('sao') || readClauseNorm.includes('ly do')) &&
+    (readClauseNorm.includes('khong thanh toan') || readClauseNorm.includes('khong checkout') || readClauseNorm.includes('chua thanh toan duoc') || readClauseNorm.includes('bi chan'))
+  );
+  if (asksBlockingExplanation) {
+    const res = await executeSkill('explain-blocking-condition', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'explain-blocking-condition', tier: 0, reason: 'pos-blocking-explanation' });
+    return { ...res, intent: 'EXPLAIN_BLOCKING_CONDITION', skillId: 'explain-blocking-condition', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksShiftStatus = (
+    readClauseNorm === 'ca mo chua' ||
+    readClauseNorm === 'ca ban hang mo chua' ||
+    readClauseNorm === 'ca dang mo' ||
+    readClauseNorm === 'ca dang mo?' ||
+    readClauseNorm.includes('ca da mo chua')
+  );
+  if (asksShiftStatus) {
+    const openShift = (state?.data?.shifts || []).find(s => s.status === 'OPEN');
+    if (openShift) {
+      const fmt = new Intl.NumberFormat('vi-VN');
+      return {
+        text: `✅ Ca bán hàng đang **MỞ** (Mở lúc: ${new Date(openShift.opened_at || openShift.created_at || Date.now()).toLocaleTimeString('vi-VN')}, Tiền đầu ca: **${fmt.format(openShift.opening_cash || 0)} ₫**${openShift.employee ? `, Nhân viên: ${openShift.employee}` : ''}). Bạn có thể thanh toán bán hàng bình thường.`,
+        isOpen: true,
+        shift: openShift,
+        intent: 'CHECK_SHIFT_STATUS',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    return {
+      text: `🔒 Hiện tại **CHƯA CÓ CA MỞ**. Bạn cần mở ca bán hàng trước khi thực hiện thu tiền đơn bán.`,
+      isOpen: false,
+      intent: 'CHECK_SHIFT_STATUS',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  const asksShiftCashExplanation = (
+    (readClauseNorm.includes('doanh thu') && readClauseNorm.includes('tien mat') && (readClauseNorm.includes('khac nhau') || readClauseNorm.includes('lech nhau') || readClauseNorm.includes('vi sao') || readClauseNorm.includes('tai sao'))) ||
+    readClauseNorm.includes('giai thich ca') ||
+    readClauseNorm.includes('sao tien ca lech') ||
+    readClauseNorm.includes('tai sao tien ca lech')
+  );
+  if (asksShiftCashExplanation) {
+    const res = await executeSkill('shift-cash-explanation', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'shift-cash-explanation', tier: 0, reason: 'shift-cash-explanation' });
+    return { ...res, intent: 'SHIFT_CASH_EXPLANATION', skillId: 'shift-cash-explanation', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksHighRevLowMargin = (
+    (readClauseNorm.includes('loi thap') || readClauseNorm.includes('loi it') || readClauseNorm.includes('bien thap') || readClauseNorm.includes('lai it') || readClauseNorm.includes('lai thap')) &&
+    (readClauseNorm.includes('ban chay') || readClauseNorm.includes('ban nhieu') || readClauseNorm.includes('doanh thu cao') || readClauseNorm.includes('doanh so cao') || readClauseNorm.includes('ban duoc') || readClauseNorm.includes('ban tot'))
+  );
+  if (asksHighRevLowMargin) {
+    const actor = context?.actor_role ? { id: context.actor_id, role: context.actor_role } : getCurrentActor();
+    if (!hasCapability(actor, PERMISSIONS.VIEW_COST)) {
+      return {
+        text: `⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò **${actor.role}** không được cấp quyền xem giá vốn và phân tích biên lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).`,
+        isBlocked: true,
+        permissionDenied: true,
+        status: 'BLOCKED',
+        intent: 'HIGH_REVENUE_LOW_MARGIN',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    const res = await executeSkill('high-revenue-low-margin', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'high-revenue-low-margin', tier: 0, reason: 'high-rev-low-margin' });
+    return { ...res, intent: 'HIGH_REVENUE_LOW_MARGIN', skillId: 'high-revenue-low-margin', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const isCartDraftQuery = (
+    readClauseNorm.includes('vao gio') ||
+    (context.current_route === 'sales' && (readClauseNorm.startsWith('them ') || readClauseNorm.includes('cho vao')))
+  );
+  if (isCartDraftQuery) {
+    const qMatch = readClauseNorm.match(/\b(\d+)\b/);
+    const qty = qMatch ? parseInt(qMatch[1], 10) : 1;
+    const targetProdId = context.current_product_id || (isPronounReference(readClauseNorm) ? getLastResolvedProduct()?.id : null);
+    if (targetProdId) {
+      const prodObj = (state.data?.products || []).find(p => p.id === targetProdId);
+      const res = await executeSkill('add-cart-draft', { items: [{ productId: targetProdId, qty }] }, context, state);
+      return { ...res, text: `Đã đưa ${qty} ${prodObj ? prodObj.name : 'sản phẩm'} vào giỏ hàng POS.`, intent: 'ADD_CART_DRAFT', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+    }
+    return {
+      text: `Bạn muốn thêm ${qty} sản phẩm nào vào giỏ? Vui lòng chọn sản phẩm trên màn hình bán hàng hoặc nhập tên sản phẩm.`,
+      isAmbiguous: true,
+      status: 'NEEDS_CLARIFICATION',
+      candidates: (state.data?.products || []).slice(0, 5),
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  const asksSalesSummary = (
+    (readClauseNorm.includes('doanh thu') || readClauseNorm.includes('doanh so')) &&
+    !readClauseNorm.includes('doi gia') && !readClauseNorm.includes('sua gia')
+  );
+  if (asksSalesSummary) {
+    const period = extractRelativePeriod(readClauseNorm) || extractRelativePeriod(effectivePrompt) || 'today';
+    const res = await executeSkill('sales-summary', { period }, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'sales-summary', tier: 0, reason: 'normalized-sales-read' });
+    return { ...res, intent: 'SALES_SUMMARY', skillId: 'sales-summary', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksStockRead = (
+    readClauseNorm.includes('kiem tra ton') || readClauseNorm.includes('kiem ton') ||
+    readClauseNorm.includes('xem ton') || readClauseNorm.includes('biet ton') ||
+    readClauseNorm.includes('tra cuu gia') || readClauseNorm.includes('chi tra cuu gia') ||
+    (readClauseNorm.includes('ton ') && (readClauseNorm.includes('muon biet') || readClauseNorm.includes('toi muon')))
+  );
+  if (asksStockRead) {
+    const stockQuery = (contrastiveActiveClause || effectivePrompt)
+      .replace(/chuyển\s+sang\s+xem\s+tồn/gi, '')
+      .replace(/(?:kiểm|kiem)\s*(?:tra)?\s*tồn/gi, '')
+      .replace(/(?:chỉ|chi)?\s*tra\s*cứu\s*giá/gi, '')
+      .replace(/(?:tôi|toi)\s*muốn\s*biết\s*tồn/gi, '')
+      .replace(/(?:chứ|chu)\s*không\s*tạo\s*đơn\s*bán/gi, '')
+      .replace(/[?.,!]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const res = await executeSkill('check-stock', { query: stockQuery }, context, state);
+    if (res.product) setLastResolvedProduct(res.product);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'check-stock', tier: 0, reason: 'read-over-write-precedence' });
+    return { ...res, intent: 'QUERY_STOCK', skillId: 'check-stock', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // Section 11 Route Chips Fast-Path (POS / Warehouse / Products / Orders)
+  const isSearchProductChip = (
+    readClauseNorm === 'tim hang' ||
+    readClauseNorm === 'tim san pham' ||
+    readClauseNorm === 'tra cuu hang' ||
+    readClauseNorm === 'tra cuu san pham' ||
+    readClauseNorm === 'tim kiem' ||
+    readClauseNorm === 'tim'
+  );
+  if (isSearchProductChip) {
+    const sampleProds = (state?.data?.products || []).slice(0, 5);
+    return {
+      text: 'Bạn muốn tìm sản phẩm nào? Vui lòng nhập tên, mã sản phẩm hoặc quét mã vạch trên màn hình.',
+      status: 'NEEDS_CLARIFICATION',
+      isAmbiguous: true,
+      intent: 'SEARCH_PRODUCT',
+      skillId: 'search-product',
+      candidates: sampleProds,
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  const isSelectCustomerChip = (
+    readClauseNorm === 'chon khach' ||
+    readClauseNorm === 'chon khach hang' ||
+    readClauseNorm === 'tim khach' ||
+    readClauseNorm === 'tim khach hang'
+  );
+  if (isSelectCustomerChip) {
+    return {
+      text: 'Vui lòng chọn khách hàng từ danh sách hoặc nhập tên, số điện thoại khách hàng:',
+      status: 'NEEDS_CLARIFICATION',
+      intent: 'SELECT_CUSTOMER',
+      isAmbiguous: true,
+      candidates: (state?.data?.customers || []).slice(0, 5),
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  const asksOrderDiagnosis = (
+    readClauseNorm === 'don vuong gi' ||
+    readClauseNorm.includes('vuong gi') ||
+    readClauseNorm.includes('vi sao chua xong') ||
+    readClauseNorm.includes('chua xong') ||
+    readClauseNorm.includes('chan doan don') ||
+    readClauseNorm.includes('trang thai don')
+  );
+  if (asksOrderDiagnosis) {
+    const res = await executeSkill('order-diagnosis', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'order-diagnosis', tier: 0 });
+    return { ...res, intent: 'ORDER_DIAGNOSIS', skillId: 'order-diagnosis', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksMissingStock = (
+    readClauseNorm === 'thieu hang' ||
+    readClauseNorm.includes('thieu hang') ||
+    readClauseNorm.includes('don thieu hang')
+  );
+  if (asksMissingStock) {
+    const res = await executeSkill('find-low-stock', {}, context, state);
+    logAuditEvent('SKILL_EXECUTED', { skillId: 'find-low-stock', tier: 0 });
+    return { ...res, intent: 'LOW_STOCK_ALERT', skillId: 'find-low-stock', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  const asksRecentSales = (
+    readClauseNorm === 'ban gan day' ||
+    readClauseNorm === 'ban gan day?' ||
+    readClauseNorm.includes('ban gan day') ||
+    readClauseNorm.includes('lich su ban')
+  );
+  if (asksRecentSales) {
+    const targetProdId = context.current_product_id || getLastResolvedProduct()?.id;
+    const orders = state?.data?.orders || [];
+    const sales = state?.data?.sales || [];
+    const movements = state?.data?.movements || [];
+    const prodObj = targetProdId ? (state?.data?.products || []).find(p => p.id === targetProdId) : null;
+    
+    if (prodObj) {
+      const prodMovements = movements.filter(m => m.productId === targetProdId && (m.type === 'sale' || m.type === 'out')).slice(-5).reverse();
+      if (prodMovements.length > 0) {
+        const lines = prodMovements.map(m => `• ${new Date(m.createdAt || m.created_at || Date.now()).toLocaleDateString('vi-VN')}: Bán ${Math.abs(m.qty)} cái (${m.reason || 'Đơn bán'})`);
+        return {
+          text: `📊 **Lịch sử bán gần đây của ${prodObj.name}:**\n${lines.join('\n')}`,
+          intent: 'RECENT_SALES',
+          tier: 0,
+          provider: PROVIDER_MODES.DETERMINISTIC,
+        };
+      }
+      return {
+        text: `📊 Sản phẩm **${prodObj.name}** chưa có giao dịch bán phát sinh gần đây trong hệ thống.`,
+        intent: 'RECENT_SALES',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    const recentOrders = (orders.length ? orders : sales).slice(-5).reverse();
+    if (recentOrders.length > 0) {
+      const fmt = new Intl.NumberFormat('vi-VN');
+      const lines = recentOrders.map(o => `• Đơn ${o.code || o.id?.slice(0, 8)}: ${fmt.format(o.final_total || o.total || 0)} ₫ (${new Date(o.created_at || Date.now()).toLocaleDateString('vi-VN')})`);
+      return {
+        text: `📊 **Các đơn bán gần đây:**\n${lines.join('\n')}`,
+        intent: 'RECENT_SALES',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+      };
+    }
+    return {
+      text: 'Chưa có đơn bán hàng nào phát sinh gần đây.',
+      intent: 'RECENT_SALES',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
+  // A request for a price by a broad product kind is not permission to silently
+  // choose the first fuzzy match. Ask the user to select the intended product.
+  if (readClauseNorm.includes('bao gia loai')) {
+    const kind = readClauseNorm.split('bao gia loai').slice(1).join(' ').trim();
+    const candidates = (state.data?.products || []).filter(product => {
+      const haystack = dictNorm(`${product.name || ''} ${product.categoryName || ''} ${product.category || ''}`);
+      return kind && haystack.includes(kind);
+    });
+    return {
+      text: candidates.length > 1
+        ? `Tìm thấy ${candidates.length} sản phẩm thuộc loại này. Vui lòng chọn sản phẩm cần báo giá:`
+        : 'Bạn muốn báo giá sản phẩm cụ thể nào trong loại này?',
+      candidates: candidates.slice(0, 8),
+      isAmbiguous: true,
+      status: 'NEEDS_CLARIFICATION',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+    };
+  }
+
   // Negation Guard: prevent mutation when user explicitly negates
   const isNegatedReceipt = !contrastiveActiveClause && (pNorm.startsWith('dung nhap') || pNorm.startsWith('khong nhap') || pNorm.includes('dung nhap') || pNorm.includes('khong nhap them') || pNorm.includes('khong nhap'));
   const isNegatedTransfer = !contrastiveActiveClause && (pNorm.startsWith('dung chuyen') || pNorm.startsWith('khong chuyen') || pNorm.includes('dung chuyen') || pNorm.includes('khong chuyen'));
@@ -5194,6 +5662,8 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         text: dictResult.message,
         isBlocked: true,
         permissionDenied: true,
+        status: 'BLOCKED',
+        intent: 'PERMISSION_DENIED',
         tier: 0,
         provider: PROVIDER_MODES.DETERMINISTIC,
       };
@@ -5224,6 +5694,16 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         status: 'NEEDS_CLARIFICATION',
         tier: 0,
         provider: PROVIDER_MODES.DETERMINISTIC
+      };
+    }
+    if (dictResult.status === 'NEEDS_CLARIFICATION' || dictResult.isAmbiguous || dictResult.type === 'CLARIFY') {
+      return {
+        text: dictResult.text || dictResult.message,
+        isAmbiguous: true,
+        status: 'NEEDS_CLARIFICATION',
+        candidates: dictResult.candidates || [],
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
       };
     }
   }
@@ -5749,9 +6229,6 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       }
 
       let targetProdId = context.current_product_id || (isPronounReference(dictNorm(rawPrompt)) ? getLastResolvedProduct()?.id : null);
-      if (!targetProdId && state.data?.products?.length && (dictNorm(rawPrompt).includes('nay') || isPronounReference(dictNorm(rawPrompt)))) {
-        targetProdId = state.data.products[0].id;
-      }
       if (targetProdId) {
         const prodObj = (state.data?.products || []).find(p => p.id === targetProdId);
         const res = await executeSkill('add-cart-draft', { items: [{ productId: targetProdId, qty }] }, context, state);
@@ -5760,6 +6237,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
       return {
         text: `Bạn muốn thêm ${qty} sản phẩm nào vào giỏ? Vui lòng chọn sản phẩm trên màn hình bán hàng hoặc nhập tên sản phẩm.`,
         isAmbiguous: true,
+        status: 'NEEDS_CLARIFICATION',
         candidates: state.data?.products?.slice(0, 5) || [],
         tier: 0,
         provider: PROVIDER_MODES.DETERMINISTIC,

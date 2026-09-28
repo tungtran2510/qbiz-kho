@@ -29,31 +29,54 @@ const DEDUPLICATION_WINDOW_MS = 1500;
 
 const ROUTE_CHIPS = {
   dashboard: [
-    'Hôm nay bán bao nhiêu?',
+    'Hôm nay cần chú ý',
+    'Có gì bất thường',
     'Hàng sắp hết',
-    'Hôm nay cần chú ý gì?',
+    'Doanh thu',
   ],
   products: [
-    'Còn bao nhiêu?',
-    'Kho nào còn?',
-    'Hàng sắp hết',
-    'Nhập thêm 20 cái này vào kho chính',
+    'Còn bao nhiêu',
+    'Kho nào còn',
+    'Bán gần đây',
+    'Nhập thêm',
   ],
   sales: [
     'Tìm hàng',
     'Kiểm tồn',
     'Chọn khách',
+    'Ca đang mở?',
+  ],
+  pos: [
+    'Tìm hàng',
+    'Kiểm tồn',
+    'Chọn khách',
+    'Ca đang mở?',
   ],
   orders: [
-    'Đơn này vì sao chưa xong?',
-    'Thanh toán?',
-    'Thiếu hàng?',
+    'Đơn vướng gì',
+    'Thanh toán',
+    'Thiếu hàng',
   ],
   transfers: [
     'Hàng sắp hết',
-    'Nhập kho',
-    'Chuyển kho',
+    'Nhập',
+    'Chuyển',
     'Kiểm kho',
+    'Có gì bất thường',
+  ],
+  warehouse: [
+    'Hàng sắp hết',
+    'Nhập',
+    'Chuyển',
+    'Kiểm kho',
+    'Có gì bất thường',
+  ],
+  inventory: [
+    'Hàng sắp hết',
+    'Nhập',
+    'Chuyển',
+    'Kiểm kho',
+    'Có gì bất thường',
   ],
   customers: [
     'Tìm khách hàng',
@@ -1187,10 +1210,7 @@ function renderChips() {
 
   const route = currentEnvelope.current_route || 'dashboard';
   
-  let chips = getSuggestedActions(route);
-  if (!chips || chips.length === 0) {
-    chips = ROUTE_CHIPS[route] || ROUTE_CHIPS.dashboard;
-  }
+  let chips = ROUTE_CHIPS[route] || ROUTE_CHIPS.dashboard || getSuggestedActions(route);
 
   // If a product is actively bound on products screen or open modal, ensure product chips are prioritized
   if (currentEnvelope.current_product_id && (route === 'products' || appStateRef?.currentProductId)) {
