@@ -23,12 +23,12 @@
   },
   {
     "asset": "src/ai/router.js",
-    "local_len": 361882,
-    "local_hash": "5ca6e584a05ec8a0",
-    "primary_len": 361882,
-    "primary_hash": "5ca6e584a05ec8a0",
-    "backup_len": 361882,
-    "backup_hash": "5ca6e584a05ec8a0",
+    "local_len": 367140,
+    "local_hash": "4c320a2ed5ac6212",
+    "primary_len": 367140,
+    "primary_hash": "4c320a2ed5ac6212",
+    "backup_len": 367140,
+    "backup_hash": "4c320a2ed5ac6212",
     "match_primary_backup": true,
     "match_local_git": true
   },
