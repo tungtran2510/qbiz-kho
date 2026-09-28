@@ -12,7 +12,10 @@ ASSETS = [
     "src/ai/tools.js",
     "src/ai/context.js",
     "src/ai/proposals.js",
-    "src/ai/policy.js"
+    "src/ai/policy.js",
+    "src/ai/merchandising/facts.js",
+    "src/ai/merchandising/explanations.js",
+    "src/ai/merchandising/tools.js"
 ]
 
 HOST_PRIMARY = "https://qbiz-kho.vercel.app"

@@ -97,5 +97,38 @@
     "backup_hash": "682b8b921733feb1",
     "match_primary_backup": true,
     "match_local_git": true
+  },
+  {
+    "asset": "src/ai/merchandising/facts.js",
+    "local_len": 11208,
+    "local_hash": "0f7bec75b4a1ea44",
+    "primary_len": 11208,
+    "primary_hash": "0f7bec75b4a1ea44",
+    "backup_len": 11208,
+    "backup_hash": "0f7bec75b4a1ea44",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/merchandising/explanations.js",
+    "local_len": 13188,
+    "local_hash": "cc8959547841f387",
+    "primary_len": 13188,
+    "primary_hash": "cc8959547841f387",
+    "backup_len": 13188,
+    "backup_hash": "cc8959547841f387",
+    "match_primary_backup": true,
+    "match_local_git": true
+  },
+  {
+    "asset": "src/ai/merchandising/tools.js",
+    "local_len": 15227,
+    "local_hash": "61fef74fe882ed78",
+    "primary_len": 15227,
+    "primary_hash": "61fef74fe882ed78",
+    "backup_len": 15227,
+    "backup_hash": "61fef74fe882ed78",
+    "match_primary_backup": true,
+    "match_local_git": true
   }
 ]
