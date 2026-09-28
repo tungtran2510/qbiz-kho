@@ -68,8 +68,9 @@ export function formatProductReplenishmentExplanation(item) {
   }
 
   // 3. EVIDENCE
+  const whScopeLabel = inv.warehouseName ? ` (tại ${inv.warehouseName})` : '';
   const evidencePoints = [
-    `Tồn thực tế: **${fmt(inv.onHand)}** | Khả dụng: **${fmt(inv.available)}** ${prod.unit}`,
+    `Tồn thực tế: **${fmt(inv.onHand)}** | Khả dụng: **${fmt(inv.available)}** ${prod.unit}${whScopeLabel}`,
     `Đã bán 7 ngày qua: **${fmt(sales.unitsSold7d)}** | 30 ngày qua: **${fmt(sales.unitsSold30d)}** ${prod.unit}`,
     `Ngưỡng tồn tối thiểu (lowStock): **${fmt(prod.lowStock)}** | Điểm đặt hàng (ROP): **${fmt(plan.reorderPoint)}**`,
   ];
@@ -103,8 +104,9 @@ export function formatProductReplenishmentExplanation(item) {
     nextAction = `Tiếp tục duy trì bán hàng và kiểm tra lại định mức tồn vào tuần sau.`;
   }
 
+  const whTitleSuffix = inv.warehouseName ? ` (Kho: ${inv.warehouseName})` : '';
   const markdown = [
-    `### 📋 ĐÁNH GIÁ NHẬP HÀNG: **${prod.name}**`,
+    `### 📋 ĐÁNH GIÁ NHẬP HÀNG: **${prod.name}**${whTitleSuffix}`,
     `> **ĐỀ XUẤT (RECOMMENDATION):**  \n> ${recText}`,
     '',
     `**1. VÌ SAO NÊN THỰC HIỆN (WHY):**`,
@@ -141,9 +143,14 @@ export function formatReplenishmentList(rankedItems = []) {
     return `✅ **Hiện tại toàn bộ hàng hóa trong kho đều ở mức an toàn!**\nKhông có sản phẩm nào chạm ngưỡng đứt hàng hoặc cần nhập thêm khẩn cấp.`;
   }
 
+  const targetWhName = rankedItems[0]?.snapshot?.inventory?.warehouseName;
+  const subTitle = targetWhName
+    ? `*Phân tích tự động cho kho **${targetWhName}** dựa trên tốc độ bán, số ngày còn hàng và ngưỡng an toàn:*\n`
+    : `*Phân tích tự động dựa trên tốc độ bán, số ngày còn hàng và ngưỡng an toàn:*\n`;
+
   const lines = [
     `📦 **DANH SÁCH MẶT HÀNG ƯU TIÊN NHẬP THÊM:**`,
-    `*Phân tích tự động dựa trên tốc độ bán, số ngày còn hàng và ngưỡng an toàn:*\n`,
+    subTitle,
   ];
 
   rankedItems.slice(0, 5).forEach((item, idx) => {
@@ -152,10 +159,11 @@ export function formatReplenishmentList(rankedItems = []) {
     const metrics = item.metrics;
     const plan = item.plan;
     const urgencyBadge = plan.urgency === 'CRITICAL' ? '🔴 **HẾT HÀNG**' : plan.urgency === 'HIGH' ? '🟠 **SẮP HẾT**' : '🟡 **CẦN NHẬP**';
+    const whScopeLabel = inv.warehouseName ? ` (tại ${inv.warehouseName})` : '';
 
     lines.push(`**${idx + 1}. ${prod.name}** (${urgencyBadge})`);
     lines.push(`- **Đề xuất nhập:** **${fmt(plan.suggestedQuantity)} ${prod.unit}**`);
-    lines.push(`- **Tồn khả dụng:** ${fmt(inv.available)} ${prod.unit} (đủ bán ~**${metrics.daysOfSupply ?? '< 1'} ngày**)`);
+    lines.push(`- **Tồn khả dụng:** ${fmt(inv.available)} ${prod.unit}${whScopeLabel} (đủ bán ~**${metrics.daysOfSupply ?? '< 1'} ngày**)`);
     lines.push(`- **Tốc độ bán:** ${metrics.primaryVelocity} ${prod.unit}/ngày | Bán 7 ngày qua: ${fmt(item.snapshot.sales.unitsSold7d)}`);
     if (plan.isLeadTimeAssumed) {
       lines.push(`- *Căn cứ: Giả định lead time ${plan.leadTimeDays} ngày (chưa có lead time NCC).*`);

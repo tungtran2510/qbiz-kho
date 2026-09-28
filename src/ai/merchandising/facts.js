@@ -31,6 +31,9 @@ export function buildProductDecisionSnapshot(productId, state, options = {}) {
 
   const now = options.referenceDate ? new Date(options.referenceDate) : new Date();
   const warehouseId = options.warehouseId || null;
+  const targetWarehouse = warehouseId && warehouseId !== 'all'
+    ? (state?.data?.warehouses || []).find(w => w.id === warehouseId)
+    : null;
 
   // 1. Inventory facts from canonical ledger
   const invTotal = warehouseId && warehouseId !== 'all'
@@ -268,6 +271,9 @@ export function buildProductDecisionSnapshot(productId, state, options = {}) {
       image: prod.image || '',
     },
     inventory: {
+      warehouseId: targetWarehouse?.id || (warehouseId === 'all' ? 'all' : null),
+      warehouseName: targetWarehouse?.name || (warehouseId === 'all' ? 'Toàn bộ cửa hàng' : null),
+      scope: targetWarehouse ? 'WAREHOUSE' : (warehouseId === 'all' ? 'SHOP_WIDE' : 'SHOP_WIDE'),
       onHand: invTotal.onHand || 0,
       reserved: invTotal.reserved || 0,
       available: invTotal.available || 0,

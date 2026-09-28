@@ -83,6 +83,8 @@ export const MERCHANDISING_TOOLS = {
         productName: it.snapshot.product.name,
         sku: it.snapshot.product.sku,
         unit: it.snapshot.product.unit,
+        warehouseId: it.snapshot.inventory.warehouseId,
+        warehouseName: it.snapshot.inventory.warehouseName,
         availableStock: it.snapshot.inventory.available,
         dailyVelocity: it.metrics.primaryVelocity,
         daysOfSupply: it.metrics.daysOfSupply,
