@@ -130,6 +130,28 @@ def run_tests():
 
             ctx.close()
 
+        # 8. Dual-Host Asset SHA-256 Parity Check
+        print("\n--- Testing Dual-Host Asset Parity (Vercel vs Netlify) ---")
+        try:
+            import urllib.request, hashlib
+            def fetch_sha(u):
+                req = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    return hashlib.sha256(r.read()).hexdigest()
+
+            sha_a = fetch_sha("https://qbiz-kho.vercel.app/src/app.js")
+            sha_b = fetch_sha("https://qbiz-kho.netlify.app/src/app.js")
+            print(f"Primary (Vercel)  app.js SHA-256: {sha_a}")
+            print(f"Backup  (Netlify) app.js SHA-256: {sha_b}")
+            if sha_a == sha_b:
+                print("PASS: Dual-host asset release parity verified 100% identical!")
+            else:
+                print("FAIL: Release parity mismatch between Primary and Backup hosts!")
+                all_passed = False
+        except Exception as e:
+            print(f"FAIL: Error verifying asset parity: {e}")
+            all_passed = False
+
         browser.close()
 
     print("\n==========================================")

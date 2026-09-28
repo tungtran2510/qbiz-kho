@@ -35,11 +35,44 @@ Write-Host "[OK] Host A (Vercel) da san sang tai: https://qbiz-kho.vercel.app" -
 
 # 3. Trien khai len Host B (Netlify)
 Write-Host "`n[3/5] Trien khai len Host B (BACKUP - Netlify)..." -ForegroundColor Yellow
-$netlifyBin = "C:\Users\Admin\.agent-reach\tools\npm-global\netlify.cmd"
-if (-not (Test-Path $netlifyBin)) { $netlifyBin = "netlify" }
+$netlifyRunJs = "C:\Users\Admin\.agent-reach\tools\npm-global\node_modules\netlify-cli\bin\run.js"
+$deploySuccess = $false
 
-& $netlifyBin deploy --prod --dir=.
-if ($LASTEXITCODE -ne 0) {
+if (Test-Path $netlifyRunJs) {
+    node $netlifyRunJs deploy --prod --dir=.
+    if ($LASTEXITCODE -eq 0) {
+        $deploySuccess = $true
+    } else {
+        Write-Host "Netlify --prod bao loi (co the do credit hoac lock). Dang chay phuong thuc deploy restore fallback..." -ForegroundColor Yellow
+        $draftLog = node $netlifyRunJs deploy --debug 2>&1
+        $deployIdMatch = [regex]::Match($draftLog, "deployId:\s*([a-f0-9]{24})")
+        if ($deployIdMatch.Success) {
+            $depId = $deployIdMatch.Groups[1].Value
+            $cfgPath = "$HOME\AppData\Roaming\netlify\Config\config.json"
+            if (Test-Path $cfgPath) {
+                $cfg = Get-Content $cfgPath -Raw | ConvertFrom-Json
+                $user = ($cfg.users.PSObject.Properties | Select-Object -First 1).Value
+                $token = $user.auth.token
+                $siteId = (Get-Content ".netlify/state.json" -Raw | ConvertFrom-Json).siteId
+                try {
+                    $resp = Invoke-RestMethod -Uri "https://api.netlify.com/api/v1/sites/$siteId/deploys/$depId/restore" -Method Post -Headers @{ Authorization = "Bearer $token" }
+                    if ($resp -and $resp.id) {
+                        $deploySuccess = $true
+                        Write-Host "[OK] Da kich hoat ban deploy $depId len Production Netlify thanh cong!" -ForegroundColor Green
+                    }
+                } catch {
+                    Write-Host "Loi restore Netlify: $_" -ForegroundColor Red
+                }
+            }
+        }
+    }
+} else {
+    $netlifyBin = "netlify"
+    & $netlifyBin deploy --prod --dir=.
+    if ($LASTEXITCODE -eq 0) { $deploySuccess = $true }
+}
+
+if (-not $deploySuccess) {
     Write-Host "LOI: Trien khai Netlify that bai!" -ForegroundColor Red
     exit 1
 }
