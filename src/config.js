@@ -17,7 +17,7 @@ export const CONFIG = {
     supplier_debt: false,
     shift: true,
     advanced_profit: false,
-    e_invoice: false,
+    e_invoice: true,
     split_payment: false,
     cod_reconciliation: false,
   },

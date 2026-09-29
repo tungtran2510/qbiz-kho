@@ -1,0 +1,37 @@
+{
+  "sourceApp": "qbiz-kho",
+  "authority": "INDEXEDDB_QBIZ_KHO_V1",
+  "sourceMode": "VERIFIED_SYNC",
+  "sourceTimestamp": "2026-09-29T10:53:14.382Z",
+  "entityVersion": 117,
+  "stale": false,
+  "items": [
+    {
+      "sku": "DL-F3",
+      "name": "Gối lưng sáng chế F3/C",
+      "onHand": 15,
+      "reserved": 0,
+      "available": 15,
+      "unitPrice": 4500000,
+      "version": 117
+    },
+    {
+      "sku": "DL-135",
+      "name": "Ghế sáng chế 135",
+      "onHand": 13,
+      "reserved": 0,
+      "available": 13,
+      "unitPrice": 53762000,
+      "version": 1
+    },
+    {
+      "sku": "DL-150",
+      "name": "Ghế sáng chế 150",
+      "onHand": 1,
+      "reserved": 0,
+      "available": 1,
+      "unitPrice": 58900000,
+      "version": 1
+    }
+  ]
+}

@@ -2053,6 +2053,13 @@ export async function executeSkill(skillId, params = {}, context = {}, state = {
         provider: 'deterministic'
       };
     }
-    throw err;
+    return {
+      text: `⚠️ **Lỗi thực thi công cụ:** ${err.message}`,
+      status: 'TOOL_ERROR',
+      isError: true,
+      error: err.message,
+      tier: 0,
+      provider: 'deterministic',
+    };
   }
 }

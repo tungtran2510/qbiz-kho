@@ -9,6 +9,7 @@ import { SKILL_REGISTRY, executeSkill } from './skills.js';
 import { executeTool } from './tools.js';
 import { AIProviderAdapter, getProviderConfig, PROVIDER_MODES, isMockDevAllowed, recordAIDiagnostic, APP_SCOPE } from './providers.js';
 import { logAuditEvent } from './audit.js';
+import { reportProviderError, reportUnexpectedFallback } from './error-reporter.js';
 import {
   storeSensitiveData,
   retrieveSensitiveData,
@@ -2003,10 +2004,22 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
       return { ...res, intent: 'PROFIT_INQUIRY', skillId: 'profit-inquiry', tier: 1, provider: config.mode, ...traceMeta };
     }
 
+    const fallbackText = structured.explanation && !structured.explanation.includes('Đã tiếp nhận yêu cầu')
+      ? structured.explanation
+      : `Em chưa hiểu rõ câu này. Bạn cần kiểm tra tồn kho, xem doanh thu hay đơn hàng?`;
+
+    // Real unexpected fallback from cloud provider parsing
+    reportUnexpectedFallback({
+      userPrompt: rawPrompt,
+      fallbackMessage: fallbackText,
+      role: context.actor_role || getCurrentActor()?.role || 'cashier',
+      route: context.current_route || 'dashboard',
+      correlationId: context.correlation_id || context.correlationId,
+      intakeUrl: context.intakeUrl || context.intake_url,
+    }).catch(() => {});
+
     return {
-      text: structured.explanation && !structured.explanation.includes('Đã tiếp nhận yêu cầu')
-        ? structured.explanation
-        : `Em chưa hiểu rõ câu này. Bạn cần kiểm tra tồn kho, xem doanh thu hay đơn hàng?`,
+      text: fallbackText,
       tier: 1,
       provider: config.mode,
       intent: structured.intent || 'GENERAL_QUERY',
@@ -2019,6 +2032,21 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
     // Honest error reporting — NO SILENT MOCK
     const isUnconfigured = err.message.includes('AI_PROVIDER_NOT_CONFIGURED') || (config.mode === PROVIDER_MODES.GEMINI && !config.geminiKey) || (config.mode === PROVIDER_MODES.OPENAI_COMPATIBLE && !config.openaiKey);
     const status = isUnconfigured ? 'AI_PROVIDER_NOT_CONFIGURED' : 'PROVIDER_ERROR';
+
+    // Auto-capture real runtime PROVIDER_ERROR telemetry (skip purely unconfigured idle state)
+    if (status === 'PROVIDER_ERROR') {
+      reportProviderError({
+        userPrompt: rawPrompt,
+        input: rawPrompt,
+        errorMessage: err?.message || String(err),
+        provider: config.mode,
+        route: context.current_route || 'dashboard',
+        role: context.actor_role || getCurrentActor()?.role || 'cashier',
+        correlationId: context.correlation_id || context.correlationId,
+        intakeUrl: context.intakeUrl || context.intake_url,
+      }).catch(() => {});
+    }
+
     const friendlyMsg = isUnconfigured
       ? `⚠️ **Chưa cấu hình Provider AI (${config.mode}):**\n${err.message}\n\nVui lòng cấu hình API Key thực trong mục Cài đặt (⚙). Hệ thống chuyển sang sử dụng công cụ Tier 0 (nội bộ offline).`
       : `⚠️ **Lỗi kết nối Provider (${config.mode}):**\n${err.message}\n\n*Hệ thống chuyển sang chế độ Tier 0 (nội bộ offline). Bạn có thể thử các câu lệnh chuẩn như "Hôm nay bán bao nhiêu?", "Hàng sắp hết", "Còn bao nhiêu?", "Nhập thêm 20 cái này vào kho chính".*`;
@@ -2047,6 +2075,8 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
 
   const inputType = options?.inputType || context?.input_type || 'text';
   const attachments = options?.attachments || context?.attachments || [];
+  context.rawPrompt = context.rawPrompt || rawPrompt;
+  context.user_prompt = context.user_prompt || rawPrompt;
 
   // Prompt injection defense check (Section 9)
   const injection = detectPromptInjection(rawPrompt);
@@ -7914,8 +7944,22 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // ==========================================
   const providerCfg = getProviderConfig();
   const isNoProvider = providerCfg.mode === PROVIDER_MODES.DETERMINISTIC || (providerCfg.mode === PROVIDER_MODES.GEMINI && !providerCfg.geminiKey);
+  const fallbackMsg = `Em chưa hiểu rõ câu này. Bạn cần kiểm tra tồn kho, xem doanh thu hay đơn hàng?`;
+
+  // Auto-capture UNEXPECTED_FALLBACK from real terminal fallback
+  if (rawPrompt && rawPrompt.length > 0) {
+    reportUnexpectedFallback({
+      userPrompt: rawPrompt,
+      fallbackMessage: fallbackMsg,
+      route: context.current_route || 'dashboard',
+      role: context.actor_role || getCurrentActor()?.role || 'cashier',
+      correlationId: context.correlation_id || context.correlationId,
+      intakeUrl: context.intakeUrl || context.intake_url,
+    }).catch(() => {});
+  }
+
   return {
-    text: `Em chưa hiểu rõ câu này. Bạn cần kiểm tra tồn kho, xem doanh thu hay đơn hàng?`,
+    text: fallbackMsg,
     tier: 0,
     status: isNoProvider ? 'AI_PROVIDER_NOT_CONFIGURED' : 'READY',
     provider: providerCfg.mode,

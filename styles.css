@@ -3825,7 +3825,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .voucher-signatures-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 12px;
   text-align: center;
   margin-top: 24px;
   page-break-inside: avoid;
@@ -3833,35 +3833,175 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .voucher-signatures-grid.cols-3 {
   grid-template-columns: repeat(3, 1fr);
 }
+.voucher-signatures-grid .sig-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 155px;
+  text-align: center;
+}
+.voucher-signatures-grid .sig-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.voucher-signatures-grid .sig-date {
+  font-style: italic;
+  font-size: 0.86em;
+  color: #334155;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
 .voucher-signatures-grid .sig-col strong {
   display: block;
   font-size: 0.95em;
   text-transform: uppercase;
+  color: #0f172a;
+  letter-spacing: 0.2px;
 }
 .voucher-signatures-grid .sig-col small {
   display: block;
   font-style: italic;
   color: #64748b;
-  font-size: 0.85em;
+  font-size: 0.83em;
   margin-top: 2px;
+  line-height: 1.3;
 }
 .voucher-signatures-grid .sig-space {
-  height: 65px;
+  flex: 1;
+  min-height: 50px;
+}
+.voucher-signatures-grid .stamp-guide {
+  width: 66px;
+  height: 66px;
+  border: 1.5px dashed #94a3b8;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px auto;
+  color: #64748b;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  text-align: center;
+  line-height: 1.25;
+  padding: 4px;
+  background: rgba(248, 250, 252, 0.7);
+  flex-shrink: 0;
 }
 .voucher-signatures-grid .sig-name {
   font-weight: 700;
   color: #0f172a;
+  font-size: 0.95em;
+  padding-top: 4px;
+  white-space: nowrap;
 }
 
-/* Print styles for warehouse vouchers */
-@media print {
+/* Scroll wrap for wide accounting tables on mobile */
+.voucher-table-scroll-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 12px 0;
+}
+.voucher-table-scroll-wrap .voucher-table {
+  min-width: 640px;
+}
+.voucher-scroll-hint {
+  display: none;
+  font-size: 11.5px;
+  color: #64748b;
+  text-align: center;
+  margin: -6px 0 12px;
+  font-style: italic;
+}
+
+/* Green Excel button */
+.btn-excel {
+  background: #107c41;
+  color: #ffffff !important;
+  border: 1px solid #0e6b37;
+  border-radius: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.btn-excel:hover {
+  background: #0b5e31;
+}
+.btn-excel.compact {
+  padding: 6px 12px;
+  font-size: 13px;
+  min-height: 36px;
+}
+
+@media (max-width: 640px) {
   .voucher-sheet {
+    padding: 18px 14px !important;
+  }
+  .voucher-scroll-hint {
+    display: block;
+  }
+  .voucher-signatures-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 20px 14px !important;
+  }
+  .voucher-signatures-grid .sig-col {
+    min-height: 135px;
+  }
+  .voucher-signatures-grid .sig-date {
+    white-space: normal;
+  }
+  .voucher-signatures-grid .sig-name {
+    white-space: normal;
+    word-break: break-word;
+  }
+}
+
+/* Print styles for warehouse vouchers & accounting sheets */
+@media print {
+  #qbizPrintRoot .voucher-sheet {
     box-shadow: none !important;
     border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    padding: 10mm 12mm 12mm 12mm !important;
+    margin: 0 auto !important;
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 210mm !important;
+    box-sizing: border-box !important;
+    background: #fff !important;
+  }
+  .voucher-table-scroll-wrap {
+    overflow: visible !important;
+    margin: 8px 0 !important;
+  }
+  .voucher-table-scroll-wrap .voucher-table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .voucher-scroll-hint {
+    display: none !important;
+  }
+  .voucher-signatures-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px !important;
+    margin-top: 20px !important;
+  }
+  .voucher-signatures-grid .sig-col {
+    min-height: 140px !important;
+  }
+  .voucher-signatures-grid .stamp-guide {
+    border: 1.5px dashed #475569 !important;
+    color: #334155 !important;
+    background: transparent !important;
+  }
+  .voucher-signatures-grid .sig-name {
+    white-space: nowrap !important;
   }
 }
 

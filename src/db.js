@@ -1,7 +1,59 @@
 import { CONFIG } from './config.js';
 
-const STORES = ['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs'];
+const STORES = ['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs','electronic_invoices','invoice_audit_logs'];
 let dbPromise;
+let activeTransactionsCount = 0;
+let pendingVersionChangeClose = null;
+
+export function isDbBusy() {
+  return activeTransactionsCount > 0;
+}
+
+export function beginBusyTransaction() {
+  activeTransactionsCount++;
+}
+
+export function endBusyTransaction() {
+  activeTransactionsCount = Math.max(0, activeTransactionsCount - 1);
+  if (activeTransactionsCount === 0 && pendingVersionChangeClose) {
+    const fn = pendingVersionChangeClose;
+    pendingVersionChangeClose = null;
+    fn();
+  }
+}
+
+function requestSafeCloseDb(db, dbName, source = '') {
+  const executeClose = () => {
+    console.warn(`[DB] Đóng kết nối DB an toàn (${source}) sau khi mọi giao dịch hoàn tất.`);
+    try { db.close(); } catch(_) {}
+    dbPromise = null;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('qbiz:db_versionchange', { detail: { dbName } }));
+    }
+  };
+
+  if (isDbBusy()) {
+    console.warn(`[DB] Đang có giao dịch bán hàng/kho dở dang (${activeTransactionsCount} tx). Hoãn đóng kết nối cho đến khi giao dịch kết thúc.`);
+    pendingVersionChangeClose = executeClose;
+  } else {
+    executeClose();
+  }
+}
+
+if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
+  try {
+    const syncChannel = new BroadcastChannel('qbiz_db_sync');
+    syncChannel.onmessage = (msg) => {
+      if(msg?.data?.type === 'PLEASE_CLOSE_DB'){
+        if(dbPromise){
+          dbPromise.then(db => {
+            requestSafeCloseDb(db, globalThis.__QBIZ_TEST_DB_NAME || CONFIG.DB_NAME, 'BroadcastChannel');
+          }).catch(()=>{});
+        }
+      }
+    };
+  } catch(_) {}
+}
 
 function openDB(){
   if(dbPromise) return dbPromise;
@@ -10,6 +62,16 @@ function openDB(){
     // Production keeps the configured database name unchanged.
     const dbName = globalThis.__QBIZ_TEST_DB_NAME || CONFIG.DB_NAME;
     const req = indexedDB.open(dbName, CONFIG.DB_VERSION);
+    req.onblocked = () => {
+      console.warn('[DB] Quá trình nâng cấp DB bị chặn bởi tab/phiên khác đang mở.');
+      if(typeof BroadcastChannel !== 'undefined'){
+        try {
+          const bc = new BroadcastChannel('qbiz_db_sync');
+          bc.postMessage({ type: 'PLEASE_CLOSE_DB', newVersion: CONFIG.DB_VERSION });
+          bc.close();
+        } catch(_) {}
+      }
+    };
     req.onupgradeneeded = (event) => {
       const db = req.result;
       for(const name of STORES){ if(!db.objectStoreNames.contains(name)) db.createObjectStore(name,{keyPath:'id'}); }
@@ -37,8 +99,26 @@ function openDB(){
       if(event.oldVersion < 12){
         if(!db.objectStoreNames.contains('shifts')) db.createObjectStore('shifts',{keyPath:'id'});
       }
+      if(event.oldVersion < 13){
+        if(!db.objectStoreNames.contains('electronic_invoices')){
+          const s = db.createObjectStore('electronic_invoices', { keyPath: 'id' });
+          s.createIndex('by_sale_id', 'sale_id', { unique: false });
+          s.createIndex('by_idempotency_key', 'idempotency_key', { unique: true });
+        }
+        if(!db.objectStoreNames.contains('invoice_audit_logs')){
+          const s = db.createObjectStore('invoice_audit_logs', { keyPath: 'id' });
+          s.createIndex('by_invoice_id', 'invoice_id', { unique: false });
+          s.createIndex('by_sale_id', 'sale_id', { unique: false });
+        }
+      }
     };
-    req.onsuccess = ()=>resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      db.onversionchange = () => {
+        requestSafeCloseDb(db, dbName, 'versionchange');
+      };
+      resolve(db);
+    };
     req.onerror = ()=>reject(req.error);
   });
   return dbPromise;
@@ -55,13 +135,21 @@ export async function getOne(name,id){
   const s=await store(name); return new Promise((r,j)=>{const q=s.get(id);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)});
 }
 export async function put(name,value){
-  const s=await store(name,'readwrite'); return new Promise((r,j)=>{const q=s.put(value);q.onsuccess=()=>r(value);q.onerror=()=>j(q.error)});
+  const s=await store(name,'readwrite');
+  beginBusyTransaction();
+  return new Promise((r,j)=>{
+    const q=s.put(value);
+    q.onsuccess=()=>{ endBusyTransaction(); r(value); };
+    q.onerror=()=>{ endBusyTransaction(); j(q.error); };
+  });
 }
 export async function putMany(name,values){
   const db=await openDB();
+  beginBusyTransaction();
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(name,'readwrite'); const s=tx.objectStore(name); values.forEach(v=>s.put(v));
-    tx.oncomplete=()=>resolve(values); tx.onerror=()=>reject(tx.error);
+    tx.oncomplete=()=>{ endBusyTransaction(); resolve(values); };
+    tx.onerror=()=>{ endBusyTransaction(); reject(tx.error); };
   });
 }
 export async function remove(name,id){
@@ -75,15 +163,16 @@ export async function setting(key,fallback=null){ const x=await getOne('settings
 export async function setSetting(key,value){ return put('settings',{id:key,value}); }
 export async function runTransaction(names, work){
   const db=await openDB();
+  beginBusyTransaction();
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(names,'readwrite');
     const stores=Object.fromEntries(names.map(name=>[name,tx.objectStore(name)]));
     let result; let failure;
     const context={abort(error){failure=error;try{tx.abort();}catch{}}};
     try { result=work(stores,tx,context); } catch(error){ context.abort(error); }
-    tx.oncomplete=()=>resolve(result);
-    tx.onerror=()=>reject(tx.error||new Error('Giao dịch dữ liệu thất bại.'));
-    tx.onabort=()=>reject(failure||tx.error||new Error('Giao dịch dữ liệu đã được hoàn tác.'));
+    tx.oncomplete=()=>{ endBusyTransaction(); resolve(result); };
+    tx.onerror=()=>{ endBusyTransaction(); reject(tx.error||new Error('Giao dịch dữ liệu thất bại.')); };
+    tx.onabort=()=>{ endBusyTransaction(); reject(failure||tx.error||new Error('Giao dịch dữ liệu đã được hoàn tác.')); };
   });
 }
 

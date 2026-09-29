@@ -9,6 +9,7 @@ import { createProposal } from './proposals.js';
 import { isToolAllowed, hasCapability, PERMISSIONS, OPERATIONAL_THRESHOLDS } from './policy.js';
 import { getCurrentActor } from './context.js';
 import { MERCHANDISING_TOOLS } from './merchandising/tools.js';
+import { reportToolError, reportToolSelectedNotExecuted } from './error-reporter.js';
 
 /**
  * Normalizes a Vietnamese string for case and diacritic-insensitive matching.
@@ -1717,14 +1718,39 @@ export function executeTool(toolName, params = {}, state = {}, envelope = null) 
     ? { id: envelope.actor_id, role: envelope.actor_role }
     : getCurrentActor();
 
+  const toolFn = TOOLS[toolName];
+  if (!toolFn) {
+    reportToolSelectedNotExecuted({
+      userPrompt: envelope?.user_prompt || envelope?.raw_prompt || envelope?.prompt || '',
+      toolName,
+      toolSelected: toolName,
+      route: envelope?.current_route || envelope?.route || 'dashboard',
+      role: actor?.role || 'cashier',
+      correlationId: envelope?.correlation_id || envelope?.correlationId,
+      intakeUrl: envelope?.intakeUrl || envelope?.intake_url,
+    }).catch(() => {});
+    throw new Error(`Tool "${toolName}" không tồn tại trong Tool Registry.`);
+  }
+
   // Section F: Dynamic Tool Allowlist Enforcement
   if (!isToolAllowed(toolName, actor, envelope)) {
     throw new Error(`HARD DENY: Tool "${toolName}" không được phép thực thi đối với vai trò ${actor.role} (Vi phạm Tool Allowlist).`);
   }
 
-  const toolFn = TOOLS[toolName];
-  if (!toolFn) {
-    throw new Error(`Tool "${toolName}" không tồn tại trong Tool Registry.`);
+  try {
+    return toolFn(params, state, envelope, actor);
+  } catch (err) {
+    reportToolError({
+      userPrompt: envelope?.user_prompt || envelope?.raw_prompt || envelope?.prompt || '',
+      toolName,
+      toolSelected: toolName,
+      toolParams: params,
+      errorMessage: err?.message || String(err),
+      route: envelope?.current_route || envelope?.route || 'dashboard',
+      role: actor?.role || 'cashier',
+      correlationId: envelope?.correlation_id || envelope?.correlationId,
+      intakeUrl: envelope?.intakeUrl || envelope?.intake_url,
+    }).catch(() => {});
+    throw err;
   }
-  return toolFn(params, state, envelope, actor);
 }
