@@ -165,15 +165,21 @@ export async function openInvoiceModalForSale(sale, { onIssued = null } = {}) {
     modalRoot.innerHTML = `
       <div class="modal-backdrop" id="invModalBackdrop">
         <div class="modal card invoice-modal" style="max-width:680px;width:95%;margin:20px auto;max-height:90vh;overflow-y:auto">
-          <div class="modal-head" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:12px;margin-bottom:14px">
+          <div class="modal-head" style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:12px;margin-bottom:14px;flex-wrap:wrap;gap:8px">
             <div>
               <h2 style="margin:0;font-size:18px">Hóa đơn điện tử · ${esc(inv.sale_code)}</h2>
               <small style="color:#64748b">Lineage Key: <code>${esc(inv.idempotency_key)}</code></small>
             </div>
-            <div>${statusBadge}</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div id="invStatusBadge">${statusBadge}</div>
+              <button type="button" class="secondary-btn compact" id="btnRefreshInvStatus" style="font-size:12px;padding:4px 8px;display:inline-flex;align-items:center;gap:4px">🔄 Làm mới trạng thái</button>
+            </div>
           </div>
 
           <div class="invoice-modal-body" style="display:grid;gap:14px">
+            <!-- Document Preview Container (Rendered when clicking Xem thể hiện HĐ) -->
+            <div id="invDocPreviewArea" style="display:none;padding:12px;background:#f8fafc;border:1.5px dashed #0284c7;border-radius:8px"></div>
+
             <!-- Buyer Section -->
             <div class="card section-card" style="padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -382,8 +388,75 @@ export async function openInvoiceModalForSale(sale, { onIssued = null } = {}) {
       }
     });
 
-    // Preview invoice document
+    // Refresh status from provider via getStatus
+    document.getElementById('btnRefreshInvStatus')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btnRefreshInvStatus');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Đang kiểm tra…';
+      }
+      try {
+        const issueKey = buildInvoiceIdempotencyKey({
+          operation: InvoiceOperation.ISSUE,
+          saleId: inv.sale_id,
+          lineageId: inv.lineage_id || 'orig',
+          version: inv.version || 1
+        });
+
+        const res = await callInvoiceGateway({
+          action: 'getStatus',
+          idempotencyKey: issueKey,
+          payload: {
+            idempotencyKey: issueKey,
+            invoiceNumber: inv.provider_ref?.invoice_number,
+            transactionId: inv.provider_ref?.transaction_id
+          }
+        });
+
+        if (res && res.success && res.record && (res.record.status === 'ISSUED' || res.record.invoice_number)) {
+          inv.status = InvoiceStatus.ISSUED;
+          inv.provider_ref = res.record;
+          inv.snapshot = {
+            buyer: inv.buyer,
+            items: inv.items,
+            amounts: inv.amounts,
+            provider_ref: res.record,
+            issued_at: res.record.issue_date || new Date().toISOString()
+          };
+          inv.updated_at = new Date().toISOString();
+          if (!Array.isArray(inv.audit_log)) inv.audit_log = [];
+          inv.audit_log.push({
+            action: 'STATUS_REFRESHED',
+            actor: 'Thu ngân',
+            timestamp: new Date().toISOString(),
+            details: `Làm mới trạng thái qua getStatus: ĐÃ PHÁT HÀNH (Số HĐ: ${res.record.invoice_number})`
+          });
+          await put('electronic_invoices', inv);
+          notify(`Đã làm mới: HĐĐT đã phát hành số ${res.record.invoice_number}!`, 'ok');
+          renderModal(inv);
+        } else {
+          notify('Nhà cung cấp xác nhận: HĐĐT đang ở trạng thái Bản nháp (chưa ký).', 'info');
+          if (btn) {
+            btn.disabled = false;
+            btn.innerText = '🔄 Làm mới trạng thái';
+          }
+        }
+      } catch (err) {
+        notify('Lỗi làm mới trạng thái: ' + err.message, 'error');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = '🔄 Làm mới trạng thái';
+        }
+      }
+    });
+
+    // Preview invoice document via getDocument
     document.getElementById('btnPrintInvDoc')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btnPrintInvDoc');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Đang tải thể hiện…';
+      }
       try {
         const doc = await callInvoiceGateway({
           action: 'getDocument',
@@ -394,13 +467,43 @@ export async function openInvoiceModalForSale(sale, { onIssued = null } = {}) {
             format: 'html'
           }
         });
-        const w = window.open('', '_blank');
-        if (w) {
-          w.document.write(doc.html_preview || '<h2>Hóa đơn điện tử</h2>');
-          w.document.close();
+
+        // 1. Render inline document preview inside modal
+        const previewArea = document.getElementById('invDocPreviewArea');
+        if (previewArea) {
+          previewArea.style.display = 'block';
+          previewArea.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #cbd5e1;padding-bottom:6px">
+              <strong style="color:#0369a1;font-size:13px">Bản thể hiện Hóa đơn điện tử · Số ${esc(doc.invoice_number)}</strong>
+              <button type="button" class="link-btn" id="btnCloseDocPreview" style="color:#64748b;font-size:12px">✕ Đóng xem trước</button>
+            </div>
+            <div id="invDocHtmlWrap" style="background:#fff;padding:12px;border:1px solid #e2e8f0;border-radius:6px;max-height:300px;overflow-y:auto">
+              ${doc.html_preview || '<p>Không có nội dung thể hiện</p>'}
+            </div>
+          `;
+          document.getElementById('btnCloseDocPreview')?.addEventListener('click', () => {
+            previewArea.style.display = 'none';
+          });
+          previewArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+
+        // 2. Also attempt window.open for desktop users
+        try {
+          const w = window.open('', '_blank');
+          if (w) {
+            w.document.write(doc.html_preview || '<h2>Hóa đơn điện tử</h2>');
+            w.document.close();
+          }
+        } catch (_) {}
+
+        notify(`Đã tải bản thể hiện HĐĐT số ${doc.invoice_number}!`, 'ok');
       } catch (err) {
         notify('Không thể mở bản thể hiện: ' + err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = 'Xem thể hiện HĐ';
+        }
       }
     });
   }
