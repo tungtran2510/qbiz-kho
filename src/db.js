@@ -100,15 +100,24 @@ function openDB(){
         if(!db.objectStoreNames.contains('shifts')) db.createObjectStore('shifts',{keyPath:'id'});
       }
       if(event.oldVersion < 13){
-        if(!db.objectStoreNames.contains('electronic_invoices')){
-          const s = db.createObjectStore('electronic_invoices', { keyPath: 'id' });
-          s.createIndex('by_sale_id', 'sale_id', { unique: false });
-          s.createIndex('by_idempotency_key', 'idempotency_key', { unique: true });
+        let sInv = db.objectStoreNames.contains('electronic_invoices')
+          ? req.transaction.objectStore('electronic_invoices')
+          : db.createObjectStore('electronic_invoices', { keyPath: 'id' });
+        if(!sInv.indexNames.contains('by_sale_id')){
+          sInv.createIndex('by_sale_id', 'sale_id', { unique: false });
         }
-        if(!db.objectStoreNames.contains('invoice_audit_logs')){
-          const s = db.createObjectStore('invoice_audit_logs', { keyPath: 'id' });
-          s.createIndex('by_invoice_id', 'invoice_id', { unique: false });
-          s.createIndex('by_sale_id', 'sale_id', { unique: false });
+        if(!sInv.indexNames.contains('by_idempotency_key')){
+          sInv.createIndex('by_idempotency_key', 'idempotency_key', { unique: true });
+        }
+
+        let sAudit = db.objectStoreNames.contains('invoice_audit_logs')
+          ? req.transaction.objectStore('invoice_audit_logs')
+          : db.createObjectStore('invoice_audit_logs', { keyPath: 'id' });
+        if(!sAudit.indexNames.contains('by_invoice_id')){
+          sAudit.createIndex('by_invoice_id', 'invoice_id', { unique: false });
+        }
+        if(!sAudit.indexNames.contains('by_sale_id')){
+          sAudit.createIndex('by_sale_id', 'sale_id', { unique: false });
         }
       }
     };
@@ -157,7 +166,13 @@ export async function remove(name,id){
 }
 export async function clearAll(){
   const db=await openDB();
-  return Promise.all(STORES.map(name=>new Promise((resolve,reject)=>{const tx=db.transaction(name,'readwrite');tx.objectStore(name).clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})));
+  const existingStores = STORES.filter(name => db.objectStoreNames.contains(name));
+  return Promise.all(existingStores.map(name=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(name,'readwrite');
+    tx.objectStore(name).clear();
+    tx.oncomplete=resolve;
+    tx.onerror=()=>reject(tx.error);
+  })));
 }
 export async function setting(key,fallback=null){ const x=await getOne('settings',key); return x?.value ?? fallback; }
 export async function setSetting(key,value){ return put('settings',{id:key,value}); }

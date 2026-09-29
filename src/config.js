@@ -1,7 +1,7 @@
 export const CONFIG = {
   APP_NAME: 'QBiz Kho',
   DB_NAME: 'qbiz_kho_v1',
-  DB_VERSION: 12,
+  DB_VERSION: 13,
   // 'local' chạy độc lập/offline. Chuyển sang 'api' khi QBiz có Inventory API thật.
   SYNC_MODE: 'local',
   API_BASE_URL: '/api/inventory',
