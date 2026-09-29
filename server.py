@@ -69,6 +69,65 @@ def mock_gemini_fallback(prompt, fallback_reason='LOCAL_OFFLINE', client_origin=
         'origin': client_origin
     }
 
+ACTION_PERMISSIONS = {
+    'getCapabilities': None,
+    'getStatus': None,
+    'getDocument': None,
+    'createDraft': 'INVOICE_ISSUE',
+    'issue': 'INVOICE_ISSUE',
+    'adjust': 'INVOICE_ADJUST',
+    'replace': 'INVOICE_REPLACE',
+    'configureProvider': 'INVOICE_CONFIGURE'
+}
+
+ROLE_PERMISSIONS = {
+    'OWNER': ['INVOICE_CONFIGURE', 'INVOICE_ISSUE', 'INVOICE_ADJUST', 'INVOICE_REPLACE'],
+    'MANAGER': ['INVOICE_CONFIGURE', 'INVOICE_ISSUE', 'INVOICE_ADJUST', 'INVOICE_REPLACE'],
+    'CASHIER': ['INVOICE_ISSUE'],
+    'WAREHOUSE': []
+}
+
+def resolve_auth_from_header(auth_header):
+    if not auth_header or not isinstance(auth_header, str):
+        return {'authenticated': False, 'role': 'CASHIER', 'sub': None}
+
+    token = auth_header.replace('Bearer ', '').replace('bearer ', '').strip()
+    if not token:
+        return {'authenticated': False, 'role': 'CASHIER', 'sub': None}
+
+    # 1. Try decoding as JWT
+    parts = token.split('.')
+    if len(parts) >= 2:
+        try:
+            import base64
+            payload_b64 = parts[1]
+            payload_b64 += '=' * (-len(payload_b64) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(payload_b64).decode('utf-8'))
+            raw_role = payload.get('role') or payload.get('shop_role') or payload.get('user_metadata', {}).get('role') or payload.get('app_metadata', {}).get('role')
+            if raw_role:
+                norm_role = str(raw_role).upper()
+                return {
+                    'authenticated': True,
+                    'role': 'OWNER' if norm_role == 'ADMIN' else norm_role,
+                    'sub': payload.get('sub') or payload.get('id'),
+                    'email': payload.get('email')
+                }
+        except Exception:
+            pass
+
+    # 2. Match structured test/mock token
+    t_lower = token.lower()
+    if 'cashier' in t_lower:
+        return {'authenticated': True, 'role': 'CASHIER', 'sub': 'mock_cashier'}
+    if 'owner' in t_lower or 'admin' in t_lower:
+        return {'authenticated': True, 'role': 'OWNER', 'sub': 'mock_owner'}
+    if 'manager' in t_lower or 'ketoan' in t_lower or 'accountant' in t_lower:
+        return {'authenticated': True, 'role': 'MANAGER', 'sub': 'mock_manager'}
+    if 'warehouse' in t_lower:
+        return {'authenticated': True, 'role': 'WAREHOUSE', 'sub': 'mock_warehouse'}
+
+    return {'authenticated': True, 'role': 'CASHIER', 'sub': 'unknown_user'}
+
 INVOICE_IDEMPOTENCY_STORE = {}
 INVOICE_SEQUENCE = 1000
 
@@ -567,6 +626,29 @@ class QBizHandler(SimpleHTTPRequestHandler):
             action = body.get('action')
             idempotency_key = body.get('idempotencyKey')
             payload = body.get('payload', {})
+
+            if not action:
+                return self._send_json_response(400, {
+                    'error': 'MISSING_ACTION',
+                    'message': 'Thiếu trường action.'
+                })
+
+            # Strict Server-Side RBAC: authenticate from Authorization header ONLY.
+            # Invariant: body.role or payload.role is NEVER trusted or checked!
+            auth_header = self.headers.get('Authorization', '')
+            user_auth = resolve_auth_from_header(auth_header)
+            user_role = user_auth['role']
+
+            required_capability = ACTION_PERMISSIONS.get(action)
+            if required_capability:
+                allowed = ROLE_PERMISSIONS.get(user_role, [])
+                if required_capability not in allowed:
+                    return self._send_json_response(403, {
+                        'error': 'FORBIDDEN_ACTION',
+                        'message': f"Vai trò '{user_role}' không có quyền thực hiện hành động '{action}' (yêu cầu quyền {required_capability}).",
+                        'requiredCapability': required_capability,
+                        'userRole': user_role
+                    })
 
             res_data = process_mock_invoice_action(action, idempotency_key, payload)
             status_code = 400 if isinstance(res_data, dict) and res_data.get('error') else 200

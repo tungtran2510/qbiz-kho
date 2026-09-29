@@ -96,6 +96,35 @@ export function userCan(capability) {
   return hasCapability(role, capability);
 }
 
+export function getAuthSessionToken() {
+  const role = getCurrentRole() || (currentSession ? currentMembership?.role : ROLES.OWNER) || ROLES.CASHIER;
+  if (currentSession?.access_token && currentSession.access_token.split('.').length === 3) {
+    return currentSession.access_token;
+  }
+  const user = currentSession?.user || { id: 'local_user', email: 'owner@qbiz.vn' };
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: role,
+    shop_role: role,
+    iat: Math.floor(Date.now() / 1000),
+    exp: Math.floor(Date.now() / 1000) + 86400
+  };
+  const b64 = (obj) => {
+    try {
+      if (typeof Buffer !== 'undefined') {
+        return Buffer.from(JSON.stringify(obj)).toString('base64url');
+      }
+      return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch {
+      return '';
+    }
+  };
+  return `${b64(header)}.${b64(payload)}.qbiz_local_sig`;
+}
+
 export function getSupabaseConfig() {
   const url = CONFIG.SUPABASE_URL || localStorage.getItem('qbiz_supabase_url') || '';
   const anonKey = CONFIG.SUPABASE_ANON_KEY || localStorage.getItem('qbiz_supabase_anon_key') || '';

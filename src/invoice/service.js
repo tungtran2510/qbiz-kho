@@ -10,6 +10,7 @@
 
 import { put, getAll, getOne } from '../db.js';
 import { CONFIG } from '../config.js';
+import { getAuthSessionToken } from '../auth.js';
 import {
   InvoiceStatus,
   InvoiceOperation,
@@ -87,7 +88,7 @@ export async function createInvoiceDraftForSale(sale, { customer = null, actor =
  * Sends request to Server-Side Invoice Gateway (/api/invoice-gateway)
  * Never contains provider credentials on client.
  */
-export async function callInvoiceGateway({ action, idempotencyKey, payload = {}, timeoutMs = 30000, signal = null }) {
+export async function callInvoiceGateway({ action, idempotencyKey, payload = {}, timeoutMs = 30000, signal = null, token = null }) {
   const url = '/api/invoice-gateway';
 
   let fetchSignal = signal;
@@ -98,12 +99,18 @@ export async function callInvoiceGateway({ action, idempotencyKey, payload = {},
     timerId = setTimeout(() => controller.abort(), timeoutMs);
   }
 
+  const authToken = token || (typeof getAuthSessionToken === 'function' ? getAuthSessionToken() : null);
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (authToken) {
+    headers['Authorization'] = authToken.startsWith('Bearer ') ? authToken : `Bearer ${authToken}`;
+  }
+
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers,
       signal: fetchSignal,
       body: JSON.stringify({
         appScope: 'qbiz-kho',
@@ -115,7 +122,10 @@ export async function callInvoiceGateway({ action, idempotencyKey, payload = {},
 
     if (!response.ok) {
       const errBody = await response.json().catch(() => ({}));
-      throw new Error(errBody.message || `Invoice Gateway error HTTP ${response.status}`);
+      const err = new Error(errBody.message || `Invoice Gateway error HTTP ${response.status}`);
+      err.status = response.status;
+      err.data = errBody;
+      throw err;
     }
 
     const json = await response.json();

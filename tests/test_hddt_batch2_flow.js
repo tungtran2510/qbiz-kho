@@ -21,12 +21,15 @@ import {
 import { mockInvoiceProvider } from '../src/invoice/mock_provider.js';
 import gatewayHandler from '../api/invoice-gateway.js';
 
-async function callGateway(body) {
+async function callGateway(body, authHeader = 'Bearer mock_token_owner') {
   let responseData = null;
   let statusCode = 200;
   const mockReq = {
     method: 'POST',
-    headers: { 'x-forwarded-for': '127.0.0.1' },
+    headers: {
+      'x-forwarded-for': '127.0.0.1',
+      'Authorization': authHeader
+    },
     body
   };
   const mockRes = {
