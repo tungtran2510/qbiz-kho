@@ -118,8 +118,9 @@ const SAMPLE_PRODUCTS=[
   {id:'p_meditation',name:'Đệm thiền DoctorLoan',sku:'DL-MEDITATION',barcode:'8938500010130',category:'Đệm',unit:'cái',brand:'DoctorLoan',price:6000000,priceNote:'Size S 6.000.000 · Size M 6.500.000',description:'Đệm thiền nâng đỡ cơ thể, có hai lựa chọn kích thước S và M.',lowStock:3,image:asset('meditation-cushion.png'),images:[asset('meditation-cushion.png')]}
 ].map(asItem);
 const SAMPLE_WAREHOUSES=[{id:'wh_hadong',name:'Kho Hà Đông'},{id:'wh_center',name:'Kho Trung tâm'}];
-const SAMPLE_LEVELS=[18,7,3,24,11,4,9,2,15,12,6,10,8,9,5].flatMap((q,i)=>[
-  {id:`${SAMPLE_PRODUCTS[i].id}:wh_hadong`,productId:SAMPLE_PRODUCTS[i].id,warehouseId:'wh_hadong',onHand:q,reserved:i%3,damaged:0,updatedAt:now()},
+// Shop mẫu tồn kho dồi dào, chỉ có đúng 2 mặt hàng hết hàng (p_150 và p_f6) để làm mẫu
+const SAMPLE_LEVELS=[45,38,25,60,55,42,48,0,75,68,52,80,0,50,35].flatMap((q,i)=>[
+  {id:`${SAMPLE_PRODUCTS[i].id}:wh_hadong`,productId:SAMPLE_PRODUCTS[i].id,warehouseId:'wh_hadong',onHand:q,reserved:0,damaged:0,updatedAt:now()},
   {id:`${SAMPLE_PRODUCTS[i].id}:wh_center`,productId:SAMPLE_PRODUCTS[i].id,warehouseId:'wh_center',onHand:Math.max(0,Math.floor(q/2)),reserved:0,damaged:0,updatedAt:now()}
 ]);
 const SAMPLE_SERVICES=[
@@ -172,7 +173,18 @@ export async function ensureSeed(){
   };
   if(!products.length){
     await putMany('products',SAMPLE_PRODUCTS); await putMany('levels',SAMPLE_LEVELS); await putMany('products',SAMPLE_SERVICES);
-    await put('settings',{id:'seededAt',value:now()}); await ensureCategorySeed(); await ensureLegacySuppliers(); await ensureOpeningMovements(); return;
+    await put('settings',{id:'seededAt',value:now()}); await put('settings',{id:'sample_stock_version',value:'v3_generous_stock'}); await ensureCategorySeed(); await ensureLegacySuppliers(); await ensureOpeningMovements(); return;
+  }
+  // Đồng bộ tồn kho mẫu dồi dào cho thiết bị/trình duyệt đang mở nếu tồn kho mẫu chưa cập nhật v3
+  const seedStockVersion = (await getOne('settings', 'sample_stock_version'))?.value;
+  if (seedStockVersion !== 'v3_generous_stock') {
+    const isSampleShop = products.some(p => p.id === 'p_135' || p.id === 'p_90d');
+    if (isSampleShop) {
+      for (const sl of SAMPLE_LEVELS) {
+        await put('levels', sl);
+      }
+    }
+    await put('settings', { id: 'sample_stock_version', value: 'v3_generous_stock' });
   }
   const existing=new Map(products.map(p=>[p.id,p]));
   for(const seed of SAMPLE_PRODUCTS){

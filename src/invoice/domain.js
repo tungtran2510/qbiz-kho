@@ -164,6 +164,69 @@ export function createInvoiceDraftFromSale(sale, { buyer = null, actor = 'cashie
 }
 
 /**
+ * Utility to mask sensitive personal / business identifiable information in logs and audit trails.
+ * CRITICAL RULE: NEVER modifies original business invoice records (store 'electronic_invoices').
+ * ONLY applied to logs (store 'invoice_audit_logs', console logs, server logs).
+ */
+export function maskTaxCode(taxCode) {
+  if (!taxCode || typeof taxCode !== 'string') return '';
+  const clean = taxCode.trim();
+  if (clean.length <= 3) return '***';
+  return clean.slice(0, clean.length - 3).replace(/./g, '*') + clean.slice(-3);
+}
+
+export function maskPhone(phone) {
+  if (!phone || typeof phone !== 'string') return '';
+  const clean = phone.trim();
+  if (clean.length <= 3) return '***';
+  return clean.slice(0, clean.length - 3).replace(/./g, '*') + clean.slice(-3);
+}
+
+export function maskEmail(email) {
+  if (!email || typeof email !== 'string') return '';
+  const atIdx = email.indexOf('@');
+  if (atIdx <= 0) return '***';
+  const name = email.slice(0, atIdx);
+  const domain = email.slice(atIdx);
+  if (name.length <= 2) return `*${domain}`;
+  return `${name[0]}***${name[name.length - 1]}${domain}`;
+}
+
+export function maskSensitiveData(data) {
+  if (!data) return data;
+  if (typeof data === 'string') {
+    if (data.toLowerCase().startsWith('bearer ')) {
+      return 'Bearer [REDACTED]';
+    }
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => maskSensitiveData(item));
+  }
+  if (typeof data === 'object') {
+    const masked = {};
+    for (const [k, v] of Object.entries(data)) {
+      const lowerKey = k.toLowerCase();
+      if (lowerKey.includes('token') || lowerKey.includes('authorization') || lowerKey.includes('secret') || lowerKey.includes('jwt')) {
+        masked[k] = '[REDACTED]';
+      } else if (lowerKey.includes('tax') || lowerKey === 'tax_code' || lowerKey === 'buyertaxcode') {
+        masked[k] = typeof v === 'string' ? maskTaxCode(v) : v;
+      } else if (lowerKey.includes('phone') || lowerKey === 'buyer_phone') {
+        masked[k] = typeof v === 'string' ? maskPhone(v) : v;
+      } else if (lowerKey.includes('email') || lowerKey === 'buyer_email') {
+        masked[k] = typeof v === 'string' ? maskEmail(v) : v;
+      } else if (typeof v === 'object' && v !== null) {
+        masked[k] = maskSensitiveData(v);
+      } else {
+        masked[k] = v;
+      }
+    }
+    return masked;
+  }
+  return data;
+}
+
+/**
  * Creates structured record for store 'invoice_audit_logs'
  */
 export function createInvoiceAuditLogEntry({ invoiceId, saleId, action, actor = 'system', details = '', metadata = {} }) {
@@ -175,7 +238,7 @@ export function createInvoiceAuditLogEntry({ invoiceId, saleId, action, actor = 
     action,
     actor: String(actor || 'system'),
     details: String(details || ''),
-    metadata,
+    metadata: maskSensitiveData(metadata),
     created_at: now
   };
 }

@@ -1701,18 +1701,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   background: #ffffff;
   border-top: 1px solid #e2e8f0;
   flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .ai-text-input {
-  flex: 1;
+  flex: 1 1 0%;
+  min-width: 0;
   height: 44px;
   border-radius: 22px;
   border: 1.5px solid #cbd5e1;
-  padding: 0 16px;
+  padding: 0 14px;
   font-size: 14px;
   color: #0f172a;
   outline: none;
   transition: border-color 0.15s ease;
+}
+
+@media (max-width: 380px) {
+  .ai-input-form {
+    padding: 8px 10px;
+    gap: 6px;
+  }
 }
 
 .ai-text-input:focus {

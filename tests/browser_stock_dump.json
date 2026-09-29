@@ -1,0 +1,352 @@
+{
+  "warehouses": [
+    {
+      "id": "wh_center",
+      "name": "Kho Trung tâm"
+    },
+    {
+      "id": "wh_hadong",
+      "name": "Kho Hà Đông"
+    }
+  ],
+  "productsCount": 19,
+  "levelsCount": 30,
+  "products": [
+    {
+      "id": "p_135",
+      "name": "Ghế sáng chế 135",
+      "sku": "DL-135",
+      "price": 53762000,
+      "type": "PRODUCT",
+      "stock": 9,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 4,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 9,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_150",
+      "name": "Ghế sáng chế 150",
+      "sku": "DL-150",
+      "price": 53762000,
+      "type": "PRODUCT",
+      "stock": 1,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 1,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 2,
+          "reserved": 1
+        }
+      ]
+    },
+    {
+      "id": "p_90d",
+      "name": "Ghế sáng chế 90D",
+      "sku": "DL-90D",
+      "price": 34937000,
+      "type": "PRODUCT",
+      "stock": 24,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 12,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 24,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_90t",
+      "name": "Ghế sáng chế 90T",
+      "sku": "DL-90T",
+      "price": 34937000,
+      "type": "PRODUCT",
+      "stock": 10,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 5,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 11,
+          "reserved": 1
+        }
+      ]
+    },
+    {
+      "id": "p_95",
+      "name": "Ghế sáng chế 95",
+      "sku": "DL-95",
+      "price": 39249000,
+      "type": "PRODUCT",
+      "stock": 2,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 2,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 4,
+          "reserved": 2
+        }
+      ]
+    },
+    {
+      "id": "p_f1",
+      "name": "Gối lưng sáng chế F1",
+      "sku": "DL-F1",
+      "price": 3500000,
+      "type": "PRODUCT",
+      "stock": 13,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 7,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 15,
+          "reserved": 2
+        }
+      ]
+    },
+    {
+      "id": "p_f3",
+      "name": "Gối lưng sáng chế F3/C",
+      "sku": "DL-F3",
+      "price": 3737000,
+      "type": "PRODUCT",
+      "stock": 12,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 6,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 12,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_f4",
+      "name": "Gối cổ sáng chế F4/09",
+      "sku": "DL-F4",
+      "price": 7624000,
+      "type": "PRODUCT",
+      "stock": 5,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 3,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 6,
+          "reserved": 1
+        }
+      ]
+    },
+    {
+      "id": "p_f5",
+      "name": "Gối cổ sáng chế F5/S",
+      "sku": "DL-F5",
+      "price": 4312000,
+      "type": "PRODUCT",
+      "stock": 8,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 5,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 10,
+          "reserved": 2
+        }
+      ]
+    },
+    {
+      "id": "p_f6",
+      "name": "Gối cổ sáng chế F6",
+      "sku": "DL-F6",
+      "price": 7049000,
+      "type": "PRODUCT",
+      "stock": 8,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 4,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 8,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_lumbar",
+      "name": "Gối lưng DoctorLoan",
+      "sku": "DL-LUMBAR",
+      "price": 2900000,
+      "type": "PRODUCT",
+      "stock": 8,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 4,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 9,
+          "reserved": 1
+        }
+      ]
+    },
+    {
+      "id": "p_meditation",
+      "name": "Đệm thiền DoctorLoan",
+      "sku": "DL-MEDITATION",
+      "price": 6000000,
+      "type": "PRODUCT",
+      "stock": 3,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 2,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 5,
+          "reserved": 2
+        }
+      ]
+    },
+    {
+      "id": "p_n85_navy_high",
+      "name": "Ghế N85 - chân cao",
+      "sku": "N85-NAVY-H",
+      "price": 2300000,
+      "type": "PRODUCT",
+      "stock": 18,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 9,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 18,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_n85_navy_low",
+      "name": "Ghế N85 - chân thấp",
+      "sku": "N85-NAVY-L",
+      "price": 2127000,
+      "type": "PRODUCT",
+      "stock": 6,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 3,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 7,
+          "reserved": 1
+        }
+      ]
+    },
+    {
+      "id": "p_n85_pink_high",
+      "name": "Ghế N85 màu hồng - chân cao",
+      "sku": "N85-PINK-H",
+      "price": 2300000,
+      "type": "PRODUCT",
+      "stock": 1,
+      "levels": [
+        {
+          "warehouseId": "wh_center",
+          "onHand": 1,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_hadong",
+          "onHand": 3,
+          "reserved": 2
+        }
+      ]
+    },
+    {
+      "id": "s_goi_dau_duong_sinh",
+      "name": "Gội đầu dưỡng sinh",
+      "sku": null,
+      "price": 180000,
+      "type": "SERVICE",
+      "stock": 0,
+      "levels": []
+    },
+    {
+      "id": "s_massage_co_vai_gay",
+      "name": "Massage cổ vai gáy",
+      "sku": null,
+      "price": 300000,
+      "type": "SERVICE",
+      "stock": 0,
+      "levels": []
+    },
+    {
+      "id": "s_tu_van_tu_the",
+      "name": "Tư vấn tư thế & cột sống",
+      "sku": null,
+      "price": 500000,
+      "type": "SERVICE",
+      "stock": 0,
+      "levels": []
+    },
+    {
+      "id": "s_xong_hoi_thao_moc",
+      "name": "Xông hơi thảo mộc",
+      "sku": null,
+      "price": 250000,
+      "type": "SERVICE",
+      "stock": 0,
+      "levels": []
+    }
+  ]
+}

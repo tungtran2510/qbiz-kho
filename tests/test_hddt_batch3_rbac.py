@@ -20,7 +20,31 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 GATEWAY_URL = 'http://localhost:4180/api/invoice-gateway'
 
-def create_mock_jwt(user_id, role, email="user@qbiz.vn"):
+import os
+import hmac
+import hashlib
+def _load_env_file():
+    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        k, v = k.strip(), v.strip()
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
+_load_env_file()
+
+GATEWAY_JWT_SECRET = os.environ.get('QBIZ_JWT_SECRET') or os.environ.get('QBIZ_INVOICE_JWT_SECRET') or 'qbiz_dynamic_test_secret_ephemeral'
+
+def create_mock_jwt(user_id, role, email="user@qbiz.vn", secret=None):
+    if secret is None:
+        secret = GATEWAY_JWT_SECRET
     header = {"alg": "HS256", "typ": "JWT"}
     payload = {
         "sub": user_id,
@@ -34,7 +58,11 @@ def create_mock_jwt(user_id, role, email="user@qbiz.vn"):
     def b64url(d):
         return base64.urlsafe_b64encode(json.dumps(d).encode('utf-8')).decode('utf-8').rstrip('=')
     
-    return f"{b64url(header)}.{b64url(payload)}.mock_test_signature"
+    msg = f"{b64url(header)}.{b64url(payload)}".encode('utf-8')
+    sig = base64.urlsafe_b64encode(
+        hmac.new(secret.encode('utf-8'), msg, hashlib.sha256).digest()
+    ).decode('utf-8').rstrip('=')
+    return f"{b64url(header)}.{b64url(payload)}.{sig}"
 
 def http_post_gateway(body, auth_token=None):
     headers = {

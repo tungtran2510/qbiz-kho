@@ -101,28 +101,22 @@ export function getAuthSessionToken() {
   if (currentSession?.access_token && currentSession.access_token.split('.').length === 3) {
     return currentSession.access_token;
   }
-  const user = currentSession?.user || { id: 'local_user', email: 'owner@qbiz.vn' };
-  const header = { alg: 'HS256', typ: 'JWT' };
-  const payload = {
-    sub: user.id,
-    email: user.email,
-    role: role,
-    shop_role: role,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 86400
-  };
-  const b64 = (obj) => {
-    try {
-      if (typeof Buffer !== 'undefined') {
-        return Buffer.from(JSON.stringify(obj)).toString('base64url');
-      }
-      return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    } catch {
-      return '';
-    }
-  };
-  return `${b64(header)}.${b64(payload)}.qbiz_local_sig`;
+  const storedServerToken = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_server_session_token')) ||
+                            (typeof window !== 'undefined' && window.__qbiz_server_session_token__);
+  if (storedServerToken) {
+    return storedServerToken;
+  }
+  const normRole = String(role).toUpperCase();
+  if (normRole === 'OWNER' || normRole === 'ADMIN') {
+    return 'mock_token_owner';
+  }
+  if (normRole === 'MANAGER' || normRole === 'ACCOUNTANT') {
+    return 'mock_token_manager';
+  }
+  if (normRole === 'WAREHOUSE') {
+    return 'mock_token_warehouse';
+  }
+  return 'mock_token_cashier';
 }
 
 export function getSupabaseConfig() {

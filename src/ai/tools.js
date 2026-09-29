@@ -63,19 +63,28 @@ export function resolveDateInterval(period = 'today', now = new Date(), customSt
     start.setHours(0, 0, 0, 0);
     label = '3 ngày gần đây';
   } else if (
-    pNorm === '7d' || pNorm === 'week' ||
-    pNorm.includes('tuan nay') || pNorm.includes('7 ngay qua') || pNorm.includes('7 ngay gan day')
+    pNorm === 'this_week' || pNorm === 'week' || pNorm.includes('tuan nay') || pNorm.includes('trong tuan')
   ) {
-    start.setDate(now.getDate() - 6);
+    // Calendar week: from Monday 00:00:00 to now
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? 6 : (day - 1);
+    start.setDate(now.getDate() - diffToMonday);
     start.setHours(0, 0, 0, 0);
     label = 'tuần này';
+  } else if (
+    pNorm === '7d' || pNorm.includes('7 ngay qua') || pNorm.includes('7 ngay gan day') || pNorm.includes('7 ngay')
+  ) {
+    // Rolling 7 days
+    start.setDate(now.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    label = '7 ngày qua';
   } else if (pNorm === 'last_week' || pNorm.includes('tuan truoc')) {
     start.setDate(now.getDate() - 13);
     start.setHours(0, 0, 0, 0);
     end.setDate(now.getDate() - 7);
     end.setHours(23, 59, 59, 999);
     label = 'tuần trước';
-  } else if (pNorm === '30d' || pNorm.includes('30 ngay qua') || pNorm.includes('30 ngay gan day')) {
+  } else if (pNorm === '30d' || pNorm.includes('30 ngay qua') || pNorm.includes('30 ngay gan day') || pNorm.includes('30 ngay')) {
     start.setDate(now.getDate() - 29);
     start.setHours(0, 0, 0, 0);
     label = '30 ngày qua';
@@ -238,11 +247,23 @@ export const TOOLS = {
   /**
    * Get total available stock across all warehouses for a product.
    */
-  get_available_stock({ productId }, state) {
+  get_available_stock({ productId }, state, context) {
     const p = (state?.data?.products || []).find(x => x.id === productId);
-    if (!p) return { found: false, available: 0 };
-    const tot = totalFor(state.data, p.id);
-    return { found: true, productId: p.id, productName: p.name, available: tot.available };
+    if (!p) return { found: false, available: 0, status: 'Hết hàng' };
+    const whId = context?.warehouse_id || (state?.warehouse && state.warehouse !== 'all' ? state.warehouse : null);
+    let avail = 0;
+    let onHand = 0;
+    if (whId) {
+      const lv = levelFor(state.data, p.id, whId);
+      avail = lv ? available(lv) : 0;
+      onHand = lv ? lv.onHand : 0;
+    } else {
+      const tot = totalFor(state.data, p.id);
+      avail = tot.available;
+      onHand = tot.onHand;
+    }
+    const status = p.type === 'SERVICE' ? 'Dịch vụ' : (avail <= 0 ? 'Hết hàng' : (avail <= (p.lowStock || 0) ? 'Sắp hết' : 'Còn hàng'));
+    return { found: true, productId: p.id, productName: p.name, available: avail, onHand, status, lowStock: p.lowStock || 0 };
   },
 
   /**
@@ -279,11 +300,22 @@ export const TOOLS = {
   /**
    * Summarize sales for today, month, 2_days, 3_days, week, etc.
    */
-  get_sales_summary({ period = 'today', customStart = null, customEnd = null }, state) {
+  get_sales_summary({ period = 'today', customStart = null, customEnd = null, shopId = null }, state, context) {
     const { start, end, label } = resolveDateInterval(period, new Date(), customStart, customEnd);
+    const effectiveShopId = shopId || context?.shop_id || null;
+    let rawSales = state?.data?.sales || [];
+    let rawOrders = state?.data?.orders || [];
+    const validProdIds = new Set((state?.data?.products || []).filter(p => p.active !== false).map(p => p.id));
+    if (effectiveShopId && effectiveShopId !== 'shop_default') {
+      rawSales = rawSales.filter(s => (!s.shop_id || s.shop_id === effectiveShopId));
+      rawOrders = rawOrders.filter(o => (!o.shop_id || o.shop_id === effectiveShopId));
+    }
+    const filteredSales = rawSales.filter(s => (s.items || []).some(it => validProdIds.has(it.productId || it.item_id || it.itemId || it.id)));
+    const filteredOrders = rawOrders.filter(o => (o.items || []).some(it => validProdIds.has(it.productId || it.item_id || it.itemId || it.id)));
+
     const metrics = calculateSalesMetrics({
-      sales: state?.data?.sales || [],
-      orders: state?.data?.orders || [],
+      sales: filteredSales.length > 0 || rawSales.length === 0 ? filteredSales : rawSales,
+      orders: filteredOrders.length > 0 || rawOrders.length === 0 ? filteredOrders : rawOrders,
       refunds: state?.data?.refunds || [],
       products: state?.data?.products || [],
       startDate: start,

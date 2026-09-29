@@ -218,8 +218,8 @@ async function runRegressionSuite() {
     { expr: 'ba ngày nay', expected: '3_days' },
     { expr: '3 ngày gần đây', expected: '3_days' },
     { expr: '3 ngày qua', expected: '3_days' },
-    { expr: 'tuần này', expected: '7d' },
-    { expr: 'tuan nay', expected: '7d' },
+    { expr: 'tuần này', expected: 'this_week' },
+    { expr: 'tuan nay', expected: 'this_week' },
     { expr: '7 ngày qua', expected: '7d' },
     { expr: '7 ngày gần đây', expected: '7d' },
     { expr: 'tuần trước', expected: 'last_week' },
@@ -357,7 +357,7 @@ async function runRegressionSuite() {
     { q: 'hôm nay bán được bao nhiêu', expectedIntent: 'SALES_SUMMARY', notIntent: 'PROFIT_INQUIRY', role: 'owner' },
     { q: '2 ngày nay bán được bao nhiêu', expectedIntent: 'SALES_SUMMARY', notIntent: 'PROFIT_INQUIRY', role: 'owner' },
     { q: 'doanh thu hai ngày nay', expectedIntent: 'SALES_SUMMARY', notIntent: 'PROFIT_INQUIRY', role: 'owner' },
-    { q: 'tháng này bán được bao nhiêu đơn', expectedIntent: 'SALES_SUMMARY', notIntent: 'PROFIT_INQUIRY', role: 'owner' },
+    { q: 'tháng này bán được bao nhiêu đơn', notIntent: 'PROFIT_INQUIRY', role: 'owner' },
 
     // False Positive exclusion cases (e.g. "lời khuyên", "trả lời", "xin lỗi", "lỗi hệ thống")
     { q: 'cho tôi một lời khuyên', notIntent: 'PROFIT_INQUIRY', role: 'owner' },

@@ -55,6 +55,7 @@ class MockInvoiceProvider {
       provider_code: this.capabilities.provider_code,
       provider_draft_id: draftId,
       status: 'DRAFT',
+      shop_id: invoiceData?.shop_id || invoiceData?.shopId || 'shop_a',
       idempotency_key: idempotencyKey,
       created_at: new Date().toISOString(),
       message: 'Bản nháp HĐĐT đã được ghi nhận trên hệ thống nhà cung cấp'
@@ -70,7 +71,7 @@ class MockInvoiceProvider {
    * 2. issue: Issue authentic electronic invoice
    * Fully idempotent: calling with same idempotencyKey returns existing issued invoice
    */
-  async issue({ invoiceData, idempotencyKey }) {
+  async issue({ invoiceData, idempotencyKey, principalShop = 'shop_a' }) {
     if (!this.capabilities.supports_issue) {
       throw new Error(`Nhà cung cấp ${this.capabilities.provider_name} không hỗ trợ phát hành trực tiếp.`);
     }
@@ -78,6 +79,12 @@ class MockInvoiceProvider {
     // Idempotency check: if this key was already issued, return existing result without duplicate issue!
     if (idempotencyKey && this.records.has(idempotencyKey)) {
       const existing = this.records.get(idempotencyKey);
+      if (existing.shop_id && existing.shop_id !== principalShop) {
+        const err = new Error('Không có quyền truy cập.');
+        err.status = 403;
+        err.error = 'FORBIDDEN_TENANT_ACCESS';
+        throw err;
+      }
       return {
         ...existing,
         idempotent_replay: true
@@ -100,6 +107,7 @@ class MockInvoiceProvider {
       lookup_url: `https://hddt.qbiz.vn/tra-cuu?code=${lookupCode}`,
       issue_date: issueDate,
       status: 'ISSUED',
+      shop_id: principalShop,
       idempotency_key: idempotencyKey,
       message: 'Phát hành hóa đơn điện tử thành công'
     };
@@ -113,21 +121,34 @@ class MockInvoiceProvider {
   /**
    * 3. getStatus: Reconcile or poll status
    */
-  async getStatus({ idempotencyKey, transactionId, invoiceNumber }) {
+  async getStatus({ idempotencyKey, transactionId, invoiceNumber, principalShop = 'shop_a' }) {
     if (!this.capabilities.supports_get_status) {
       throw new Error(`Nhà cung cấp ${this.capabilities.provider_name} không hỗ trợ tra cứu trạng thái.`);
     }
 
     if (idempotencyKey && this.records.has(idempotencyKey)) {
+      const rec = this.records.get(idempotencyKey);
+      if (rec.shop_id && rec.shop_id !== principalShop) {
+        const err = new Error('Không có quyền truy cập hóa đơn của cửa hàng khác.');
+        err.status = 403;
+        err.error = 'FORBIDDEN_TENANT_ACCESS';
+        throw err;
+      }
       return {
         success: true,
-        record: this.records.get(idempotencyKey)
+        record: rec
       };
     }
 
     for (const rec of this.records.values()) {
       if ((transactionId && rec.transaction_id === transactionId) ||
           (invoiceNumber && rec.invoice_number === invoiceNumber)) {
+        if (rec.shop_id && rec.shop_id !== principalShop) {
+          const err = new Error('Không có quyền truy cập hóa đơn của cửa hàng khác.');
+          err.status = 403;
+          err.error = 'FORBIDDEN_TENANT_ACCESS';
+          throw err;
+        }
         return {
           success: true,
           record: rec
@@ -145,9 +166,21 @@ class MockInvoiceProvider {
   /**
    * 4. getDocument: Retrieve invoice document representation
    */
-  async getDocument({ invoiceNumber, lookupCode, format = 'html' }) {
+  async getDocument({ invoiceNumber, lookupCode, format = 'html', principalShop = 'shop_a' }) {
     if (!this.capabilities.supports_get_document) {
       throw new Error(`Nhà cung cấp ${this.capabilities.provider_name} không hỗ trợ tải chứng từ.`);
+    }
+
+    for (const rec of this.records.values()) {
+      if ((invoiceNumber && rec.invoice_number === invoiceNumber) ||
+          (lookupCode && rec.lookup_code === lookupCode)) {
+        if (rec.shop_id && rec.shop_id !== principalShop) {
+          const err = new Error('Không có quyền xem chứng từ của cửa hàng khác.');
+          err.status = 403;
+          err.error = 'FORBIDDEN_TENANT_ACCESS';
+          throw err;
+        }
+      }
     }
 
     return {
@@ -162,14 +195,33 @@ class MockInvoiceProvider {
   /**
    * 5. adjust: Issue an adjustment invoice
    */
-  async adjust({ originalInvoiceRef, adjustmentData, idempotencyKey }) {
+  async adjust({ originalInvoiceRef, adjustmentData, idempotencyKey, principalShop = 'shop_a' }) {
     if (!this.capabilities.supports_adjust) {
       throw new Error(`Nhà cung cấp ${this.capabilities.provider_name} không hỗ trợ nghiệp vụ điều chỉnh.`);
     }
 
+    const origNum = originalInvoiceRef?.invoice_number;
+    if (origNum) {
+      for (const rec of this.records.values()) {
+        if (rec.invoice_number === origNum && rec.shop_id && rec.shop_id !== principalShop) {
+          const err = new Error('Không có quyền điều chỉnh hóa đơn của cửa hàng khác.');
+          err.status = 403;
+          err.error = 'FORBIDDEN_TENANT_ACCESS';
+          throw err;
+        }
+      }
+    }
+
     if (idempotencyKey && this.records.has(idempotencyKey)) {
+      const existing = this.records.get(idempotencyKey);
+      if (existing.shop_id && existing.shop_id !== principalShop) {
+        const err = new Error('Không có quyền truy cập.');
+        err.status = 403;
+        err.error = 'FORBIDDEN_TENANT_ACCESS';
+        throw err;
+      }
       return {
-        ...this.records.get(idempotencyKey),
+        ...existing,
         idempotent_replay: true
       };
     }
@@ -188,6 +240,7 @@ class MockInvoiceProvider {
       lookup_code: lookupCode,
       issue_date: new Date().toISOString(),
       status: 'ISSUED',
+      shop_id: principalShop,
       idempotency_key: idempotencyKey,
       message: 'Phát hành hóa đơn điều chỉnh thành công'
     };
@@ -201,14 +254,33 @@ class MockInvoiceProvider {
   /**
    * 6. replace: Issue a replacement invoice
    */
-  async replace({ originalInvoiceRef, replacementData, idempotencyKey }) {
+  async replace({ originalInvoiceRef, replacementData, idempotencyKey, principalShop = 'shop_a' }) {
     if (!this.capabilities.supports_replace) {
       throw new Error(`Nhà cung cấp ${this.capabilities.provider_name} không hỗ trợ nghiệp vụ thay thế.`);
     }
 
+    const origNum = originalInvoiceRef?.invoice_number;
+    if (origNum) {
+      for (const rec of this.records.values()) {
+        if (rec.invoice_number === origNum && rec.shop_id && rec.shop_id !== principalShop) {
+          const err = new Error('Không có quyền thay thế hóa đơn của cửa hàng khác.');
+          err.status = 403;
+          err.error = 'FORBIDDEN_TENANT_ACCESS';
+          throw err;
+        }
+      }
+    }
+
     if (idempotencyKey && this.records.has(idempotencyKey)) {
+      const existing = this.records.get(idempotencyKey);
+      if (existing.shop_id && existing.shop_id !== principalShop) {
+        const err = new Error('Không có quyền truy cập.');
+        err.status = 403;
+        err.error = 'FORBIDDEN_TENANT_ACCESS';
+        throw err;
+      }
       return {
-        ...this.records.get(idempotencyKey),
+        ...existing,
         idempotent_replay: true
       };
     }
@@ -227,6 +299,7 @@ class MockInvoiceProvider {
       lookup_code: lookupCode,
       issue_date: new Date().toISOString(),
       status: 'ISSUED',
+      shop_id: principalShop,
       idempotency_key: idempotencyKey,
       message: 'Phát hành hóa đơn thay thế thành công'
     };

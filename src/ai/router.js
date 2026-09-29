@@ -49,6 +49,7 @@ import {
   parseNaturalReceiptCommand,
   isPaymentBreakdownQuery,
   isLowStockAlertQuery,
+  isReplenishmentAdviceQuery,
   isCustomerAnalyticsQuery,
   parseSingleProductStockQuery,
   isFrustrationOrErrorReport,
@@ -155,11 +156,17 @@ export function extractRelativePeriod(pNorm) {
   if (p.includes('tuan truoc')) {
     return 'last_week';
   }
-  if (p.includes('tuan nay') || p.includes('7 ngay qua') || p.includes('7 ngay gan day') || p.includes('tuan')) {
+  if (p.includes('tuan nay') || p.includes('trong tuan') || p.includes('tuan')) {
+    return 'this_week';
+  }
+  if (p.includes('7 ngay qua') || p.includes('7 ngay gan day') || p.includes('7 ngay')) {
     return '7d';
   }
   if (p.includes('thang truoc')) {
     return 'last_month';
+  }
+  if (p.includes('30 ngay qua') || p.includes('30 ngay gan day') || p.includes('30 ngay')) {
+    return '30d';
   }
   if (
     p.includes('thang nay') || p.includes('thang hien tai') ||
@@ -931,7 +938,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
   // 1. Top Selling / Top Services (Ưu tiên cao nhất cho câu hỏi xếp hạng / bán chạy)
   if (isTopSellingQuery(p) || (pClean && isTopSellingQuery(pClean))) {
     const queryEffective = pClean || p;
-    const period = extractRelativePeriod(queryEffective) || extractRelativePeriod(rawPrompt) || (queryEffective.includes('hom nay') ? 'today' : (queryEffective.includes('2 ngay') ? '2_days' : 'month'));
+    const period = extractRelativePeriod(queryEffective) || extractRelativePeriod(rawPrompt) || (queryEffective.includes('hom nay') ? 'today' : (queryEffective.includes('2 ngay') ? '2_days' : (queryEffective.includes('tuan') ? 'this_week' : 'month')));
     const sortBy = (queryEffective.includes('doanh thu') || queryEffective.includes('doanh so') || queryEffective.includes('tien')) ? 'revenue' : 'qty';
     return {
       type: 'ACTION',
@@ -1144,7 +1151,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
   if (p.includes('kiem tra du lieu') || p.includes('suc khoe cua hang') || p.includes('kiem tra he thong') || p.includes('loi du lieu')) {
     return { type: 'ACTION', action_id: 'shop_health_check', action: ACTION_REGISTRY['shop_health_check'], confidence: 95, source: 'domain_skill' };
   }
-  if (!isProfitQuery(p) && (p.includes('gia bao nhieu') || p.includes('bao nhieu tien') || p.includes('tra gia') || p.includes('gia ban') || p.includes('don gia'))) {
+  if (!isProfitQuery(p) && !p.includes('thu duoc') && !p.includes('ban duoc') && !p.includes('kiem duoc') && !p.includes('thu ve') && (p.includes('gia bao nhieu') || p.includes('bao nhieu tien') || p.includes('tra gia') || p.includes('gia ban') || p.includes('don gia'))) {
     return { type: 'ACTION', action_id: 'price_lookup', action: ACTION_REGISTRY['price_lookup'], params: { query: p }, confidence: 95, source: 'domain_skill' };
   }
   if (p.includes('con bao nhieu') || p.includes('cai nay con') || p.includes('con hang khong') || p.includes('kiem ton') || p.includes('con bao nhieu hang') || p.includes('ton bao nhieu') || p.includes('kiem tra ton')) {
@@ -1257,6 +1264,7 @@ export function dictionaryRoute(rawPrompt, context, state) {
   }
   if (
     p.includes('doanh thu') || p.includes('doanh so') ||
+    p.includes('thu duoc') || p.includes('thu ve') ||
     p.includes('ban bao nhieu') || p.includes('ban duoc bao nhieu') || p.includes('ban dc bao nhieu') ||
     p.includes('may don') || p.includes('bao nhieu don') || p.includes('ban the nao') ||
     p.includes('hom nay ban') || p.includes('thang nay ban') ||
@@ -1915,7 +1923,7 @@ export async function dispatchCloudProvider(rawPrompt, context = {}, state = {},
       isTopSellingQuery(pNorm) ||
       isTopSellingQuery(rawPrompt)
     ) {
-      const period = extractRelativePeriod(pNorm) || extractRelativePeriod(rawPrompt) || (pNorm.includes('hom nay') ? 'today' : (pNorm.includes('2 ngay') ? '2_days' : 'month'));
+      const period = extractRelativePeriod(pNorm) || extractRelativePeriod(rawPrompt) || (pNorm.includes('hom nay') ? 'today' : (pNorm.includes('2 ngay') ? '2_days' : (pNorm.includes('tuan') ? 'this_week' : 'month')));
       const sortBy = (pNorm.includes('doanh thu') || pNorm.includes('doanh so') || pNorm.includes('tien')) ? 'revenue' : 'qty';
       const res = await executeSkill('top-selling-products', { period, query: rawPrompt, sortBy }, context, state);
       return { ...res, intent: 'TOP_SELLING', skillId: 'top-selling-products', tier: 1, provider: config.mode, ...traceMeta };
@@ -2155,6 +2163,208 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   // =========================================================================
   // EARLY FAST-PATH HANDLERS (FINANCIAL GUARD, DISAMBIGUATION & PROPOSALS)
   // =========================================================================
+
+  // =========================================================================
+  // PRIORITY 0: STRICT CONTEXTUAL PRODUCT ENTITY BINDING (Section 4, 5, 7 Invariants)
+  // Invariant: When current product is bound (route=products/modal or current_product_id),
+  // product-specific intents have absolute priority over generic keywords, navigation, or low-stock listings.
+  // =========================================================================
+  const boundProdId = context?.current_product_id || state?.currentProductId || null;
+  const boundProd = boundProdId ? (state?.data?.products || []).find(p => p.id === boundProdId) : null;
+
+  if (boundProd) {
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const targetWh = context?.warehouse_id || (state?.warehouse && state.warehouse !== 'all' ? state.warehouse : (state?.data?.warehouses || [])[0]?.id);
+
+    // 4.A User: "Hàng này hết" / "sản phẩm này hết" / "cái này hết chưa" / "hết hàng chưa" / "còn không"
+    // Statement/query on bound product -> READ canonical stock, NO MUTATION.
+    const isBoundProdStockQuery = (
+      pNorm.includes('hang nay het') ||
+      pNorm.includes('cai nay het') ||
+      pNorm.includes('mon nay het') ||
+      pNorm.includes('san pham nay het') ||
+      pNorm === 'het hang' ||
+      pNorm === 'het hang chua' ||
+      pNorm === 'con hang khong' ||
+      pNorm === 'con khong' ||
+      pNorm === 'het chua' ||
+      pNorm === 'con hang khong?' ||
+      pNorm === 'het hang chua?'
+    );
+    if (isBoundProdStockQuery) {
+      const stockInfo = executeTool('get_available_stock', { productId: boundProd.id }, state, context);
+      const isAvailable = stockInfo.available > 0;
+      return {
+        text: isAvailable
+          ? `Hiện tại sản phẩm **${boundProd.name}** chưa hết hàng, tồn khả dụng còn **${fmt.format(stockInfo.available)} ${boundProd.unit || 'cái'}** (tồn thực: ${fmt.format(stockInfo.onHand)}). Trạng thái: **${stockInfo.status}**.`
+          : `Hiện tại sản phẩm **${boundProd.name}** đã hết hàng trong kho (tồn khả dụng = 0). Trạng thái: **Hết hàng**.`,
+        status: 'SUCCESS',
+        intent: 'STOCK_INQUIRY',
+        productId: boundProd.id,
+        available: stockInfo.available,
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Contextual Product Stock Read',
+      };
+    }
+
+    // 4.B User: "Đánh dấu hết hàng" / "Báo hết hàng"
+    // Action intent on bound product: if canonical stock > 0, ask clarification; do NOT list 17 low stock items!
+    const isMarkZeroIntent = (
+      pNorm.includes('danh dau het hang') ||
+      pNorm.includes('danh dau het') ||
+      pNorm.includes('bao het hang') ||
+      pNorm.includes('danh dau het ton')
+    );
+    if (isMarkZeroIntent) {
+      const stockInfo = executeTool('get_available_stock', { productId: boundProd.id }, state, context);
+      if (stockInfo.available > 0) {
+        return {
+          text: `Sản phẩm **${boundProd.name}** hiện còn **${fmt.format(stockInfo.available)} ${boundProd.unit || 'cái'}** trong kho. Anh muốn điều chỉnh tồn về 0 hay chỉ tạm ngừng bán?`,
+          status: 'NEEDS_CLARIFICATION',
+          intent: 'PRODUCT_AVAILABILITY_CLARIFICATION',
+          productId: boundProd.id,
+          actions: [
+            { id: 'adjust_stock_to_zero', label: 'Sửa kho thành 0', action_suggestion: 'stocktake-proposal', params: { productId: boundProd.id, warehouseId: targetWh, counted: 0 } },
+            { id: 'toggle_product_status', label: 'Tạm ngừng bán', action_suggestion: 'update-product-status', params: { productId: boundProd.id, active: false } },
+          ],
+          suggestions: ['Sửa kho thành 0', 'Tạm ngừng bán'],
+          tier: 0,
+          provider: PROVIDER_MODES.DETERMINISTIC,
+          compactTrace: 'Mark Zero Clarification',
+        };
+      } else {
+        return {
+          text: `Sản phẩm **${boundProd.name}** hiện tại đã có tồn khả dụng bằng 0. Trạng thái: **Hết hàng**.`,
+          status: 'SUCCESS',
+          intent: 'STOCK_INQUIRY',
+          productId: boundProd.id,
+          tier: 0,
+          provider: PROVIDER_MODES.DETERMINISTIC,
+          compactTrace: 'Already Zero Stock',
+        };
+      }
+    }
+
+    // 4.C User: "Sửa kho thành 0" / "Chỉnh kho thành 0" / "Cho về 0"
+    // Explicit stock adjustment write intent on bound product -> create STOCKTAKE_PROPOSAL with counted = 0.
+    const adjCheck = parseContextualStockAdjustment(pNorm) || parseContextualStockAdjustment(rawPrompt);
+    const isDirectZeroAdj = (
+      adjCheck?.isZero ||
+      pNorm.includes('sua kho thanh 0') ||
+      pNorm.includes('sua kho ve 0') ||
+      pNorm.includes('chinh kho thanh 0') ||
+      pNorm.includes('chinh kho ve 0') ||
+      pNorm.includes('sua ton thanh 0') ||
+      pNorm.includes('sua ton ve 0') ||
+      pNorm.includes('chinh ton ve 0') ||
+      pNorm.includes('chinh ton thanh 0') ||
+      pNorm.includes('cho ve 0') ||
+      pNorm.includes('dat ve 0') ||
+      pNorm === 've 0' ||
+      pNorm === 'thanh 0'
+    );
+    if (isDirectZeroAdj) {
+      const curStock = executeTool('get_available_stock', { productId: boundProd.id }, state, context);
+      const res = await executeSkill('stocktake-proposal', {
+        warehouseId: targetWh,
+        productId: boundProd.id,
+        counted: 0,
+        reason: 'Điều chỉnh tồn kho về 0 từ AI'
+      }, context, state);
+
+      return {
+        ...res,
+        text: `Đã tạo đề xuất điều chỉnh tồn kho cho **${boundProd.name}**:\n• Trước điều chỉnh: **${fmt.format(curStock.onHand)} ${boundProd.unit || 'cái'}** (khả dụng: ${fmt.format(curStock.available)})\n• Sau điều chỉnh: **0 ${boundProd.unit || 'cái'}**\n\n*(Chưa có thay đổi tồn kho thực tế - vui lòng nhấn Xác nhận để ghi sổ cái kho)*`,
+        intent: 'STOCK_ADJUSTMENT_PROPOSAL',
+        skillId: 'stocktake-proposal',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Contextual Stocktake Proposal Zero',
+      };
+    }
+
+    // 5 User: "Có nên nhập k" / "Có nên nhập thêm không" / "Mặt này có cần nhập không"
+    // Advice query -> READ ONLY via explain_replenishment, NEVER open write form.
+    if (isReplenishmentAdviceQuery(pNorm) || isReplenishmentAdviceQuery(rawPrompt)) {
+      let repRes = null;
+      try {
+        repRes = executeTool('explain_replenishment', { productId: boundProd.id, warehouseId: targetWh }, state);
+      } catch (_) {}
+
+      const stockInfo = executeTool('get_available_stock', { productId: boundProd.id }, state, context);
+      const lowThresh = boundProd.lowStock || 5;
+
+      let verdict = 'CHƯA CẦN';
+      let suggestedQty = 10;
+      let expText = '';
+
+      if (repRes?.explanation?.markdown) {
+        expText = repRes.explanation.markdown;
+        suggestedQty = repRes.bundle?.plan?.suggestedQuantity || 10;
+        if (suggestedQty > 0 || stockInfo.available <= 0) {
+          verdict = 'NÊN NHẬP';
+        } else if (stockInfo.available <= lowThresh) {
+          verdict = 'NÊN NHẬP BỔ SUNG';
+          suggestedQty = Math.max(10, lowThresh * 2 - stockInfo.available);
+        } else {
+          verdict = 'CHƯA CẦN';
+        }
+      } else {
+        if (stockInfo.available <= 0) {
+          verdict = 'NÊN NHẬP';
+          suggestedQty = lowThresh > 0 ? lowThresh * 2 : 10;
+          expText = `• Tồn khả dụng hiện tại: **0 ${boundProd.unit || 'cái'}** (Đã hết hàng hoàn toàn).\n• Ngưỡng tồn an toàn: **${lowThresh}**.\n• Lý do: Cần nhập hàng bổ sung ngay để không đứt đoạn việc bán hàng.`;
+        } else if (stockInfo.available <= lowThresh) {
+          verdict = 'NÊN NHẬP';
+          suggestedQty = Math.max(10, lowThresh * 2 - stockInfo.available);
+          expText = `• Tồn khả dụng hiện tại: **${fmt.format(stockInfo.available)} ${boundProd.unit || 'cái'}** (Đang ở mức sắp hết, dưới ngưỡng an toàn ${lowThresh}).\n• Khuyến nghị: Nên nhập thêm khoảng **${suggestedQty} ${boundProd.unit || 'cái'}** để duy trì kinh doanh.`;
+        } else {
+          verdict = 'CHƯA CẦN';
+          expText = `• Tồn khả dụng hiện tại: **${fmt.format(stockInfo.available)} ${boundProd.unit || 'cái'}** (Tồn an toàn vượt mức tối thiểu ${lowThresh}).\n• Lý do: Lượng hàng sẵn có vẫn đáp ứng tốt nhu cầu bán hàng, chưa cần nhập thêm lúc này.`;
+        }
+      }
+
+      return {
+        text: `💡 **Tư vấn nhập hàng cho ${boundProd.name}: [${verdict}]**\n\n${expText}\n\n*Bạn có thể bấm nút bên dưới nếu muốn lên đề xuất nhập:*`,
+        intent: 'REPLENISHMENT_ADVICE',
+        skillId: 'explain-replenishment',
+        productId: boundProd.id,
+        actions: [
+          { id: 'propose_receipt', label: 'Tạo đề xuất nhập', action_suggestion: 'receipt-proposal', params: { productId: boundProd.id, qty: suggestedQty, warehouseId: targetWh } },
+        ],
+        suggestions: ['Tạo đề xuất nhập', `Nhập ${suggestedQty} ${boundProd.unit || 'cái'}`],
+        status: 'SUCCESS',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Contextual Replenishment Advice',
+      };
+    }
+
+    // 7 User: Explicit "Nhập 20 cái" / "Nhập 20" on bound product
+    const isExplicitQtyReceipt = (
+      pNorm.startsWith('nhap ') && !pNorm.includes('hang ve') && !pNorm.includes('tu dau') &&
+      /\b\d+\b/.test(pNorm) && !isReplenishmentAdviceQuery(pNorm)
+    );
+    if (isExplicitQtyReceipt) {
+      const qMatch = pNorm.match(/\b(\d+)\b/);
+      const qty = qMatch ? parseInt(qMatch[1], 10) : 10;
+      const res = await executeSkill('receipt-proposal', {
+        productId: boundProd.id,
+        warehouseId: targetWh,
+        qty,
+        reason: 'Nhập hàng từ AI cho ' + boundProd.name,
+      }, context, state);
+      return {
+        ...res,
+        intent: 'CREATE_RECEIPT_PROPOSAL',
+        skillId: 'receipt-proposal',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Contextual Explicit Receipt Proposal',
+      };
+    }
+  }
 
   // 0.00 Voice TTS Mute/Unmute Fast-Path ("tắt tiếng", "tắt giọng đọc", "im lặng", "bật tiếng")
   if (isVoiceMuteCommand(pNorm) || isVoiceMuteCommand(rawPrompt)) {
@@ -3573,6 +3783,9 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     !isPaymentBreakdownQuery(pNorm) &&
     !pNorm.includes('doanh thu') &&
     !pNorm.includes('ban duoc') &&
+    !pNorm.includes('thu duoc') &&
+    !pNorm.includes('thu ve') &&
+    !pNorm.includes('kiem duoc') &&
     !pNorm.includes('tien mat') &&
     !pNorm.includes('chuyen khoan') &&
     (
@@ -3747,7 +3960,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   const pCleanEarly = pNorm.replace(/^(?:bao cao|thong ke|cho xem|xem|tong hop)\s+(?:cho toi\s+)?/i, '').trim();
   if (isTopSellingQuery(pNorm) || (pCleanEarly && isTopSellingQuery(pCleanEarly))) {
     const queryEffective = pCleanEarly || pNorm;
-    const period = extractRelativePeriod(queryEffective) || extractRelativePeriod(rawPrompt) || (queryEffective.includes('hom nay') ? 'today' : (queryEffective.includes('2 ngay') ? '2_days' : 'month'));
+    const period = extractRelativePeriod(queryEffective) || extractRelativePeriod(rawPrompt) || (queryEffective.includes('hom nay') ? 'today' : (queryEffective.includes('2 ngay') ? '2_days' : (queryEffective.includes('tuan') ? 'this_week' : 'month')));
     const sortBy = (queryEffective.includes('doanh thu') || queryEffective.includes('doanh so') || queryEffective.includes('tien')) ? 'revenue' : 'qty';
     const res = await executeSkill('top-selling-products', { period, query: queryEffective, sortBy }, context, state);
     return {

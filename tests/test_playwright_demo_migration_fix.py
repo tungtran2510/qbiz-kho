@@ -10,7 +10,8 @@ import json
 import tempfile
 import shutil
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 from playwright.sync_api import sync_playwright
 
 V12_STORES = [

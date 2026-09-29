@@ -607,13 +607,30 @@ export function isLowStockAlertQuery(text) {
   const c = canonicalizeVietnamese(text);
   if (!c) return false;
 
+  // Invariant Section 7: Exclude single-product commands, statements and advice queries
+  if (
+    c.includes('danh dau') ||
+    c.includes('bao het') ||
+    c.includes('hang nay') ||
+    c.includes('mon nay') ||
+    c.includes('cai nay') ||
+    c.includes('san pham nay') ||
+    c.includes('sua kho') ||
+    c.includes('ve 0') ||
+    c.includes('thanh 0') ||
+    c.includes('co nen nhap') ||
+    c.includes('co can nhap') ||
+    c.includes('nen nhap')
+  ) {
+    return false;
+  }
+
   return (
     c.includes('sap het') ||
     c.includes('mon nao sap het') ||
     c.includes('cai gi sap het') ||
     c.includes('hang sap het') ||
     c.includes('san pham sap het') ||
-    c.includes('het hang') ||
     c.includes('canh bao het hang') ||
     c.includes('canh bao ton kho') ||
     c.includes('can date') ||
@@ -621,9 +638,35 @@ export function isLowStockAlertQuery(text) {
     c.includes('duoi dinh muc') ||
     (c.includes('duoi') && (c.includes('cai') || c.includes('mon')) && (c.includes('con') || c.includes('ton'))) ||
     c === 'sap het' ||
-    c === 'het hang'
+    c === 'het hang' ||
+    (c.includes('het hang') && (c.includes('danh sach') || c.includes('nhung') || c.includes('tat ca') || c.includes('cac') || c.includes('mon nao') || c.includes('hang nao') || c.includes('cai nao') || c.includes('canh bao')))
   );
 }
+
+/**
+ * Detect replenishment advice queries (READ only, never write):
+ * e.g., "có nên nhập k", "có nên nhập không", "có nên nhập thêm không", "mặt này có cần nhập không"
+ */
+export function isReplenishmentAdviceQuery(text) {
+  const c = canonicalizeVietnamese(text);
+  if (!c) return false;
+  return (
+    c.includes('co nen nhap') ||
+    c.includes('co can nhap') ||
+    c.includes('nen nhap khong') ||
+    c.includes('can nhap khong') ||
+    c === 'co nen nhap k' ||
+    c === 'co nen nhap ko' ||
+    c === 'co nen nhap khong' ||
+    c === 'co can nhap k' ||
+    c === 'co can nhap ko' ||
+    c === 'co can nhap khong' ||
+    c === 'nen nhap k' ||
+    c === 'nen nhap ko' ||
+    (c.includes('nen nhap') && (c.includes('k') || c.includes('ko') || c.includes('khong') || c.includes('chua') || c.includes('them')))
+  );
+}
+
 
 /**
  * Detect customer analytics queries:
@@ -815,11 +858,14 @@ export function parseAppNavigationAction(text) {
     return { actionId: 'open_stocktake', label: 'Đã mở biểu mẫu Kiểm kho nhanh.' };
   }
 
-  // 9. Nhập kho nhanh
+  // 9. Nhập kho nhanh (Strict Section 5 & 7 Invariant: Advice queries must never trigger write form)
   if (
-    clean === 'nhap kho' || clean === 'nhap hang' || clean === 'mo nhap kho' ||
+    !isReplenishmentAdviceQuery(text) &&
+    !c.includes('co nen') && !c.includes('co can') && !c.includes('nen nhap') && !c.includes('can nhap') &&
+    !c.includes('thanh 0') && !c.includes('ve 0') &&
+    (clean === 'nhap kho' || clean === 'nhap hang' || clean === 'mo nhap kho' ||
     clean === 'vao nhap kho' || clean === 'tao phieu nhap' || clean === 'phieu nhap' ||
-    c.includes('nhap kho') || c.includes('nhap hang')
+    c.includes('nhap kho') || c.includes('nhap hang'))
   ) {
     return { actionId: 'open_receipt', label: 'Đã mở biểu mẫu Nhập kho nhanh.' };
   }
@@ -1212,6 +1258,17 @@ export function parseContextualStockAdjustment(text) {
   const c = canonicalizeVietnamese(text);
   if (!c) return null;
 
+  // Zero stock adjustment explicit patterns: e.g. "sửa kho thành 0", "chỉnh kho về 0", "về 0", "thành 0"
+  const matchZero = c.match(/(?:sua|chinh|dat|ve|thanh|cho ve|cho thanh)\s*(?:ton\s*kho|kho|ton)?\s*(?:ve|thanh|=|sang)?\s*(\d+)/) ||
+                    c.match(/(?:sua\s*kho|chinh\s*kho|sua\s*ton|chinh\s*ton)\s*(?:ve|thanh)?\s*(\d+)/);
+  if (matchZero) {
+    const targetQty = parseInt(matchZero[1], 10);
+    return { type: 'SET_STOCK', qty: targetQty, targetQty, isZero: targetQty === 0, raw: c };
+  }
+  if (c === 'sua kho thanh 0' || c === 'sua kho ve 0' || c === 'chinh kho thanh 0' || c === 'chinh kho ve 0' || c === 've 0' || c === 'thanh 0') {
+    return { type: 'SET_STOCK', qty: 0, targetQty: 0, isZero: true, raw: c };
+  }
+
   // Patterns for setting stock / activating stock
   const isActivateInStock = (
     c.includes('kich hoat con hang') ||
@@ -1577,8 +1634,11 @@ export function parseWarehouseManagementQuery(text) {
     };
   }
 
-  // Edit warehouse: "sửa kho", "đổi tên kho"
-  if (c.includes('sua kho') || c.includes('doi ten kho') || c.includes('chinh ten kho')) {
+  // Edit warehouse: "sửa kho", "đổi tên kho" (excluding stock adjustments like "sửa kho thành 0", "chỉnh kho về 0")
+  if (
+    !c.includes('thanh 0') && !c.includes('ve 0') && !c.includes('so luong') && !/\b(ve|thanh)\s*\d+/.test(c) &&
+    (c.includes('doi ten kho') || c.includes('chinh ten kho') || (c.includes('sua kho') && (c.includes('ten') || c.includes('thong tin') || c === 'sua kho')))
+  ) {
     return {
       action: 'EDIT_WAREHOUSE',
       raw: c

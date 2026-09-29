@@ -2,35 +2,143 @@
   "sourceApp": "qbiz-kho",
   "authority": "INDEXEDDB_QBIZ_KHO_V1",
   "sourceMode": "VERIFIED_SYNC",
-  "sourceTimestamp": "2026-09-29T10:53:14.382Z",
-  "entityVersion": 117,
+  "sourceTimestamp": "2026-09-30T03:00:00.000Z",
+  "entityVersion": 130,
   "stale": false,
   "items": [
     {
-      "sku": "DL-F3",
-      "name": "Gối lưng sáng chế F3/C",
-      "onHand": 15,
+      "sku": "N85-NAVY-H",
+      "name": "Ghế N85 - chân cao",
+      "onHand": 67,
       "reserved": 0,
-      "available": 15,
-      "unitPrice": 4500000,
-      "version": 117
+      "available": 67,
+      "unitPrice": 2300000,
+      "version": 1
+    },
+    {
+      "sku": "N85-NAVY-L",
+      "name": "Ghế N85 - chân thấp",
+      "onHand": 57,
+      "reserved": 0,
+      "available": 57,
+      "unitPrice": 2127000,
+      "version": 1
+    },
+    {
+      "sku": "N85-PINK-H",
+      "name": "Ghế N85 màu hồng - chân cao",
+      "onHand": 37,
+      "reserved": 0,
+      "available": 37,
+      "unitPrice": 2300000,
+      "version": 1
+    },
+    {
+      "sku": "DL-90D",
+      "name": "Ghế sáng chế 90D",
+      "onHand": 90,
+      "reserved": 0,
+      "available": 90,
+      "unitPrice": 34937000,
+      "version": 1
+    },
+    {
+      "sku": "DL-90T",
+      "name": "Ghế sáng chế 90T",
+      "onHand": 82,
+      "reserved": 0,
+      "available": 82,
+      "unitPrice": 34937000,
+      "version": 1
+    },
+    {
+      "sku": "DL-95",
+      "name": "Ghế sáng chế 95",
+      "onHand": 63,
+      "reserved": 0,
+      "available": 63,
+      "unitPrice": 39249000,
+      "version": 1
     },
     {
       "sku": "DL-135",
       "name": "Ghế sáng chế 135",
-      "onHand": 13,
+      "onHand": 72,
       "reserved": 0,
-      "available": 13,
+      "available": 72,
       "unitPrice": 53762000,
       "version": 1
     },
     {
       "sku": "DL-150",
       "name": "Ghế sáng chế 150",
-      "onHand": 1,
+      "onHand": 0,
       "reserved": 0,
-      "available": 1,
-      "unitPrice": 58900000,
+      "available": 0,
+      "unitPrice": 53762000,
+      "version": 1
+    },
+    {
+      "sku": "DL-F1",
+      "name": "Gối lưng sáng chế F1",
+      "onHand": 112,
+      "reserved": 0,
+      "available": 112,
+      "unitPrice": 3500000,
+      "version": 1
+    },
+    {
+      "sku": "DL-F3",
+      "name": "Gối lưng sáng chế F3/C",
+      "onHand": 102,
+      "reserved": 0,
+      "available": 102,
+      "unitPrice": 3737000,
+      "version": 120
+    },
+    {
+      "sku": "DL-F4",
+      "name": "Gối cổ sáng chế F4/09",
+      "onHand": 78,
+      "reserved": 0,
+      "available": 78,
+      "unitPrice": 7624000,
+      "version": 1
+    },
+    {
+      "sku": "DL-F5",
+      "name": "Gối cổ sáng chế F5/S",
+      "onHand": 120,
+      "reserved": 0,
+      "available": 120,
+      "unitPrice": 4312000,
+      "version": 1
+    },
+    {
+      "sku": "DL-F6",
+      "name": "Gối cổ sáng chế F6",
+      "onHand": 0,
+      "reserved": 0,
+      "available": 0,
+      "unitPrice": 7049000,
+      "version": 1
+    },
+    {
+      "sku": "DL-LUMBAR",
+      "name": "Gối lưng DoctorLoan",
+      "onHand": 75,
+      "reserved": 0,
+      "available": 75,
+      "unitPrice": 2900000,
+      "version": 1
+    },
+    {
+      "sku": "DL-MEDITATION",
+      "name": "Đệm thiền DoctorLoan",
+      "onHand": 52,
+      "reserved": 0,
+      "available": 52,
+      "unitPrice": 6000000,
       "version": 1
     }
   ]

@@ -585,28 +585,23 @@ function initVoiceInput() {
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const isSecure = Boolean(window.isSecureContext || isLocalhost);
+  const isHttps = location.protocol === 'https:';
+  const isSecure = Boolean(window.isSecureContext || isLocalhost || isHttps);
 
-  const showInsecureContextGuide = () => {
-    addAssistantMessage(
-      `⚠️ **Không thể bật Micro qua kết nối HTTP mạng LAN (\`${location.origin}\`)**\n\n` +
-      `Trình duyệt Chrome trên điện thoại yêu cầu kết nối bảo mật (HTTPS) hoặc localhost mới cho phép truy cập Micro.\n\n` +
-      `👉 **Cách mở Micro trên điện thoại (Không cần cắm cáp):**\n` +
-      `• **Bước 1:** Mở tab mới trên Chrome điện thoại, dán liên kết cấu hình:\n` +
-      `  \`chrome://flags/#unsafely-treat-insecure-origin-as-secure\`\n` +
-      `• **Bước 2:** Nhập chính xác địa chỉ: \`http://${location.host}\`\n` +
-      `• **Bước 3:** Chuyển sang **Enabled** và bấm nút **Relaunch** (Khởi động lại Chrome) ở góc dưới cùng.\n\n` +
-      `💡 *Hoặc chạy file \`start-qbiz-remote.bat\` trong thư mục \`app\` trên máy tính để lấy link HTTPS (Cloudflare / Localtunnel) mở trên điện thoại.*`
-    );
-  };
+  if (!isSecure) {
+    micBtn.classList.add('ai-mic-disabled');
+    micBtn.title = 'Micro cần HTTPS để hoạt động trên mạng LAN';
+    micBtn.setAttribute('aria-disabled', 'true');
+    micBtn.addEventListener('click', () => {
+      addAssistantMessage('⚠️ **Micro cần HTTPS:** Trình duyệt yêu cầu kết nối HTTPS bảo mật để sử dụng micro trên mạng LAN. Bạn có thể sử dụng bàn phím nhập liệu bình thường.');
+    });
+    return;
+  }
 
   const showPermissionBlockedGuide = () => {
     addAssistantMessage(
       `⚠️ **Bạn cần cấp quyền truy cập Micro trên trình duyệt để sử dụng tính năng này.**\n\n` +
-      `👉 **Cách bật lại Micro:**\n` +
-      `• Bấm vào biểu tượng **Cài đặt trang** (icon ổ khóa hoặc nút gạt bên trái thanh địa chỉ URL).\n` +
-      `• Tìm mục **Microphone (Micro)** và chọn **Cho phép (Allow)**.\n` +
-      `• Tải lại trang (F5) và bấm lại vào biểu tượng Micro.`
+      `👉 **Cách bật lại Micro:** Bấm vào biểu tượng Cài đặt trang trên thanh địa chỉ URL -> Microphone -> Chọn Cho phép (Allow), sau đó tải lại trang.`
     );
   };
 
@@ -614,11 +609,7 @@ function initVoiceInput() {
     micBtn.classList.add('ai-mic-unsupported');
     micBtn.title = 'Thiết bị này chưa hỗ trợ nhận dạng giọng nói';
     micBtn.addEventListener('click', () => {
-      if (!isSecure) {
-        showInsecureContextGuide();
-      } else {
-        addAssistantMessage('⚠️ Trình duyệt này chưa hỗ trợ Web Speech API. Vui lòng sử dụng bàn phím hoặc mở bằng Google Chrome.');
-      }
+      addAssistantMessage('⚠️ Trình duyệt chưa hỗ trợ Web Speech API. Vui lòng sử dụng bàn phím nhập liệu.');
     });
     return;
   }
@@ -2127,6 +2118,12 @@ function renderMessages() {
       renderMessages();
       if (execRes.success) {
         addAssistantMessage(`✓ ${execRes.message || 'Thao tác đã được thực thi và đối soát thành công.'}`);
+        try {
+          if (typeof window !== 'undefined' && window.__qbiz_app__?.render) {
+            window.__qbiz_app__.render();
+          }
+          updateContextAndChips();
+        } catch (_) {}
       } else {
         addAssistantMessage(`⚠️ Thực thi thất bại: ${execRes.error}`);
       }
@@ -2144,6 +2141,12 @@ function renderMessages() {
       renderMessages();
       if (res.success) {
         addAssistantMessage(res.message);
+        try {
+          if (typeof window !== 'undefined' && window.__qbiz_app__?.render) {
+            window.__qbiz_app__.render();
+          }
+          updateContextAndChips();
+        } catch (_) {}
       } else {
         addAssistantMessage(`⚠️ Thực thi thất bại: ${res.error}`);
       }

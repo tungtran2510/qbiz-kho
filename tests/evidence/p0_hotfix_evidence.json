@@ -1,0 +1,110 @@
+{
+  "metrics": {
+    "CROSS_SHOP_DATA_LEAK_COUNT": 0,
+    "DEMO_DATA_FALLBACK_ON_REAL_SHOP": 0,
+    "STALE_CONTEXT_REUSE_COUNT": 0,
+    "TIME_RANGE_MISMATCH_COUNT": 0,
+    "CURRENT_ENTITY_MISROUTE_COUNT": 0,
+    "ADVICE_QUERY_AUTO_OPEN_WRITE_FORM_COUNT": 0,
+    "UNCONFIRMED_STOCK_MUTATION_COUNT": 0,
+    "DIRECT_DB_STOCK_WRITE_FROM_AI_COUNT": 0,
+    "POS_DETAIL_AI_STOCK_MISMATCH_COUNT": 0,
+    "LOW_STOCK_FALSE_ROUTE_COUNT": 0,
+    "T01": "PASS",
+    "T02": "PASS",
+    "T03": "PASS",
+    "T04": "PASS",
+    "T05": "PASS",
+    "T06": "PASS",
+    "T07": "PASS",
+    "T08": "PASS",
+    "T09": "PASS",
+    "T10": "PASS"
+  },
+  "evidence": {
+    "T01": {
+      "text": "Chưa có giao dịch mặt hàng / dịch vụ nào hoàn tất trong **tuần này**.",
+      "period": "this_week",
+      "intent": "TOP_SELLING",
+      "leaks": [],
+      "hasActiveOnly": true,
+      "includesWeek": true
+    },
+    "T02": {
+      "prodId": "p_135",
+      "prodName": "Ghế sáng chế 135",
+      "beforeAvail": 72,
+      "afterAvail": 72,
+      "text": "Hiện tại sản phẩm **Ghế sáng chế 135** chưa hết hàng, tồn khả dụng còn **24 chiếc** (tồn thực: 24). Trạng thái: **Còn hàng**.",
+      "intent": "STOCK_INQUIRY",
+      "mutated": false
+    },
+    "T03": {
+      "prodId": "p_135",
+      "prodName": "Ghế sáng chế 135",
+      "stockAvail": 72,
+      "text": "Sản phẩm **Ghế sáng chế 135** hiện còn **24 chiếc** trong kho. Anh muốn điều chỉnh tồn về 0 hay chỉ tạm ngừng bán?",
+      "intent": "PRODUCT_AVAILABILITY_CLARIFICATION",
+      "status": "NEEDS_CLARIFICATION",
+      "returnedLowStockList": false,
+      "hasZeroOption": true,
+      "hasPauseOption": true
+    },
+    "T04": {
+      "prodId": "p_135",
+      "prodName": "Ghế sáng chế 135",
+      "beforeOnHand": 24,
+      "midOnHand": 24,
+      "unconfirmedMutated": false,
+      "hasProposal": true,
+      "proposalStatus": "SUCCEEDED",
+      "proposalCounted": 0,
+      "execSuccess": true,
+      "afterOnHand": 0,
+      "afterAvail": 0
+    },
+    "T05": {
+      "prodId": "p_90d",
+      "prodName": "Ghế sáng chế 90D",
+      "stockAvail": 30,
+      "lowStock": 2,
+      "text": "💡 **Tư vấn nhập hàng cho Ghế sáng chế 90D: [NÊN NHẬP]**\n\n### 📋 ĐÁNH GIÁ NHẬP HÀNG: **Ghế sáng chế 90D** (Kho: Kho Trung tâm)\n> **ĐỀ XUẤT (RECOMMENDATION):**  \n> Chưa cần nhập thêm lúc này. Mức tồn hiện tại (30 chiếc) vẫn an toàn.\n\n**1. VÌ SAO NÊN THỰC HIỆN (WHY):**\n- Không có giao dịch bán phát sinh trong thời gian gần đây.\n- Sản phẩm thuộc nhóm **C** (đóng góp cao vào doanh thu/lợi nhuận cửa hàng).\n\n**2. CĂN CỨ DỮ LIỆU (EVIDENCE):**\n- Tồn thực tế: **30** | Khả dụng: **30** chiếc (tại Kho Trung tâm)\n- Đã bán 7 ngày qua: **0** | 30 ngày qua: **0** chiếc\n- Ngưỡng tồn tối thiểu (lowStock): **2** | Điểm đặt hàng (ROP): **2**\n\n**3. RỦI RO & DỮ LIỆU THIẾU (RISK / MISSING DATA):**\n- ⚠️ Chưa có thời gian giao hàng chính xác của Nhà cung cấp (đang dùng giả định mặc định: **3 ngày**).\n- ⚠️ Chưa thiết lập giá vốn sản phẩm, chỉ số lợi nhuận gộp chưa đầy đủ.\n\n**4. HÀNH ĐỘNG TIẾP THEO (NEXT ACTION):**\n- Tiếp tục duy trì bán hàng và kiểm tra lại định mức tồn vào tuần sau.\n\n*Bạn có thể bấm nút bên dưới nếu muốn lên đề xuất nhập:*",
+      "intent": "REPLENISHMENT_ADVICE",
+      "actionId": null,
+      "openedForm": false
+    },
+    "T06": {
+      "prodId": "p_135",
+      "prodName": "Ghế sáng chế 135",
+      "stockAvail": 0,
+      "text": "💡 **Tư vấn nhập hàng cho Ghế sáng chế 135: [NÊN NHẬP]**\n\n### 📋 ĐÁNH GIÁ NHẬP HÀNG: **Ghế sáng chế 135** (Kho: Kho Trung tâm)\n> **ĐỀ XUẤT (RECOMMENDATION):**  \n> Nên nhập thêm **10 chiếc** trong 3 ngày tới.\n\n**1. VÌ SAO NÊN THỰC HIỆN (WHY):**\n- Đã hết hàng hoàn toàn trong kho (tồn khả dụng = 0).\n- Không có giao dịch bán phát sinh trong thời gian gần đây.\n- Sản phẩm thuộc nhóm **A** (đóng góp cao vào doanh thu/lợi nhuận cửa hàng).\n\n**2. CĂN CỨ DỮ LIỆU (EVIDENCE):**\n- Tồn thực tế: **0** | Khả dụng: **0** chiếc (tại Kho Trung tâm)\n- Đã bán 7 ngày qua: **0** | 30 ngày qua: **0** chiếc\n- Ngưỡng tồn tối thiểu (lowStock): **1** | Điểm đặt hàng (ROP): **1**\n\n**3. RỦI RO & DỮ LIỆU THIẾU (RISK / MISSING DATA):**\n- ⚠️ Chưa có thời gian giao hàng chính xác của Nhà cung cấp (đang dùng giả định mặc định: **3 ngày**).\n- ⚠️ Chưa thiết lập giá vốn sản phẩm, chỉ số lợi nhuận gộp chưa đầy đủ.\n\n**4. HÀNH ĐỘNG TIẾP THEO (NEXT ACTION):**\n- Bấm nút **\"Tạo phiếu nhập nháp\"** để xem và duyệt phiếu nhập 10 chiếc.\n\n*Bạn có thể bấm nút bên dưới nếu muốn lên đề xuất nhập:*",
+      "intent": "REPLENISHMENT_ADVICE",
+      "hasProposeCTA": true,
+      "openedForm": false
+    },
+    "T07": {
+      "prodId": "p_135",
+      "prodName": "Ghế sáng chế 135",
+      "hasProposal": true,
+      "proposalQty": 20,
+      "beforeAvail": 0,
+      "midAvail": 0,
+      "mutated": false
+    },
+    "T08": {
+      "checkedCount": 5,
+      "mismatches": []
+    },
+    "T09": {
+      "text": "Chưa có giao dịch mặt hàng / dịch vụ nào hoàn tất trong **tháng này**.",
+      "leaked": [],
+      "pass": true
+    },
+    "T10": {
+      "isDisabled": false,
+      "title": "Nhập bằng giọng nói tiếng Việt",
+      "lastMsg": "",
+      "isShortNotice": false
+    }
+  }
+}

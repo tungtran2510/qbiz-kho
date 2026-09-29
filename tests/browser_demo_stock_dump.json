@@ -1,0 +1,434 @@
+{
+  "warehouses": [
+    {
+      "id": "wh_retail_main",
+      "name": "Kho Tổng Trung Tâm"
+    },
+    {
+      "id": "wh_retail_pos",
+      "name": "Quầy Thu Ngân 01"
+    }
+  ],
+  "productsCount": 22,
+  "levelsCount": 40,
+  "products": [
+    {
+      "id": "p_rt_colgate",
+      "name": "Bàn chải đánh răng Colgate SlimSoft",
+      "sku": "CG-SLIM",
+      "price": 38000,
+      "type": "PRODUCT",
+      "stock": 45,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 45,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 15,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_135",
+      "name": "Ghế sáng chế 135",
+      "sku": "DL-135",
+      "price": 53762000,
+      "type": "PRODUCT",
+      "stock": 4,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 4,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 1,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_150",
+      "name": "Ghế sáng chế 150",
+      "sku": "DL-150",
+      "price": 53762000,
+      "type": "PRODUCT",
+      "stock": 2,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 2,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 1,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_90d",
+      "name": "Ghế sáng chế 90D",
+      "sku": "DL-90D",
+      "price": 34937000,
+      "type": "PRODUCT",
+      "stock": 4,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 4,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 2,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_90t",
+      "name": "Ghế sáng chế 90T",
+      "sku": "DL-90T",
+      "price": 34937000,
+      "type": "PRODUCT",
+      "stock": 3,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 3,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 1,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_95",
+      "name": "Ghế sáng chế 95",
+      "sku": "DL-95",
+      "price": 39249000,
+      "type": "PRODUCT",
+      "stock": 5,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 5,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 2,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_f1",
+      "name": "Gối lưng sáng chế F1",
+      "sku": "DL-F1",
+      "price": 3500000,
+      "type": "PRODUCT",
+      "stock": 15,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 15,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 6,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_f3",
+      "name": "Gối lưng sáng chế F3/C",
+      "sku": "DL-F3",
+      "price": 3737000,
+      "type": "PRODUCT",
+      "stock": 10,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 10,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 4,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_f4",
+      "name": "Gối cổ sáng chế F4/09",
+      "sku": "DL-F4",
+      "price": 7624000,
+      "type": "PRODUCT",
+      "stock": 8,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 8,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 3,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_f5",
+      "name": "Gối cổ sáng chế F5/S",
+      "sku": "DL-F5",
+      "price": 4312000,
+      "type": "PRODUCT",
+      "stock": 14,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 14,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 5,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_f6",
+      "name": "Gối cổ sáng chế F6",
+      "sku": "DL-F6",
+      "price": 7049000,
+      "type": "PRODUCT",
+      "stock": 7,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 7,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 2,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_lumbar",
+      "name": "Gối lưng DoctorLoan",
+      "sku": "DL-LUMBAR",
+      "price": 2900000,
+      "type": "PRODUCT",
+      "stock": 18,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 18,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 8,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_meditation",
+      "name": "Đệm thiền DoctorLoan",
+      "sku": "DL-MEDITATION",
+      "price": 6000000,
+      "type": "PRODUCT",
+      "stock": 12,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 12,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 5,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_n85_high",
+      "name": "Ghế N85 - chân cao",
+      "sku": "N85-NAVY-H",
+      "price": 2300000,
+      "type": "PRODUCT",
+      "stock": 18,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 18,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 6,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_dl_n85_low",
+      "name": "Ghế N85 - chân thấp",
+      "sku": "N85-NAVY-L",
+      "price": 2127000,
+      "type": "PRODUCT",
+      "stock": 11,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 11,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 4,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_haohao",
+      "name": "Mì Hảo Hảo tôm chua cay 75g",
+      "sku": "HH-TCC",
+      "price": 4500,
+      "type": "PRODUCT",
+      "stock": 150,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 150,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 40,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_paseo",
+      "name": "Giấy vệ sinh Paseo 10 cuộn 3 lớp",
+      "sku": "PS-10C",
+      "price": 115000,
+      "type": "PRODUCT",
+      "stock": 0,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 0,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 0,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_redbull",
+      "name": "Nước tăng lực Red Bull 250ml",
+      "sku": "RB-250",
+      "price": 15000,
+      "type": "PRODUCT",
+      "stock": 72,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 72,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 24,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_simply",
+      "name": "Dầu ăn Simply Đậu Nành 1L",
+      "sku": "SP-DN-1L",
+      "price": 65000,
+      "type": "PRODUCT",
+      "stock": 28,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 28,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 8,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "p_rt_sunlight",
+      "name": "Nước rửa chén Sunlight Trà Xanh 750g",
+      "sku": "SL-TX-750",
+      "price": 32000,
+      "type": "PRODUCT",
+      "stock": 3,
+      "levels": [
+        {
+          "warehouseId": "wh_retail_main",
+          "onHand": 3,
+          "reserved": 0
+        },
+        {
+          "warehouseId": "wh_retail_pos",
+          "onHand": 2,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "id": "s_rt_dl_massage_co",
+      "name": "Massage trị liệu Cổ Vai Gáy",
+      "sku": "DV-MASSAGE",
+      "price": 300000,
+      "type": "SERVICE",
+      "stock": 0,
+      "levels": []
+    },
+    {
+      "id": "s_rt_dl_tu_van",
+      "name": "Tư vấn tư thế & Cột sống",
+      "sku": "DV-TUVAN",
+      "price": 500000,
+      "type": "SERVICE",
+      "stock": 0,
+      "levels": []
+    }
+  ]
+}

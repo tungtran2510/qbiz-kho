@@ -866,37 +866,62 @@ export const SKILL_REGISTRY = {
       const prods = state?.data?.products || [];
       const now = new Date();
       const start = new Date(now);
+      let periodLabel = 'tháng này';
       if (period === 'today') {
         start.setHours(0, 0, 0, 0);
+        periodLabel = 'hôm nay';
       } else if (period === '2_days') {
         start.setDate(now.getDate() - 1);
         start.setHours(0, 0, 0, 0);
+        periodLabel = '2 ngày nay';
+      } else if (period === 'this_week' || period === 'week') {
+        const day = now.getDay();
+        const diffToMonday = day === 0 ? 6 : (day - 1);
+        start.setDate(now.getDate() - diffToMonday);
+        start.setHours(0, 0, 0, 0);
+        periodLabel = 'tuần này';
+      } else if (period === '7d') {
+        start.setDate(now.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+        periodLabel = '7 ngày qua';
       } else if (period === 'month') {
         start.setDate(1);
         start.setHours(0, 0, 0, 0);
-      } else {
-        start.setDate(now.getDate() - 30);
+        periodLabel = 'tháng này';
+      } else if (period === '30d') {
+        start.setDate(now.getDate() - 29);
         start.setHours(0, 0, 0, 0);
+        periodLabel = '30 ngày qua';
+      } else {
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+        periodLabel = 'tháng này';
       }
+
+      const effectiveShopId = context?.shop_id || null;
+      const validProdMap = new Map((prods || []).filter(p => p.active !== false).map(p => [p.id, p]));
 
       const completedSales = sales.filter(s => {
         const d = new Date(s.created_at || s.createdAt || 0);
-        return ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) && d >= start;
+        if (!['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()) || d < start) return false;
+        if (effectiveShopId && effectiveShopId !== 'shop_default' && s.shop_id && s.shop_id !== effectiveShopId) return false;
+        return true;
       });
 
       const itemMap = new Map();
       completedSales.forEach(s => {
         (s.items || []).forEach(it => {
           const id = it.item_id || it.itemId || it.productId || it.id;
-          const prodObj = prods.find(p => p.id === id);
-          const name = it.name || prodObj?.name || 'Sản phẩm';
+          const prodObj = validProdMap.get(id);
+          // Section 1 Invariant: Exclude products that do not belong to current shop's active catalog
+          if (!prodObj) return;
+
+          const name = prodObj.name;
           const qty = Number(it.quantity || 1);
           const revenue = Number(it.line_total || it.total || it.unit_price * qty || it.price * qty || 0);
-          const isService = prodObj ? (
-            prodObj.type === 'SERVICE' || prodObj.type === 'service' || prodObj.is_service === true ||
-            ['lượt', 'buổi', 'liệu trình', 'suất'].includes(String(prodObj.unit || '').toLowerCase())
-          ) : false;
-          const unit = it.unit || prodObj?.unit || (isService ? 'lượt' : 'sản phẩm');
+          const isService = prodObj.type === 'SERVICE' || prodObj.type === 'service' || prodObj.is_service === true ||
+            ['lượt', 'buổi', 'liệu trình', 'suất'].includes(String(prodObj.unit || '').toLowerCase());
+          const unit = it.unit || prodObj.unit || (isService ? 'lượt' : 'sản phẩm');
 
           if (!itemMap.has(id)) {
             itemMap.set(id, { id, name, qty: 0, revenue: 0, isService, unit });
@@ -926,8 +951,6 @@ export const SKILL_REGISTRY = {
       } else {
         items.sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
       }
-
-      const periodLabel = period === 'today' ? 'hôm nay' : (period === '2_days' ? '2 ngày nay' : (period === 'month' ? 'tháng này' : '30 ngày qua'));
 
       if (!items.length) {
         const entityLabel = asksService ? 'dịch vụ' : 'mặt hàng / dịch vụ';

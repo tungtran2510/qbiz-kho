@@ -197,7 +197,10 @@ def run_batch3_status_document_e2e():
                 const idempotencyKey = 'ISSUE:' + sale.id + ':' + lineageId + ':v1';
                 const resp = await fetch('/api/invoice-gateway', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer mock_token_cashier'
+                    },
                     body: JSON.stringify({
                         appScope: 'qbiz-kho',
                         action: 'issue',

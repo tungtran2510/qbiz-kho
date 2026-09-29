@@ -154,7 +154,7 @@ async function runTests() {
   let gatewayData = null;
   const mockReqValid = {
     method: 'POST',
-    headers: {},
+    headers: { authorization: 'Bearer mock_token_cashier' },
     body: {
       appScope: 'qbiz-kho',
       action: 'getStatus',
