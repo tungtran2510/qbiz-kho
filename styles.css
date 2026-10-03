@@ -5790,5 +5790,453 @@ body:has(.pos-cart-bar) .qbiz-ai-trigger {
   box-shadow: 0 0 0 1px var(--q-blue, #2563eb);
 }
 
+/* Brand Logo Upgrade & Header/Modal Install System */
+.brand-mark {
+  background: transparent !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.sidebar-install-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  font-weight: 700 !important;
+  color: #1f56a6 !important;
+  background: #edf4ff !important;
+  border: 1px solid #cce0ff !important;
+  border-radius: 12px !important;
+  transition: all 0.15s ease !important;
+}
+.sidebar-install-btn:hover {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+}
+
+/* Header Install Button (Subtle & Polished) */
+.header-install-btn {
+  background: #ffffff !important;
+  color: #1f56a6 !important;
+  border: 1px solid #cfe0f5 !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  border-radius: 10px !important;
+  transition: all 0.15s ease !important;
+}
+.header-install-btn:hover {
+  background: #f0f7ff !important;
+  border-color: #93c5fd !important;
+  color: #1d4ed8 !important;
+}
+@media (max-width: 768px) {
+  .header-install-btn span {
+    display: none !important;
+  }
+  .header-install-btn {
+    padding: 0 10px !important;
+    min-width: 36px !important;
+  }
+}
+
+/* Smart Install Top Banner ("Treo sát lên mép trên", to rõ, bám đuổi theo khi cuộn) */
+body:has(#firstVisitInstallBanner) .topbar {
+  top: 50px !important;
+}
+
+.install-subtle-tip {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 15 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 0 !important;
+  padding: 0 28px !important;
+  margin: 0 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+  box-sizing: border-box !important;
+  animation: fadeInTopBanner 0.25s ease !important;
+  transition: all 0.2s ease !important;
+}
+@keyframes fadeInTopBanner {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.install-subtle-tip .tip-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.install-subtle-tip .tip-logo-badge {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  display: grid;
+  place-items: center;
+}
+.install-subtle-tip .tip-logo-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.install-subtle-tip .tip-text-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+.install-subtle-tip .tip-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+.install-subtle-tip .tip-sep {
+  color: #cbd5e1;
+  font-size: 13px;
+}
+.install-subtle-tip .tip-desc {
+  font-size: 13px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.install-subtle-tip .tip-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+/* Khung xanh navy sáng hiện đại cho nút Cài ngay (Đồng bộ nhận diện thương hiệu) */
+.install-subtle-tip .tip-action-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 50%, #1e40af 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid #1d4ed8 !important;
+  border-radius: 999px !important;
+  padding: 0 16px !important;
+  height: 32px !important;
+  min-height: 0 !important;
+  max-height: 32px !important;
+  box-sizing: border-box !important;
+  line-height: 30px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28) !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+}
+.install-subtle-tip .tip-action-pill:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+  border-color: #1e3a8a !important;
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.38) !important;
+  transform: translateY(-1px);
+}
+.install-subtle-tip .tip-dismiss-btn {
+  width: 28px !important;
+  height: 28px !important;
+  min-height: 0 !important;
+  max-height: 28px !important;
+  box-sizing: border-box !important;
+  border-radius: 999px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: transparent !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: all 0.15s ease !important;
+}
+.install-subtle-tip .tip-dismiss-btn:hover {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+/* Mobile responsive ("Treo sát lên mép trên", to rõ, bám đuổi theo) */
+@media (max-width: 920px) {
+  body:has(#firstVisitInstallBanner) .topbar {
+    top: 48px !important;
+  }
+  .install-subtle-tip {
+    top: 0 !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 14px !important;
+  }
+  .install-subtle-tip .tip-sep,
+  .install-subtle-tip .tip-desc {
+    display: none !important;
+  }
+  .install-subtle-tip .tip-title {
+    font-size: 13.5px !important;
+    font-weight: 800 !important;
+  }
+  .install-subtle-tip .tip-logo-badge {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 7px !important;
+  }
+  .install-subtle-tip .tip-action-pill {
+    padding: 0 12px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    height: 30px !important;
+    min-height: 0 !important;
+    max-height: 30px !important;
+    line-height: 28px !important;
+  }
+  .install-subtle-tip .tip-dismiss-btn {
+    width: 26px !important;
+    height: 26px !important;
+    min-height: 0 !important;
+    max-height: 26px !important;
+  }
+}
 
 
+
+
+
+/* Discreet Public Entry Install Pill */
+.entry-install-link {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px 12px !important;
+  border-radius: 999px !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+.entry-install-link:hover {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #bae6fd !important;
+}
+.entry-install-ico {
+  display: grid;
+  place-items: center;
+  color: #0284c7;
+}
+.entry-install-ico .ui-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* Install Modal Detailed Content */
+.install-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+.install-hero-badge {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #123264 0%, #1b498c 100%);
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(16, 42, 86, 0.22);
+  color: #ffffff;
+}
+.install-logo-glow {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18), 0 0 16px rgba(255, 255, 255, 0.25);
+}
+.install-modal-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 15px;
+}
+.install-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.install-hero-info h4 {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+.install-hero-tagline {
+  font-size: 13px;
+  color: #e0f2fe;
+  margin: 0 0 6px 0;
+  font-weight: 550;
+}
+.install-feature-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip-item {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(4px);
+}
+.install-callout-text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #475569;
+  background: #f8fafc;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+.install-direct-action-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+  padding: 14px 16px;
+  border-radius: 14px;
+}
+.install-direct-action-card .card-desc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.install-direct-action-card strong {
+  font-size: 14px;
+  color: #065f46;
+}
+.install-direct-action-card span {
+  font-size: 12.5px;
+  color: #047857;
+}
+.install-big-btn {
+  background: #059669 !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 750 !important;
+  padding: 10px 18px !important;
+  border-radius: 10px !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3) !important;
+}
+.install-big-btn:hover {
+  background: #047857 !important;
+}
+
+.install-device-guides {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.install-device-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  transition: all 0.15s ease;
+}
+.install-device-card.active-os {
+  border-color: #3b82f6;
+  background: #f8fbff;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.08);
+}
+.os-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.os-tag {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+.android-tag { background: #dcfce7; color: #15803d; }
+.ios-tag { background: #ede9fe; color: #6d28d9; }
+.pc-tag { background: #e0f2fe; color: #0369a1; }
+.os-header strong {
+  font-size: 14px;
+  color: #1e293b;
+}
+.os-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+.os-steps b {
+  color: #0f172a;
+}
+.ios-share-glyph {
+  display: inline-block;
+  font-weight: 800;
+  font-size: 14px;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid #bfdbfe;
+}

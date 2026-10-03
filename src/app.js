@@ -1,6 +1,6 @@
 import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn } from './engine.js?v=20260927-v21-consistency-audit';
 import { clearAll,getAll,getOne,put,putMany,runTransaction } from './db.js';
-import { syncStatus,flushOutbox } from './sync.js';
+import { syncStatus,flushOutbox,pruneSyncedOutbox } from './sync.js';
 import { CONFIG } from './config.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
@@ -313,7 +313,44 @@ function headerActions(){
   } else {
     userBadge = `<button class="user-badge-btn icon-only" data-action="open-auth-modal" title="Tài khoản / Đăng nhập" aria-label="Đăng nhập">${icon('user')}</button>`;
   }
-  top.innerHTML=`${userBadge}<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${alerts.length?`<b>${alerts.length}</b>`:''}</button>${scan}`;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const installShortcut = !isStandalone ? `<button class="header-shortcut header-install-btn" data-action="install-app" title="Cài ứng dụng về máy">${icon('download')}<span>Cài App</span></button>` : '';
+  top.innerHTML=`${userBadge}${installShortcut}<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${alerts.length?`<b>${alerts.length}</b>`:''}</button>${scan}`;
+}
+function injectInstallBanner(){
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if(isStandalone) return;
+  if(localStorage.getItem('qbiz_install_dismissed')) return;
+  if($('#firstVisitInstallBanner')) return;
+
+  const target = $('main.main') || $('#content');
+  if(!target) return;
+
+  const banner = document.createElement('div');
+  banner.className = 'install-subtle-tip install-top-banner';
+  banner.id = 'firstVisitInstallBanner';
+  banner.innerHTML = `
+    <div class="tip-left">
+      <div class="tip-logo-badge">
+        <img src="./icons/icon-192.png" alt="QBiz Kho" />
+      </div>
+      <div class="tip-text-wrap">
+        <strong class="tip-title">Cài ứng dụng về máy</strong>
+        <span class="tip-sep">•</span>
+        <span class="tip-desc">Mở tức thì, dùng mượt mà &amp; bán ngoại tuyến</span>
+      </div>
+    </div>
+    <div class="tip-right">
+      <button class="tip-action-pill" data-action="install-app">
+        <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Cài ngay</span>
+      </button>
+      <button class="tip-dismiss-btn" data-action="dismiss-install-banner" title="Bỏ qua" aria-label="Đóng">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+  `;
+  target.prepend(banner);
 }
 function injectLocalNotice(){
   if(state.page!=='dashboard') return;
@@ -364,7 +401,7 @@ function nav(){
     return `<button class="${activePage===id?'active':''} ${isSales?'nav-sales-hero':''}" data-page="${id}">${icon(ico)}<span>${displayLabel}</span></button>`;
   }).join('');
 }
-function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); updateSyncPill(); updateContextAndChips(); }
+function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); injectInstallBanner(); updateSyncPill(); updateContextAndChips(); }
 
 const levelAvail=l=>Math.max(0,(l?.onHand||0)-(l?.reserved||0)-(l?.damaged||0));
 function warehouseStock(productId){ const p = product(productId); return p ? productTotals(p).available : 0; }
@@ -805,8 +842,40 @@ async function submitSale(){
   }catch(err){
     state.saleBusy=false;
     renderSales();
-    toast(err.message,'error');
+    if(err.message && err.message.includes('Chưa mở ca')){
+      openPosQuickShiftModal();
+    } else {
+      toast(err.message,'error');
+    }
   }
+}
+function openPosQuickShiftModal(){
+  const regName = state.localIdentity?.register_name || 'Quầy thu ngân';
+  openModal({
+    title: 'Mở ca bán hàng nhanh',
+    sub: `${regName} · Mở ca để ghi nhận doanh thu và xuất hóa đơn`,
+    submitText: 'Mở ca & Tiếp tục thanh toán',
+    body: `
+      <div class="form-grid">
+        <div class="field full-span">
+          <label>Tiền mặt đầu ca trong két (₫)</label>
+          <input id="posQuickOpeningCash" type="number" inputmode="decimal" min="0" placeholder="0" value="0" autofocus />
+          <small class="field-limit">Nhập số tiền mặt có sẵn trong két để trả lại khách. Sau khi mở ca, hệ thống sẽ tự động hoàn tất thanh toán đơn hàng.</small>
+        </div>
+      </div>
+    `,
+    onSubmit: async root => {
+      const cash = Math.max(0, Number($('#posQuickOpeningCash', root)?.value || 0));
+      try {
+        await openShift({ openingCash: cash, note: 'Mở ca nhanh tại POS' });
+        await refresh();
+        toast('Đã mở ca làm việc. Đang tiếp tục thanh toán...', 'ok');
+        setTimeout(() => submitSale(), 250);
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    }
+  });
 }
 function openSaleScan(){openModal({title:'Quét mã cho bán hàng',sub:'Quét liên tục hoặc nhập barcode/SKU thủ công.',hideSubmit:true,body:`<div class="scan-box"><video id="saleScanVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:none"></video><div id="saleScanPlaceholder"><div class="scan-placeholder-icon">${icon('scan-line')}</div><strong>Đưa barcode vào khung</strong><small>Camera hoạt động trên HTTPS hoặc localhost</small></div><div class="scan-frame"></div><div class="scan-corners"></div><div class="scan-line"></div></div><div id="saleScanStatus" class="scan-status">Nếu camera không khả dụng, nhập mã bên dưới.</div><div class="field" style="margin-top:14px"><label>Barcode / SKU thủ công</label><div style="display:flex;gap:8px"><input id="saleManualCode" inputmode="numeric" placeholder="Nhập mã..."/><button class="primary-btn" id="saleFindCode">Thêm</button></div></div>`});$('#saleFindCode').onclick=()=>{const code=$('#saleManualCode').value.trim().toLowerCase();const p=state.data.products.find(x=>[x.barcode,x.sku].some(v=>String(v||'').toLowerCase()===code));if(!p)return toast('Không tìm thấy barcode/SKU.','error');addSaleItem(p.id);$('#saleManualCode').value='';$('#saleScanStatus').textContent=`Đã thêm ${p.name}. Có thể quét tiếp.`;};startSaleBarcodeCamera();}
 async function startSaleBarcodeCamera(){if(!('BarcodeDetector' in window)||!navigator.mediaDevices?.getUserMedia)return;try{const detector=new BarcodeDetector({formats:['ean_13','ean_8','code_128','qr_code']});const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});const v=$('#saleScanVideo');if(!v)return;v.srcObject=stream;v.style.display='block';$('#saleScanPlaceholder').style.display='none';let lastCode='',lastAt=0;const loop=async()=>{if(!document.body.contains(v)){stream.getTracks().forEach(t=>t.stop());return}try{const codes=await detector.detect(v);const raw=codes[0]?.rawValue||'';const now=Date.now();if(raw&&(raw!==lastCode||now-lastAt>1200)){lastCode=raw;lastAt=now;const p=state.data.products.find(x=>[x.barcode,x.sku].some(v=>String(v||'')===String(raw)));if(p){addSaleItem(p.id);const status=$('#saleScanStatus');if(status)status.textContent=`Đã thêm ${p.name}. Tiếp tục đưa mã khác vào khung.`;}}}catch{}requestAnimationFrame(loop)};loop()}catch{}}
@@ -1122,9 +1191,9 @@ function renderDashboard(){
       <div class="public-entry-overlay">
         <section class="card public-entry-card public-entry-hero" style="background:#ffffff;border:1px solid var(--border,#e2e8f0);border-radius:18px;max-width:520px;width:100%;padding:22px 18px;box-shadow:0 18px 40px -12px rgba(15,23,42,0.18);animation:entryCardFadeIn 0.22s ease-out">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-            <div style="width:42px;height:42px;border-radius:12px;background:var(--primary,#0284c7);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:20px;box-shadow:0 2px 8px rgba(2,132,199,0.3);flex-shrink:0">Q</div>
+            <div class="brand-mark" style="width:48px;height:48px;flex-shrink:0"><img src="./icons/logo-master.svg" alt="QBiz" class="brand-logo-img"></div>
             <div style="min-width:0">
-              <h2 style="margin:0;font-size:16.5px;font-weight:700;color:#0f172a;line-height:1.3">QBiz Kho — Quản lý & Bán hàng</h2>
+              <h2 style="margin:0;font-size:16.5px;font-weight:700;color:#0f172a;line-height:1.3">QBiz · Bán Hàng &amp; Quản Lý Kho</h2>
               <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted,#64748b)">Hệ thống đám mây kết hợp lưu trữ ngoại tuyến an toàn</p>
             </div>
           </div>
@@ -1142,6 +1211,13 @@ function renderDashboard(){
             <button type="button" class="ghost-btn entry-cta-btn demo-cta-btn" data-action="preview-demo" title="Trải nghiệm ngay bản demo" style="grid-column:1/-1;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 14px;font-size:clamp(12px,3.2vw,13.5px);font-weight:700;border-radius:10px;min-height:46px;background:#f0f9ff;border:1.5px dashed #0284c7;color:#0284c7;box-shadow:0 1px 2px rgba(0,0,0,0.02);cursor:pointer;white-space:nowrap">
               ${icon('eye')}
               <span style="white-space:nowrap">Xem shop demo</span>
+            </button>
+          </div>
+
+          <div style="text-align:center;margin:-2px 0 14px">
+            <button type="button" class="entry-install-link" data-action="install-app" title="Cài ứng dụng về máy">
+              <span class="entry-install-ico">${icon('download')}</span>
+              <span>Cài đặt ứng dụng về máy để dùng mượt mà hơn</span>
             </button>
           </div>
 
@@ -3903,12 +3979,14 @@ function openCashForm(kind){
         });
       }
 
+      const currentActiveShift=(state.data?.shifts||[]).find(s=>s.status==='OPEN');
       const rows=await modList('cash_entries');
       rows.push({
         id: mid('cs'),
         kind,
         amount,
         method,
+        shift_id: currentActiveShift ? currentActiveShift.id : '',
         date,
         note: kind==='out'?`[${$('#csCategory',root)?.value||'Chi phí'}] ${note}`:note,
         created_at: new Date().toISOString()
@@ -6410,6 +6488,18 @@ function bindCompactImagePicker(root,existingImages=[]){
 }
 
 function openQuick(kind='receive',preProduct=''){
+  const capMap = {
+    receive: 'RECEIVE_STOCK',
+    issue: 'ISSUE_STOCK',
+    transfer: 'TRANSFER_STOCK',
+    count: 'STOCKTAKE'
+  };
+  const requiredCap = capMap[kind];
+  if (requiredCap && !userCan(requiredCap)) {
+    const actionNames = { receive: 'Nhập hàng', issue: 'Xuất hàng', transfer: 'Chuyển kho', count: 'Kiểm kê kho' };
+    toast(`Tài khoản của bạn không có quyền thực hiện ${actionNames[kind] || 'thao tác kho này'}.`, 'error');
+    return;
+  }
   const labels={receive:['Nhập hàng','Tăng tồn thực tế · Chuẩn Mẫu 01-VT'],issue:['Xuất hàng','Giảm tồn thực tế · Chuẩn Mẫu 02-VT'],transfer:['Chuyển kho','Kho đi trừ ngay, kho nhận tăng khi xác nhận'],count:['Kiểm tồn kho','Nhập số đếm thực tế']};
   const [title,sub]=labels[kind]||labels.receive;
   const lines=[];let selectedId=preProduct||'';
@@ -6603,7 +6693,119 @@ function openEditItem(id){
   openModal({title:'Sửa mục',sub:service?'Dịch vụ':'Sản phẩm',body,submitText:'Lưu thay đổi',onSubmit:r=>{const imgs=r._getImages?.()||[];const priceVal = canEditPrice ? ($('#editPrice',r).value===''?null:Number($('#editPrice',r).value)) : p.price; const costVal = canViewCost ? ($('#editCost',r)?.value===''?null:Number($('#editCost',r)?.value)) : p.purchase_price; return updateItem({...p,name:$('#editName',r).value,price:priceVal,categoryId:$('#editCategory',r).value,description:$('#editDescription',r).value,...(service?{image:imgs[0]||'',images:imgs,duration_minutes:$('#editDuration',r).value===''?null:Number($('#editDuration',r).value),booking_enabled:$('#editBooking',r).checked,active:$('#editActive',r).checked}:{image:imgs[0]||'',images:imgs,purchase_price:costVal,barcode:$('#editBarcode',r).value,lowStock:Number($('#editLow',r).value)})})}});
   bindCompactImagePicker($('#modalRoot'),p.images?.length?p.images:[p.image]);
 }
-function openQR(id){const p=product(id);if(!p)return;openModal({title:'Mã QR sản phẩm',sub:`${p.name} · ${p.sku}`,hideSubmit:true,body:`<div class="qr-card"><div id="qrCanvas" class="qr-canvas"><div class="empty-line">Đang tạo mã QR…</div></div><strong>${esc(p.name)}</strong><span>${esc(p.sku)}${p.barcode?` · ${esc(p.barcode)}`:''}</span><div class="qr-actions"><button class="secondary-btn" data-qr-download="png">Tải PNG</button><button class="primary-btn" data-qr-download="svg">Tải SVG</button></div></div>`});const host=$('#qrCanvas');if(!window.QRCodeStyling)return host.innerHTML='<div class="empty-line">Không tải được bộ tạo QR. Hãy mở lại khi có mạng.</div>';const qr=new QRCodeStyling({width:260,height:260,type:'svg',data:p.barcode||p.sku,image:'./icons/icon-192.png',dotsOptions:{color:'#102a56',type:'rounded'},cornersSquareOptions:{color:'#102a56',type:'extra-rounded'},cornersDotOptions:{color:'#16a77a',type:'dot'},backgroundOptions:{color:'#ffffff'},imageOptions:{crossOrigin:'anonymous',margin:8,hideBackgroundDots:true},qrOptions:{errorCorrectionLevel:'H'}});qr.append(host);host._qr=qr;$$('[data-qr-download]',$('#modalRoot')).forEach(b=>b.onclick=()=>qr.download({name:`qbiz-${p.sku}`,extension:b.dataset.qrDownload}));}
+function openQR(id){const p=product(id);if(!p)return;openModal({title:'Mã QR sản phẩm',sub:`${p.name} · ${p.sku}`,hideSubmit:true,body:`<div class="qr-card"><div id="qrCanvas" class="qr-canvas"><div class="empty-line">Đang tạo mã QR…</div></div><strong>${esc(p.name)}</strong><span>${esc(p.sku)}${p.barcode?` · ${esc(p.barcode)}`:''}</span><div class="qr-actions"><button class="secondary-btn" data-qr-download="png">Tải PNG</button><button class="primary-btn" data-qr-download="svg">Tải SVG</button></div></div>`});const host=$('#qrCanvas');if(!window.QRCodeStyling)return host.innerHTML='<div class="empty-line">Không tải được bộ tạo QR. Hãy mở lại khi có mạng.</div>';const qr=new QRCodeStyling({width:260,height:260,type:'svg',data:p.barcode||p.sku,image:'./icons/icon-192.png',dotsOptions:{color:'#07111e',type:'rounded'},cornersSquareOptions:{color:'#07111e',type:'extra-rounded'},cornersDotOptions:{color:'#0284c7',type:'dot'},backgroundOptions:{color:'#ffffff'},imageOptions:{crossOrigin:'anonymous',margin:8,hideBackgroundDots:true},qrOptions:{errorCorrectionLevel:'H'}});qr.append(host);host._qr=qr;$$('[data-qr-download]',$('#modalRoot')).forEach(b=>b.onclick=()=>qr.download({name:`qbiz-${p.sku}`,extension:b.dataset.qrDownload}));}
+function openInstall(){
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const canPrompt = Boolean(state.installPrompt);
+
+  const body = `
+    <div class="install-modal-content">
+      <div class="install-hero-badge">
+        <div class="install-logo-glow">
+          <img src="./icons/logo-master.svg" alt="QBiz Logo" class="install-modal-logo" />
+        </div>
+        <div class="install-hero-info">
+          <h4>QBiz · Bán Hàng & Quản Lý Kho</h4>
+          <p class="install-hero-tagline">POS bán hàng &amp; Quản trị kho hàng đa nền tảng</p>
+          <div class="install-feature-chips">
+            <span class="chip-item">⚡ Bán hàng siêu tốc</span>
+            <span class="chip-item">📦 Tồn kho thời gian thực</span>
+            <span class="chip-item">📶 Hoạt động offline 100%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="install-callout-text">
+        Cài đặt trực tiếp ứng dụng về máy tính hoặc điện thoại để mở tức thì từ màn hình chính, quét mã vạch mượt mà, in hóa đơn nhanh và lưu trữ dữ liệu offline bảo mật tuyệt đối.
+      </div>
+
+      ${canPrompt ? `
+        <div class="install-direct-action-card">
+          <div class="card-desc">
+            <strong>Thiết bị của bạn đã sẵn sàng cài đặt</strong>
+            <span>Bấm nút bên dưới để cài ứng dụng trực tiếp chỉ trong 1 giây.</span>
+          </div>
+          <button class="primary-btn install-big-btn" id="btnRunNativeInstall">
+            ${icon('download')} Cài đặt ngay về máy
+          </button>
+        </div>
+      ` : ''}
+
+      <div class="install-device-guides">
+        <div class="install-device-card ${isAndroid ? 'active-os' : ''}">
+          <div class="os-header">
+            <span class="os-tag android-tag">ANDROID</span>
+            <strong>Cài trên điện thoại Android (Chrome)</strong>
+          </div>
+          <ol class="os-steps">
+            <li>Mở bằng trình duyệt <b>Google Chrome</b>.</li>
+            <li>Bấm vào biểu tượng menu <b>⋮ (3 chấm dọc)</b> ở góc trên bên phải.</li>
+            <li>Chọn <b>"Cài đặt ứng dụng"</b> (hoặc <b>"Thêm vào Màn hình chính"</b>).</li>
+          </ol>
+        </div>
+
+        <div class="install-device-card ${isIos ? 'active-os' : ''}">
+          <div class="os-header">
+            <span class="os-tag ios-tag">IPHONE / IPAD</span>
+            <strong>Cài trên iPhone / iPad (Safari)</strong>
+          </div>
+          <ol class="os-steps">
+            <li>Mở ứng dụng bằng trình duyệt <b>Safari</b>.</li>
+            <li>Bấm vào biểu tượng <b>Chia sẻ</b> (hình ô vuông có mũi tên hất lên <span class="ios-share-glyph">⎋</span> ở thanh công cụ dưới).</li>
+            <li>Cuộn xuống và chọn <b>"Thêm vào MH chính"</b> (Add to Home Screen).</li>
+            <li>Bấm <b>Thêm</b> ở góc trên bên phải để hoàn tất.</li>
+          </ol>
+        </div>
+
+        <div class="install-device-card ${(!isAndroid && !isIos) ? 'active-os' : ''}">
+          <div class="os-header">
+            <span class="os-tag pc-tag">MÁY TÍNH / PC & MAC</span>
+            <strong>Cài trên Máy tính (Chrome, Edge, Cốc Cốc)</strong>
+          </div>
+          <ol class="os-steps">
+            <li>Nhìn vào góc phải thanh địa chỉ (URL) trên cùng trình duyệt.</li>
+            <li>Bấm vào biểu tượng <b>Cài đặt ứng dụng</b> (hình máy tính nhỏ có mũi tên tải xuống hoặc biểu tượng dấu cộng <b>⊕</b>).</li>
+            <li>Chọn <b>"Cài đặt"</b> để ghim icon ra Desktop &amp; Taskbar.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal({
+    title: 'Cài đặt ứng dụng về máy',
+    sub: 'Mở nhanh không cần duyệt web · Hoạt động mượt mà khi mất mạng',
+    hideSubmit: true,
+    body,
+    footer: `<button class="secondary-btn" data-close>Đóng</button>${canPrompt ? `<button class="primary-btn" id="modalInstallFooterBtn">${icon('download')} Cài ngay</button>` : ''}`
+  });
+
+  const doPrompt = async () => {
+    if (state.installPrompt) {
+      try {
+        state.installPrompt.prompt();
+        const choice = await state.installPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          toast('Đang cài đặt QBiz Kho về thiết bị của bạn…', 'ok');
+          state.installPrompt = null;
+          $('#modalRoot').innerHTML = '';
+          const topInst = $('.header-install-btn');
+          if (topInst) topInst.remove();
+          const firstBanner = $('#firstVisitInstallBanner');
+          if (firstBanner) firstBanner.remove();
+        }
+      } catch (err) {
+        console.warn('Install error:', err);
+      }
+    }
+  };
+
+  const directBtn = $('#btnRunNativeInstall', $('#modalRoot'));
+  if (directBtn) directBtn.onclick = doPrompt;
+  const footerBtn = $('#modalInstallFooterBtn', $('#modalRoot'));
+  if (footerBtn) footerBtn.onclick = doPrompt;
+}
 function internalBarcode(){const base='200'+Array.from({length:9},()=>Math.floor(Math.random()*10)).join('');const sum=base.split('').reduce((s,c,i)=>s+Number(c)*(i%2?3:1),0);return base+String((10-sum%10)%10);}
 function openNewProduct(){
   if(!userCan('EDIT_PRODUCT')){
@@ -7513,6 +7715,12 @@ document.addEventListener('click', async e=>{
   if(page){const notificationId=e.target.closest('[data-notification-id]')?.dataset.notificationId;if(notificationId)state.notificationRead.add(notificationId);navigate(page); return; }
   const action=e.target.closest('[data-action]')?.dataset.action;
   const kind=e.target.closest('[data-kind]')?.dataset.kind;
+  if(action==='dismiss-install-banner') {
+    localStorage.setItem('qbiz_install_dismissed', 'true');
+    const b = $('#firstVisitInstallBanner');
+    if(b) b.remove();
+    return;
+  }
   if(action==='open-auth-modal' || action==='open-hero-auth') return openAuthModal();
   if(action==='create-shop-modal') return openCreateShopModal();
   if(action==='preview-demo') return previewDemo('retail');
@@ -7778,6 +7986,13 @@ document.addEventListener('click', async e=>{
 });
 
 async function boot(){
+  if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().then(persisted => {
+      if (persisted) {
+        console.log('[Storage] Bộ nhớ cục bộ IndexedDB đã được cấp quyền PERSISTENT (chống tự động xóa).');
+      }
+    }).catch(() => {});
+  }
   await ensureSeed();
   await ensureLocalIdentity();
   await ensurePrintTemplates();
@@ -7792,6 +8007,7 @@ async function boot(){
   history.replaceState(historyState(),'');render();
   subscribeAuthState(() => render());
   initAiUI(state);
+  pruneSyncedOutbox().catch(() => {});
   window.__QBIZ_BUILD_INFO__ = {
     baseGitSha: '9837b84a8b40126536874dfe53b613b46fff52f5',
     worktreeDirty: true,
@@ -7813,11 +8029,15 @@ async function boot(){
     openQuick,
     openScan,
     openProduct,
+    openQR,
     openOrderDetail,
     openCustomerDetail,
     openDebtCollectionModal,
     openReturnFlow,
     openTransaction,
+    addSaleItem,
+    submitSale,
+    openPosQuickShiftModal,
     openTransactionModal: (saleId) => {
       const s = (state.data?.sales || []).find(x => x.id === saleId || x.sale_uuid === saleId || x.code === saleId);
       if (s) openTransaction(s);
@@ -7854,6 +8074,9 @@ async function boot(){
     openForgotPasswordModal,
     openSwitchShopModal,
     openSyncInfoModal,
+    flushOutbox,
+    syncStatus,
+    pruneSyncedOutbox,
     previewDemo,
     exitDemo,
     loadDemoIndustry,

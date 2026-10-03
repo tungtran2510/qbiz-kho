@@ -43,7 +43,7 @@
       "subcaseA_success": true,
       "subcaseA_error": "",
       "subcaseB_blocked": true,
-      "subcaseB_message": "Khách hàng Khách Boundary hvpew có hạn mức công nợ 2.000.000 ₫. Tổng nợ sau đơn (2.000.001 ₫) vượt quá hạn mức công nợ cho phép."
+      "subcaseB_message": "Khách hàng Khách Boundary rupaq có hạn mức công nợ 2.000.000 ₫. Tổng nợ sau đơn (2.000.001 ₫) vượt quá hạn mức công nợ cho phép."
     }
   },
   {
@@ -78,7 +78,7 @@
     "name": "Complex Cash Drawer Interleaving (Sales, Split, Expenses, Collections)",
     "status": "PASS",
     "details": {
-      "shiftId": "shift_muqpq5h5_k7plcb",
+      "shiftId": "shift_muskuele_7z4cjf",
       "openingCash": 2000000,
       "expectedCash": 3600000,
       "countedCash": 3600000,
@@ -192,7 +192,7 @@
     "name": "Variant-Level Stock Isolation",
     "status": "PASS",
     "details": {
-      "productId": "p_muqpq5t0_iy4mg0",
+      "productId": "p_muskuepd_kyjrma",
       "stockM": 10,
       "stockL": 0
     }
@@ -202,7 +202,7 @@
     "name": "Multi-Tab Reactive Broadcast Sync Event",
     "status": "PASS",
     "details": {
-      "events_received": 1
+      "events_received": 2
     }
   }
 ]
