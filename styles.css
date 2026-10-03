@@ -5760,5 +5760,35 @@ body:has(.pos-cart-bar) .qbiz-ai-trigger {
   }
 }
 
+/* QR Verification Mode selection cards in Sales Preferences */
+.qr-mode-card {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+  padding: 12px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out;
+}
+.qr-mode-card input[type="radio"] {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  margin: 2px 0 0 0 !important;
+  flex-shrink: 0 !important;
+  accent-color: var(--q-blue, #2563eb);
+}
+.qr-mode-card:hover {
+  border-color: #94a3b8 !important;
+  background: #f8fafc !important;
+}
+.qr-mode-card.active {
+  border-color: var(--q-blue, #2563eb) !important;
+  background: #eff6ff !important;
+  box-shadow: 0 0 0 1px var(--q-blue, #2563eb);
+}
+
 
 

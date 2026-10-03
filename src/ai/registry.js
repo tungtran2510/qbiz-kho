@@ -1007,13 +1007,44 @@ export const ACTION_REGISTRY = {
     required_capabilities: [],
     execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['thong tin cua hang', 'sua thong tin', 'ten cua hang', 'doi ten shop', 'thong tin shop', 'ho so shop', 'cai dat cua hang'],
-    example_phrases: ['sửa thông tin cửa hàng', 'đổi tên cửa hàng', 'mở hồ sơ shop'],
+    aliases: ['thong tin cua hang', 'sua thong tin', 'ten cua hang', 'doi ten shop', 'thong tin shop', 'ho so shop', 'cai dat cua hang', 'cai dat ngan hang', 'cai so tai khoan', 'so tai khoan', 'ngan hang'],
+    example_phrases: ['sửa thông tin cửa hàng', 'đổi tên cửa hàng', 'mở hồ sơ shop', 'cài đặt tài khoản ngân hàng'],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.openBusinessProfile) {
         window.__qbiz_app__.openBusinessProfile();
-        return { success: true, message: 'Đã mở Thông tin cửa hàng.' };
+        return { success: true, message: 'Đã mở Thông tin cửa hàng & Ngân hàng.' };
+      }
+      if (window.openBusinessProfile) {
+        window.openBusinessProfile();
+        return { success: true, message: 'Đã mở Thông tin cửa hàng & Ngân hàng.' };
+      }
+      if (window.__qbiz_app__?.navigate) {
+        window.__qbiz_app__.navigate('settings');
+        setTimeout(() => document.querySelector('[data-action="business-profile"]')?.click(), 100);
+        return { success: true, message: 'Đã mở thông tin cửa hàng.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_business_profile: {
+    id: 'open_business_profile', name: 'Mở thông tin cửa hàng & Ngân hàng', feature_id: null,
+    route: 'settings', screen: 'BusinessProfile',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['cai dat ngan hang', 'so tai khoan', 'thong tin shop', 'open_business_profile'],
+    example_phrases: ['cài đặt ngân hàng', 'mở số tài khoản'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.openBusinessProfile) {
+        window.__qbiz_app__.openBusinessProfile();
+        return { success: true, message: 'Đã mở Thông tin cửa hàng & Ngân hàng.' };
+      }
+      if (window.openBusinessProfile) {
+        window.openBusinessProfile();
+        return { success: true, message: 'Đã mở Thông tin cửa hàng & Ngân hàng.' };
       }
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('settings');
@@ -1081,17 +1112,48 @@ export const ACTION_REGISTRY = {
     risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER',
     implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['cai dat thanh toan', 'ban hang va thanh toan', 'phuong thuc thanh toan mac dinh', 'kho mac dinh'],
-    example_phrases: ['cài đặt thanh toán', 'mở bán hàng và thanh toán'],
+    aliases: ['cai dat thanh toan', 'ban hang va thanh toan', 'phuong thuc thanh toan mac dinh', 'kho mac dinh', 'cai dat qr', 'cai qr', 'cai dat payos', 'ting ting tu dong', 'open_sales_pref'],
+    example_phrases: ['cài đặt thanh toán', 'mở bán hàng và thanh toán', 'cài đặt qr', 'cài đặt payos'],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.openSalePreferences) {
         window.__qbiz_app__.openSalePreferences();
         return { success: true, message: 'Đã mở Cài đặt Bán hàng & Thanh toán.' };
       }
+      if (window.openSalePreferences) {
+        window.openSalePreferences();
+        return { success: true, message: 'Đã mở Cài đặt Bán hàng & Thanh toán.' };
+      }
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('settings');
         setTimeout(() => document.querySelector('[data-action="sale-preferences"]')?.click(), 100);
+        return { success: true, message: 'Đã mở Cài đặt Bán hàng & Thanh toán.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_sales_pref: {
+    id: 'open_sales_pref',
+    name: 'Mở Bán hàng & Thanh toán',
+    feature_id: null,
+    route: 'settings',
+    screen: 'SalePreferences',
+    required_capabilities: [],
+    execution_mode: EXECUTION_MODE.OPEN,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['open_sales_pref', 'cai dat qr'],
+    example_phrases: ['cài đặt qr'],
+    contexts: ['settings', 'dashboard'],
+    async execute(params, state) {
+      if (window.__qbiz_app__?.openSalePreferences) {
+        window.__qbiz_app__.openSalePreferences();
+        return { success: true, message: 'Đã mở Cài đặt Bán hàng & Thanh toán.' };
+      }
+      if (window.openSalePreferences) {
+        window.openSalePreferences();
         return { success: true, message: 'Đã mở Cài đặt Bán hàng & Thanh toán.' };
       }
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };

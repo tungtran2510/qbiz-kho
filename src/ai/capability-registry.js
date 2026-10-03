@@ -734,6 +734,38 @@ export const KHO_CAPABILITY_REGISTRY = {
     implementation_binding: { type: 'skill', target: 'clarify-ambiguity', fallbackTool: 'clarify_ambiguity' },
     active: true,
   },
+
+  'setup_payment_qr': {
+    compact_description: 'Hướng dẫn thiết lập VietQR và tự động ting ting (payOS / Webhook)',
+    capability_id: 'setup_payment_qr',
+    domain: 'SETTINGS',
+    mode: CAPABILITY_MODES.READ,
+    human_description: 'Hướng dẫn cài đặt tài khoản ngân hàng nhận tiền QR và bật cơ chế tự động ting ting qua payOS hoặc Webhook.',
+    input_schema: {},
+    output_contract: 'SetupPaymentQrResult',
+    required_permissions: [],
+    entity_types: [],
+    time_support: false,
+    implementation_binding: { type: 'skill', target: 'setup-payment-qr', fallbackTool: 'setup_payment_qr' },
+    active: true,
+  },
+
+  'audit_qr_payment': {
+    compact_description: 'Kiểm tra trạng thái thanh toán chuyển khoản / VietQR',
+    capability_id: 'audit_qr_payment',
+    domain: 'SALES',
+    mode: CAPABILITY_MODES.READ,
+    human_description: 'Kiểm tra trạng thái thanh toán chuyển khoản hoặc mã QR của đơn hàng hiện tại hoặc các đơn gần nhất.',
+    input_schema: {
+      query: { type: 'string', required: false }
+    },
+    output_contract: 'AuditQrPaymentResult',
+    required_permissions: [],
+    entity_types: [],
+    time_support: false,
+    implementation_binding: { type: 'skill', target: 'audit-qr-payment', fallbackTool: 'audit_qr_payment' },
+    active: true,
+  },
 };
 
 /**

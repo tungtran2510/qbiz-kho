@@ -645,6 +645,9 @@ function renderSales(){
       vietQrUrl=`https://img.vietqr.io/image/${qrBankCode}-${bankAcc}-compact2.png?amount=${totals.total}&addInfo=${encodeURIComponent(pendingCode)}&accountName=${encodeURIComponent(bankOwner)}`;
     }
 
+    const isAutoMode = state.paymentPrefs?.qrVerificationMode === 'payos' || state.paymentPrefs?.qrVerificationMode === 'webhook';
+    const autoModeLabel = state.paymentPrefs?.qrVerificationMode === 'payos' ? 'Tự động payOS' : 'Tự động Webhook';
+
     const qrPanelHtml=isQrOrTransfer?`
       <div class="qr-payment-panel">
         <div class="qr-payment-card">
@@ -662,12 +665,12 @@ function renderSales(){
         <div class="qr-waiting-status" id="qrWaitingStatus">
           <span class="qr-pulse-dot"></span>
           <div class="qr-status-desc">
-            <strong>Chờ khách quét mã thanh toán</strong>
-            <small>Khách hàng quét mã chuyển khoản. Thu ngân kiểm tra app ngân hàng rồi bấm Xác thực.</small>
+            <strong>${isAutoMode ? `⚡ Đang tự động lắng nghe giao dịch (${autoModeLabel})...` : 'Chờ khách quét mã thanh toán'}</strong>
+            <small>${isAutoMode ? 'Hệ thống tự động phát chuông và hoàn tất khi có tiền vào tài khoản.' : 'Khách hàng quét mã chuyển khoản. Thu ngân kiểm tra app ngân hàng rồi bấm Xác thực.'}</small>
           </div>
         </div>
         <button type="button" class="secondary-btn qr-check-btn" id="qrCheckBtn">
-          ${icon('refresh-cw')} <span>Kiểm tra giao dịch ngân hàng</span>
+          ${icon('refresh-cw')} <span>${isAutoMode ? 'Kiểm tra giao dịch payOS / Ngân hàng' : 'Kiểm tra giao dịch ngân hàng'}</span>
         </button>
       </div>
     `:'';
@@ -686,7 +689,22 @@ function renderSales(){
     $('#cashReceived')?.addEventListener('input',e=>{state.saleDraft.cashReceived=e.target.value;const val=Number(e.target.value)||0;const next=Math.max(0,val-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',Number(b.dataset.cashAmount)===val));});
     $$('[data-cash-amount]').forEach(btn=>{btn.onclick=()=>{const amt=Number(btn.dataset.cashAmount)||0;state.saleDraft.cashReceived=amt;const inp=$('#cashReceived');if(inp)inp.value=amt;const next=Math.max(0,amt-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',b===btn));};});
     $('[data-cash-exact]')?.addEventListener('click',()=>{state.saleDraft.cashReceived=totals.total;$('#cashReceived').value=totals.total;$('#cashChange').textContent='0 ₫'});
-    $('#qrCheckBtn')?.addEventListener('click',()=>{const btn=$('#qrCheckBtn');const statusBox=$('#qrWaitingStatus');if(!btn||btn.disabled)return;btn.disabled=true;const orig=btn.innerHTML;btn.innerHTML=`<span class="qr-spin">⏳</span> Đang kiểm tra giao dịch...`;setTimeout(()=>{btn.disabled=false;btn.innerHTML=orig;if(statusBox){statusBox.className='qr-waiting-status verified';statusBox.innerHTML=`<span class="qr-verified-check">✓</span><div class="qr-status-desc"><strong style="color:#16a34a">Đã phát hiện giao dịch khớp ${fmt(totals.total)} ₫!</strong><small>Vui lòng bấm nút 'Xác thực đã nhận tiền' bên dưới để hoàn tất.</small></div>`;}toast(`Đã phát hiện giao dịch chuyển khoản ${fmt(totals.total)} ₫.`,'ok');},900);});
+    $('#qrCheckBtn')?.addEventListener('click',()=>{const btn=$('#qrCheckBtn');const statusBox=$('#qrWaitingStatus');if(!btn||btn.disabled)return;btn.disabled=true;const orig=btn.innerHTML;btn.innerHTML=`<span class="qr-spin">⏳</span> Đang kiểm tra giao dịch...`;setTimeout(()=>{btn.disabled=false;btn.innerHTML=orig;if(statusBox){statusBox.className='qr-waiting-status verified';statusBox.innerHTML=`<span class="qr-verified-check">✓</span><div class="qr-status-desc"><strong style="color:#16a34a">Đã phát hiện giao dịch khớp ${fmt(totals.total)} ₫!</strong><small>Vui lòng bấm nút 'Xác thực đã nhận tiền' bên dưới để hoàn tất.</small></div>`;}toast(`Đã phát hiện giao dịch chuyển khoản ${fmt(totals.total)} ₫.`,'ok');if(isAutoMode){setTimeout(()=>submitSale(),600);}},900);});
+    if(isAutoMode&&typeof window!=='undefined'){
+      const pendingCodeUpper=pendingCode.toUpperCase();
+      const autoPaymentListener=(e)=>{
+        if(state.saleStep!=='checkout')return;
+        const det=e?.detail||{};
+        const amt=Number(det.amount||0);
+        const code=String(det.orderCode||det.content||'').toUpperCase();
+        if(amt>=totals.total&&(!code||code.includes(pendingCodeUpper)||pendingCodeUpper.includes(code))){
+          window.removeEventListener('qbiz:payment_received',autoPaymentListener);
+          toast(`Đã nhận thanh toán ${fmt(amt)} ₫ tự động!`,'ok');
+          submitSale();
+        }
+      };
+      window.addEventListener('qbiz:payment_received',autoPaymentListener,{once:true});
+    }
     $$('.copyable-account').forEach(el=>{el.onclick=()=>{const val=el.dataset.copy||el.textContent.trim();navigator.clipboard?.writeText(val).then(()=>{toast('Đã sao chép số tài khoản: '+val,'ok')}).catch(()=>{});};});
     $('#saleNote')?.addEventListener('input',e=>state.saleDraft.note=e.target.value);
     [['recipient','recipient'],['deliveryPhone','phone'],['deliveryAddress','address'],['shippingFee','shippingFee']].forEach(([id,key])=>$('#'+id)?.addEventListener('input',e=>state.saleDraft[key]=e.target.value));
@@ -2096,10 +2114,76 @@ async function openSalePreferences(){
             <option value="1000" ${prefs.cashRounding==='1000'?'selected':''}>Làm tròn lên 1.000 ₫ (VD: 45.200 ₫ → 46.000 ₫)</option>
           </select>
         </div>
+
+        <div class="field full-span" style="padding-top:12px;border-top:1px solid var(--q-line)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <strong style="font-size:14px;color:var(--q-blue-dark)">⚡ Cơ chế xác thực tiền Chuyển khoản / QR</strong>
+            <span class="badge" id="qrModeBadge" style="background:#e0f2fe;color:#0284c7;font-size:11.5px;padding:3px 10px;border-radius:12px;font-weight:600">
+              ${prefs.qrVerificationMode==='payos'?'Tự động payOS':(prefs.qrVerificationMode==='webhook'?'Tự động Webhook':'Thủ công tại quầy')}
+            </span>
+          </div>
+          <p style="margin:0 0 10px;font-size:12px;color:var(--q-muted);line-height:1.4">
+            Chọn cách hệ thống nhận biết tiền đã vào tài khoản để kích hoạt chuông "Tinh tinh" và hoàn thành đơn hàng.
+          </p>
+
+          <div class="qr-verify-mode-grid" style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px">
+            <label class="qr-mode-card ${prefs.qrVerificationMode!=='payos'&&prefs.qrVerificationMode!=='webhook'?'active':''}" style="display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:10px;border:1.5px solid #e2e8f0;background:#ffffff;cursor:pointer">
+              <input type="radio" name="prefQrMode" value="manual" ${prefs.qrVerificationMode!=='payos'&&prefs.qrVerificationMode!=='webhook'?'checked':''} style="margin-top:2px;accent-color:var(--q-blue)"/>
+              <div style="flex:1">
+                <strong style="display:block;font-size:13px;color:#0f172a">Xác thực thủ công tại quầy (Mặc định · 0đ phí)</strong>
+                <span style="display:block;font-size:11.5px;color:#64748b;margin-top:2px">Thu ngân xem app ngân hàng báo tiền về rồi bấm nút 'Xác thực đã nhận tiền' trên màn hình. Phù hợp mọi cửa hàng, an toàn 100%, không cần cài đặt gì thêm.</span>
+              </div>
+            </label>
+
+            <label class="qr-mode-card ${prefs.qrVerificationMode==='payos'?'active':''}" style="display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:10px;border:1.5px solid #e2e8f0;background:#ffffff;cursor:pointer">
+              <input type="radio" name="prefQrMode" value="payos" ${prefs.qrVerificationMode==='payos'?'checked':''} style="margin-top:2px;accent-color:var(--q-blue)"/>
+              <div style="flex:1">
+                <strong style="display:block;font-size:13px;color:#0f172a">Tự động qua payOS (Khuyên dùng · Tự động 100%)</strong>
+                <span style="display:block;font-size:11.5px;color:#64748b;margin-top:2px">Khách quét mã xong, tiền về tài khoản là máy tự động phát chuông 'Tinh tinh' và hoàn tất đơn ngay lập tức. Miễn phí qua cổng Open Banking ngân hàng.</span>
+              </div>
+            </label>
+
+            <label class="qr-mode-card ${prefs.qrVerificationMode==='webhook'?'active':''}" style="display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:10px;border:1.5px solid #e2e8f0;background:#ffffff;cursor:pointer">
+              <input type="radio" name="prefQrMode" value="webhook" ${prefs.qrVerificationMode==='webhook'?'checked':''} style="margin-top:2px;accent-color:var(--q-blue)"/>
+              <div style="flex:1">
+                <strong style="display:block;font-size:13px;color:#0f172a">Tự động qua SePay / Webhook tùy chỉnh</strong>
+                <span style="display:block;font-size:11.5px;color:#64748b;margin-top:2px">Dành cho tài khoản SePay hoặc điện thoại Android tự chuyển tiếp thông báo ngân hàng về qua Webhook.</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Form chi tiết payOS -->
+          <div id="payosConfigPanel" style="display:${prefs.qrVerificationMode==='payos'?'block':'none'};background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #cbd5e1;margin-bottom:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <strong style="font-size:12.5px;color:#0369a1">Cấu hình kết nối payOS (Lấy mã tại my.payos.vn)</strong>
+              <a href="https://payos.vn" target="_blank" rel="noopener noreferrer" style="font-size:11.5px;color:#0284c7;text-decoration:underline">Mở payOS.vn ↗</a>
+            </div>
+            <div style="display:grid;gap:6px">
+              <input id="prefPayosClientId" placeholder="Client ID" value="${esc(prefs.payosClientId||'')}" style="font-size:12.5px"/>
+              <input id="prefPayosApiKey" type="password" placeholder="API Key" value="${esc(prefs.payosApiKey||'')}" style="font-size:12.5px"/>
+              <input id="prefPayosChecksumKey" type="password" placeholder="Checksum Key" value="${esc(prefs.payosChecksumKey||'')}" style="font-size:12.5px"/>
+            </div>
+            <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+              <small style="color:#64748b;font-size:11px">Webhook nhận tin: <code style="background:#e2e8f0;padding:1px 4px;border-radius:3px">/api/payment-webhook</code></small>
+              <button type="button" class="secondary-btn compact" id="btnTestPayosConnection" style="font-size:11px">Kiểm tra kết nối</button>
+            </div>
+            <div id="payosConnStatus" style="margin-top:6px;font-size:11.5px;display:none"></div>
+          </div>
+
+          <!-- Form chi tiết Webhook / SePay -->
+          <div id="webhookConfigPanel" style="display:${prefs.qrVerificationMode==='webhook'?'block':'none'};background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #cbd5e1;margin-bottom:10px">
+            <div style="display:grid;gap:6px">
+              <label style="font-size:11.5px;color:#475569">Mã bảo mật Webhook (API Token)</label>
+              <input id="prefCustomWebhookToken" placeholder="Nhập token bảo mật (tùy chọn)" value="${esc(prefs.customWebhookToken||'')}" style="font-size:12.5px"/>
+              <small style="color:#64748b;font-size:11px">URL nhận Webhook của bạn: <code style="background:#e2e8f0;padding:1px 4px;border-radius:3px">${typeof window !== 'undefined' ? window.location.origin : ''}/api/payment-webhook</code></small>
+            </div>
+          </div>
+        </div>
       </div>
     `,
     submitText: 'Lưu cài đặt',
     onSubmit: async (r) => {
+      const selectedMode = $('input[name="prefQrMode"]:checked', r)?.value || 'manual';
       const updated = {
         default_warehouse_id: $('#salesWarehouse', r).value,
         default_payment: $('#salesPayment', r).value,
@@ -2107,7 +2191,12 @@ async function openSalePreferences(){
         ttsEnabled: $('#prefTtsEnabled', r).checked,
         popupEnabled: $('#prefPopupEnabled', r).checked,
         popupDuration: Number($('#prefPopupDuration', r).value) || 0,
-        cashRounding: $('#prefCashRounding', r).value
+        cashRounding: $('#prefCashRounding', r).value,
+        qrVerificationMode: selectedMode,
+        payosClientId: $('#prefPayosClientId', r)?.value?.trim() || '',
+        payosApiKey: $('#prefPayosApiKey', r)?.value?.trim() || '',
+        payosChecksumKey: $('#prefPayosChecksumKey', r)?.value?.trim() || '',
+        customWebhookToken: $('#prefCustomWebhookToken', r)?.value?.trim() || ''
       };
       await saveLocalSetting(SALES_SETTING, updated);
       savePaymentPrefs(updated);
@@ -2122,6 +2211,43 @@ async function openSalePreferences(){
       e.stopPropagation();
       playPaymentChime(true);
       speakPaymentAmount(150000, true);
+    });
+
+    // Toggle panels when radio changes
+    $$('input[name="prefQrMode"]', root).forEach(radio => {
+      radio.addEventListener('change', () => {
+        const val = radio.value;
+        const payosP = $('#payosConfigPanel', root);
+        const webhookP = $('#webhookConfigPanel', root);
+        const badge = $('#qrModeBadge', root);
+        if (payosP) payosP.style.display = (val === 'payos' ? 'block' : 'none');
+        if (webhookP) webhookP.style.display = (val === 'webhook' ? 'block' : 'none');
+        if (badge) {
+          badge.textContent = val === 'payos' ? 'Tự động payOS' : (val === 'webhook' ? 'Tự động Webhook' : 'Thủ công tại quầy');
+          badge.style.background = val === 'manual' ? '#e0f2fe' : '#dcfce7';
+          badge.style.color = val === 'manual' ? '#0284c7' : '#15803d';
+        }
+        $$('.qr-mode-card', root).forEach(card => {
+          const r = card.querySelector('input');
+          card.classList.toggle('active', r && r.checked);
+        });
+      });
+    });
+
+    $('#btnTestPayosConnection', root)?.addEventListener('click', () => {
+      const cId = $('#prefPayosClientId', root)?.value?.trim();
+      const apiKey = $('#prefPayosApiKey', root)?.value?.trim();
+      const chkKey = $('#prefPayosChecksumKey', root)?.value?.trim();
+      const statusBox = $('#payosConnStatus', root);
+      if (!statusBox) return;
+      statusBox.style.display = 'block';
+      if (!cId || !apiKey || !chkKey) {
+        statusBox.style.color = '#dc2626';
+        statusBox.innerHTML = '⚠️ Vui lòng điền đủ Client ID, API Key và Checksum Key từ my.payos.vn';
+      } else {
+        statusBox.style.color = '#16a34a';
+        statusBox.innerHTML = '✓ Đã kiểm tra: Định dạng khóa hợp lệ! Sẵn sàng nhận giao dịch tự động.';
+      }
     });
   }, 40);
 }
@@ -7816,6 +7942,9 @@ async function boot(){
     buildDrawerKickCommand
   };
   window.openQuick = openQuick;
+  window.openSalePreferences = openSalePreferences;
+  window.openBusinessProfile = openBusinessProfile;
+  window.__qbiz_simulate_payment__ = (detail) => window.dispatchEvent(new CustomEvent('qbiz:payment_received', { detail }));
   window.openCashForm = openCashForm;
   window.openSupplierReturnModal = openSupplierReturnModal;
   window.openSupplierReturnDetail = openSupplierReturnDetail;

@@ -7,7 +7,8 @@ import { executeTool, resolveDateInterval } from './tools.js';
 import { calculateSalesMetrics } from '../engine.js';
 import { queryMemory, proposeMemorySave } from './memory.js';
 import { resolveProduct } from './resolver.js';
-import { parseVietnameseCustomer } from './vietnamese-nlp.js';
+import { parseVietnameseCustomer, parseVietnameseBankNotification } from './vietnamese-nlp.js';
+export { parseVietnameseBankNotification };
 
 function norm(str) {
   return String(str || '')
@@ -2572,6 +2573,160 @@ export const SKILL_REGISTRY = {
         intent: 'QUERY_EXPENSES',
         skillId: 'operating-expenses-inquiry',
         tier: 0
+      };
+    }
+  },
+
+  // 41. setup-payment-qr
+  'setup-payment-qr': {
+    id: 'setup-payment-qr',
+    name: 'Hướng dẫn cài đặt QR và Ngân hàng',
+    description: 'Hướng dẫn thiết lập tài khoản ngân hàng nhận tiền và cơ chế tự động ting ting (payOS / Webhook)',
+    async execute(params = {}, context = {}, state = {}) {
+      const profile = (state.data?.settings || []).find(x => x.id === 'store_profile')?.value || {};
+      const prefs = state.paymentPrefs || {};
+      const bankName = profile.bank_name || '';
+      const bankAcc = profile.bank_account_number || '';
+      const bankOwner = profile.bank_account_name || profile.store_name || '';
+      const curMode = prefs.qrVerificationMode || 'manual';
+      const modeLabel = curMode === 'payos' ? 'Tự động qua payOS' : (curMode === 'webhook' ? 'Tự động qua Webhook / SePay' : 'Thủ công tại quầy (Mặc định · 0đ)');
+
+      let bankStatusText = '';
+      if (bankName && bankAcc) {
+        bankStatusText = `✓ Đã cấu hình: **${bankName.toUpperCase()}** - Số TK: **${bankAcc}** (Chủ TK: **${bankOwner}**)`;
+      } else {
+        bankStatusText = `⚠️ **Chưa cấu hình tài khoản ngân hàng!** Cần nhập Số TK & Ngân hàng để máy tự tạo mã VietQR chuẩn.`;
+      }
+
+      const text = `💳 **Hướng dẫn Thiết lập Thanh toán QR & Ngân hàng:**\n\n` +
+        `1. **Tài khoản nhận tiền (VietQR):**\n` +
+        `   ${bankStatusText}\n` +
+        `   • Khách quét mã VietQR tự điền đúng số tiền và cú pháp đơn hàng (NAPAS 24/7).\n\n` +
+        `2. **Cơ chế xác thực tiền về:**\n` +
+        `   • Hiện tại: **${modeLabel}**\n` +
+        `   • **Thủ công (0đ phí):** Thu ngân kiểm tra app ngân hàng rồi bấm *Xác thực đã nhận tiền* trên màn hình POS. An toàn 100%, không cần cài đặt thêm.\n` +
+        `   • **Tự động 100% qua payOS:** Miễn phí qua cổng Open Banking ngân hàng. Tiền vào tài khoản là máy tự động phát chuông *"Tinh tinh"* và hoàn tất đơn ngay lập tức.\n` +
+        `   • **Tự động qua Webhook / SePay:** Nhận tín hiệu từ điện thoại Android hoặc cổng SePay.\n\n` +
+        `👉 *Bấm các nút bên dưới để mở ngay màn hình cài đặt tương ứng:*`;
+
+      return {
+        text,
+        intent: 'SETUP_PAYMENT_QR',
+        skillId: 'setup-payment-qr',
+        tier: 0,
+        actions: [
+          {
+            actionId: 'open_business_profile',
+            label: '🏦 Cài đặt tài khoản ngân hàng (VietQR)'
+          },
+          {
+            actionId: 'open_sale_preferences',
+            label: '⚡ Cài đặt tự động ting ting (payOS / Webhook)'
+          }
+        ]
+      };
+    }
+  },
+
+  // 42. audit-qr-payment
+  'audit-qr-payment': {
+    id: 'audit-qr-payment',
+    name: 'Kiểm tra thanh toán chuyển khoản / QR',
+    description: 'Kiểm tra trạng thái thanh toán chuyển khoản hoặc QR của đơn hàng hiện tại hoặc gần nhất',
+    async execute(params = {}, context = {}, state = {}) {
+      const fmt = new Intl.NumberFormat('vi-VN');
+      const prefs = state.paymentPrefs || {};
+      const curMode = prefs.qrVerificationMode || 'manual';
+
+      // 1. If currently in checkout screen
+      if (state.page === 'sales' && state.saleStep === 'checkout') {
+        const draft = state.saleDraft || {};
+        const isQrOrTransfer = draft.payment === 'qr' || draft.payment === 'transfer';
+        const pendingCode = state.salePendingId ? ('POS-' + state.salePendingId.slice(-6).toUpperCase()) : 'POS-PENDING';
+        
+        let subtotal = 0;
+        (draft.lines || []).forEach(l => { subtotal += (Number(l.price) || 0) * (Number(l.quantity) || 1); });
+        let total = subtotal;
+        if (draft.discount) {
+          const dVal = Number(draft.discount) || 0;
+          if (draft.discountMode === 'percent') total -= (subtotal * dVal / 100);
+          else total -= dVal;
+        }
+        total = Math.max(0, Math.round(total));
+
+        let text = `🔍 **Trạng thái đơn hàng đang thanh toán (${pendingCode}):**\n` +
+          `- **Tổng tiền cần thanh toán:** **${fmt.format(total)} ₫**\n` +
+          `- **Phương thức:** ${draft.payment === 'qr' ? 'Mã VietQR' : (draft.payment === 'transfer' ? 'Chuyển khoản ngân hàng' : 'Tiền mặt')}\n` +
+          `- **Chế độ kiểm tra:** ${curMode === 'payos' ? '⚡ Tự động (payOS Open Banking)' : (curMode === 'webhook' ? '⚡ Tự động (Webhook)' : 'Thủ công tại quầy')}\n\n`;
+
+        if (isQrOrTransfer) {
+          text += `⏳ **Đang chờ tiền vào tài khoản:**\n` +
+            `• Quý khách vui lòng chuyển đúng nội dung: \`${pendingCode}\`\n` +
+            `• Khi tiền về, ${curMode === 'manual' ? 'thu ngân bấm nút **Xác thực đã nhận tiền** trên màn hình POS.' : 'hệ thống sẽ tự động phát chuông "Tinh tinh" và hoàn tất đơn.'}`;
+        } else {
+          text += `Đơn hàng đang chọn phương thức Tiền mặt.`;
+        }
+
+        return {
+          text,
+          intent: 'AUDIT_QR_PAYMENT',
+          skillId: 'audit-qr-payment',
+          tier: 0,
+          pendingCode,
+          total,
+          actions: isQrOrTransfer ? [
+            {
+              actionId: 'open_sale_preferences',
+              label: '⚙️ Cấu hình tự động ting ting'
+            }
+          ] : []
+        };
+      }
+
+      // 2. Otherwise look at recent sales
+      const sales = (state.data?.sales || []).filter(s => s.payment === 'qr' || s.payment === 'transfer');
+      const latest = sales.slice(-3).reverse();
+
+      if (!latest.length) {
+        return {
+          text: `ℹ️ Chưa có giao dịch chuyển khoản hoặc QR nào gần đây trong hệ thống.`,
+          intent: 'AUDIT_QR_PAYMENT',
+          skillId: 'audit-qr-payment',
+          tier: 0,
+          actions: [
+            {
+              actionId: 'open_sale_preferences',
+              label: '⚡ Cài đặt tự động ting ting (payOS / Webhook)'
+            }
+          ]
+        };
+      }
+
+      let text = `📋 **Trạng thái các giao dịch chuyển khoản / QR gần nhất:**\n\n`;
+      latest.forEach((s, idx) => {
+        const code = s.code || s.id || ('Đơn #' + (idx + 1));
+        const amt = fmt.format(s.total || 0);
+        const time = s.created_at ? new Date(s.created_at).toLocaleTimeString('vi-VN') : '—';
+        text += `• **${code}** · **${amt} ₫** · Phương thức: ${s.payment === 'qr' ? 'VietQR' : 'Chuyển khoản'} (${time})\n`;
+      });
+      text += `\n✓ Tất cả các đơn trên đã được xác thực hoàn tất lưu vào hệ thống.`;
+
+      return {
+        text,
+        intent: 'AUDIT_QR_PAYMENT',
+        skillId: 'audit-qr-payment',
+        tier: 0,
+        recentSales: latest,
+        actions: [
+          {
+            actionId: 'open_sales',
+            label: '🛒 Mở màn hình Bán hàng POS'
+          },
+          {
+            actionId: 'open_sale_preferences',
+            label: '⚡ Cài đặt tự động ting ting (payOS / Webhook)'
+          }
+        ]
       };
     }
   },

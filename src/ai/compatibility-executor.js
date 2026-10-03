@@ -87,6 +87,17 @@ async function executeCapabilityBinding(capId, capability, resolved, intent, con
       return { ...res, intent: 'SEARCH_CUSTOMERS', toolExecuted: 'search_customers' };
     }
 
+    case 'setup_payment_qr': {
+      const res = await executeSkill('setup-payment-qr', {}, context, state);
+      return { ...res, intent: 'SETUP_PAYMENT_QR', toolExecuted: 'setup_payment_qr' };
+    }
+
+    case 'audit_qr_payment': {
+      const q = resolved.query || entities.query || context.rawPrompt || context.user_prompt;
+      const res = await executeSkill('audit-qr-payment', { query: q }, context, state);
+      return { ...res, intent: 'AUDIT_QR_PAYMENT', toolExecuted: 'audit_qr_payment' };
+    }
+
     case 'get_operating_expenses': {
       const period = resolved.timeRange?.code || intent.time_range || entities.period || 'month';
       const res = await executeSkill('operating-expenses-inquiry', { period }, context, state);

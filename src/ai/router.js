@@ -2369,6 +2369,40 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     }
   }
 
+  // 1.B) Bank / QR / payOS Payment Setup Fast-Path
+  const isQrSetupQuery = (
+    pNorm.includes('cai dat qr') || pNorm.includes('cai qr') ||
+    pNorm.includes('cai dat ngan hang') || pNorm.includes('cai ngan hang') ||
+    pNorm.includes('cai so tai khoan') || pNorm.includes('doi so tai khoan') ||
+    pNorm.includes('tai khoan ngan hang') || pNorm.includes('huong dan payos') ||
+    pNorm.includes('cai dat payos') || pNorm.includes('ket noi payos') ||
+    pNorm.includes('ting ting tu dong') || pNorm.includes('tu dong ting ting') ||
+    pNorm.includes('tu dong nhan tien') || pNorm.includes('cai dat chuyen khoan') ||
+    pNorm.includes('thiet lap vietqr') || pNorm.includes('ma vietqr') ||
+    pNorm.includes('huong dan cai qr') || pNorm.includes('cai dat thanh toan qr')
+  ) && !pNorm.includes('da nhan tien chua') && !pNorm.includes('da ting ting chua');
+
+  if (isQrSetupQuery) {
+    const res = await executeSkill('setup-payment-qr', {}, context, state);
+    return { ...res, intent: 'SETUP_PAYMENT_QR', skillId: 'setup-payment-qr', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
+  // 1.C) QR / Transfer Payment Audit Fast-Path
+  const isQrAuditQuery = (
+    pNorm.includes('da nhan tien chua') || pNorm.includes('da ting ting chua') ||
+    pNorm.includes('kiem tra thanh toan') || pNorm.includes('check thanh toan') ||
+    pNorm.includes('check tien ve') || pNorm.includes('kiem tra tien ve') ||
+    pNorm.includes('da chuyen khoan chua') || pNorm.includes('khach da chuyen tien chua') ||
+    pNorm.includes('kiem tra chuyen khoan') || pNorm.includes('check chuyen khoan') ||
+    pNorm.includes('check qr') || pNorm.includes('kiem tra don nay da nhan chua') ||
+    (pNorm.includes('don') && (pNorm.includes('nhan tien') || pNorm.includes('ting ting')))
+  );
+
+  if (isQrAuditQuery) {
+    const res = await executeSkill('audit-qr-payment', { query: rawPrompt }, context, state);
+    return { ...res, intent: 'AUDIT_QR_PAYMENT', skillId: 'audit-qr-payment', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
   // 2) Warehouse List Fast-Path
   if (pNorm.includes('danh sach cac kho') || pNorm.includes('danh sach kho') || pNorm.includes('cac kho hang hien co') || pNorm.includes('co nhung kho nao') || pNorm.includes('cac kho hien co')) {
     const warehouses = state?.data?.warehouses || [];
