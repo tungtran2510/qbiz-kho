@@ -199,6 +199,9 @@ export async function evaluateExactDeterministicGate(prompt, context = {}, state
               if (res?.success && typeof globalThis.indexedDB !== 'undefined') {
                 const execRes = await executeProposal(propObj, state, null, context.actor || { id: 'owner_1', role: 'owner' });
                 if (execRes) res = execRes;
+                if (typeof window !== 'undefined' && typeof window.__qbiz_app__?.refresh === 'function') {
+                  try { await window.__qbiz_app__.refresh(); } catch (_) {}
+                }
               }
             } else {
               res = { success: true, message: 'Đã xác nhận đề xuất thành công.' };

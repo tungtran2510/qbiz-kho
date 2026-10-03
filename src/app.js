@@ -266,7 +266,24 @@ const ICONS={
 };
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
-async function refresh(){ state.data=await snapshot(); state.businessProfile = businessProfileModule.getBusinessProfile(); state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile); render(); }
+async function refresh(){
+  state.data=await snapshot();
+  state.businessProfile = businessProfileModule.getBusinessProfile();
+  state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile);
+  render();
+  if (state.currentProductId && $('#modalRoot .product-detail')) {
+    const curBody = $('#modalRoot .modal-body');
+    const scrollPos = curBody ? curBody.scrollTop : 0;
+    openProduct(state.currentProductId);
+    const newBody = $('#modalRoot .modal-body');
+    if (newBody && scrollPos) newBody.scrollTop = scrollPos;
+  } else if (state.currentOrderId && $('#modalRoot [data-order-action], #modalRoot [data-action="mark-order-paid"]')) {
+    openOrderDetail(state.currentOrderId);
+  } else if (state.currentSaleId && ($('#modalRoot .transaction-detail') || $('#modalRoot [data-action="refund-sale"]'))) {
+    const s = (state.data?.sales || []).find(x => x.id === state.currentSaleId);
+    if (s) openTransaction(s);
+  }
+}
 if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
   try {
     const liveSyncChannel = new BroadcastChannel('qbiz_live_data_sync');
@@ -492,13 +509,37 @@ function docTienMoNgoac(val, mode = 'amount', gross = 0) {
     const pct = Number(val) || 0;
     if (pct <= 0) return '';
     const amt = Math.round(gross * pct / 100);
-    return `(Giảm ${pct}% · -${fmt(amt)} ₫)`;
+    return `(Giảm ${pct}% · −${fmt(amt)} ₫)`;
   }
   const n = Math.round(Math.abs(Number(val) || 0));
   if (!n) return '';
-  const text = docTienBangChu(n);
-  return `(${text})`;
+  return `(Giảm ${fmt(n)} ₫)`;
 }
+
+function openCheckoutQRModal({ vietQrUrl, bankName, bankAcc, bankOwner, pendingCode, total }) {
+  if (!vietQrUrl) return;
+  openModal({
+    title: 'Mã QR thanh toán',
+    sub: `Số tiền: ${fmt(total)} ₫ · ${esc(pendingCode)}`,
+    hideSubmit: true,
+    body: `
+      <div class="qr-zoom-modal-content" style="text-align:center;padding:6px 0;">
+        <div style="background:#ffffff;padding:12px;border-radius:14px;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;margin-bottom:12px;max-width:100%">
+          <img src="${esc(vietQrUrl)}" alt="VietQR phóng to" style="width:280px;max-width:100%;height:auto;aspect-ratio:1/1;object-fit:contain;display:block;margin:0 auto;border-radius:8px"/>
+        </div>
+        <div style="font-size:13px;color:#334155;line-height:1.65;background:#f8fafc;padding:10px 14px;border-radius:10px;border:1px solid #e2e8f0;text-align:left;max-width:320px;margin:0 auto">
+          <div><span style="color:#64748b">Ngân hàng:</span> <strong>${esc((bankName || 'MB').toUpperCase())}</strong></div>
+          <div><span style="color:#64748b">Số tài khoản:</span> <strong>${esc(bankAcc || '—')}</strong></div>
+          <div><span style="color:#64748b">Chủ tài khoản:</span> <strong>${esc(bankOwner || '—')}</strong></div>
+          <div><span style="color:#64748b">Số tiền:</span> <strong style="color:#0284c7;font-size:15px">${fmt(total)} ₫</strong></div>
+          <div><span style="color:#64748b">Nội dung CK:</span> <code style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:700">${esc(pendingCode)}</code></div>
+        </div>
+        <p style="font-size:11.5px;color:#64748b;margin:10px auto 0">Khách hàng quét mã trên app ngân hàng để thanh toán</p>
+      </div>
+    `
+  });
+}
+
 
 function shortDiscountPillText(amt) {
   const n = Number(amt) || 0;
@@ -694,7 +735,7 @@ function renderSales(){
     const qrPanelHtml=isQrOrTransfer?`
       <div class="qr-payment-panel">
         <div class="qr-payment-card">
-          <div class="qr-code-img-wrap">
+          <div class="qr-code-img-wrap ${vietQrUrl ? 'qr-zoomable' : ''}" id="checkoutQrImgWrap" title="${vietQrUrl ? 'Bấm để phóng to mã QR' : ''}">
             ${vietQrUrl?`<img src="${esc(vietQrUrl)}" alt="VietQR" class="vietqr-scan-img"/>`:`<div class="qr-placeholder">${icon('qr-code')}<span>Chưa có ảnh mã QR</span></div>`}
           </div>
           <div class="qr-details-group">
@@ -732,6 +773,18 @@ function renderSales(){
     $('#cashReceived')?.addEventListener('input',e=>{state.saleDraft.cashReceived=e.target.value;const val=Number(e.target.value)||0;const next=Math.max(0,val-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',Number(b.dataset.cashAmount)===val));});
     $$('[data-cash-amount]').forEach(btn=>{btn.onclick=()=>{const amt=Number(btn.dataset.cashAmount)||0;state.saleDraft.cashReceived=amt;const inp=$('#cashReceived');if(inp)inp.value=amt;const next=Math.max(0,amt-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',b===btn));};});
     $('[data-cash-exact]')?.addEventListener('click',()=>{state.saleDraft.cashReceived=totals.total;$('#cashReceived').value=totals.total;$('#cashChange').textContent='0 ₫'});
+    $('#checkoutQrImgWrap')?.addEventListener('click',()=>{
+      if(vietQrUrl){
+        openCheckoutQRModal({
+          vietQrUrl,
+          bankName,
+          bankAcc,
+          bankOwner,
+          pendingCode,
+          total: totals.total
+        });
+      }
+    });
     $('#qrCheckBtn')?.addEventListener('click',()=>{const btn=$('#qrCheckBtn');const statusBox=$('#qrWaitingStatus');if(!btn||btn.disabled)return;btn.disabled=true;const orig=btn.innerHTML;btn.innerHTML=`<span class="qr-spin">⏳</span> Đang kiểm tra giao dịch...`;setTimeout(()=>{btn.disabled=false;btn.innerHTML=orig;if(statusBox){statusBox.className='qr-waiting-status verified';statusBox.innerHTML=`<span class="qr-verified-check">✓</span><div class="qr-status-desc"><strong style="color:#16a34a">Đã phát hiện giao dịch khớp ${fmt(totals.total)} ₫!</strong><small>Vui lòng bấm nút 'Xác thực đã nhận tiền' bên dưới để hoàn tất.</small></div>`;}toast(`Đã phát hiện giao dịch chuyển khoản ${fmt(totals.total)} ₫.`,'ok');if(isAutoMode){setTimeout(()=>submitSale(),600);}},900);});
     if(isAutoMode&&typeof window!=='undefined'){
       const pendingCodeUpper=pendingCode.toUpperCase();
@@ -8047,6 +8100,7 @@ async function boot(){
   };
   window.__qbiz_app__ = {
     state,
+    refresh,
     reportSales,
     navigate,
     nav: navigate,

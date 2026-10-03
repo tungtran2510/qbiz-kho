@@ -1087,6 +1087,10 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
       operationId: opKey,
     });
 
+    if (typeof window !== 'undefined' && typeof window.__qbiz_app__?.refresh === 'function') {
+      try { await window.__qbiz_app__.refresh(); } catch (_) {}
+    }
+
     return {
       success: true,
       result: executionResult,

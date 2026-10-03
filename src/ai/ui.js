@@ -2354,7 +2354,9 @@ function renderMessages() {
       if (execRes.success) {
         addAssistantMessage(`✓ ${execRes.message || 'Thao tác đã được thực thi và đối soát thành công.'}`);
         try {
-          if (typeof window !== 'undefined' && window.__qbiz_app__?.render) {
+          if (typeof window !== 'undefined' && window.__qbiz_app__?.refresh) {
+            await window.__qbiz_app__.refresh();
+          } else if (typeof window !== 'undefined' && window.__qbiz_app__?.render) {
             window.__qbiz_app__.render();
           }
           updateContextAndChips();
@@ -2379,7 +2381,9 @@ function renderMessages() {
       if (res.success) {
         addAssistantMessage(res.message);
         try {
-          if (typeof window !== 'undefined' && window.__qbiz_app__?.render) {
+          if (typeof window !== 'undefined' && window.__qbiz_app__?.refresh) {
+            await window.__qbiz_app__.refresh();
+          } else if (typeof window !== 'undefined' && window.__qbiz_app__?.render) {
             window.__qbiz_app__.render();
           }
           updateContextAndChips();
