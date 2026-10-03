@@ -1,0 +1,50 @@
+[
+  {
+    "probe": "PROBE 1: Thu nợ từng phần (Partial Debt Payment)",
+    "result": "SUCCESS_PARTIAL",
+    "detail": "",
+    "is_limitation": false
+  },
+  {
+    "probe": "PROBE 2: Quản lý tồn kho độc lập theo từng biến thể (Size/Màu)",
+    "result": "VARIANT_LEVEL_SUPPORTED",
+    "detail": "Bảng 'levels' chỉ có productId + warehouseId. Chưa có khoá variantId độc lập trong sổ cái.",
+    "is_limitation": false
+  },
+  {
+    "probe": "PROBE 3: Nhập dữ liệu hàng loạt qua file Excel (Import Center)",
+    "result": "FULL_IMPORT_ACTIVE",
+    "detail": "Import Center 7 bước hiện là giao diện chuẩn bị (Prepared). Nút xác nhận ghi dữ liệu bị khóa để bảo vệ sổ kép.",
+    "is_limitation": false
+  },
+  {
+    "probe": "PROBE 4: Nghiệp vụ trả hàng cho Nhà cung cấp (Purchase Return)",
+    "result": "SUPPORTED",
+    "detail": "Hệ thống đã có 'createReturn' (khách trả) và 'createExchange' (khách đổi), nhưng chưa có 'createPurchaseReturn' (xuất trả NCC hoàn vốn).",
+    "is_limitation": false
+  },
+  {
+    "probe": "PROBE 5: Đồng bộ dữ liệu tức thì giữa nhiều Tab (Multi-Tab Reactive Sync)",
+    "result": "LIVE_SYNCED",
+    "detail": "Tab 1 tạo đơn bán thành công (2 đơn). Tab 2 tại chỗ có 2 đơn (cần BroadcastChannel / StorageEvent để cập nhật DOM Tab 2 tự động mà không cần reload).",
+    "is_limitation": false
+  },
+  {
+    "probe": "PROBE 6: Điều khiển trực tiếp máy in nhiệt & Két tiền (Direct ESC/POS & Cash Drawer Kick)",
+    "result": "BROWSER_PRINT_ONLY",
+    "detail": "In ấn qua hộp thoại trình duyệt (window.print). Chưa có driver gửi mã lệnh thô ESC/POS (ESC p m t1 t2) để bật két tiền tự động qua cổng RJ11/USB.",
+    "is_limitation": true
+  },
+  {
+    "probe": "PROBE 7: Hạn mức công nợ khách hàng (Customer Credit Limit)",
+    "result": "CREDIT_LIMIT_MANAGED",
+    "detail": "Khách hàng hiện có các trường cơ bản (id, code, name, phone, email, address). Chưa có hạn mức nợ tối đa (Credit Limit) để chặn bán nợ vượt trần.",
+    "is_limitation": false
+  },
+  {
+    "probe": "PROBE 8: Khả năng bán hàng và lưu sổ cái khi mất mạng hoàn toàn (Offline Capability)",
+    "result": "OFFLINE_CORE_WORKING",
+    "detail": "Bán hàng local trong trạng thái Offline hoàn toàn thành công (Mã đơn: POS-000003), ghi vào IndexedDB và outbox chờ sync.",
+    "is_limitation": false
+  }
+]

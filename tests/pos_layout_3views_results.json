@@ -1,0 +1,85 @@
+{
+  "device": "Android Mobile (412x915)",
+  "timestamp": "2026-10-03 02:45:28",
+  "modes": {
+    "grid3": {
+      "name": "Lưới 3 ô (Grid 3 cols)",
+      "card_width": 126.7,
+      "card_height": 198.9,
+      "price_text": "53.762.000",
+      "price_box": {
+        "x": 17,
+        "y": 345.4,
+        "width": 65.4,
+        "height": 15
+      },
+      "stepper_box": {
+        "x": 11,
+        "y": 367.9,
+        "width": 124.7,
+        "height": 26
+      },
+      "quantity": "2",
+      "overlap_detected": false,
+      "stepper_height": 26,
+      "stepper_width": 124.7,
+      "price_fully_visible": true,
+      "screenshot_unselected": "evidence\\evidence_pos_grid3_unselected.png",
+      "screenshot_with_qty": "evidence\\evidence_pos_grid3_with_qty.png",
+      "status": "PASS"
+    },
+    "grid2": {
+      "name": "Lưới 2 ô (Grid 2 cols)",
+      "card_width": 191.5,
+      "card_height": 266.3,
+      "price_text": "53.762.000",
+      "price_box": {
+        "x": 19,
+        "y": 403.9,
+        "width": 73.3,
+        "height": 16.8
+      },
+      "stepper_box": {
+        "x": 11,
+        "y": 431.3,
+        "width": 189.5,
+        "height": 30
+      },
+      "quantity": "2",
+      "overlap_detected": false,
+      "stepper_height": 30,
+      "stepper_width": 189.5,
+      "price_fully_visible": true,
+      "screenshot_unselected": "evidence\\evidence_pos_grid2_unselected.png",
+      "screenshot_with_qty": "evidence\\evidence_pos_grid2_with_qty.png",
+      "status": "PASS"
+    },
+    "list": {
+      "name": "Dạng danh sách (List view)",
+      "card_width": 392,
+      "card_height": 90,
+      "price_text": "53.762.000",
+      "price_box": {
+        "x": 105,
+        "y": 256.9,
+        "width": 73.3,
+        "height": 16.8
+      },
+      "stepper_box": {
+        "x": 305,
+        "y": 226,
+        "width": 86,
+        "height": 30
+      },
+      "quantity": "2",
+      "overlap_detected": false,
+      "stepper_height": 30,
+      "stepper_width": 86,
+      "price_fully_visible": true,
+      "screenshot_unselected": "evidence\\evidence_pos_list_unselected.png",
+      "screenshot_with_qty": "evidence\\evidence_pos_list_with_qty.png",
+      "status": "PASS"
+    }
+  },
+  "verdict": "ALL_PASS"
+}

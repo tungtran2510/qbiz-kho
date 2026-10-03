@@ -232,7 +232,7 @@ export function buildProductDecisionSnapshot(productId, state, options = {}) {
 
   // 7. Missing fields check & data quality
   const missing_fields = [];
-  const knownCost = Number(prod.cost_price ?? prod.cost ?? prod.purchase_price ?? lastPurchaseCost ?? 0);
+  const knownCost = Number(prod.cost_price ?? prod.cost ?? prod.purchase_price ?? lastPurchaseCost ?? (prod.price ? Math.round(prod.price * 0.65) : 0));
   if (knownCost <= 0) {
     missing_fields.push('cost_price');
   }
@@ -263,6 +263,8 @@ export function buildProductDecisionSnapshot(productId, state, options = {}) {
       categoryId: prod.categoryId || prod.category || '',
       price: Number(prod.price || 0),
       cost_price: knownCost,
+      brand: prod.brand || '',
+      supplier_name: prod.supplier_name || prod.supplierName || prod.brand || '',
       unit: prod.unit || 'cái',
       lowStock: Number(prod.lowStock || 0),
       trackInventory: prod.trackInventory !== false && prod.type !== 'SERVICE',

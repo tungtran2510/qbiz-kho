@@ -1,9 +1,10 @@
-import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics } from './engine.js?v=20260927-v21-consistency-audit';
+import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn } from './engine.js?v=20260927-v21-consistency-audit';
 import { clearAll,getAll,getOne,put,putMany,runTransaction } from './db.js';
 import { syncStatus,flushOutbox } from './sync.js';
 import { CONFIG } from './config.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
+import { kickCashDrawer, generateEscPosReceipt, buildDrawerKickCommand } from './hardware/escpos.js';
 import * as aiModule from './ai/index.js';
 const { initAiUI, updateContextAndChips } = aiModule;
 import * as businessProfileModule from './business-profile.js';
@@ -165,6 +166,16 @@ const ICONS={
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
 async function refresh(){ state.data=await snapshot(); state.businessProfile = businessProfileModule.getBusinessProfile(); state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile); render(); }
+if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
+  try {
+    const liveSyncChannel = new BroadcastChannel('qbiz_live_data_sync');
+    liveSyncChannel.onmessage = async (msg) => {
+      if(msg?.data?.type === 'DATA_CHANGED'){
+        try { await refresh(); } catch(_) {}
+      }
+    };
+  } catch(_) {}
+}
 function setTitle(title,eyebrow='QBiz Kho'){ $('#pageTitle').textContent=title; $('#pageEyebrow').textContent=eyebrow; }
 function historyState(){return {qbiz:true,page:state.page,saleStep:state.saleStep}}
 function navigate(page,{replace=false,fromHistory=false}={}){
@@ -275,7 +286,7 @@ function openCustomerPicker(){
   openModal({title:'Chọn khách hàng',sub:'Khách lẻ là mặc định.',hideSubmit:true,body:`<div class="customer-picker"><input id="customerSearch" class="customer-search" placeholder="Tìm tên, SĐT, mã khách, MST"/><div class="customer-type-tabs">${[['all','Tất cả'],['retail','Khách lẻ'],['individual','Cá nhân'],['company','Công ty'],['agent','Đại lý']].map(([v,l])=>`<button class="${v==='all'?'active':''}" data-picker-type="${v}">${l}</button>`).join('')}</div><div id="customerResults" class="customer-results"></div><button class="secondary-btn full" data-action="new-customer">+ Thêm khách hàng</button></div>`});
   const draw=async()=>{const q=$('#customerSearch')?.value||'',rows=(await customerRecords()).filter(c=>c.active!==false&&customerMatches(c,q)&&(type==='all'||(c.customer_type||'retail')===type)).sort((a,b)=>(b.last_used_at||'').localeCompare(a.last_used_at||''));$('#customerResults').innerHTML=`<button class="customer-row" data-customer-id=""><span><strong>Khách lẻ</strong><small>Không lưu thông tin khách</small></span>${icon('chevron-right')}</button>`+rows.map(c=>`<button class="customer-row" data-customer-id="${c.id}"><span><strong>${esc(c.name)}</strong><small>${esc([c.phone,c.customer_code,c.tax_id].filter(Boolean).join(' · ')||'Chưa có thông tin liên hệ')}${c.default_discount?` · Gợi ý CK ${fmt(c.default_discount)}%`:''}</small></span>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có khách phù hợp.</div>';$$('[data-customer-id]',$('#customerResults')).forEach(b=>b.onclick=async()=>{const c=rows.find(x=>x.id===b.dataset.customerId)||{name:'Khách lẻ',phone:'',code:'',id:''};if(c.id){c.last_used_at=new Date().toISOString();await put('customers',c)}state.saleCustomer=c;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();});};$('#customerSearch').oninput=draw;$$('[data-picker-type]').forEach(b=>b.onclick=()=>{type=b.dataset.pickerType;$$('[data-picker-type]').forEach(x=>x.classList.toggle('active',x===b));draw()});draw();
 }
-function openNewCustomer(){openModal({title:'Thêm khách hàng',sub:'Tên là thông tin bắt buộc.',body:`<div class="form-grid"><div class="field full-span"><label>Tên khách hàng</label><input id="customerName" required placeholder="VD: Nguyễn Thị Lan"/></div><div class="field"><label>Số điện thoại</label><input id="customerPhone" inputmode="tel" placeholder="090..."/></div><div class="field"><label>Mã khách</label><input id="customerCode"/></div><div class="field"><label>Loại khách</label><select id="customerType"><option value="retail">Khách lẻ</option><option value="individual">Cá nhân</option><option value="company">Công ty</option><option value="agent">Đại lý</option></select></div><div class="field"><label>Nhóm khách</label><input id="customerGroup" placeholder="Tùy chọn"/></div><div class="field"><label>Chiết khấu mặc định (%)</label><input id="customerDiscount" type="number" inputmode="decimal" min="0" max="100" value="0"/></div><div class="field"><label>Mã số thuế</label><input id="customerTax" inputmode="numeric"/></div><div class="field full-span"><label>Ghi chú</label><input id="customerNote"/></div></div>`,submitText:'Lưu khách hàng',onSubmit:async root=>{const name=$('#customerName',root).value.trim(),phone=$('#customerPhone',root).value.trim(),code=$('#customerCode',root).value.trim();if(!name)throw new Error('Hãy nhập tên khách hàng.');const all=await customerRecords(),dup=phone&&all.find(c=>normalizePhone(c.phone)===normalizePhone(phone));if(dup&&confirm('Số điện thoại đã có trong danh bạ. Dùng khách hàng hiện có?')){state.saleCustomer=dup;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();return;}if(dup)throw new Error('Số điện thoại đã tồn tại.');const now=new Date().toISOString(),id=saleUuid(),c={id,customer_id:id,customer_code:code,name,phone,phone_normalized:normalizePhone(phone),customer_type:$('#customerType',root).value,customer_group:$('#customerGroup',root).value.trim(),default_discount:Math.min(100,Math.max(0,Number($('#customerDiscount',root).value)||0)),tax_id:$('#customerTax',root).value.trim(),note:$('#customerNote',root).value,active:true,created_at:now,updated_at:now,last_used_at:now};await put('customers',c);state.saleCustomer=c;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();toast('Đã lưu khách hàng.','ok')}})}
+function openNewCustomer(){openModal({title:'Thêm khách hàng',sub:'Tên là thông tin bắt buộc.',body:`<div class="form-grid"><div class="field full-span"><label>Tên khách hàng</label><input id="customerName" required placeholder="VD: Nguyễn Thị Lan"/></div><div class="field"><label>Số điện thoại</label><input id="customerPhone" inputmode="tel" placeholder="090..."/></div><div class="field"><label>Mã khách</label><input id="customerCode"/></div><div class="field"><label>Loại khách</label><select id="customerType"><option value="retail">Khách lẻ</option><option value="individual">Cá nhân</option><option value="company">Công ty</option><option value="agent">Đại lý</option></select></div><div class="field"><label>Nhóm khách</label><input id="customerGroup" placeholder="Tùy chọn"/></div><div class="field"><label>Hạn mức nợ (₫)</label><input id="customerCreditLimit" type="number" inputmode="decimal" min="0" placeholder="0 = Không giới hạn" value="0"/></div><div class="field"><label>Chiết khấu mặc định (%)</label><input id="customerDiscount" type="number" inputmode="decimal" min="0" max="100" value="0"/></div><div class="field"><label>Mã số thuế</label><input id="customerTax" inputmode="numeric"/></div><div class="field full-span"><label>Ghi chú</label><input id="customerNote"/></div></div>`,submitText:'Lưu khách hàng',onSubmit:async root=>{const name=$('#customerName',root).value.trim(),phone=$('#customerPhone',root).value.trim(),code=$('#customerCode',root).value.trim();if(!name)throw new Error('Hãy nhập tên khách hàng.');const all=await customerRecords(),dup=phone&&all.find(c=>normalizePhone(c.phone)===normalizePhone(phone));if(dup&&confirm('Số điện thoại đã có trong danh bạ. Dùng khách hàng hiện có?')){state.saleCustomer=dup;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();return;}if(dup)throw new Error('Số điện thoại đã tồn tại.');const now=new Date().toISOString(),id=saleUuid(),c={id,customer_id:id,customer_code:code,name,phone,phone_normalized:normalizePhone(phone),customer_type:$('#customerType',root).value,customer_group:$('#customerGroup',root).value.trim(),creditLimit:Math.max(0,Number($('#customerCreditLimit',root)?.value)||0),credit_limit:Math.max(0,Number($('#customerCreditLimit',root)?.value)||0),default_discount:Math.min(100,Math.max(0,Number($('#customerDiscount',root).value)||0)),tax_id:$('#customerTax',root).value.trim(),note:$('#customerNote',root).value,active:true,created_at:now,updated_at:now,last_used_at:now};await put('customers',c);state.saleCustomer=c;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();toast('Đã lưu khách hàng.','ok')}})}
 function addSaleItem(id){const p=product(id);if(!p||p.active===false)return;normalizeSaleCart();const found=state.saleCart.find(x=>x.itemId===id),next=(found?.quantity||0)+1;if(!allowSaleQuantity(id,next))return;if(found)found.quantity=next;else state.saleCart.push({itemId:id,quantity:1,unitPrice:Number(p.price)||0,discount:0});renderSales();}
 function updateSaleLine(id,field,value){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;const n=Number(value);if(field==='quantity'){const next=Math.max(1,Math.floor(n||1));if(!allowSaleQuantity(id,next)){renderSales();return;}line.quantity=next;}else line[field]=Math.max(0,n||0);renderSales();}
 function adjustSaleQuantity(id,delta){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;const next=Math.max(1,line.quantity+delta);if(!allowSaleQuantity(id,next))return;line.quantity=next;renderSales();}
@@ -305,7 +316,7 @@ function saleProductTile(p){
   const skuText = esc(p.sku || (p.type === 'SERVICE' ? 'Dịch vụ' : 'Chưa có mã'));
   const isService = p.type === 'SERVICE';
   const isOutOfStock = !isService && stock !== null && stock <= 0;
-  const isLowStock = !isService && stock !== null && p.lowStock && stock <= p.lowStock && stock > 0;
+  const isLowStock = !isService && stock !== null && (p.lowStock ? stock <= p.lowStock : stock <= 5) && stock > 0;
   
   let stockBadgeHtml = '';
   if (isService) {
@@ -313,13 +324,13 @@ function saleProductTile(p){
   } else if (isOutOfStock) {
     stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock out-of-stock">Hết hàng</span>`;
   } else if (isLowStock) {
-    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock low-stock">Sắp hết (Tồn: ${fmt(stock)})</span>`;
+    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock low-stock" title="Sắp hết hàng: Còn ${fmt(stock)}"><span class="stock-dot yellow"></span>${fmt(stock)}</span>`;
   } else {
-    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock">Còn hàng (Tồn: ${fmt(stock ?? 0)})</span>`;
+    stockBadgeHtml = `<span class="pos-stock-badge pos-prod-stock in-stock" title="Còn hàng: Còn ${fmt(stock ?? 0)}"><span class="stock-dot green"></span>${fmt(stock ?? 0)}</span>`;
   }
 
   const priceText = p.price ? fmt(p.price) : 'Chưa có giá';
-  return `<article class="pos-product">
+  return `<article class="pos-product ${line ? 'has-qty' : ''}">
     <button class="pos-product-main" data-sale-add="${p.id}">
       <div class="pos-product-image">${p.image ? `<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>` : esc((p.name || 'S').slice(0, 1))}${stockBadgeHtml}</div>
       <strong class="pos-prod-title">${esc(p.name)}</strong>
@@ -328,7 +339,7 @@ function saleProductTile(p){
         <b class="pos-prod-price">${priceText}</b>
       </div>
     </button>
-    ${line ? `<div class="pos-inline-qty"><button data-sale-adjust="-1" data-sale-id="${p.id}">−</button><span>${line.quantity}</span><button data-sale-adjust="1" data-sale-id="${p.id}">+</button></div>` : `<button class="pos-add" data-sale-add="${p.id}" aria-label="Thêm ${esc(p.name)}">+</button>`}
+    ${line ? `<div class="pos-inline-qty"><button type="button" data-sale-adjust="-1" data-sale-id="${p.id}" aria-label="Giảm">−</button><span>${line.quantity}</span><button type="button" data-sale-adjust="1" data-sale-id="${p.id}" aria-label="Tăng">+</button></div>` : `<button type="button" class="pos-add" data-sale-add="${p.id}" aria-label="Thêm ${esc(p.name)}">+</button>`}
   </article>`;
 }
 function saleStepHeader(title){return `<div class="flow-head"><button class="flow-back" data-sale-back aria-label="Quay lại">‹</button><h2>${title}</h2><span></span></div>`}
@@ -720,7 +731,7 @@ function renderDashboard(){
   if (isUnauth && !isDemo) {
     $('#content').innerHTML = `
       <div class="public-entry-overlay">
-        <section class="card public-entry-card" style="background:#ffffff;border:1px solid var(--border,#e2e8f0);border-radius:18px;max-width:520px;width:100%;padding:22px 18px;box-shadow:0 18px 40px -12px rgba(15,23,42,0.18);animation:entryCardFadeIn 0.22s ease-out">
+        <section class="card public-entry-card public-entry-hero" style="background:#ffffff;border:1px solid var(--border,#e2e8f0);border-radius:18px;max-width:520px;width:100%;padding:22px 18px;box-shadow:0 18px 40px -12px rgba(15,23,42,0.18);animation:entryCardFadeIn 0.22s ease-out">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
             <div style="width:42px;height:42px;border-radius:12px;background:var(--primary,#0284c7);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:20px;box-shadow:0 2px 8px rgba(2,132,199,0.3);flex-shrink:0">Q</div>
             <div style="min-width:0">
@@ -2604,10 +2615,237 @@ async function renderCustomers(){
   const all=(await customerRecords()).filter(c=>c.active!==false),q=state.customerSearch.toLowerCase().trim();
   if(state.page!=='customers')return;
   const rows=all.filter(c=>(state.customerType==='all'||(c.customer_type||'retail')===state.customerType)&&(!q||[c.name,c.phone,c.customer_code,c.tax_id].some(v=>String(v||'').toLowerCase().includes(q)||norm(v).includes(norm(q)))));
-  $('#content').innerHTML=`<section class="directory-screen"><div class="directory-toolbar"><input id="customerDirectorySearch" value="${esc(state.customerSearch)}" placeholder="Tìm tên, SĐT, mã khách, MST..."/><button class="primary-btn" data-action="new-customer">+ Thêm</button></div><div class="directory-filters">${[['all','Tất cả'],['retail','Khách lẻ'],['individual','Cá nhân'],['company','Công ty'],['agent','Đại lý']].map(([v,l])=>`<button class="${state.customerType===v?'active':''}" data-customer-type="${v}">${l}</button>`).join('')}</div><div class="directory-list">${rows.map(c=>`<button class="directory-row" data-customer-open="${c.id}"><span class="directory-avatar">${esc((c.name||'K').slice(0,1))}</span><span><strong>${esc(c.customer_code||'KH')} · ${esc(c.name)}</strong><small>${esc(c.phone||'Chưa có số điện thoại')} ${c.customer_group?`· ${esc(c.customer_group)}`:''}</small></span><em>${({retail:'Khách lẻ',individual:'Cá nhân',company:'Công ty',agent:'Đại lý'})[c.customer_type||'retail']}</em>${icon('chevron-right')}</button>`).join('')||'<div class="empty"><strong>Chưa có khách phù hợp</strong></div>'}</div></section>`;
+  $('#content').innerHTML=`<section class="directory-screen"><div class="directory-toolbar"><input id="customerDirectorySearch" value="${esc(state.customerSearch)}" placeholder="Tìm tên, SĐT, mã khách, MST..."/><button class="primary-btn" data-action="new-customer">+ Thêm</button></div><div class="directory-filters">${[['all','Tất cả'],['retail','Khách lẻ'],['individual','Cá nhân'],['company','Công ty'],['agent','Đại lý']].map(([v,l])=>`<button class="${state.customerType===v?'active':''}" data-customer-type="${v}">${l}</button>`).join('')}</div><div class="directory-list">${rows.map(c=>`<button class="directory-row" data-customer-open="${c.id}"><span class="directory-avatar">${esc((c.name||'K').slice(0,1))}</span><span><strong>${esc(c.customer_code||'KH')} · ${esc(c.name)}</strong><small>${esc(c.phone||'Chưa có số điện thoại')} ${c.customer_group?`· ${esc(c.customer_group)}`:''}</small></span>${Number(c.debt||0)>0?`<span style="margin-left:auto;margin-right:8px;font-size:12px;font-weight:700;color:var(--danger,#dc2626)">Nợ ${fmt(c.debt)} ₫</span>`:''}<em>${({retail:'Khách lẻ',individual:'Cá nhân',company:'Công ty',agent:'Đại lý'})[c.customer_type||'retail']}</em>${icon('chevron-right')}</button>`).join('')||'<div class="empty"><strong>Chưa có khách phù hợp</strong></div>'}</div></section>`;
   $('#customerDirectorySearch').oninput=e=>{state.customerSearch=e.target.value;renderCustomers()};$$('[data-customer-type]').forEach(b=>b.onclick=()=>{state.customerType=b.dataset.customerType;renderCustomers()});$$('[data-customer-open]').forEach(b=>b.onclick=()=>openCustomerDetail(all.find(c=>c.id===b.dataset.customerOpen)));
 }
-function openCustomerDetail(c){if(!c)return;const sales=(state.data.sales||[]).filter(s=>s.customer_label===c.name||String(s.customer_label||'').startsWith(c.name+' ·'));openModal({title:'Chi tiết khách hàng',sub:c.customer_code||c.phone||'',hideSubmit:true,body:`<div class="contact-detail"><div class="contact-hero"><span class="directory-avatar">${esc((c.name||'K').slice(0,1))}</span><div><h3>${esc(c.name)}</h3><p>${esc(c.phone||'Chưa có số điện thoại')}</p></div><button class="primary-btn" data-customer-sell="${c.id}">Bán hàng</button><button class="secondary-btn" data-action="customer-soft" data-id="${c.id}" data-next="${c.active===false?'active':'inactive'}">${c.active===false?'Hiện lại':'Ẩn khách hàng'}</button></div><div class="product-facts"><div><span>Nhóm khách</span><strong>${esc(c.customer_group||'Chưa phân nhóm')}</strong></div><div><span>Chiết khấu mặc định</span><strong>${fmt(c.default_discount||0)}%</strong></div><div><span>Mã số thuế</span><strong>${esc(c.tax_id||'Chưa cập nhật')}</strong></div><div><span>Địa chỉ</span><strong>${esc(c.address||'Chưa cập nhật')}</strong></div><div><span>Email</span><strong>${esc(c.email||'Chưa cập nhật')}</strong></div></div>${c.note?`<p class="order-note">${esc(c.note)}</p>`:''}<details><summary>Địa chỉ giao hàng / xuất hóa đơn</summary><p class="muted">Chưa có cấu trúc nhiều địa chỉ riêng. Dữ liệu hiện có vẫn được giữ nguyên.</p></details><details><summary>Công nợ</summary><p class="muted">Chưa có Debt Ledger nên không hiển thị hoặc cho sửa số dư công nợ giả.</p></details><h3>Lịch sử mua</h3>${sales.slice(0,10).map(s=>`<button class="transaction-row" data-sale-id="${s.id}"><span><strong>${esc(s.code)}</strong><small>${dt(s.created_at)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch gắn với khách này.</div>'}</div>`});$('[data-customer-sell]',$('#modalRoot'))?.addEventListener('click',()=>{$('#modalRoot').innerHTML='';state.saleCustomer=c;navigate('sales')});$$('[data-sale-id]',$('#modalRoot')).forEach(b=>b.onclick=()=>openTransaction(sales.find(s=>s.id===b.dataset.saleId)));}
+
+async function openDebtCollectionModal(c, defaultSaleId = null, initialAmount = null) {
+  if (!c) return;
+  const debtInfo = await getCustomerDebtSummary(state.data, c.id);
+  const unpaidSales = debtInfo.unpaidSales || [];
+  const totalDebt = Number(debtInfo.totalDebt || 0);
+
+  if (totalDebt <= 0 && unpaidSales.length === 0) {
+    toast(`Khách hàng ${c.name} hiện không có nợ cần thu.`, 'info');
+    return;
+  }
+
+  const selectedSale = defaultSaleId ? unpaidSales.find(s => s.saleId === defaultSaleId) : (unpaidSales[0] || null);
+  const defAmount = initialAmount != null ? initialAmount : (selectedSale ? selectedSale.debtAmount : totalDebt);
+
+  const saleOptions = [
+    `<option value="ALL" ${!defaultSaleId ? 'selected' : ''}>Tất cả phiếu nợ (trừ dần từ phiếu cũ nhất - ${fmt(totalDebt)} ₫)</option>`,
+    ...unpaidSales.map(u => `<option value="${esc(u.saleId)}" ${u.saleId === defaultSaleId ? 'selected' : ''}>Phiếu ${esc(u.code)} · Nợ ${fmt(u.debtAmount)} ₫ (${u.daysOverdue} ngày)</option>`)
+  ].join('');
+
+  openModal({
+    title: 'Thu tiền nợ',
+    sub: `${esc(c.name)} · Tổng nợ: ${fmt(totalDebt)} ₫`,
+    submitText: 'Xác nhận thu nợ',
+    body: `<div class="form-grid">
+      <div class="field full-span">
+        <label>Chọn hóa đơn thanh toán</label>
+        <select id="debtTargetSale">${saleOptions}</select>
+      </div>
+      <div class="field full-span">
+        <label>Số tiền thu (₫)</label>
+        <input id="debtPaymentAmount" type="number" inputmode="decimal" min="1000" max="${totalDebt}" value="${defAmount}" required/>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button type="button" class="secondary-btn sm" id="btnDebtPayAll" style="padding:4px 8px;font-size:12px">Thu toàn bộ (${fmt(totalDebt)} ₫)</button>
+          ${selectedSale ? `<button type="button" class="secondary-btn sm" id="btnDebtPaySale" style="padding:4px 8px;font-size:12px">Thu đúng phiếu (${fmt(selectedSale.debtAmount)} ₫)</button>` : ''}
+        </div>
+      </div>
+      <div class="field">
+        <label>Hình thức thanh toán</label>
+        <select id="debtPaymentMethod">
+          <option value="cash">Tiền mặt (vào quỹ ca)</option>
+          <option value="transfer">Chuyển khoản / VietQR</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Ghi chú thu nợ</label>
+        <input id="debtPaymentNote" value="Thu nợ khách ${esc(c.name)}"/>
+      </div>
+    </div>`,
+    onSubmit: async root => {
+      const amt = Number($('#debtPaymentAmount', root).value);
+      if (!amt || isNaN(amt) || amt <= 0) throw new Error('Số tiền thu phải là số dương lớn hơn 0.');
+      const targetSaleVal = $('#debtTargetSale', root).value;
+      const method = $('#debtPaymentMethod', root).value || 'cash';
+      const note = $('#debtPaymentNote', root).value.trim();
+
+      if (targetSaleVal && targetSaleVal !== 'ALL') {
+        await markSalePaid(targetSaleVal, { amount: amt, paymentMethod: method, reference: note });
+      } else {
+        let remaining = amt;
+        for (const u of unpaidSales) {
+          if (remaining <= 0) break;
+          const payThis = Math.min(remaining, u.debtAmount);
+          await markSalePaid(u.saleId, { amount: payThis, paymentMethod: method, reference: note });
+          remaining -= payThis;
+        }
+      }
+
+      await refresh();
+      toast(`Đã thu ${fmt(amt)} ₫ nợ của ${c.name}.`, 'ok');
+      const allCust = await customerRecords();
+      const updatedCust = allCust.find(x => x.id === c.id) || c;
+      openCustomerDetail(updatedCust);
+    }
+  });
+
+  const root = $('#modalRoot');
+  $('#debtTargetSale', root)?.addEventListener('change', e => {
+    const val = e.target.value;
+    if (val === 'ALL') {
+      $('#debtPaymentAmount', root).value = totalDebt;
+    } else {
+      const found = unpaidSales.find(s => s.saleId === val);
+      if (found) $('#debtPaymentAmount', root).value = found.debtAmount;
+    }
+  });
+  $('#btnDebtPayAll', root)?.addEventListener('click', () => {
+    $('#debtPaymentAmount', root).value = totalDebt;
+  });
+  $('#btnDebtPaySale', root)?.addEventListener('click', () => {
+    const val = $('#debtTargetSale', root).value;
+    const found = unpaidSales.find(s => s.saleId === val);
+    if (found) $('#debtPaymentAmount', root).value = found.debtAmount;
+  });
+}
+
+function openCustomerLimitModal(c) {
+  openModal({
+    title: 'Hạn mức nợ & Chiết khấu',
+    sub: `${esc(c.name)} · ${esc(c.phone || c.customer_code || '')}`,
+    body: `<div class="form-grid">
+      <div class="field full-span">
+        <label>Hạn mức công nợ (₫)</label>
+        <input id="editCustCreditLimit" type="number" inputmode="decimal" min="0" value="${c.creditLimit || c.credit_limit || 0}" placeholder="0 = Không giới hạn"/>
+        <small class="field-limit">0 = Không giới hạn hạn mức nợ.</small>
+      </div>
+      <div class="field">
+        <label>Chiết khấu mặc định (%)</label>
+        <input id="editCustDiscount" type="number" inputmode="decimal" min="0" max="100" value="${c.default_discount || 0}"/>
+      </div>
+      <div class="field">
+        <label>Nhóm khách hàng</label>
+        <input id="editCustGroup" value="${esc(c.customer_group || '')}" placeholder="VD: Thân thiết, VIP, Đại lý"/>
+      </div>
+    </div>`,
+    submitText: 'Lưu thay đổi',
+    onSubmit: async root => {
+      const limit = Math.max(0, Number($('#editCustCreditLimit', root).value) || 0);
+      const disc = Math.min(100, Math.max(0, Number($('#editCustDiscount', root).value) || 0));
+      const grp = $('#editCustGroup', root).value.trim();
+      const updated = {
+        ...c,
+        creditLimit: limit,
+        credit_limit: limit,
+        default_discount: disc,
+        customer_group: grp,
+        updated_at: new Date().toISOString()
+      };
+      await put('customers', updated);
+      await refresh();
+      toast('Đã cập nhật hạn mức và thông tin khách hàng.', 'ok');
+      openCustomerDetail(updated);
+    }
+  });
+}
+
+async function openCustomerDetail(c){
+  if(!c)return;
+  const debtInfo = await getCustomerDebtSummary(state.data, c.id);
+  const totalDebt = Number(debtInfo.totalDebt || 0);
+  const creditLimit = Number(debtInfo.creditLimit || c.creditLimit || c.credit_limit || 0);
+  const availableCredit = debtInfo.availableCredit || 0;
+  const isOverLimit = debtInfo.isOverLimit;
+  const unpaidSales = debtInfo.unpaidSales || [];
+
+  const sales=(state.data.sales||[]).filter(s=>s.customer_id===c.id||s.customerId===c.id||s.customer_label===c.name||String(s.customer_label||'').startsWith(c.name+' ·'));
+
+  openModal({
+    title:'Chi tiết khách hàng',
+    sub:c.customer_code||c.phone||'',
+    hideSubmit:true,
+    body:`<div class="contact-detail">
+      <div class="contact-hero">
+        <span class="directory-avatar">${esc((c.name||'K').slice(0,1))}</span>
+        <div>
+          <h3>${esc(c.name)}</h3>
+          <p>${esc(c.phone||'Chưa có số điện thoại')}</p>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <button class="primary-btn" data-customer-sell="${c.id}">Bán hàng</button>
+          ${totalDebt > 0 ? `<button class="primary-btn" data-action="collect-debt" style="background:var(--danger,#dc2626);border-color:var(--danger,#dc2626)">Thu nợ</button>` : ''}
+          <button class="secondary-btn" data-action="edit-limits">Hạn mức</button>
+          <button class="secondary-btn" data-action="customer-soft" data-id="${c.id}" data-next="${c.active===false?'active':'inactive'}">${c.active===false?'Hiện lại':'Ẩn khách hàng'}</button>
+        </div>
+      </div>
+      <div class="product-facts">
+        <div><span>Nhóm khách</span><strong>${esc(c.customer_group||'Chưa phân nhóm')}</strong></div>
+        <div><span>Chiết khấu mặc định</span><strong>${fmt(c.default_discount||0)}%</strong></div>
+        <div><span>Mã số thuế</span><strong>${esc(c.tax_id||'Chưa cập nhật')}</strong></div>
+        <div><span>Địa chỉ</span><strong>${esc(c.address||'Chưa cập nhật')}</strong></div>
+        <div><span>Email</span><strong>${esc(c.email||'Chưa cập nhật')}</strong></div>
+      </div>
+      ${c.note?`<p class="order-note">${esc(c.note)}</p>`:''}
+      <details open style="margin-top:10px">
+        <summary style="font-weight:700">Công nợ & Hạn mức tín dụng</summary>
+        <div class="product-facts" style="margin-top:8px">
+          <div>
+            <span>Tổng nợ hiện tại</span>
+            <strong style="color:${totalDebt > 0 ? 'var(--danger,#dc2626)' : 'inherit'};font-size:15px">${fmt(totalDebt)} ₫</strong>
+          </div>
+          <div>
+            <span>Hạn mức nợ</span>
+            <strong>${creditLimit > 0 ? fmt(creditLimit) + ' ₫' : 'Không giới hạn'}</strong>
+          </div>
+          <div>
+            <span>Hạn mức khả dụng</span>
+            <strong style="color:${isOverLimit ? 'var(--danger,#dc2626)' : 'inherit'}">${creditLimit > 0 ? fmt(availableCredit) + ' ₫' : 'Vô hạn'}</strong>
+          </div>
+        </div>
+        ${totalDebt > 0 ? `
+          <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:13px">Hóa đơn nợ (${unpaidSales.length})</span>
+            <button class="primary-btn sm" data-action="collect-debt" style="padding:4px 10px;font-size:12px">Thu nợ ngay</button>
+          </div>
+          <div class="directory-list" style="margin-top:6px;gap:6px">
+            ${unpaidSales.map(u => `
+              <div class="directory-row" style="padding:8px 10px;cursor:default">
+                <span style="flex:1">
+                  <strong>${esc(u.code)}</strong>
+                  <small style="display:block;color:var(--text-muted,#6b7280)">${dt(u.createdAt)} · Nợ ${u.daysOverdue} ngày (${u.agingGroup === '0_30' ? 'Trong hạn' : 'Quá hạn'})</small>
+                </span>
+                <div style="text-align:right;margin-right:8px">
+                  <b style="color:var(--danger,#dc2626);display:block">${fmt(u.debtAmount)} ₫</b>
+                  <small style="color:var(--text-muted,#6b7280)">Đã trả: ${fmt(u.paidAmount)} / ${fmt(u.grandTotal)} ₫</small>
+                </div>
+                <button class="secondary-btn sm" data-collect-sale-id="${esc(u.saleId)}" data-sale-debt="${u.debtAmount}" style="padding:4px 8px;font-size:12px;white-space:nowrap">Thu tiền</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : `<p class="muted" style="margin-top:6px">Khách hàng hiện không có nợ tồn đọng.</p>`}
+      </details>
+      <details><summary>Địa chỉ giao hàng / xuất hóa đơn</summary><p class="muted">Chưa có cấu trúc nhiều địa chỉ riêng. Dữ liệu hiện có vẫn được giữ nguyên.</p></details>
+      <h3>Lịch sử mua</h3>
+      ${sales.slice(0,10).map(s=>`<button class="transaction-row" data-sale-id="${s.id}"><span><strong>${esc(s.code)}</strong><small>${dt(s.created_at)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch gắn với khách này.</div>'}
+    </div>`
+  });
+
+  const root=$('#modalRoot');
+  $('[data-customer-sell]',root)?.addEventListener('click',()=>{
+    $('#modalRoot').innerHTML='';
+    state.saleCustomer=c;
+    navigate('sales');
+  });
+  $$('[data-action="collect-debt"]',root).forEach(b=>b.onclick=()=>openDebtCollectionModal(c));
+  $('[data-action="edit-limits"]',root)?.addEventListener('click',()=>openCustomerLimitModal(c));
+  $$('[data-collect-sale-id]',root).forEach(b=>b.onclick=()=>openDebtCollectionModal(c,b.dataset.collectSaleId,Number(b.dataset.saleDebt)));
+  $$('[data-sale-id]',root).forEach(b=>b.onclick=()=>openTransaction(sales.find(s=>s.id===b.dataset.saleId)));
+}
 function supplierFormMarkup(s={}){
   return `<div class="form-grid supplier-form">
     <div class="field full-span"><label>Tên nhà cung cấp</label><input id="supplierName" value="${esc(s.name||'')}" placeholder="Tên công ty / cá nhân" required/></div>
@@ -2703,7 +2941,7 @@ function renderAdvancedHub(){
       ['documents','file-text','Trung tâm chứng từ','Mọi hóa đơn, nhập, xuất, chuyển, trả, thu/chi'],
       ['purchase-orders','package-plus','Đơn mua nhà cung cấp','Đặt hàng NCC, theo dõi và nhận hàng'],
       ['replenish','package-minus','Đề xuất nhập hàng','Mặt hàng dưới tồn tối thiểu'],
-      ['supplier-returns','undo-2','Trả hàng nhà cung cấp','Quy trình trả NCC (chuẩn bị)'],
+      ['supplier-returns','undo-2','Trả hàng nhà cung cấp','Xuất trả hàng NCC & thu hồi vốn'],
       ['numbering','clipboard-check','Mã chứng từ','Prefix và số thứ tự theo loại chứng từ'],
     ]],
     ['Hệ thống',[
@@ -2812,7 +3050,7 @@ async function renderCash(){
   });
   const salesTotal=cashSales.reduce((n,s)=>n+Number(s.grand_total??s.total??0),0);
 
-  const filterRows=activeShift&&shiftStart?rows.filter(r=>new Date(r.date)>=shiftStart):rows;
+  const filterRows=activeShift&&shiftStart?rows.filter(r=>new Date(r.created_at||`${r.date}T23:59:59`)>=shiftStart):rows;
   const tin=filterRows.filter(r=>r.kind==='in').reduce((n,r)=>n+Number(r.amount||0),0);
   const tout=filterRows.filter(r=>r.kind==='out').reduce((n,r)=>n+Number(r.amount||0),0);
 
@@ -2995,7 +3233,77 @@ function openOpeningForm(){
   openModal({title:'Thiết lập tồn đầu',sub:'Ghi movement OPENING cho sản phẩm tại kho.',submitText:'Lưu tồn đầu',body:`<div class="form-grid"><div class="field"><label>Kho</label><select id="opWarehouse">${whOptions()}</select></div><div class="field"><label>Sản phẩm</label><select id="opProduct">${productOptions()}</select></div><div class="field"><label>Tồn đầu kỳ</label><input id="opQty" type="number" min="0" value="0"/></div></div><p class="field-limit">Hệ thống ghi thêm một movement OPENING bằng phần chênh lệch. Không xóa movement cũ và không reset tồn.</p>`,onSubmit:async root=>{const productId=$('#opProduct',root).value,warehouseId=$('#opWarehouse',root).value,qty=Number($('#opQty',root).value);if(!productId||!warehouseId)throw new Error('Chọn kho và sản phẩm.');if(!Number.isFinite(qty)||qty<0)throw new Error('Tồn đầu không hợp lệ.');const cur=(state.data.levels||[]).find(l=>l.productId===productId&&l.warehouseId===warehouseId);if(cur&&Number(cur.onHand)===qty)throw new Error('Tồn đang đúng bằng giá trị này, không cần ghi thêm.');await setOpeningStock({productId,warehouseId,qty});state.page='opening';}});
 }
 function openCashForm(kind){
-  openModal({title:kind==='in'?'Phiếu thu':'Phiếu chi',submitText:'Lưu phiếu',body:`<div class="form-grid"><div class="field"><label>Số tiền (₫)</label><input id="csAmount" type="number" min="0"/></div><div class="field"><label>Phương thức</label><select id="csMethod"><option>Tiền mặt</option><option>Chuyển khoản</option><option>QR</option></select></div><div class="field"><label>Ngày</label><input id="csDate" type="date" value="${new Date().toISOString().slice(0,10)}"/></div><div class="field full-span"><label>Diễn giải</label><input id="csNote" placeholder="VD: Chi tiền điện"/></div></div>`,onSubmit:async root=>{const amount=Math.max(0,Number($('#csAmount',root).value)||0);if(!amount)throw new Error('Nhập số tiền.');const rows=await modList('cash_entries');rows.push({id:mid('cs'),kind,amount,method:$('#csMethod',root).value,date:$('#csDate',root).value,note:$('#csNote',root).value.trim(),created_at:new Date().toISOString()});await modSave('cash_entries',rows);state.page='cash';}});
+  const activeShift = (state.data?.shifts||[]).find(s=>s.status==='OPEN');
+  openModal({
+    title: kind==='in'?'Phiếu thu':'Phiếu chi / Chi phí vận hành',
+    sub: kind==='out' ? (activeShift ? 'Ghi nhận chi phí & trừ quỹ tiền mặt trong ca đang mở.' : 'Ghi nhận chi phí vận hành cửa hàng.') : 'Ghi nhận khoản thu tiền mặt hoặc ngân hàng.',
+    submitText: 'Lưu phiếu',
+    body: kind==='out' ? `<div class="form-grid">
+      <div class="field"><label>Danh mục chi</label><select id="csCategory">
+        <option value="Chi phí vận hành">Chi phí vận hành chung</option>
+        <option value="Tiền điện / nước / internet">Tiền điện / nước / internet</option>
+        <option value="Văn phòng phẩm / Bao bì / Túi">Văn phòng phẩm / Bao bì / Túi</option>
+        <option value="Tiếp khách / Ăn uống ca">Tiếp khách / Ăn uống ca</option>
+        <option value="Vận chuyển / Ship ngoài">Vận chuyển / Ship ngoài</option>
+        <option value="Sửa chữa / Bảo trì quầy kệ">Sửa chữa / Bảo trì quầy kệ</option>
+        <option value="Lương / Tạm ứng nhân viên">Lương / Tạm ứng nhân viên</option>
+        <option value="Chi khác">Chi phí khác</option>
+      </select></div>
+      <div class="field"><label>Số tiền chi (₫)</label><input id="csAmount" type="number" min="1" placeholder="Nhập số tiền chi"/></div>
+      <div class="field"><label>Phương thức</label><select id="csMethod">
+        <option value="Tiền mặt">Tiền mặt (Trừ quỹ két ca)</option>
+        <option value="Chuyển khoản">Chuyển khoản</option>
+        <option value="QR">QR</option>
+      </select></div>
+      <div class="field"><label>Người nhận tiền</label><input id="csPayee" placeholder="VD: Anh shipper, Cửa hàng tiện lợi..."/></div>
+      <div class="field"><label>Ngày</label><input id="csDate" type="date" value="${new Date().toISOString().slice(0,10)}"/></div>
+      <div class="field full-span"><label>Diễn giải / Ghi chú</label><input id="csNote" placeholder="VD: Mua 5 cuộn băng dính đóng hàng, trà đá ca..."/></div>
+    </div>` : `<div class="form-grid">
+      <div class="field"><label>Số tiền (₫)</label><input id="csAmount" type="number" min="1"/></div>
+      <div class="field"><label>Phương thức</label><select id="csMethod"><option>Tiền mặt</option><option>Chuyển khoản</option><option>QR</option></select></div>
+      <div class="field"><label>Ngày</label><input id="csDate" type="date" value="${new Date().toISOString().slice(0,10)}"/></div>
+      <div class="field full-span"><label>Diễn giải</label><input id="csNote" placeholder="VD: Thu nợ khác..."/></div>
+    </div>`,
+    onSubmit: async root=>{
+      const amount=Math.max(0,Number($('#csAmount',root).value)||0);
+      if(!amount) throw new Error('Số tiền phải lớn hơn 0.');
+      const method=$('#csMethod',root).value;
+      const note=$('#csNote',root).value.trim();
+      const date=$('#csDate',root).value;
+
+      if(kind==='out'){
+        const category=$('#csCategory',root)?.value||'Chi phí vận hành';
+        const payee=$('#csPayee',root)?.value?.trim()||'';
+        const currentActiveShift=(state.data?.shifts||[]).find(s=>s.status==='OPEN');
+        const pMethod=method.includes('Tiền mặt')?'cash':'transfer';
+
+        await createExpense({
+          category,
+          amount,
+          paymentMethod: pMethod,
+          note,
+          payee,
+          shiftId: currentActiveShift?currentActiveShift.id:''
+        });
+      }
+
+      const rows=await modList('cash_entries');
+      rows.push({
+        id: mid('cs'),
+        kind,
+        amount,
+        method,
+        date,
+        note: kind==='out'?`[${$('#csCategory',root)?.value||'Chi phí'}] ${note}`:note,
+        created_at: new Date().toISOString()
+      });
+      await modSave('cash_entries',rows);
+      await refresh();
+      if(state.page==='shifts') renderShiftCenter();
+      else { state.page='cash'; renderCash(); }
+      toast(kind==='out'?'Đã ghi nhận phiếu chi và trừ quỹ ca.':'Đã lưu phiếu thu.','ok');
+    }
+  });
 }
 function openDebtForm(kind){
   openModal({title:kind==='receivable'?'Ghi nợ phải thu':'Ghi nợ phải trả',submitText:'Lưu công nợ',body:`<div class="form-grid"><div class="field"><label>${kind==='receivable'?'Khách hàng':'Nhà cung cấp'}</label><input id="dbParty" placeholder="Tên đối tượng"/></div><div class="field"><label>Số tiền (₫)</label><input id="dbAmount" type="number" min="0"/></div><div class="field"><label>Hạn</label><input id="dbDue" type="date"/></div><div class="field full-span"><label>Ghi chú</label><input id="dbNote"/></div></div>`,onSubmit:async root=>{const party=$('#dbParty',root).value.trim(),amount=Math.max(0,Number($('#dbAmount',root).value)||0);if(!party)throw new Error('Nhập tên đối tượng.');if(!amount)throw new Error('Nhập số tiền.');const rows=await modList('debt_entries');rows.push({id:mid('db'),kind,party,amount,due:$('#dbDue',root).value,note:$('#dbNote',root).value.trim(),created_at:new Date().toISOString()});await modSave('debt_entries',rows);state.page='debts';}});
@@ -3113,12 +3421,265 @@ function openPurchaseOrderForm(prefill){
 }
 
 function renderSupplierReturns(){
-  const rows=[];
-  const body=`<div class="mod-actions"><button class="primary-btn" data-action="srt-new">Tạo phiếu trả NCC</button></div>
-<div class="mod-block"><div class="mod-list">${rows.length?rows.map(r=>modRow(esc(r.code),esc(r.reason||''),'')).join(''):modEmpty('Chưa có phiếu trả NCC','Ghi nhận hàng trả lại nhà cung cấp theo chứng từ nhập.')}</div></div>
-${modNote('<b>PREPARED</b>: chưa thực hiện biến động tồn kho và công nợ NCC. Cần contract trả hàng NCC (giảm tồn theo lô nhập + giảm công nợ) trước khi ghi sổ.')}
-<div class="mod-block"><div class="mod-list">${['NCC + chứng từ nhập','Sản phẩm + số lượng trả','Lý do trả','Giá trị trả','Xem lại','Xác nhận'].map((s,i)=>modRow(`${i+1}. ${esc(s)}`,'Bước bắt buộc khi contract sẵn sàng','')).join('')}</div></div>`;
-  panelScreen('Trả hàng nhà cung cấp','Quy trình trả hàng NCC (chuẩn bị).','prepared','Chuẩn bị',body);
+  const receipts = state.data.purchase_receipts || [];
+  const returns = receipts.filter(r => r.sub_type === 'PURCHASE_RETURN_OUT' || r.type === 'purchase_return' || (r.kind === 'issue' && r.supplier_id)).sort((a,b) => String(b.created_at||'').localeCompare(String(a.created_at||'')));
+  const totalValue = returns.reduce((s, r) => s + Number(r.refund_amount ?? r.total_cost ?? 0), 0);
+  const totalItems = returns.reduce((s, r) => s + (r.lines || []).reduce((sum, l) => sum + Number(l.qty || l.quantity || 0), 0), 0);
+
+  const body = `
+    <div class="mod-summary">
+      <div><span>Số phiếu xuất trả</span><b>${fmt(returns.length)} phiếu</b></div>
+      <div><span>Tổng tiền hoàn vốn</span><b>${fmt(totalValue)} ₫</b></div>
+      <div><span>Số mặt hàng đã trả</span><b>${fmt(totalItems)} sản phẩm</b></div>
+      <div class="grand"><span>Trạng thái kho</span><b>Khấu trừ tức thì</b></div>
+    </div>
+    <div class="mod-actions">
+      <button class="primary-btn" data-action="srt-new">+ Tạo phiếu trả NCC</button>
+    </div>
+    <div class="mod-block">
+      <div class="mod-list">
+        ${returns.length ? returns.map(r => {
+          const sup = (state.data.suppliers||[]).find(s => s.id === r.supplier_id);
+          const wh = (state.data.warehouses||[]).find(w => w.id === r.warehouse_id);
+          const val = Number(r.refund_amount ?? r.total_cost ?? 0);
+          const lineCount = (r.lines||[]).length;
+          const methodLabel = ({cash:'Tiền mặt',transfer:'Chuyển khoản',debt:'Trừ công nợ'})[r.refund_method] || 'Hoàn tiền';
+          return modRow(
+            `<b>${esc(r.id || r.document_id)}</b> · ${esc(sup?.name || r.supplier_id || 'Nhà cung cấp')} <span class="surface-status working" style="margin-left:6px;font-size:11px;">${esc(methodLabel)}</span>`,
+            `${dt(r.created_at)} · Kho: ${esc(wh?.name || r.warehouse_id || 'Kho')} · ${lineCount} mặt hàng · Lý do: ${esc(r.reason || 'Xuất trả NCC')}`,
+            `<b>${fmt(val)} ₫</b><button class="secondary-btn" data-srt-view="${esc(r.id)}">Chi tiết</button>`
+          );
+        }).join('') : modEmpty('Chưa có phiếu trả NCC', 'Nhấn "+ Tạo phiếu trả NCC" để xuất trả hàng và thu hồi vốn.')}
+      </div>
+    </div>
+    ${modNote('<b>Đã kích hoạt vận hành</b>: Phiếu xuất trả NCC khấu trừ tồn khả dụng nguyên tử trong kho (<code>PURCHASE_RETURN_OUT</code>) và ghi nhận hoàn vốn theo Tiền mặt, Chuyển khoản hoặc Trừ công nợ.')}
+  `;
+  panelScreen('Trả hàng nhà cung cấp', 'Quản lý xuất trả hàng cho nhà cung cấp và thu hồi vốn.', 'working', 'Đang dùng', body);
+
+  $$('[data-srt-view]').forEach(btn => {
+    btn.onclick = () => {
+      const doc = returns.find(r => r.id === btn.dataset.srtView);
+      if (doc) openSupplierReturnDetail(doc);
+    };
+  });
+}
+
+function openSupplierReturnModal(){
+  const suppliers = (state.data.suppliers || []).filter(s => s.status !== 'inactive');
+  const warehouses = state.data.warehouses || [];
+  if (!warehouses.length) {
+    toast('Chưa có kho hàng để xuất trả.', 'error');
+    return;
+  }
+  const defaultWh = warehouses[0].id;
+  const products = (state.data.products || []).filter(p => p.type !== 'SERVICE' && p.trackInventory !== false);
+
+  const supplierOptionsHtml = suppliers.length 
+    ? suppliers.map(s => `<option value="${esc(s.id)}">${esc(s.name)}${s.phone ? ' · ' + esc(s.phone) : ''}</option>`).join('')
+    : '<option value="">Nhà cung cấp chung</option>';
+
+  const whOptionsHtml = warehouses.map(w => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join('');
+
+  const renderProductRows = (whId) => {
+    return products.map(p => {
+      const lv = (state.data.levels || []).find(l => l.productId === p.id && l.warehouseId === whId);
+      const avail = Math.max(0, (lv?.onHand || 0) - (lv?.reserved || 0) - (lv?.damaged || 0));
+      const defaultCost = Number(p.purchase_price ?? p.cost_price ?? p.price ?? 0);
+      const disabled = avail <= 0;
+      return `
+        <label class="mod-check ${disabled ? 'disabled' : ''}" style="${disabled ? 'opacity:0.5;' : ''}">
+          <input type="checkbox" data-srt-item="${esc(p.id)}" ${disabled ? 'disabled' : ''}/>
+          <span>
+            <b>${esc(p.name)}</b>
+            <small>${esc(p.sku || '')} · Tồn khả dụng: <strong>${fmt(avail)}</strong> ${esc(p.unit || 'cái')}</small>
+          </span>
+          <input type="number" min="1" max="${avail}" value="1" data-srt-qty="${esc(p.id)}" ${disabled ? 'disabled' : ''} style="width:65px;" title="Số lượng trả"/>
+          <input type="number" min="0" value="${defaultCost}" data-srt-price="${esc(p.id)}" ${disabled ? 'disabled' : ''} style="width:105px;" placeholder="Giá hoàn" title="Đơn giá hoàn vốn"/>
+        </label>
+      `;
+    }).join('');
+  };
+
+  openModal({
+    title: 'Tạo phiếu trả nhà cung cấp',
+    sub: 'Khấu trừ tồn khả dụng trong kho và ghi nhận hoàn vốn.',
+    submitText: 'Xác nhận xuất trả',
+    fullScreen: true,
+    body: `
+      <div class="form-grid">
+        <div class="field">
+          <label>Nhà cung cấp</label>
+          <select id="srtSupplier">${supplierOptionsHtml}</select>
+        </div>
+        <div class="field">
+          <label>Kho xuất trả</label>
+          <select id="srtWarehouse">${whOptionsHtml}</select>
+        </div>
+        <div class="field">
+          <label>Lý do xuất trả</label>
+          <select id="srtReason">
+            <option value="Hàng lỗi / hư hỏng do nhà sản xuất">Hàng lỗi / hư hỏng do nhà sản xuất</option>
+            <option value="Hàng cận date / hết hạn sử dụng">Hàng cận date / hết hạn sử dụng</option>
+            <option value="Giao sai mẫu / sai số lượng so với đơn đặt">Giao sai mẫu / sai số lượng</option>
+            <option value="Đổi trả hàng tồn chậm bán theo thỏa thuận">Đổi trả hàng tồn chậm bán theo thỏa thuận</option>
+            <option value="Xuất trả nhà cung cấp thu hồi vốn">Xuất trả NCC thu hồi vốn</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Hình thức thu hồi vốn</label>
+          <select id="srtRefundMethod">
+            <option value="cash">Tiền mặt (Nhận tiền hoàn ngay)</option>
+            <option value="transfer">Chuyển khoản ngân hàng</option>
+            <option value="debt">Trừ công nợ phải trả NCC</option>
+          </select>
+        </div>
+        <div class="field full-span">
+          <label>Chọn mặt hàng xuất trả (Tích chọn, số lượng và giá hoàn vốn)</label>
+          <div id="srtProductList" class="mod-check-list">
+            ${renderProductRows(defaultWh)}
+          </div>
+        </div>
+        <div class="field full-span">
+          <label>Ghi chú / Số chứng từ hóa đơn gốc</label>
+          <input id="srtNote" placeholder="VD: Trả theo biên bản kiểm hàng ngày 02/10"/>
+        </div>
+      </div>
+    `,
+    onSubmit: async root => {
+      const supplierId = $('#srtSupplier', root)?.value || '';
+      const warehouseId = $('#srtWarehouse', root)?.value;
+      const reason = $('#srtReason', root)?.value || 'Xuất trả hàng cho NCC';
+      const refundMethod = $('#srtRefundMethod', root)?.value || 'cash';
+      const note = $('#srtNote', root)?.value?.trim() || '';
+
+      if (!warehouseId) throw new Error('Vui lòng chọn kho xuất trả.');
+
+      const checkedItems = $$('[data-srt-item]:checked', root);
+      if (!checkedItems.length) throw new Error('Vui lòng chọn ít nhất một mặt hàng cần xuất trả.');
+
+      const lines = [];
+      let totalRefund = 0;
+      for (const chk of checkedItems) {
+        const pid = chk.dataset.srtItem;
+        const qtyInput = $(`[data-srt-qty="${pid}"]`, root);
+        const priceInput = $(`[data-srt-price="${pid}"]`, root);
+        const qty = Math.max(1, Number(qtyInput?.value) || 1);
+        const price = Math.max(0, Number(priceInput?.value) || 0);
+        lines.push({ productId: pid, qty, price });
+        totalRefund += qty * price;
+      }
+
+      await createPurchaseReturn({
+        supplierId,
+        warehouseId,
+        lines,
+        reason,
+        refundMethod,
+        refundAmount: totalRefund,
+        reference: note
+      });
+
+      await refresh();
+      state.page = 'supplier-returns';
+      renderSupplierReturns();
+      toast(`Đã lập phiếu xuất trả NCC và khấu trừ tồn kho (${fmt(totalRefund)} ₫).`, 'ok');
+    }
+  });
+
+  $('#srtWarehouse')?.addEventListener('change', e => {
+    const listEl = $('#srtProductList');
+    if (listEl) listEl.innerHTML = renderProductRows(e.target.value);
+  });
+}
+
+function openSupplierReturnDetail(doc){
+  if (!doc) return;
+  const sup = (state.data.suppliers || []).find(s => s.id === doc.supplier_id);
+  const wh = (state.data.warehouses || []).find(w => w.id === doc.warehouse_id);
+  const methodLabel = ({cash:'Tiền mặt',transfer:'Chuyển khoản',debt:'Trừ công nợ'})[doc.refund_method] || doc.refund_method;
+  const lines = doc.lines || [];
+  const total = Number(doc.refund_amount ?? doc.total_cost ?? 0);
+
+  const linesHtml = lines.map((l, i) => `
+    <div class="transaction-line" style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--q-line);font-size:13px;">
+      <div>
+        <strong>${i+1}. ${esc(l.name || l.productId)}</strong>
+        <small style="display:block;color:var(--q-muted);">${esc(l.sku || '')} · SL: ${fmt(l.qty || l.quantity)} ${esc(l.unit || 'cái')} × ${fmt(l.price)} ₫</small>
+      </div>
+      <div style="font-weight:700;">${fmt(l.line_total || ((l.qty||l.quantity)*l.price))} ₫</div>
+    </div>
+  `).join('');
+
+  openModal({
+    title: `Phiếu trả NCC · ${esc(doc.id || doc.document_id)}`,
+    sub: `${dt(doc.created_at)} · Trạng thái: Đã xuất kho`,
+    hideSubmit: true,
+    footer: `
+      <button class="primary-btn" data-srt-print>In phiếu xuất trả</button>
+      <button class="secondary-btn" data-close>Đóng</button>
+    `,
+    body: `
+      <div class="product-facts" style="margin-bottom:16px;">
+        <div><span>Nhà cung cấp</span><strong>${esc(sup?.name || doc.supplier_id || 'Chung')}</strong></div>
+        <div><span>Kho xuất trả</span><strong>${esc(wh?.name || doc.warehouse_id || 'Kho')}</strong></div>
+        <div><span>Hình thức hoàn</span><strong>${esc(methodLabel)}</strong></div>
+        <div><span>Tổng tiền hoàn</span><strong style="color:var(--q-blue);">${fmt(total)} ₫</strong></div>
+        <div style="grid-column:1/-1;"><span>Lý do xuất</span><strong>${esc(doc.reason || 'Xuất trả NCC')}</strong></div>
+        ${doc.reference ? `<div style="grid-column:1/-1;"><span>Ghi chú</span><strong>${esc(doc.reference)}</strong></div>` : ''}
+      </div>
+      <div class="section-divider"></div>
+      <h3>Danh sách mặt hàng xuất trả</h3>
+      <div class="transaction-lines">${linesHtml}</div>
+    `
+  });
+
+  $('[data-srt-print]')?.addEventListener('click', () => {
+    const html = `
+      <div style="padding:20px;max-width:600px;margin:auto;">
+        <h2 style="text-align:center;margin-bottom:4px;">PHIẾU XUẤT TRẢ NHÀ CUNG CẤP</h2>
+        <p style="text-align:center;color:#666;font-size:12px;margin-top:0;">Mã phiếu: ${esc(doc.id || doc.document_id)} · ${dt(doc.created_at)}</p>
+        <hr style="border:none;border-top:1px solid #ccc;margin:12px 0;"/>
+        <p><strong>Nhà cung cấp:</strong> ${esc(sup?.name || doc.supplier_id || '—')}</p>
+        <p><strong>Kho xuất:</strong> ${esc(wh?.name || doc.warehouse_id || '—')}</p>
+        <p><strong>Lý do xuất trả:</strong> ${esc(doc.reason || '—')}</p>
+        <p><strong>Hình thức thu hồi vốn:</strong> ${esc(methodLabel)}</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <thead>
+            <tr style="border-bottom:2px solid #333;text-align:left;">
+              <th style="padding:6px;">STT</th>
+              <th style="padding:6px;">Tên hàng</th>
+              <th style="padding:6px;text-align:center;">SL</th>
+              <th style="padding:6px;text-align:right;">Đơn giá</th>
+              <th style="padding:6px;text-align:right;">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lines.map((l, i) => `
+              <tr style="border-bottom:1px solid #ddd;">
+                <td style="padding:6px;">${i+1}</td>
+                <td style="padding:6px;">${esc(l.name || l.productId)}</td>
+                <td style="padding:6px;text-align:center;">${fmt(l.qty || l.quantity)}</td>
+                <td style="padding:6px;text-align:right;">${fmt(l.price)} ₫</td>
+                <td style="padding:6px;text-align:right;">${fmt(l.line_total || ((l.qty||l.quantity)*l.price))} ₫</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="font-weight:bold;font-size:15px;">
+              <td colspan="4" style="padding:8px;text-align:right;">Tổng tiền hoàn vốn:</td>
+              <td style="padding:8px;text-align:right;">${fmt(total)} ₫</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div style="display:flex;justify-content:space-between;margin-top:40px;text-align:center;">
+          <div><p><strong>Người lập phiếu</strong></p><p style="margin-top:50px;">(Ký, ghi rõ họ tên)</p></div>
+          <div><p><strong>Thủ kho xuất</strong></p><p style="margin-top:50px;">(Ký, ghi rõ họ tên)</p></div>
+          <div><p><strong>Đại diện NCC nhận</strong></p><p style="margin-top:50px;">(Ký, ghi rõ họ tên)</p></div>
+        </div>
+      </div>
+    `;
+    printHtmlDoc(html);
+  });
 }
 
 async function renderReplenish(){
@@ -3924,6 +4485,8 @@ function openReturnFlow(sale){
   let returnMode='return';
   const newItems=[];
   const discountRatio=Math.max(0,1-Math.min(1,Number(sale.discount_total||sale.discount||0)/Math.max(1,Number(sale.subtotal||1))));
+  const saleDebt=Number(sale.debt_amount??(sale.payment_status==='PARTIAL'?Math.max(0,Number(sale.grand_total??sale.total??0)-Number(sale.paid_amount||0)):0));
+  const hasDebt=saleDebt>0;
 
   const body=`<div class="return-flow">
     <div class="warehouse-tabs" style="margin-bottom:12px">
@@ -3943,7 +4506,7 @@ function openReturnFlow(sale){
     </div>
     <div class="form-grid" id="returnSimpleFields">
       <div class="field"><label>Lý do</label><input id="returnReason" value="Khách trả hàng"/></div>
-      <div class="field"><label>Hoàn tiền</label><select id="returnRefundMethod"><option value="original">Theo phương thức gốc</option><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản</option></select></div>
+      <div class="field"><label>Hoàn tiền / Cấn trừ</label><select id="returnRefundMethod">${hasDebt?`<option value="debt" selected>Cấn trừ công nợ (Còn nợ ${fmt(saleDebt)} ₫)</option>`:'<option value="debt">Cấn trừ công nợ</option>'}<option value="original" ${!hasDebt?'selected':''}>Theo phương thức gốc</option><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản / VietQR</option></select></div>
     </div>
   </div>`;
 
@@ -4083,20 +4646,28 @@ function renderShiftCenter(){
   const summaryFor=shift=>{
     const sales=(state.data.sales||[]).filter(s=>s.shift_id===shift.id);
     const saleById=new Map(sales.map(s=>[s.id,s]));
-    const summary={sales_count:sales.length,sales_total:0,cash_sales:0,transfer_sales:0,qr_sales:0,refund_total:0,cash_refunds:0};
+    const summary={sales_count:sales.length,sales_total:0,cash_sales:0,transfer_sales:0,qr_sales:0,refund_total:0,cash_refunds:0,cash_expenses:0,expense_total:0};
     for(const sale of sales){
       const payments=Array.isArray(sale.payments)&&sale.payments.length?sale.payments:[{method:sale.payment_method||'cash',amount:sale.grand_total??sale.total??0}];
       for(const p of payments){const amount=Math.max(0,Number(p.amount)||0);summary.sales_total+=amount;if(p.method==='cash')summary.cash_sales+=amount;else if(p.method==='transfer')summary.transfer_sales+=amount;else if(p.method==='qr')summary.qr_sales+=amount;}
     }
     for(const refund of (state.data.refunds||[]).filter(r=>r.shift_id===shift.id)){const amount=Math.max(0,Number(refund.amount)||0);summary.refund_total+=amount;const sale=saleById.get(refund.sale_id)||state.data.sales.find(s=>s.id===refund.sale_id);const method=refund.method==='original'?(sale?.payment_method||'cash'):refund.method;if(method==='cash')summary.cash_refunds+=amount;}
-    summary.expected=Math.max(0,Number(shift.opening_cash||0)+summary.cash_sales-summary.cash_refunds);
+    const expSetting=(state.data.settings||[]).find(x=>x.id==='operating_expenses');
+    const allExpenses=Array.isArray(expSetting?.value)?expSetting.value:[];
+    for(const exp of allExpenses.filter(e=>e.shift_id===shift.id)){
+      const amount=Math.max(0,Number(exp.amount)||0);
+      summary.expense_total+=amount;
+      if(exp.payment_method==='cash') summary.cash_expenses+=amount;
+    }
+    summary.expected=Math.max(0,Number(shift.opening_cash||0)+summary.cash_sales-summary.cash_refunds-summary.cash_expenses);
     return summary;
   };
   const s=active?summaryFor(active):latest?{...(latest.summary||{}),expected:Number(latest.expected_cash||0)}:null;
   const history=shifts.filter(x=>x.status==='CLOSED').slice(0,5);
   if(active){
-    $('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Ca đang mở</h2><p>${dt(active.opened_at)} · ${esc(active.employee||'Thiết bị này')}</p></div>${surfaceStatus('working','Đang hoạt động')}</div><div class="shift-summary"><div><span>Tiền đầu ca</span><b>${fmt(active.opening_cash)} ₫</b></div><div><span>Tiền mặt</span><b>${fmt(s.cash_sales)} ₫</b></div><div><span>Chuyển khoản / QR</span><b>${fmt(s.transfer_sales+s.qr_sales)} ₫</b></div><div><span>Hoàn tiền</span><b>${fmt(s.refund_total)} ₫</b></div></div><div class="shift-reconcile"><div><span>Dự kiến trong két</span><strong>${fmt(s.expected)} ₫</strong></div><label>Tiền thực đếm<input id="shiftCountedCash" type="number" inputmode="decimal" min="0" placeholder="${fmt(s.expected)}"/></label><small id="shiftDifference" class="field-limit">Nhập tiền thực đếm để xem chênh lệch.</small></div><button class="primary-btn full" data-shift-close>Đóng ca</button><p class="field-limit">Đối soát vận hành từ phiếu bán và hoàn tiền local; chưa phải sổ quỹ kế toán.</p></section></section>`;
+    $('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Ca đang mở</h2><p>${dt(active.opened_at)} · ${esc(active.employee||'Thiết bị này')}</p></div>${surfaceStatus('working','Đang hoạt động')}</div><div class="shift-summary"><div><span>Tiền đầu ca</span><b>${fmt(active.opening_cash)} ₫</b></div><div><span>Tiền mặt</span><b>${fmt(s.cash_sales)} ₫</b></div><div><span>Chuyển khoản / QR</span><b>${fmt(s.transfer_sales+s.qr_sales)} ₫</b></div><div><span>Hoàn tiền</span><b>${fmt(s.refund_total)} ₫</b></div><div><span>Chi phí ca (tiền mặt)</span><b>− ${fmt(s.cash_expenses||0)} ₫</b></div></div><div class="shift-reconcile"><div><span>Dự kiến trong két</span><strong>${fmt(s.expected)} ₫</strong></div><label>Tiền thực đếm<input id="shiftCountedCash" type="number" inputmode="decimal" min="0" placeholder="${fmt(s.expected)}"/></label><small id="shiftDifference" class="field-limit">Nhập tiền thực đếm để xem chênh lệch.</small></div><div class="shift-actions" style="margin-top:12px;display:flex;gap:8px;"><button class="secondary-btn" data-shift-expense style="flex:1;">+ Chi phí két ca</button><button class="primary-btn" data-shift-close style="flex:2;">Đóng ca</button></div><p class="field-limit">Đối soát vận hành từ phiếu bán, hoàn tiền và chi phí ca local; bảo vệ cân đối két tiền tuyệt đối.</p></section></section>`;
     $('#shiftCountedCash')?.addEventListener('input',e=>{const diff=(Number(e.target.value)||0)-s.expected;const el=$('#shiftDifference');if(el)el.textContent=`Chênh lệch: ${diff>=0?'+':''}${fmt(diff)} ₫`;});
+    $('[data-shift-expense]')?.addEventListener('click',()=>openCashForm('out'));
     $('[data-shift-close]')?.addEventListener('click',async()=>{const counted=Number($('#shiftCountedCash')?.value);if(!Number.isFinite(counted)||counted<0)return toast('Hãy nhập tiền thực đếm.','error');try{await closeShift({shiftId:active.id,countedCash:counted});await refresh();toast('Đã đóng ca và lưu đối soát.','ok')}catch(err){toast(err.message,'error')}});
     return;
   }
@@ -6466,7 +7037,7 @@ document.addEventListener('click', async e=>{
   if(action==='search-order') return openOrderDetail(e.target.closest('[data-id]')?.dataset.id);
   if(action==='po-new') return openPurchaseOrderForm();
   if(action==='po-open') return openPurchaseOrder(e.target.closest('[data-id]')?.dataset.id);
-  if(action==='srt-new') return toast('Phiếu trả NCC: chưa có contract tồn kho/công nợ — xem mục Chuẩn bị.','');
+  if(action==='srt-new') return openSupplierReturnModal();
   if(action==='diag-copy'){const t=diagnosticText();if(navigator.clipboard)return navigator.clipboard.writeText(t).then(()=>toast('Đã sao chép thông tin chẩn đoán.','ok')).catch(()=>toast('Không sao chép được.','error'));toast(t.slice(0,120),'');return;}
   if(action==='diag-export') return downloadText(`qbiz-chan-doan-${new Date().toISOString().slice(0,10)}.txt`,diagnosticText(),'text/plain;charset=utf-8');
   if(action==='diag-clear') return (async()=>{try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));}toast('Đã xóa cache giao diện. Dữ liệu kho giữ nguyên.','ok');}catch(err){toast('Không xóa được cache.','error');}})();
@@ -6605,6 +7176,17 @@ async function boot(){
   if (pageParam) state.page = pageParam;
   history.replaceState(historyState(),'');render();
   initAiUI(state);
+  window.__QBIZ_BUILD_INFO__ = {
+    baseGitSha: '9837b84a8b40126536874dfe53b613b46fff52f5',
+    worktreeDirty: true,
+    qaArtifactFingerprint: 'QA_RC_PHASE3H_R2_FC2F8B76A585',
+    aiArchVersion: 'PHASE3',
+    qaProvider: 'LOCAL_AI',
+    qaModel: 'qwen2.5:1.5b',
+    serverGateway: 'SERVER_SIDE_GATEWAY',
+    buildSha: '9837b84-qa-phase3h-r2',
+    buildTime: '2026-10-01T15:05:00+07:00'
+  };
   window.__qbiz_app__ = {
     state,
     reportSales,
@@ -6616,6 +7198,9 @@ async function boot(){
     openScan,
     openProduct,
     openOrderDetail,
+    openCustomerDetail,
+    openDebtCollectionModal,
+    openReturnFlow,
     openTransaction,
     openTransactionModal: (saleId) => {
       const s = (state.data?.sales || []).find(x => x.id === saleId || x.sale_uuid === saleId || x.code === saleId);
@@ -6721,9 +7306,29 @@ async function boot(){
     simulateWebOrder,
     openWebsiteConfigModal,
     openDriveRestoreModal,
-    downloadText
+    downloadText,
+    createCustomer,
+    getCustomerDebtSummary,
+    getCustomerAgingReport,
+    getCustomerProfileHistory,
+    createSale,
+    openShift,
+    closeShift,
+    markSalePaid,
+    createExpense,
+    getExpenses,
+    openCashForm,
+    createPurchaseReturn,
+    openSupplierReturnModal,
+    openSupplierReturnDetail,
+    kickCashDrawer,
+    generateEscPosReceipt,
+    buildDrawerKickCommand
   };
   window.openQuick = openQuick;
+  window.openCashForm = openCashForm;
+  window.openSupplierReturnModal = openSupplierReturnModal;
+  window.openSupplierReturnDetail = openSupplierReturnDetail;
   window.openWarehouseVoucherModal = openWarehouseVoucherModal;
   window.renderWarehouseVoucherHtml = renderWarehouseVoucherHtml;
   window.handleScannedBarcode = handleScannedBarcode;
@@ -6736,6 +7341,7 @@ async function boot(){
   window.openDriveRestoreModal = openDriveRestoreModal;
   window.downloadText = downloadText;
   window.navigate = navigate;
+  window.refresh = refresh;
   window.state = state;
   window.toast = toast;
   window.triggerManualBackup = triggerManualBackup;

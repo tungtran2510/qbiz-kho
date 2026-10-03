@@ -4,12 +4,13 @@
  * All tools wrap existing business engine read functions and produce Structured Proposals.
  */
 
-import { totalFor, levelFor, available, calculateSalesMetrics } from '../engine.js';
+import { totalFor, levelFor, available, calculateSalesMetrics, getCustomerDebtSummary, getCustomerAgingReport, getCustomerProfileHistory } from '../engine.js';
 import { createProposal } from './proposals.js';
 import { isToolAllowed, hasCapability, PERMISSIONS, OPERATIONAL_THRESHOLDS } from './policy.js';
 import { getCurrentActor } from './context.js';
 import { MERCHANDISING_TOOLS } from './merchandising/tools.js';
 import { reportToolError, reportToolSelectedNotExecuted } from './error-reporter.js';
+import { parseVietnameseCurrency, parseVietnameseDiscount } from './vietnamese-nlp.js';
 
 /**
  * Normalizes a Vietnamese string for case and diacritic-insensitive matching.
@@ -18,8 +19,52 @@ function norm(str) {
   return String(str || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
     .toLowerCase()
     .trim();
+}
+
+/**
+ * Resolves a product from state products given a line descriptor (ID, name, partial text)
+ */
+function findProduct(products = [], line = {}) {
+  if (!line) return null;
+  const pId = line.productId || line.itemId || line.id;
+  if (pId) {
+    const byId = products.find(x => x.id === pId);
+    if (byId) return byId;
+  }
+  const nameQuery = String(line.productName || line.name || line.description || line.item_name || line.item || line.product || '').trim();
+  if (!nameQuery) return null;
+  const directMatch = products.find(x => x.name.toLowerCase() === nameQuery.toLowerCase());
+  if (directMatch) return directMatch;
+  const normQ = norm(nameQuery);
+  const normMatch = products.find(x => norm(x.name) === normQ);
+  if (normMatch) return normMatch;
+  const subMatch = products.find(x => {
+    const xNorm = norm(x.name);
+    return xNorm.includes(normQ) || normQ.includes(xNorm);
+  });
+  if (subMatch) return subMatch;
+  const codeMatch = products.find(x => {
+    const code = norm(x.sku || '');
+    return (code && normQ.includes(code)) || (x.id && normQ.includes(norm(x.id.replace(/^p_/, ''))));
+  });
+  if (codeMatch) return codeMatch;
+
+  // Token subset match (e.g. "Ghế 90D" in "Ghế sáng chế 90D", "Gối F6" in "Gối cổ sáng chế F6")
+  const qTokens = normQ.split(/\s+/).filter(Boolean);
+  if (qTokens.length >= 2 || qTokens.some(t => /\d/.test(t) || t.length >= 3)) {
+    const tokenMatch = products.find(x => {
+      const xTokens = norm(x.name).split(/\s+/).filter(Boolean);
+      const skuTokens = norm(x.sku || '').split(/[-_\s]+/).filter(Boolean);
+      const allX = [...xTokens, ...skuTokens];
+      return qTokens.every(qt => allX.includes(qt) || allX.some(xt => xt.endsWith(qt) || xt.includes(qt)));
+    });
+    if (tokenMatch) return tokenMatch;
+  }
+
+  return null;
 }
 
 /**
@@ -79,9 +124,11 @@ export function resolveDateInterval(period = 'today', now = new Date(), customSt
     start.setHours(0, 0, 0, 0);
     label = '7 ngày qua';
   } else if (pNorm === 'last_week' || pNorm.includes('tuan truoc')) {
-    start.setDate(now.getDate() - 13);
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? 6 : (day - 1);
+    start.setDate(now.getDate() - diffToMonday - 7);
     start.setHours(0, 0, 0, 0);
-    end.setDate(now.getDate() - 7);
+    end.setDate(now.getDate() - diffToMonday - 1);
     end.setHours(23, 59, 59, 999);
     label = 'tuần trước';
   } else if (pNorm === '30d' || pNorm.includes('30 ngay qua') || pNorm.includes('30 ngay gan day') || pNorm.includes('30 ngay')) {
@@ -115,7 +162,273 @@ export function resolveDateInterval(period = 'today', now = new Date(), customSt
   return { start, end, label, periodKey: pNorm };
 }
 
+/**
+ * Enhanced Canonical Temporal Range Resolver
+ * Determines calendar boundaries and whether an explicit time keyword was detected.
+ */
+export function resolveTemporalRange(input, now = new Date()) {
+  const pNorm = norm(String(input || ''));
+  let code = 'this_week';
+  let isExplicit = false;
+
+  if (
+    pNorm.includes('hai ngay nay') || pNorm.includes('2 ngay nay') ||
+    pNorm.includes('hai ngay qua') || pNorm.includes('2 ngay qua') ||
+    pNorm.includes('2 ngay') || pNorm.includes('2d') ||
+    pNorm.includes('tu hom qua den gio') || pNorm.includes('tu hom qua den nay') ||
+    pNorm.includes('hom qua den nay') || pNorm.includes('hom qua den gio') ||
+    pNorm.includes('may ngay nay')
+  ) {
+    code = '2_days';
+    isExplicit = true;
+  } else if (
+    pNorm.includes('ba ngay') || pNorm.includes('3 ngay') || pNorm.includes('3d')
+  ) {
+    code = '3_days';
+    isExplicit = true;
+  } else if (pNorm.includes('7 ngay') || pNorm === '7d') {
+    code = '7d';
+    isExplicit = true;
+  } else if (pNorm.includes('30 ngay') || pNorm === '30d') {
+    code = '30d';
+    isExplicit = true;
+  } else if (pNorm.includes('tuan truoc') || pNorm === 'last_week' || pNorm.includes('tuan qua')) {
+    code = 'last_week';
+    isExplicit = true;
+  } else if (pNorm.includes('tuan nay') || pNorm.includes('trong tuan') || pNorm === 'this_week' || pNorm === 'week') {
+    code = 'this_week';
+    isExplicit = true;
+  } else if (pNorm.includes('thang truoc') || pNorm === 'last_month') {
+    code = 'last_month';
+    isExplicit = true;
+  } else if (
+    pNorm.includes('thang nay') || pNorm.includes('dau thang') ||
+    pNorm === 'month' || pNorm === 'this_month' || pNorm.includes('thang hien tai') ||
+    pNorm.includes('tu dau thang')
+  ) {
+    code = 'month';
+    isExplicit = true;
+  } else if (pNorm.includes('hom qua') || pNorm === 'yesterday') {
+    code = 'yesterday';
+    isExplicit = true;
+  } else if (
+    pNorm.includes('hom nay') || pNorm === 'today' ||
+    pNorm.includes('ngay nay') || pNorm.includes('trong ngay') || pNorm.includes('ngay hom nay')
+  ) {
+    code = 'today';
+    isExplicit = true;
+  }
+
+  const interval = resolveDateInterval(code, now);
+  return {
+    code,
+    start: interval.start,
+    end: interval.end,
+    label: interval.label,
+    isExplicit,
+  };
+}
+
+/**
+ * Section 4B: Canonical Product Performance Ranking Tool
+ * Analyzes and ranks product performance across a specified temporal window:
+ * - Best / top selling products (highest quantity or revenue)
+ * - Slowest / bottom / unsold products (lowest sales or 0 sales with on-hand inventory)
+ * Never falls back to generic daily overview or sales totals.
+ */
+export function getProductPerformanceRanking(params = {}, state = {}, context = {}) {
+  const now = new Date();
+  const rawQuery = params.query || context?.rawPrompt || context?.user_prompt || '';
+  const temporal = resolveTemporalRange(params.period || rawQuery, now);
+  const start = params.startDate ? new Date(params.startDate) : temporal.start;
+  const end = params.endDate ? new Date(params.endDate) : temporal.end;
+  const label = temporal.label;
+  const limit = Math.max(1, Math.min(20, Number(params.limit || 5)));
+  const sortBy = params.sortBy || 'auto';
+
+  const fmtDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  const isSameDay = start.toDateString() === end.toDateString();
+  const dateRangeStr = isSameDay ? fmtDate(start) : `${fmtDate(start)} - ${fmtDate(end)}`;
+
+  const effectiveShopId = context?.shop_id || null;
+  const rawProds = (state?.data?.products || []).filter(p => p.active !== false);
+  const prods = (effectiveShopId && effectiveShopId !== 'shop_default')
+    ? rawProds.filter(p => !p.shop_id || p.shop_id === effectiveShopId)
+    : rawProds;
+  const validProdMap = new Map(prods.map(p => [p.id, p]));
+
+  const getProductStock = (pId) => {
+    try {
+      const tot = totalFor(state?.data, pId);
+      if (tot && tot.available !== undefined) return tot.available;
+      if (tot && tot.onHand !== undefined) return tot.onHand;
+    } catch (_) {}
+    const p = validProdMap.get(pId);
+    return Number(p?.onHand ?? p?.stock ?? 0);
+  };
+
+  // Completed / paid sales within [start, end]
+  const allSales = state?.data?.sales || [];
+  const completedSales = allSales.filter(s => {
+    const d = new Date(s.created_at || s.createdAt || 0);
+    if (!['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase())) return false;
+    if (d < start || d > end) return false;
+    if (effectiveShopId && effectiveShopId !== 'shop_default' && s.shop_id && s.shop_id !== effectiveShopId) return false;
+    return true;
+  });
+
+  // Aggregate items sold
+  const soldStats = new Map();
+  completedSales.forEach(s => {
+    (s.items || []).forEach(it => {
+      const pId = it.productId || it.item_id || it.itemId || it.id;
+      const prod = validProdMap.get(pId);
+      if (!prod) return;
+
+      const qty = Number(it.quantity || it.qty || 1);
+      const rev = Number(it.line_total || it.total || (it.unit_price || it.price || prod.price || 0) * qty);
+
+      if (!soldStats.has(pId)) {
+        soldStats.set(pId, {
+          id: pId,
+          name: prod.name,
+          sku: prod.sku || '',
+          unit: prod.unit || 'sản phẩm',
+          qty: 0,
+          revenue: 0,
+          onHand: getProductStock(pId),
+          isService: Boolean(prod.type === 'SERVICE' || prod.is_service),
+        });
+      }
+      const item = soldStats.get(pId);
+      item.qty += qty;
+      item.revenue += rev;
+    });
+  });
+
+  const qNorm = norm(rawQuery);
+  const mentionsNegative = (
+    qNorm.includes('khong tot') || qNorm.includes('kem') || /\b[eế]\b/i.test(qNorm) ||
+    qNorm.includes('ban e') || qNorm.includes('hang e') || qNorm.includes('e am') || qNorm.includes('e khong') || qNorm.includes('co e') ||
+    qNorm.includes('it') || qNorm.includes('cham') || qNorm.includes('khong ban duoc') ||
+    qNorm.includes('chua ban duoc') || qNorm.includes('chua ban')
+  );
+  const mentionsPositive = (
+    qNorm.includes('tot') || qNorm.includes('chay') || qNorm.includes('noi bat') ||
+    qNorm.includes('nhieu') || qNorm.includes('top') || qNorm.includes('duoc gia')
+  );
+
+  const asksOnlyTop = mentionsPositive && !mentionsNegative;
+  const asksOnlyBottom = mentionsNegative && !mentionsPositive;
+  const isRevenueSort = sortBy === 'revenue' || (sortBy === 'auto' && (qNorm.includes('doanh thu') || qNorm.includes('doanh so') || qNorm.includes('tien')));
+
+  const fmtCurrency = (n) => new Intl.NumberFormat('vi-VN').format(n) + ' ₫';
+
+  // Products with sales
+  let soldList = Array.from(soldStats.values());
+  if (isRevenueSort) {
+    soldList.sort((a, b) => b.revenue - a.revenue || b.qty - a.qty);
+  } else {
+    soldList.sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
+  }
+
+  // Active products with 0 sales in this period
+  const unsoldList = prods
+    .filter(p => !soldStats.has(p.id))
+    .map(p => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku || '',
+      unit: p.unit || 'sản phẩm',
+      qty: 0,
+      revenue: 0,
+      onHand: getProductStock(p.id),
+      isService: Boolean(p.type === 'SERVICE' || p.is_service),
+    }))
+    .sort((a, b) => b.onHand - a.onHand);
+
+  // If NO sales at all in period
+  if (completedSales.length === 0 || soldList.length === 0) {
+    let zeroText = `📊 **Hiệu suất mặt hàng ${label} (${dateRangeStr}):**\n\n`;
+    zeroText += `Trong **${label}** (${dateRangeStr}), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n`;
+    if (unsoldList.length > 0) {
+      zeroText += `📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n`;
+      const displayUnsold = unsoldList.slice(0, limit);
+      displayUnsold.forEach((p, idx) => {
+        zeroText += `${idx + 1}. **${p.name}**\n   - Tồn kho: **${p.onHand} ${p.unit}** (Đã bán: **0 ${p.unit}**)\n`;
+      });
+      if (unsoldList.length > limit) {
+        zeroText += `*(và ${unsoldList.length - limit} mặt hàng khác chưa bán được)*`;
+      }
+    } else {
+      zeroText += `Hiện chưa có dữ liệu sản phẩm trong cửa hàng.`;
+    }
+
+    return {
+      text: zeroText.trim(),
+      period: temporal.code,
+      periodLabel: label,
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
+      dateRangeStr,
+      totalSalesCount: 0,
+      totalRevenue: 0,
+      topPerformers: [],
+      bottomPerformers: unsoldList.slice(0, limit),
+      unsoldProducts: unsoldList,
+      hasSales: false,
+    };
+  }
+
+  // When sales exist
+  const topSlice = soldList.slice(0, limit);
+  // Bottom performers: products with 0 sales or lowest sales
+  const bottomSlice = unsoldList.length > 0 ? unsoldList.slice(0, limit) : soldList.slice(-Math.min(limit, soldList.length)).reverse();
+
+  let textResult = `📊 **Hiệu suất mặt hàng ${label} (${dateRangeStr}):**\n\n`;
+
+  if (!asksOnlyBottom) {
+    textResult += `✅ **Mặt hàng bán chạy / tốt nhất:**\n`;
+    topSlice.forEach((p, idx) => {
+      textResult += `${idx + 1}. **${p.name}**\n   - Đã bán: **${p.qty} ${p.unit}** · Doanh thu: **${fmtCurrency(p.revenue)}**\n`;
+    });
+  }
+
+  if (!asksOnlyTop) {
+    if (!asksOnlyBottom) textResult += `\n`;
+    textResult += `⚠️ **Mặt hàng bán chậm / chưa bán được:**\n`;
+    bottomSlice.forEach((p, idx) => {
+      if (p.qty === 0) {
+        textResult += `${idx + 1}. **${p.name}**\n   - Đã bán: **0 ${p.unit}** · Tồn kho: **${p.onHand} ${p.unit}**\n`;
+      } else {
+        textResult += `${idx + 1}. **${p.name}**\n   - Đã bán: **${p.qty} ${p.unit}** · Doanh thu: **${fmtCurrency(p.revenue)}**\n`;
+      }
+    });
+  }
+
+  return {
+    text: textResult.trim(),
+    period: temporal.code,
+    periodLabel: label,
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+    dateRangeStr,
+    totalSalesCount: completedSales.length,
+    totalRevenue: soldList.reduce((acc, it) => acc + it.revenue, 0),
+    topPerformers: topSlice,
+    bottomPerformers: bottomSlice,
+    unsoldProducts: unsoldList,
+    hasSales: true,
+  };
+}
+
 export const TOOLS = {
+  getProductPerformanceRanking(params, state, envelope) {
+    return getProductPerformanceRanking(params, state, envelope);
+  },
+  get_product_performance_ranking(params, state, envelope) {
+    return getProductPerformanceRanking(params, state, envelope);
+  },
   ...MERCHANDISING_TOOLS,
 
   /**
@@ -126,10 +439,14 @@ export const TOOLS = {
     const q = norm(query);
     const products = state?.data?.products || [];
     if (!q) {
-      return { count: 0, candidates: [] };
+      return {
+        count: 0,
+        candidates: [],
+        text: '🔍 Vui lòng nhập tên, mã SKU hoặc mã vạch sản phẩm để tìm kiếm.'
+      };
     }
 
-    const matches = products.filter(p => {
+    let matches = products.filter(p => {
       if (p.active === false) return false;
       return (
         norm(p.name).includes(q) ||
@@ -138,12 +455,29 @@ export const TOOLS = {
       );
     });
 
+    // Tokenized fallback for complex model queries (e.g. "f4/09", "f1-01")
+    if (matches.length === 0) {
+      const tokens = (String(query || '').match(/[A-Za-z0-9]+/g) || [])
+        .map(t => t.toLowerCase())
+        .filter(t => t.length >= 2 && !['goi', 'ghe', 'sp', 'ma', 'cua', 'la', 'gi'].includes(t));
+      if (tokens.length > 0) {
+        matches = products.filter(p => {
+          if (p.active === false) return false;
+          const pN = norm(p.name);
+          const pS = norm(p.sku);
+          const pB = norm(p.barcode);
+          return tokens.some(tok => pN.includes(tok) || pS.includes(tok) || pB.includes(tok));
+        });
+      }
+    }
+
     const candidates = matches.map(p => {
       const tot = totalFor(state.data, p.id);
       return {
         id: p.id,
         name: p.name,
         sku: p.sku || '',
+        barcode: p.barcode || '',
         price: p.price || 0,
         available: tot.available,
         onHand: tot.onHand,
@@ -151,10 +485,28 @@ export const TOOLS = {
       };
     });
 
+    const fmt = new Intl.NumberFormat('vi-VN');
+    let text = '';
+    if (candidates.length === 1) {
+      const c = candidates[0];
+      text = `🔍 **Thông tin sản phẩm "${c.name}":**\n` +
+             `• Mã SKU: \`${c.sku || 'N/A'}\` | Mã vạch: \`${c.barcode || 'N/A'}\`\n` +
+             `• Giá bán: **${fmt.format(c.price)} ₫** / ${c.unit}\n` +
+             `• Tồn kho khả dụng: **${c.available} ${c.unit}** (Thực tồn: ${c.onHand})`;
+    } else if (candidates.length > 1) {
+      const lines = candidates.slice(0, 5).map(c => 
+        `• **${c.name}** (SKU: \`${c.sku || 'N/A'}\` | Mã vạch: \`${c.barcode || 'N/A'}\` | Giá: **${fmt.format(c.price)} ₫** | Tồn: **${c.available}**)`
+      ).join('\n');
+      text = `🔍 **Tìm thấy ${candidates.length} sản phẩm phù hợp với "${query}":**\n\n${lines}`;
+    } else {
+      text = `🔍 Không tìm thấy sản phẩm nào khớp với từ khóa "${query}". Bạn có thể kiểm tra lại tên gọi hoặc mã SKU/Barcode.`;
+    }
+
     return {
       count: candidates.length,
       candidates,
       isAmbiguous: candidates.length > 1,
+      text,
     };
   },
 
@@ -272,12 +624,16 @@ export const TOOLS = {
   find_low_stock(params, state) {
     const products = state?.data?.products || [];
     const lowStockItems = [];
+    const seenNames = new Set();
 
     for (const p of products) {
       if (p.type === 'SERVICE' || p.trackInventory === false) continue;
+      const normName = String(p.name || '').trim().toLowerCase();
+      if (normName && seenNames.has(normName)) continue;
       const tot = totalFor(state.data, p.id);
       const threshold = Number(p.lowStock || 0);
       if (tot.available <= threshold) {
+        if (normName) seenNames.add(normName);
         lowStockItems.push({
           id: p.id,
           name: p.name,
@@ -340,18 +696,38 @@ export const TOOLS = {
    * Search customers by name, phone, or customer_code.
    */
   search_customers({ query }, state) {
-    const q = norm(query);
+    const rawQ = norm(query);
+    const cleanQ = rawQ.replace(/^(?:khach hang|khach|anh|chi|em|bac|chu|ong|ba|kh)\s+/i, '').trim();
+    const q = cleanQ || rawQ;
     const customers = state?.data?.customers || [];
-    if (!q) return { count: 0, customers: [] };
+    if (!q) return { count: 0, customers: [], text: 'Vui lòng cung cấp tên hoặc số điện thoại khách hàng để tra cứu.' };
 
     const matches = customers.filter(c => {
       if (c.active === false) return false;
+      const cName = norm(c.name);
       return (
-        norm(c.name).includes(q) ||
+        cName.includes(q) ||
+        cName.includes(rawQ) ||
         norm(c.phone).includes(q) ||
-        norm(c.customer_code).includes(q)
+        norm(c.customer_code).includes(q) ||
+        norm(c.code).includes(q)
       );
     });
+
+    if (matches.length === 0) {
+      return {
+        count: 0,
+        customers: [],
+        text: `Không tìm thấy khách hàng nào khớp với từ khóa "${query}".`
+      };
+    }
+
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const lines = matches.slice(0, 5).map(c => {
+      const debtStr = c.debt ? ` | Nợ: **${fmt.format(c.debt)} ₫**` : '';
+      const spentStr = c.totalSpent ? ` | Đã mua: **${fmt.format(c.totalSpent)} ₫**` : '';
+      return `• **${c.name}** (Mã: \`${c.code || c.customer_code || '—'}\` - SĐT: ${c.phone || '—'}${debtStr}${spentStr})`;
+    }).join('\n');
 
     return {
       count: matches.length,
@@ -361,7 +737,10 @@ export const TOOLS = {
         phone: c.phone || '',
         code: c.customer_code || c.code || '',
         default_discount: c.default_discount || 0,
+        debt: c.debt || 0,
+        totalSpent: c.totalSpent || 0,
       })),
+      text: `👤 **Thông tin hồ sơ khách hàng phù hợp với "${query}":**\n\n${lines}`
     };
   },
 
@@ -372,6 +751,158 @@ export const TOOLS = {
     const c = (state?.data?.customers || []).find(x => x.id === customerId);
     if (!c) return { found: false, error: 'Không tìm thấy khách hàng' };
     return { found: true, customer: c };
+  },
+
+  /**
+   * Get real-time debt summary and credit limit check for a customer.
+   */
+  async get_customer_debt_summary({ customerId, customerName, query } = {}, state) {
+    const q = query || customerId || customerName;
+    if (!q) return { found: false, error: 'Cần mã hoặc tên khách hàng để tra cứu công nợ.' };
+    const res = await getCustomerDebtSummary(state?.data, q);
+    if (!res.found) return { found: false, error: `Không tìm thấy khách hàng "${q}".` };
+    return {
+      found: true,
+      customerId: res.customerId,
+      customerName: res.customerName,
+      customerCode: res.customerCode,
+      customerPhone: res.customerPhone,
+      creditLimit: res.creditLimit,
+      totalDebt: res.totalDebt,
+      availableCredit: res.availableCredit,
+      isOverLimit: res.isOverLimit,
+      unpaidSalesCount: (res.unpaidSales || []).length,
+      unpaidSales: res.unpaidSales || [],
+      formattedDebt: new Intl.NumberFormat('vi-VN').format(res.totalDebt) + ' ₫',
+      formattedCreditLimit: new Intl.NumberFormat('vi-VN').format(res.creditLimit) + ' ₫',
+      formattedAvailableCredit: new Intl.NumberFormat('vi-VN').format(res.availableCredit) + ' ₫'
+    };
+  },
+  getCustomerDebtSummary(params, state) {
+    return this.get_customer_debt_summary(params, state);
+  },
+
+  /**
+   * Get customer aging report (phân tích tuổi nợ khách hàng theo 4 khoảng: 0-30, 31-60, 61-90, >90 ngày).
+   */
+  async get_customer_aging_report(params = {}, state) {
+    const res = await getCustomerAgingReport(state?.data);
+    return {
+      success: true,
+      totalCustomersWithDebt: res.totalCustomersWithDebt,
+      totalOutstandingDebt: res.totalOutstandingDebt,
+      formattedOutstandingDebt: new Intl.NumberFormat('vi-VN').format(res.totalOutstandingDebt) + ' ₫',
+      buckets: res.buckets,
+      topDebtors: (res.customers || []).slice(0, 10).map(c => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone || '',
+        totalDebt: c.totalDebt,
+        formattedTotalDebt: new Intl.NumberFormat('vi-VN').format(c.totalDebt) + ' ₫',
+        creditLimit: c.creditLimit,
+        isOverLimit: c.isOverLimit,
+        oldestDebtDays: c.oldestDebtDays,
+        current: c.buckets?.current || 0,
+        overdue30: c.buckets?.overdue30 || 0,
+        overdue60: c.buckets?.overdue60 || 0,
+        overdue90: c.buckets?.overdue90 || 0
+      }))
+    };
+  },
+  getCustomerAgingReport(params, state) {
+    return this.get_customer_aging_report(params, state);
+  },
+
+  /**
+   * Get customer profile and purchase history (LTV, frequency, top products, recent sales).
+   */
+  async get_customer_profile_history({ customerId, customerName, query } = {}, state) {
+    const q = query || customerId || customerName;
+    if (!q) return { found: false, error: 'Cần mã hoặc tên khách hàng để xem lịch sử mua hàng.' };
+    const res = await getCustomerProfileHistory(state?.data, q);
+    if (!res || !res.customer) return { found: false, error: `Không tìm thấy khách hàng "${q}".` };
+    const totalSpent = Number(res.customer.totalSpent || 0);
+    const totalSales = Number(res.metrics?.totalSalesCount || 0);
+    const aov = totalSales > 0 ? Math.round(totalSpent / totalSales) : 0;
+    return {
+      found: true,
+      customer: res.customer,
+      metrics: {
+        totalOrders: res.metrics?.totalOrdersCount || 0,
+        totalSales,
+        totalSpent,
+        formattedTotalSpent: new Intl.NumberFormat('vi-VN').format(totalSpent) + ' ₫',
+        averageOrderValue: aov,
+        formattedAOV: new Intl.NumberFormat('vi-VN').format(aov) + ' ₫',
+        lastPurchaseDate: res.metrics?.lastPurchaseDate,
+        debt: res.customer.totalDebt || 0,
+        formattedDebt: new Intl.NumberFormat('vi-VN').format(res.customer.totalDebt || 0) + ' ₫'
+      },
+      frequentProducts: res.metrics?.topProducts || [],
+      recentTransactions: res.recentSales || []
+    };
+  },
+  getCustomerProfileHistory(params, state) {
+    return this.get_customer_profile_history(params, state);
+  },
+
+  /**
+   * Query operating expenses with category breakdown and date filtering.
+   */
+  async get_operating_expenses({ period = 'month', startDate = null, endDate = null, category = '' } = {}, state) {
+    let allExpenses = [];
+    if (Array.isArray(state?.data?.operating_expenses)) {
+      allExpenses = state.data.operating_expenses;
+    } else {
+      const settingItem = (state?.data?.settings || []).find(s => s.id === 'operating_expenses');
+      if (Array.isArray(settingItem?.value)) {
+        allExpenses = settingItem.value;
+      }
+    }
+
+    const { start, end } = resolveDateInterval(period, new Date(), startDate, endDate);
+    const filtered = allExpenses.filter(e => {
+      const eDate = new Date(e.created_at || e.createdAt || 0);
+      if (eDate < start || eDate > end) return false;
+      if (category && norm(e.category) !== norm(category)) return false;
+      return true;
+    });
+
+    const totalAmount = filtered.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const byCategory = {};
+    const byPaymentMethod = { cash: 0, transfer: 0 };
+
+    for (const e of filtered) {
+      const cat = e.category || 'Chi phí khác';
+      byCategory[cat] = (byCategory[cat] || 0) + Number(e.amount || 0);
+      const method = e.payment_method === 'transfer' ? 'transfer' : 'cash';
+      byPaymentMethod[method] += Number(e.amount || 0);
+    }
+
+    return {
+      success: true,
+      period,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      count: filtered.length,
+      totalAmount,
+      formattedTotal: new Intl.NumberFormat('vi-VN').format(totalAmount) + ' ₫',
+      byCategory,
+      byPaymentMethod,
+      expenses: filtered.map(e => ({
+        id: e.id,
+        category: e.category,
+        amount: Number(e.amount || 0),
+        formattedAmount: new Intl.NumberFormat('vi-VN').format(Number(e.amount || 0)) + ' ₫',
+        paymentMethod: e.payment_method || 'cash',
+        note: e.note || '',
+        payee: e.payee || '',
+        createdAt: e.created_at || e.createdAt
+      }))
+    };
+  },
+  getOperatingExpenses(params, state) {
+    return this.get_operating_expenses(params, state);
   },
 
   /**
@@ -649,41 +1180,293 @@ export const TOOLS = {
   /**
    * Create an issue / stock reduction proposal (NO direct stock mutation).
    */
-  create_issue_proposal({ productId, warehouseId, qty, reason = 'Đề xuất xuất kho / giảm tồn', variantId, variantName }, state, envelope) {
-    const p = (state?.data?.products || []).find(x => x.id === productId);
+  /**
+   * Create an issue / stock reduction proposal (NO direct stock mutation).
+   * Supports multi-line issue and single-item issue with strict available stock inspection.
+   */
+  create_issue_proposal({ productId, warehouseId, qty, reason = 'Đề xuất xuất kho / giảm tồn', lines = [], variantId, variantName }, state, envelope) {
     const wh = (state?.data?.warehouses || []).find(w => w.id === warehouseId) || (state?.data?.warehouses || [])[0];
-    const nQty = Number(qty || 1);
     const targetWhId = wh?.id || warehouseId;
-    const curLevel = targetWhId ? levelFor(state?.data, productId, targetWhId) : null;
+    const products = state?.data?.products || [];
+
+    // Multi-line issue handling (when 2 or more lines)
+    if (Array.isArray(lines) && lines.length > 1) {
+      const normalizedLines = lines.map(line => {
+        const p = findProduct(products, line);
+        const nQty = Number(line.quantity || line.qty || 1);
+        const curLevel = targetWhId && p ? levelFor(state?.data, p.id, targetWhId) : null;
+        const avail = curLevel ? available(curLevel) : 0;
+        return {
+          productId: p?.id || line.productId,
+          productName: p?.name || line.productName || line.name || 'Sản phẩm',
+          unit: p?.unit || line.unit || 'cái',
+          quantity: nQty,
+          reason: line.reason || reason,
+          available: avail,
+          isSufficient: avail >= nQty,
+        };
+      });
+
+      const inventorySnapshot = {
+        warehouseId: targetWhId,
+        lines: normalizedLines.map(l => ({
+          productId: l.productId,
+          onHand: l.available,
+          available: l.available,
+          requested: l.quantity,
+        })),
+      };
+
+      return createProposal({
+        requestId: envelope?.request_id,
+        skillId: 'issue-proposal',
+        intent: 'create_issue_proposal',
+        entities: {
+          warehouse: wh ? { id: wh.id, name: wh.name } : { id: warehouseId },
+          lines: normalizedLines,
+        },
+        parameters: {
+          warehouseId: targetWhId,
+          warehouseName: wh?.name || 'Kho chính',
+          lines: normalizedLines,
+          reason,
+        },
+        inventorySnapshot,
+        humanSummary: `Xuất kho: ${normalizedLines.map(l => `${l.quantity} ${l.unit} "${l.productName}"`).join(', ')} khỏi kho "${wh?.name || 'Kho chính'}" (Lý do: ${reason})`,
+        contextSnapshot: envelope,
+      });
+    }
+
+    if (Array.isArray(lines) && lines.length === 1 && !productId) {
+      productId = lines[0].productId;
+      qty = lines[0].quantity || lines[0].qty || qty;
+    }
+
+    const p = findProduct(products, { productId, productName: productId });
+    const resolvedProdId = p?.id || productId;
+    const nQty = Number(qty || 1);
+    const curLevel = targetWhId && p ? levelFor(state?.data, resolvedProdId, targetWhId) : null;
     const avail = curLevel ? available(curLevel) : 0;
     const inventorySnapshot = {
-      productId,
+      productId: resolvedProdId,
       warehouseId: targetWhId,
       onHand: curLevel ? Number(curLevel.onHand || 0) : 0,
       reserved: curLevel ? Number(curLevel.reserved || 0) : 0,
       available: avail,
     };
 
-    const displayProdName = p ? (variantName ? `${p.name} (${variantName})` : p.name) : productId;
+    const displayProdName = p ? (variantName ? `${p.name} (${variantName})` : p.name) : (productId || 'Sản phẩm');
+
+      const isSupplierReturn = /trả|ncc|nhà cung cấp|lỗi/i.test(String(reason || ''));
+      const summaryPrefix = isSupplierReturn ? 'Xuất trả nhà cung cấp / Giảm' : 'Xuất kho / Giảm';
+      return createProposal({
+        requestId: envelope?.request_id,
+        skillId: 'issue-proposal',
+        intent: 'create_issue_proposal',
+        entities: {
+          product: p ? { id: p.id, name: displayProdName, sku: p.sku, variantId, variantName } : { id: resolvedProdId },
+          warehouse: wh ? { id: wh.id, name: wh.name } : { id: warehouseId },
+        },
+        parameters: {
+          productId: resolvedProdId,
+          productName: displayProdName,
+          warehouseId: targetWhId,
+          warehouseName: wh?.name || 'Kho chính',
+          qty: nQty,
+          available: avail,
+          isSufficient: avail >= nQty,
+          reason,
+          variantId,
+          variantName,
+        },
+        inventorySnapshot,
+        humanSummary: `${summaryPrefix} ${nQty} ${p?.unit || 'cái'} "${displayProdName}" khỏi kho "${wh?.name || 'Kho chính'}" (Lý do: ${reason})${isSupplierReturn ? ' cho nhà cung cấp/đối tác' : ''}`,
+        contextSnapshot: envelope,
+      });
+  },
+
+  /**
+   * Create a sales order proposal (conforms to Circular 88 HKD - revenue recognized on confirmation).
+   */
+  create_order_proposal({
+    items = [],
+    customerName = 'Khách lẻ',
+    customerPhone = '',
+    address = '',
+    discount = 0,
+    shippingFee = 0,
+    paymentMethod = 'TM',
+    paymentTermDays = 0,
+    warehouseId = 'wh_center',
+    note = '',
+  }, state, envelope) {
+    const wh = (state?.data?.warehouses || []).find(w => w.id === warehouseId) || (state?.data?.warehouses || [])[0];
+    const targetWhId = wh?.id || warehouseId;
+    const products = state?.data?.products || [];
+
+    const normalizedItems = (items || []).map(line => {
+      const p = findProduct(products, line);
+      const qty = Math.max(1, Number(line.quantity || line.qty || 1));
+      const unitPrice = Number(line.unitPrice || line.unit_price || p?.price || 0);
+      const lineTotal = qty * unitPrice;
+      const curLevel = targetWhId && p ? levelFor(state?.data, p.id, targetWhId) : null;
+      const avail = curLevel ? available(curLevel) : 0;
+
+      return {
+        productId: p?.id || line.productId || line.itemId,
+        itemId: p?.id || line.productId || line.itemId,
+        productName: p?.name || line.productName || line.name || 'Sản phẩm',
+        unit: p?.unit || line.unit || 'cái',
+        quantity: qty,
+        unitPrice,
+        lineTotal,
+        available: avail,
+        isSufficient: avail >= qty,
+      };
+    });
+
+    const subtotal = normalizedItems.reduce((acc, it) => acc + it.lineTotal, 0);
+
+    let discAmt = 0;
+    if (typeof discount === 'object' && discount !== null) {
+      if (discount.type === 'PERCENT' || String(discount.type).toUpperCase() === 'PERCENT' || String(discount.unit) === '%') {
+        const pct = parseFloat(String(discount.value ?? discount.percent ?? 0).replace('%', '').trim());
+        discAmt = isNaN(pct) ? 0 : Math.round((subtotal * pct) / 100);
+      } else {
+        const val = discount.value ?? discount.amount ?? 0;
+        if (typeof val === 'string' && val.includes('%')) {
+          const pct = parseFloat(val.replace('%', '').trim());
+          discAmt = isNaN(pct) ? 0 : Math.round((subtotal * pct) / 100);
+        } else {
+          discAmt = parseVietnameseCurrency(val);
+        }
+      }
+    } else if (typeof discount === 'string') {
+      const trimmed = discount.trim();
+      if (trimmed.includes('%')) {
+        const pct = parseFloat(trimmed.replace('%', '').trim());
+        discAmt = isNaN(pct) ? 0 : Math.round((subtotal * pct) / 100);
+      } else {
+        discAmt = parseVietnameseCurrency(trimmed);
+      }
+    } else if (typeof discount === 'number') {
+      discAmt = isNaN(discount) ? 0 : discount;
+    }
+
+    const shipAmt = typeof shippingFee === 'number'
+      ? (isNaN(shippingFee) ? 0 : shippingFee)
+      : parseVietnameseCurrency(shippingFee);
+
+    const grandTotal = Math.max(0, subtotal - discAmt + shipAmt);
+
+    const inventorySnapshot = {
+      warehouseId: targetWhId,
+      lines: normalizedItems.map(it => ({
+        productId: it.productId,
+        requested: it.quantity,
+        available: it.available,
+      })),
+    };
+
+    const termSummary = paymentTermDays > 0 ? ` (Hạn nợ: ${paymentTermDays} ngày)` : '';
+    const discSummary = discAmt > 0 ? `, Giảm ${new Intl.NumberFormat('vi-VN').format(discAmt)}đ` : '';
+    const shipSummary = shipAmt > 0 ? `, Ship ${new Intl.NumberFormat('vi-VN').format(shipAmt)}đ` : '';
 
     return createProposal({
       requestId: envelope?.request_id,
-      skillId: 'issue-proposal',
-      intent: 'create_issue_proposal',
+      skillId: 'order-proposal',
+      intent: 'create_order_proposal',
       entities: {
-        product: p ? { id: p.id, name: displayProdName, sku: p.sku, variantId, variantName } : { id: productId },
+        customer: { name: customerName, phone: customerPhone, address },
         warehouse: wh ? { id: wh.id, name: wh.name } : { id: warehouseId },
+        items: normalizedItems,
       },
       parameters: {
-        productId,
+        customerName,
+        customerPhone,
+        customerLabel: customerPhone ? `${customerName} - ${customerPhone}` : customerName,
+        address,
+        items: normalizedItems,
+        subtotal,
+        discount: discAmt,
+        shippingFee: shipAmt,
+        grandTotal,
+        paymentMethod,
+        paymentTermDays,
         warehouseId: targetWhId,
-        qty: nQty,
-        reason,
-        variantId,
-        variantName,
+        warehouseName: wh?.name || 'Kho chính',
+        note: note || `Đơn hàng qua AI Trợ lý${termSummary}`,
       },
       inventorySnapshot,
-      humanSummary: `Xuất kho / Giảm ${nQty} ${p?.unit || 'cái'} "${displayProdName}" khỏi kho "${wh?.name || 'Kho chính'}"`,
+      humanSummary: `Đơn bán hàng cho "${customerName}": ${normalizedItems.map(i => `${i.quantity} ${i.unit} ${i.productName}`).join(', ')} — Tổng: ${new Intl.NumberFormat('vi-VN').format(grandTotal)}đ${discSummary}${shipSummary}${termSummary}`,
+      contextSnapshot: envelope,
+    });
+  },
+
+  /**
+   * Create an electronic invoice draft proposal (conforms to Decree 123 / Circular 78).
+   */
+  create_invoice_proposal({
+    taxCode = '',
+    companyName = '',
+    address = '',
+    email = '',
+    items = [],
+    vatRate = 10,
+    paymentMethod = 'CK',
+    warehouseId = 'wh_center',
+  }, state, envelope) {
+    const products = state?.data?.products || [];
+    const normalizedItems = (items || []).map((line, idx) => {
+      const p = findProduct(products, line);
+      const qty = Math.max(1, Number(line.quantity || line.qty || 1));
+      const unitPrice = Number(line.unitPrice || line.unit_price || p?.price || 0);
+      const lineSubtotal = qty * unitPrice;
+      const lineVat = Math.round((lineSubtotal * Number(vatRate || 0)) / 100);
+      return {
+        line_index: idx + 1,
+        productId: p?.id || line.productId,
+        itemId: p?.id || line.productId,
+        name: p?.name || line.productName || line.name || 'Hàng hóa / Dịch vụ',
+        unit: p?.unit || 'cái',
+        quantity: qty,
+        unitPrice,
+        unit_price: unitPrice,
+        vat_rate: Number(vatRate || 0),
+        vat_amount: lineVat,
+        line_total: lineSubtotal + lineVat,
+      };
+    });
+
+    const subtotal = normalizedItems.reduce((acc, it) => acc + (it.quantity * it.unitPrice), 0);
+    const vatTotal = normalizedItems.reduce((acc, it) => acc + it.vat_amount, 0);
+    const grandTotal = subtotal + vatTotal;
+
+    const buyerLabel = companyName || 'Doanh nghiệp mua hàng';
+    const taxLabel = taxCode ? ` (MST: ${taxCode})` : '';
+
+    return createProposal({
+      requestId: envelope?.request_id,
+      skillId: 'invoice-proposal',
+      intent: 'electronic_invoice_proposal',
+      entities: {
+        buyer: { taxCode, companyName, address, email },
+        items: normalizedItems,
+      },
+      parameters: {
+        buyerType: taxCode ? 'BUSINESS' : 'INDIVIDUAL',
+        taxCode,
+        companyName,
+        address,
+        email,
+        items: normalizedItems,
+        subtotal,
+        vatRate: Number(vatRate || 0),
+        vatTotal,
+        grandTotal,
+        paymentMethod,
+      },
+      humanSummary: `HĐĐT (Bản nháp) cho "${buyerLabel}"${taxLabel}: ${normalizedItems.map(i => `${i.quantity} ${i.unit} ${i.name}`).join(', ')} — Tổng thanh toán (VAT ${vatRate}%): ${new Intl.NumberFormat('vi-VN').format(grandTotal)}đ`,
       contextSnapshot: envelope,
     });
   },
@@ -1732,6 +2515,14 @@ export const TOOLS = {
       difference,
       isBalanced: isClosed ? difference === 0 : true,
       summary: `Ca ${sh.status === 'OPEN' ? 'đang mở' : 'đã đóng'}: Tiền đầu ca ${new Intl.NumberFormat('vi-VN').format(openingCash)} ₫, thu tiền mặt bán hàng ${new Intl.NumberFormat('vi-VN').format(cashSalesTotal)} ₫ (${cashSalesCount} lượt thu)${cashRefundsTotal > 0 ? `, chi hoàn tiền mặt ${new Intl.NumberFormat('vi-VN').format(cashRefundsTotal)} ₫` : ''}. Tiền mặt dự kiến: ${new Intl.NumberFormat('vi-VN').format(expectedCash)} ₫.${isClosed ? ` Thực kiểm: ${new Intl.NumberFormat('vi-VN').format(countedCash)} ₫ (Lệch: ${new Intl.NumberFormat('vi-VN').format(difference)} ₫).` : ''}`,
+    };
+  },
+
+  clarify_ambiguity(params = {}) {
+    return {
+      message: 'Yêu cầu của bạn cần thêm thông tin xác nhận. Vui lòng chọn một trong các thao tác cụ thể.',
+      isAmbiguous: true,
+      status: 'NEEDS_CLARIFICATION',
     };
   },
 };

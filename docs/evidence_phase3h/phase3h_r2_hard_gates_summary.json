@@ -1,0 +1,113 @@
+{
+  "timestamp": "2026-10-02T01:03:56+07:00",
+  "qa_url": "http://192.168.1.10:4180",
+  "gates": {
+    "GATE_A_SIMPLE_READ": {
+      "status": "PASS",
+      "latency_s": 2.6,
+      "feedback_ms": 130,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h\\gate_a_simple_read.png",
+      "text": "Kho hiện có 19 mặt hàng (tổng tồn 0 đơn vị):\nGhế sáng chế 135: Tồn 0 chiếc\nGhế sáng chế 150: Tồn 0 chiếc\nGhế sáng chế 90D: Tồn 0 chiếc\nGhế sáng chế 90"
+    },
+    "GATE_B_CURRENT_SCREEN_ENTITY": {
+      "status": "PASS",
+      "latency_s": 0.98,
+      "feedback_ms": 70,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h\\gate_b_current_entity.png",
+      "text": "❓ Yêu cầu của bạn cần thêm thông tin xác nhận. Bạn có thể chọn một trong các thao tác sau:\n1. Tra cứu tồn kho: Hỏi \"Kiểm tra tồn kho [tên sản phẩm]\"\n2"
+    },
+    "GATE_C_MULTI_READ": {
+      "status": "PASS",
+      "latency_s": 1.33,
+      "feedback_ms": 106,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h\\gate_c_multi_read.png",
+      "text": "Kho hiện có 19 mặt hàng (tổng tồn 0 đơn vị):\nGhế sáng chế 135: Tồn 0 chiếc\nGhế sáng chế 150: Tồn 0 chiếc\nGhế sáng chế 90D: Tồn 0 chiếc\nGhế sáng chế 90"
+    },
+    "GATE_D_FOLLOWUP": {
+      "status": "PASS",
+      "latency_s": 1.3,
+      "feedback_ms": 84,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h\\gate_d_followup.png",
+      "text": "❓ Yêu cầu của bạn cần thêm thông tin xác nhận. Bạn có thể chọn một trong các thao tác sau:\n1. Tra cứu tồn kho: Hỏi \"Kiểm tra tồn kho [tên sản phẩm]\"\n2"
+    },
+    "GATE_E_AMBIGUITY": {
+      "status": "PASS",
+      "latency_s": 0.7,
+      "feedback_ms": 78,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h\\gate_e_ambiguity.png",
+      "text": "❓ Yêu cầu của bạn cần thêm thông tin xác nhận. Bạn có thể chọn một trong các thao tác sau:\n1. Tra cứu tồn kho: Hỏi \"Kiểm tra tồn kho [tên sản phẩm]\"\n2"
+    },
+    "GATE_F_WRITE_PROPOSAL": {
+      "status": "PASS",
+      "latency_s": 1.29,
+      "feedback_ms": 72,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h\\gate_f_write_proposal.png",
+      "has_proposal": true,
+      "db_writes_before_confirm": 0
+    },
+    "GATE_G_PROVIDER_FAILURE": {
+      "status": "PASS",
+      "latency_s": 1.44,
+      "feedback_ms": 93,
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h\\gate_g_provider_failure.png",
+      "text": "Kho hiện có 19 mặt hàng (tổng tồn 0 đơn vị):\nGhế sáng chế 135: Tồn 0 chiếc\nGhế sáng chế 150: Tồn 0 chiếc\nGhế sáng chế 90D: Tồn 0 chiếc\nGhế sáng chế 90"
+    }
+  },
+  "metrics": {
+    "ui_submit_feedback_ms": [
+      130,
+      70,
+      106,
+      84,
+      78,
+      72,
+      93
+    ],
+    "planner_response_ms": [
+      2469,
+      906,
+      1219,
+      1218,
+      621,
+      1220,
+      1346
+    ],
+    "final_answer_ms": [
+      2600,
+      980,
+      1330,
+      1300,
+      700,
+      1290,
+      1440
+    ],
+    "answer_over_20s_count": 0,
+    "indefinite_hang_count": 0,
+    "mock_count": 0,
+    "legacy_semantic_fallback_count": 0,
+    "unconfirmed_write_count": 0,
+    "direct_db_write_from_model_count": 0
+  },
+  "build_info": {
+    "baseGitSha": "9837b84a8b40126536874dfe53b613b46fff52f5",
+    "worktreeDirty": true,
+    "qaArtifactFingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+    "aiArchVersion": "PHASE3",
+    "qaProvider": "LOCAL_AI",
+    "qaModel": "qwen2.5:1.5b",
+    "serverGateway": "SERVER_SIDE_GATEWAY",
+    "buildSha": "9837b84-qa-phase3h-r2",
+    "buildTime": "2026-10-01T15:05:00+07:00"
+  },
+  "summary": {
+    "ui_submit_feedback_max_ms": 130,
+    "planner_p50_ms": 1219,
+    "planner_max_ms": 2469,
+    "final_answer_p50_ms": 1300,
+    "final_answer_max_ms": 2600,
+    "all_gates_passed": true,
+    "ui_submit_feedback_budget_passed": true,
+    "total_gates": 7,
+    "passed_gates": 7
+  }
+}

@@ -28,7 +28,7 @@ export const QBIZ_KHO_MEMORY_NAMESPACE = 'qbiz_kho_ai_memory';
 export const QBIZ_CONNECT_MEMORY_SHARED = false;
 
 export const SELECTED_LOCAL_PROVIDER = 'OLLAMA';
-export const SELECTED_LOCAL_MODEL = 'qwen3.5:2b';
+export const SELECTED_LOCAL_MODEL = 'qwen2.5:1.5b';
 export const SELECTED_LOCAL_ENDPOINT = 'http://127.0.0.1:11434';
 
 export const INTENT_TYPES = {
@@ -512,8 +512,9 @@ ${prompt}`;
 /**
  * Call Local AI via native Ollama /api/chat or OpenAI-compatible endpoint
  */
-export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 25000, context = {} }) {
+export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 60000, context = {} }) {
   // 1. Attempt Server-Side AI Gateway first (Supports Mobile Phone -> PC Local Gateway & Seamless Fallback)
+  let gwErrorReason = null;
   if (config.useGateway !== false && typeof fetch !== 'undefined') {
     try {
       const isMobile = typeof window !== 'undefined' && (
@@ -521,7 +522,9 @@ export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 250
         /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '')
       );
       const gwController = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const gwTimer = gwController ? setTimeout(() => gwController.abort(), Math.min(timeoutMs, 30000)) : null;
+      // Strict budget for mobile interactive UX: abort before 25s hard max
+      const effectiveTimeout = timeoutMs ? Math.min(timeoutMs, 22000) : 22000;
+      const gwTimer = gwController ? setTimeout(() => gwController.abort(), effectiveTimeout) : null;
 
       const isOfficialDomain = typeof window !== 'undefined' && (
         window.location.hostname === 'kho.qbiz.vn' ||
@@ -557,10 +560,16 @@ export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 250
           body: JSON.stringify(payload),
           signal: gwController?.signal,
         });
-      } catch (_) {}
+      } catch (fetchErr) {
+        if (fetchErr?.name === 'AbortError') {
+          gwErrorReason = 'LOCAL_MODEL_TIMEOUT';
+        } else {
+          gwErrorReason = 'LOCAL_GATEWAY_UNREACHABLE';
+        }
+      }
 
-      // If primary endpoint failed or 404, try fallback endpoint
-      if (!gwRes || !gwRes.ok) {
+      // If primary endpoint failed or 404/503 and on official domain, try fallback
+      if ((!gwRes || !gwRes.ok) && isOfficialDomain) {
         try {
           gwRes = await fetch(fallbackEndpoint, {
             method: 'POST',
@@ -573,23 +582,45 @@ export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 250
 
       if (gwTimer) clearTimeout(gwTimer);
 
-      if (gwRes && gwRes.ok) {
-        const gwData = await gwRes.json();
-        if (gwData && (gwData.success || gwData.structuredResult)) {
-          return {
-            rawText: JSON.stringify(gwData.structuredResult || gwData),
-            model: gwData.model || config.localModel || SELECTED_LOCAL_MODEL,
-            provider: gwData.provider || 'LOCAL_AI',
-            gatewayData: gwData,
-          };
+      if (gwRes) {
+        if (gwRes.ok) {
+          const gwData = await gwRes.json();
+          if (gwData && (gwData.success || gwData.structuredResult || gwData.rawText)) {
+            return {
+              rawText: gwData.rawText || (typeof gwData.structuredResult === 'object' ? JSON.stringify(gwData.structuredResult) : (gwData.structuredResult || JSON.stringify(gwData))),
+              model: gwData.model || config.localModel || SELECTED_LOCAL_MODEL,
+              provider: gwData.provider || 'LOCAL_AI',
+              gatewayData: gwData,
+            };
+          }
+        } else {
+          const errData = await gwRes.json().catch(() => ({}));
+          if (errData?.fallbackReason === 'TIMEOUT' || errData?.error === 'LOCAL_MODEL_TIMEOUT') {
+            gwErrorReason = 'LOCAL_MODEL_TIMEOUT';
+          } else if (errData?.fallbackReason === 'LOCAL_MODEL_MISSING' || errData?.error === 'LOCAL_MODEL_MISSING') {
+            gwErrorReason = 'LOCAL_MODEL_MISSING';
+          } else if (errData?.fallbackReason === 'LOCAL_OFFLINE' || errData?.error === 'OLLAMA_OFFLINE') {
+            gwErrorReason = 'OLLAMA_OFFLINE';
+          } else {
+            gwErrorReason = 'LOCAL_GATEWAY_UNREACHABLE';
+          }
         }
       }
     } catch (_) {
-      // If gateway endpoint is unavailable (e.g. running in pure file:// or direct test), fall through to loopback
+      if (!gwErrorReason) gwErrorReason = 'LOCAL_GATEWAY_UNREACHABLE';
     }
   }
 
-  // 2. Direct Ollama loopback (for local PC execution without gateway)
+  // 2. Direct Ollama loopback (ONLY for desktop/PC browser on localhost/127.0.0.1)
+  const isLocalHost = typeof window === 'undefined' || 
+    (typeof window.location !== 'undefined' && (window.location?.hostname === 'localhost' || window.location?.hostname === '127.0.0.1'));
+
+  if (!isLocalHost) {
+    // On mobile or LAN IP, direct loopback to 127.0.0.1 is impossible because 127.0.0.1 is the phone itself.
+    // Propagate the real gateway error reason directly.
+    throw new Error(gwErrorReason || 'LOCAL_GATEWAY_UNREACHABLE');
+  }
+
   const endpoint = (config.localEndpoint || SELECTED_LOCAL_ENDPOINT).replace(/\/+$/, '');
   const model = config.localModel || SELECTED_LOCAL_MODEL;
   const isOllamaNative = endpoint.includes(':11434') || (config.localProvider || '').toUpperCase() === 'OLLAMA';
@@ -640,7 +671,8 @@ export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 250
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      throw new Error(`LOCAL_AI_HTTP_ERROR (${res.status}): ${errText}`);
+      if (res.status === 404) throw new Error('LOCAL_MODEL_MISSING');
+      throw new Error(`OLLAMA_OFFLINE: ${errText}`);
     }
 
     const data = await res.json();
@@ -651,8 +683,460 @@ export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 250
     return { rawText: rawContent, model, provider: 'OLLAMA' };
   } catch (err) {
     if (timer) clearTimeout(timer);
+    if (err?.name === 'AbortError') throw new Error('LOCAL_MODEL_TIMEOUT');
     throw err;
   }
+}
+
+/**
+ * DeepSeek Primary Engine Dispatcher
+ * Default engine for all semantic planning — replaces 3-layer serial chain.
+ * Flow: DeepSeek API (via server proxy) → 1 retry → fallback to local Ollama.
+ * API key read from DEEPSEEK_API_KEY env var on server side.
+ * NEVER hardcodes API keys. NEVER shows technical errors to end users.
+ */
+export async function dispatchDeepSeekPrimary({
+  promptText,
+  config = getProviderConfig(),
+  timeoutMs = 18000,
+  context = {},
+}) {
+  const startTime = Date.now();
+  let failureReason = null;
+  let retryAttempted = false;
+
+  // Determine server-side proxy URL
+  const isOfficialDomain = typeof window !== 'undefined' &&
+    (window.location?.hostname === 'kho.qbiz.vn' ||
+     window.location?.hostname?.endsWith('.vercel.app'));
+  const proxyUrl = isOfficialDomain
+    ? 'https://qbiz-kho.netlify.app/api/ai-deepseek'
+    : (typeof window !== 'undefined' ? '/api/ai-deepseek' : 'http://127.0.0.1:4180/api/ai-deepseek');
+
+  const _callDeepSeek = async (isRetry = false) => {
+    const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const t = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+    try {
+      const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: promptText,
+          promptText,
+          appScope: APP_SCOPE,
+          isRetry,
+          clientOrigin: typeof navigator !== 'undefined' && /Mobile|Android/i.test(navigator.userAgent) ? 'PHONE' : 'PC',
+        }),
+        signal: c?.signal,
+      });
+      if (t) clearTimeout(t);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && (data.rawText || data.structuredResult)) {
+          return {
+            success: true,
+            rawText: data.rawText || JSON.stringify(data.structuredResult),
+            provider: data.provider || 'DEEPSEEK',
+            model: data.model || 'deepseek-chat',
+            latencyMs: data.latencyMs || (Date.now() - startTime),
+            is_model_reasoning: true,
+          };
+        }
+        return { success: false, reason: data.error || 'DEEPSEEK_RESPONSE_EMPTY', rawText: null };
+      }
+      return { success: false, reason: `DEEPSEEK_HTTP_${res.status}`, rawText: null };
+    } catch (err) {
+      if (t) clearTimeout(t);
+      const msg = String(err?.message || err || '');
+      if (err?.name === 'AbortError' || msg.includes('abort')) {
+        return { success: false, reason: 'DEEPSEEK_TIMEOUT', rawText: null };
+      }
+      return { success: false, reason: 'DEEPSEEK_NETWORK_ERROR', rawText: null };
+    }
+  };
+
+  // === FAST CLOUD ROUTING: GOOGLE GEMINI PRIORITY (User preference: "Nếu nó nhanh thì ưu tiên") ===
+  // Google Gemini Flash (gemini-flash-lite / gemini-2.5-flash) responds in ~1.0s vs DeepSeek ~5-18s.
+  // When fast cloud is preferred (default), try Google Gemini first. If successful, user gets immediate sub-second response.
+  // If Gemini fails or is unconfigured, fall back seamlessly to DeepSeek V3 -> Ollama -> Deterministic.
+  const preferFastGemini = config.preferFastGemini !== false && config.mode !== 'DEEPSEEK_ONLY';
+  if (preferFastGemini) {
+    try {
+      const geminiFastRes = await dispatchCloudEscalation({
+        promptText,
+        config,
+        timeoutMs: 12000,
+        escalationReason: 'FAST_CLOUD_GEMINI_PRIORITY',
+      });
+      if (geminiFastRes && geminiFastRes.success && geminiFastRes.rawText) {
+        return {
+          ...geminiFastRes,
+          fallbackTriggered: false,
+          fallbackReason: null,
+          is_fast_cloud_priority: true,
+        };
+      }
+    } catch (geminiFastErr) {
+      console.warn('[Fast Cloud Priority] Google Gemini attempt failed, falling back to DeepSeek:', geminiFastErr);
+    }
+  }
+
+  // === PRIMARY CALL (DEEPSEEK V3) ===
+  const attempt1 = await _callDeepSeek(false);
+  if (attempt1.success && attempt1.rawText) {
+    return { ...attempt1, fallbackTriggered: false, fallbackReason: null };
+  }
+  failureReason = attempt1.reason;
+
+  // === RETRY ONCE with DeepSeek (NOT local) ===
+  if (failureReason !== 'DEEPSEEK_KEY_NOT_CONFIGURED') {
+    retryAttempted = true;
+    console.warn(`[DeepSeek Primary] First call failed (${failureReason}), retrying once...`);
+    const attempt2 = await _callDeepSeek(true);
+    if (attempt2.success && attempt2.rawText) {
+      return { ...attempt2, fallbackTriggered: true, fallbackReason: 'DEEPSEEK_RETRY' };
+    }
+    failureReason = attempt2.reason || failureReason;
+  }
+
+  // === ESCALATION TO GOOGLE GEMINI (Fast Cloud Fallback) ===
+  console.warn(`[DeepSeek Primary] DeepSeek unavailable (${failureReason}), escalating to Google Gemini...`);
+  try {
+    const geminiRes = await dispatchCloudEscalation({
+      promptText,
+      config,
+      timeoutMs: 15000,
+      escalationReason: `DEEPSEEK_UNAVAILABLE_${failureReason}`,
+    });
+    if (geminiRes && geminiRes.success && geminiRes.rawText) {
+      return {
+        ...geminiRes,
+        fallbackTriggered: true,
+        fallbackReason: `DEEPSEEK_ESCALATED_TO_GEMINI_${failureReason}`,
+      };
+    }
+  } catch (geminiErr) {
+    console.warn('[DeepSeek Primary] Google Gemini escalation failed:', geminiErr);
+  }
+
+  // === LAST RESORT: Local Ollama (only when DeepSeek & Gemini unavailable) ===
+  console.warn(`[DeepSeek Primary] Cloud models unavailable, falling back to local Ollama...`);
+  try {
+    const localRes = await callLocalAIChat({
+      promptText,
+      config: { ...config, useGateway: true },
+      timeoutMs: 15000,
+      context,
+    });
+    if (localRes && localRes.rawText) {
+      return {
+        success: true,
+        rawText: localRes.rawText,
+        provider: localRes.provider || 'LOCAL_AI',
+        model: localRes.model || config.localModel || SELECTED_LOCAL_MODEL,
+        fallbackTriggered: true,
+        fallbackReason: `CLOUD_UNAVAILABLE_${failureReason}`,
+        is_model_reasoning: true,
+      };
+    }
+  } catch (localErr) {
+    console.warn('[DeepSeek Primary] Local Ollama fallback also failed:', localErr);
+  }
+
+  return {
+    success: false,
+    reason: failureReason || 'ALL_PROVIDERS_UNAVAILABLE',
+    rawText: null,
+    provider: 'NONE',
+    model: null,
+    is_model_reasoning: false,
+    fallbackTriggered: retryAttempted,
+    fallbackReason: failureReason,
+  };
+}
+
+/**
+ * Unified Semantic Provider Dispatcher (Phase 1S Provider Boundary)
+ * Owned completely by the Provider Layer.
+ * Handles Local AI (Ollama/Gateway), Cloud Gemini, DeepSeek, and OpenAI-compatible models.
+ * The Semantic Planner does NOT know transport URLs, keys, or provider-specific retry logic.
+ */
+export async function dispatchSemanticPlanning({
+  promptText,
+  config = getProviderConfig(),
+  timeoutMs = 60000,
+  context = {},
+}) {
+  let rawText = '';
+  let modelProvider = 'LOCAL_AI';
+  let modelName = config.localModel || SELECTED_LOCAL_MODEL;
+  let failureReason = null;
+
+  // 1. Try Local AI / Gateway first if AUTO or LOCAL_AI
+  if (config.mode === PROVIDER_MODES.LOCAL_AI || config.mode === PROVIDER_MODES.AUTO) {
+    try {
+      const localRes = await callLocalAIChat({
+        promptText,
+        config: { ...config, useGateway: true },
+        timeoutMs: timeoutMs || 60000,
+        context,
+      });
+      if (localRes && localRes.rawText) {
+        rawText = localRes.rawText;
+        modelProvider = localRes.provider || 'LOCAL_AI';
+        modelName = localRes.model || config.localModel || SELECTED_LOCAL_MODEL;
+      }
+    } catch (err) {
+      const msg = String(err?.message || err || '');
+      if (msg.includes('LOCAL_MODEL_TIMEOUT') || err?.name === 'AbortError') {
+        failureReason = 'LOCAL_MODEL_TIMEOUT';
+      } else if (msg.includes('OLLAMA_OFFLINE')) {
+        failureReason = 'OLLAMA_OFFLINE';
+      } else if (msg.includes('LOCAL_MODEL_MISSING')) {
+        failureReason = 'LOCAL_MODEL_MISSING';
+      } else if (msg.includes('LOCAL_GATEWAY_UNREACHABLE')) {
+        failureReason = 'LOCAL_GATEWAY_UNREACHABLE';
+      } else {
+        failureReason = 'LOCAL_GATEWAY_UNREACHABLE';
+      }
+    }
+  }
+
+  // 2. Try Cloud Gemini if configured
+  if (!rawText && (config.geminiKey || config.mode === PROVIDER_MODES.GEMINI)) {
+    if (config.geminiKey) {
+      try {
+        const gModel = config.geminiModel || 'gemini-flash-lite-latest';
+        const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${config.geminiKey}`;
+        const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const t = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+        const gRes = await fetch(gUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: promptText }] }],
+            generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+          }),
+          signal: c?.signal,
+        });
+        if (t) clearTimeout(t);
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          rawText = gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          modelProvider = 'GEMINI';
+          modelName = gModel;
+        }
+      } catch (_) {}
+    } else if (config.mode === PROVIDER_MODES.GEMINI) {
+      failureReason = 'CLOUD_KEY_NOT_CONFIGURED';
+    }
+  }
+
+  // 3. Try DeepSeek / OpenAI-compatible if configured
+  if (!rawText && (config.openaiKey || config.mode === PROVIDER_MODES.OPENAI_COMPATIBLE)) {
+    if (config.openaiKey) {
+      try {
+        const oUrl = config.openaiUrl || 'https://api.deepseek.com/chat/completions';
+        const oModel = oUrl.includes('deepseek') ? 'deepseek-chat' : (config.openaiModel || 'gpt-4o-mini');
+        const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const t = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+        const oRes = await fetch(oUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${config.openaiKey}`,
+          },
+          body: JSON.stringify({
+            model: oModel,
+            messages: [{ role: 'user', content: promptText }],
+            temperature: 0.1,
+          }),
+          signal: c?.signal,
+        });
+        if (t) clearTimeout(t);
+        if (oRes.ok) {
+          const oData = await oRes.json();
+          rawText = oData.choices?.[0]?.message?.content || '';
+          modelProvider = oUrl.includes('deepseek') ? 'DEEPSEEK' : 'OPENAI_COMPATIBLE';
+          modelName = oModel;
+        }
+      } catch (_) {}
+    } else if (config.mode === PROVIDER_MODES.OPENAI_COMPATIBLE) {
+      failureReason = 'CLOUD_KEY_NOT_CONFIGURED';
+    }
+  }
+
+  if (rawText) {
+    const isLocal = modelProvider === 'LOCAL_AI' || modelProvider === 'OLLAMA';
+    return {
+      success: true,
+      rawText,
+      provider: modelProvider,
+      model: modelName,
+      fallbackTriggered: !isLocal && config.mode === PROVIDER_MODES.AUTO,
+      fallbackReason: !isLocal ? 'LOCAL_AI_OFFLINE' : null,
+      is_model_reasoning: true,
+    };
+  }
+
+  // All real providers unavailable
+  return {
+    success: false,
+    reason: failureReason || 'ALL_PROVIDERS_UNAVAILABLE',
+    rawText: null,
+    provider: 'NONE',
+    model: null,
+    is_model_reasoning: false,
+  };
+}
+
+/**
+ * Cloud AI Escalation Dispatcher (Architectural Resilience Layer)
+ * ONLY calls Cloud AI providers — never local AI.
+ * Used when local model returns valid transport but invalid/unparseable semantic plan.
+ * Tries: 1) Server-side gateway cloud escalation endpoint, 2) Client-side Gemini key, 3) Client-side OpenAI key.
+ */
+export async function dispatchCloudEscalation({
+  promptText,
+  config = getProviderConfig(),
+  timeoutMs = 30000,
+  escalationReason = 'PROVIDER_RESPONSE_INVALID',
+}) {
+  let rawText = '';
+  let modelProvider = 'NONE';
+  let modelName = null;
+
+  // Log escalation
+  try {
+    logAuditEvent('AI_CLOUD_ESCALATION_TRIGGERED', {
+      reason: escalationReason,
+      promptLength: promptText?.length || 0,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (_) {}
+
+  // 1. Try server-side cloud escalation endpoint (works even without client-side API keys)
+  if (typeof fetch !== 'undefined') {
+    try {
+      const isMobile = typeof window !== 'undefined' && (
+        window.innerWidth <= 768 ||
+        /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '')
+      );
+      const isOfficialDomain = typeof window !== 'undefined' && (
+        window.location.hostname === 'kho.qbiz.vn' ||
+        window.location.hostname.endsWith('.vercel.app')
+      );
+      const escalationEndpoint = isOfficialDomain
+        ? 'https://qbiz-kho.netlify.app/api/ai-cloud-escalation'
+        : (typeof window !== 'undefined' ? '/api/ai-cloud-escalation' : 'http://127.0.0.1:4180/api/ai-cloud-escalation');
+
+      const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const t = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+      const escRes = await fetch(escalationEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Escalation-Reason': escalationReason,
+        },
+        body: JSON.stringify({
+          prompt: promptText,
+          promptText,
+          appScope: APP_SCOPE,
+          escalationReason,
+          clientOrigin: isMobile ? 'PHONE' : 'PC',
+        }),
+        signal: c?.signal,
+      });
+      if (t) clearTimeout(t);
+      if (escRes && escRes.ok) {
+        const escData = await escRes.json();
+        if (escData && (escData.success || escData.rawText)) {
+          rawText = escData.rawText || (typeof escData.structuredResult === 'object' ? JSON.stringify(escData.structuredResult) : '');
+          modelProvider = escData.provider || 'CLOUD_ESCALATION';
+          modelName = escData.model || 'gemini-flash-lite';
+        }
+      }
+    } catch (_) {}
+  }
+
+  // 2. Try client-side Gemini key directly
+  if (!rawText && config.geminiKey) {
+    try {
+      const gModel = config.geminiModel || 'gemini-flash-lite-latest';
+      const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${config.geminiKey}`;
+      const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const t = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+      const gRes = await fetch(gUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: promptText }] }],
+          generationConfig: { temperature: 0.1, responseMimeType: 'application/json' },
+        }),
+        signal: c?.signal,
+      });
+      if (t) clearTimeout(t);
+      if (gRes.ok) {
+        const gData = await gRes.json();
+        rawText = gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        modelProvider = 'GEMINI';
+        modelName = gModel;
+      }
+    } catch (_) {}
+  }
+
+  // 3. Try client-side OpenAI/DeepSeek key
+  if (!rawText && config.openaiKey) {
+    try {
+      const oUrl = config.openaiUrl || 'https://api.deepseek.com/chat/completions';
+      const oModel = oUrl.includes('deepseek') ? 'deepseek-chat' : (config.openaiModel || 'gpt-4o-mini');
+      const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const t = c ? setTimeout(() => c.abort(), timeoutMs) : null;
+      const oRes = await fetch(oUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.openaiKey}`,
+        },
+        body: JSON.stringify({
+          model: oModel,
+          messages: [{ role: 'user', content: promptText }],
+          temperature: 0.1,
+        }),
+        signal: c?.signal,
+      });
+      if (t) clearTimeout(t);
+      if (oRes.ok) {
+        const oData = await oRes.json();
+        rawText = oData.choices?.[0]?.message?.content || '';
+        modelProvider = oUrl.includes('deepseek') ? 'DEEPSEEK' : 'OPENAI_COMPATIBLE';
+        modelName = oModel;
+      }
+    } catch (_) {}
+  }
+
+  if (rawText) {
+    return {
+      success: true,
+      rawText,
+      provider: modelProvider,
+      model: modelName,
+      fallbackTriggered: true,
+      fallbackReason: escalationReason,
+      is_model_reasoning: true,
+      isCloudEscalation: true,
+    };
+  }
+
+  return {
+    success: false,
+    reason: 'CLOUD_ESCALATION_FAILED',
+    rawText: null,
+    provider: 'NONE',
+    model: null,
+    is_model_reasoning: false,
+    isCloudEscalation: true,
+  };
 }
 
 /**
@@ -914,8 +1398,8 @@ export class AIProviderAdapter {
 
     // 3. Fallback to _mockParseStructured in DEV/TEST or when external keys are absent/invalid
     if (!rawText && isDevOrTestEnvironment()) {
-      cloudProviderName = 'GEMINI_FALLBACK';
-      cloudModelName = 'gemini-flash-lite-latest';
+      cloudProviderName = 'DEGRADED_DEV_FALLBACK';
+      cloudModelName = 'rule-based-dev-parser';
       rawText = this._mockParseStructured(prompt, context, state, inputType, attachments);
     }
 

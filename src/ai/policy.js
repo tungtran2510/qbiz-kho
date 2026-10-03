@@ -88,6 +88,10 @@ export function hasCapability(actor, permission) {
 export const ALLOWED_WRITE_ACTIONS = new Set([
   'create_receipt_proposal',
   'create_issue_proposal',
+  'create_order_proposal',
+  'order_proposal',
+  'create_invoice_proposal',
+  'electronic_invoice_proposal',
   'create_transfer_proposal',
   'create_stocktake_proposal',
   'create_cart_draft',
@@ -144,6 +148,10 @@ const DRAFT_ACTIONS = new Set([
   'create_cart_draft',
   'create_receipt_proposal',
   'create_issue_proposal',
+  'create_order_proposal',
+  'order_proposal',
+  'create_invoice_proposal',
+  'electronic_invoice_proposal',
   'create_transfer_proposal',
   'create_stocktake_proposal',
   'create_update_product_status_proposal',
@@ -243,9 +251,10 @@ export function computeAllowedTools(actor = {}, context = {}) {
   tools.add('get_abc_xyz');
   tools.add('forecast_product_demand');
   tools.add('get_five_actions_today');
+  tools.add('clarify_ambiguity');
 
   // Sales summary & order diagnosis
-  if (roleDef.permissions.has(PERMISSIONS.VIEW_SALES)) {
+  if (roleDef.permissions.has(PERMISSIONS.VIEW_SALES) || roleKey === 'OWNER') {
     tools.add('get_sales_summary');
     tools.add('aggregate_revenue');
     tools.add('search_orders');
@@ -254,12 +263,26 @@ export function computeAllowedTools(actor = {}, context = {}) {
     tools.add('search_customers');
     tools.add('get_customer');
     tools.add('create_cart_draft');
+    tools.add('create_order_proposal');
+    tools.add('order_proposal');
+    tools.add('create_invoice_proposal');
+    tools.add('electronic_invoice_proposal');
     tools.add('diagnose_shift');
     tools.add('get_latest_transaction');
     tools.add('search_transactions');
     tools.add('get_transaction');
     tools.add('summarize_business_period');
     tools.add('get_sales_mix');
+    tools.add('getProductPerformanceRanking');
+    tools.add('get_product_performance_ranking');
+    tools.add('product-performance-ranking');
+    tools.add('top-selling-products');
+    tools.add('get_customer_debt_summary');
+    tools.add('getCustomerDebtSummary');
+    tools.add('get_customer_aging_report');
+    tools.add('getCustomerAgingReport');
+    tools.add('get_customer_profile_history');
+    tools.add('getCustomerProfileHistory');
   }
 
   // Cost & Profit inquiry (strictly requires VIEW_COST)
@@ -267,12 +290,15 @@ export function computeAllowedTools(actor = {}, context = {}) {
     tools.add('get_profit_summary');
     tools.add('get_high_revenue_low_margin');
     tools.add('optimize_replenishment_budget');
+    tools.add('get_operating_expenses');
+    tools.add('getOperatingExpenses');
   }
 
   // Stock operations (only if role has permission)
   if (roleDef.permissions.has(PERMISSIONS.RECEIVE_STOCK) || roleKey === 'OWNER') {
     tools.add('create_receipt_proposal');
     tools.add('create_issue_proposal');
+    tools.add('issue_proposal');
     tools.add('create_replenishment_plan_draft');
   }
   if (roleDef.permissions.has(PERMISSIONS.TRANSFER_STOCK)) {
@@ -489,7 +515,7 @@ const INJECTION_PATTERNS = [
   /(?:khong\s+can|không\s+cần|khong\s+qua|không\s+qua)\s+(?:phieu|phiếu|duyet|duyệt|phe\s+duyet|phê\s+duyệt)/i,
   /reset\s+.*(?:database|db|co\s+so\s+du\s+lieu|cơ\s+sở\s+dữ\s+liệu)/i,
   /(?:tat|tắt|vo\s+hieu\s+hoa|vô\s+hiệu\s+hóa|khong\s+luu|không\s+lưu)\s+.*(?:audit|nhat\s+ky|nhật\s+ký)/i,
-  /(?:xoa|xóa)\s+.*(?:vinh\s+vien|vĩnh\s+viễn|toan\s+bo|toàn\s+bộ|sach|sạch)\s+.*(?:lich\s+su|lịch\s+sử|chung\s+tu|chứng\s+từ|hoa\s+don|hóa\s+đơn|giao\s+dich|giao\s+dịch|database|db|so\s+cai|sổ\s+cái)/i,
+  /(?:xoa|xóa)\s+.*(?:vinh\s+vien|vĩnh\s+viễn|toan\s+bo|toàn\s+bộ|sach|sạch|het|hết)?\s*.*(?:lich\s+su|lịch\s+sử|chung\s+tu|chứng\s+từ|hoa\s+don|hóa\s+đơn|don\s+hang|đơn\s+hàng|phieu\s+ban|phiếu\s+bán|phieu\s+xuat|phiếu\s+xuất|phieu\s+nhap|phiếu\s+nhập|giao\s+dich|giao\s+dịch|database|db|so\s+cai|sổ\s+cái)/i,
   /(?:gui|xuat|chuyen|gửi|xuất|chuyển|leak)\s+.*(?:may\s+chu\s+ben\s+ngoai|máy\s+chủ\s+bên\s+ngoài|ra\s+ngoai|ra\s+bên\s+ngoài|http:\/\/|https:\/\/)/i,
   /(?:thay\s+doi|doi|reset|thay\s+đổi|đổi)\s+mat\s+khau|mật\s+khẩu/i,
   /(?:lenh\s+ngam|lệnh\s+ngầm|doanh\s+so\s+ao|doanh\s+số\s+ảo)/i,

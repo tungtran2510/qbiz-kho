@@ -582,16 +582,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .dashboard-quick-grid .quick-tile small{display:none}
 .dashboard-quick-grid .quick-tile.quick-hero{grid-column:1;grid-row:1/span 2;min-height:0;padding:0;display:flex;flex-direction:column;gap:0;overflow:hidden;background:linear-gradient(180deg,#eaf3ff,#fbfdff);border-color:#bdd7f5}
 .dashboard-quick-grid .quick-hero-main,.dashboard-quick-grid .quick-hero-sub{border:0;background:transparent;display:grid;justify-items:center;align-content:center;gap:6px;padding:8px 4px;cursor:pointer;font:inherit;color:inherit}
-.dashboard-quick-grid .quick-hero-main{flex:1;border-bottom:1px solid #d5e3f5}
-.dashboard-quick-grid .quick-tile.quick-hero .quick-hero-main strong{font-size:13px;font-weight:800;color:#173c72;white-space:normal;word-break:keep-all;text-align:center;line-height:1.2;display:block;max-width:100%;overflow:visible;text-overflow:clip;padding:0 2px}
-.dashboard-quick-grid .quick-hero-main .qt-ico{width:44px;height:44px;border-radius:14px}
-.dashboard-quick-grid .quick-hero-main .qt-ico .ui-icon{width:24px;height:24px}
-.dashboard-quick-grid .quick-hero-sub{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:4px;padding:4px 8px;min-height:36px}
-.dashboard-quick-grid .quick-tile.quick-hero .quick-hero-sub strong{font-size:11.5px;font-weight:700;color:#3d5b86;white-space:nowrap}
+.dashboard-quick-grid .quick-hero-main{flex:1;border-bottom:1px solid #d5e3f5;padding:12px 6px;gap:8px}
+.dashboard-quick-grid .quick-tile.quick-hero .quick-hero-main strong{font-size:15px !important;font-weight:850;color:#0f3568;white-space:normal;word-break:keep-all;text-align:center;line-height:1.2;display:inline-block !important;max-width:100%;overflow:visible;text-overflow:clip;padding:0 2px;letter-spacing:0.2px}
+.dashboard-quick-grid .quick-hero-main .qt-ico{width:56px;height:56px;border-radius:17px;background:#dbeafe;color:#1d4ed8;box-shadow:0 4px 12px rgba(29,78,216,0.15)}
+.dashboard-quick-grid .quick-hero-main .qt-ico .ui-icon{width:32px;height:32px;stroke-width:2.2}
+.dashboard-quick-grid .quick-hero-sub{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:3px;padding:6px 8px;min-height:36px;line-height:1}
+.dashboard-quick-grid .quick-tile.quick-hero .quick-hero-sub strong{font-size:12px;font-weight:700;color:#3d5b86;white-space:nowrap;line-height:1;margin:0 !important;padding:0 !important;display:inline-flex;align-items:center}
 .dashboard-quick-grid .quick-hero-sub .qt-ico{width:20px;height:20px;border-radius:7px}
 .dashboard-quick-grid .quick-hero-sub .qt-ico .ui-icon{width:12px;height:12px}
-.dashboard-quick-grid .quick-hero-arrow{display:grid;place-items:center;color:#8aa3c2;font-style:normal}
-.dashboard-quick-grid .quick-hero-arrow .ui-icon{width:12px;height:12px}
+.dashboard-quick-grid .quick-hero-arrow{display:inline-flex;align-items:center;justify-content:center;color:#6482a6;font-style:normal;line-height:1;margin:0 !important;padding:0 !important}
+.dashboard-quick-grid .quick-hero-arrow .ui-icon{width:13px;height:13px;stroke-width:2.2;display:block}
 .dashboard-quick-grid .quick-tile:nth-child(2){grid-column:2;grid-row:1}
 .dashboard-quick-grid .quick-tile:nth-child(3){grid-column:3;grid-row:1}
 .dashboard-quick-grid .quick-tile:nth-child(4){grid-column:2;grid-row:2}
@@ -599,11 +599,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media(min-width:921px){
   .dashboard-quick-grid{grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:minmax(96px,auto)}
   .dashboard-quick-grid .quick-tile.quick-hero{grid-column:1/span 2;grid-row:1;flex-direction:row;min-height:96px}
-  .dashboard-quick-grid .quick-hero-main{flex:1;border-bottom:0;border-right:1px solid #d5e3f5}
+  .dashboard-quick-grid .quick-hero-main{flex:1;border-bottom:0;border-right:1px solid #d5e3f5;padding:8px 10px;gap:6px}
   .dashboard-quick-grid .quick-hero-sub{flex:0 0 40%;border:0}
-  .dashboard-quick-grid .quick-hero-main .qt-ico{width:44px;height:44px;border-radius:14px}
-  .dashboard-quick-grid .quick-hero-main .qt-ico .ui-icon{width:24px;height:24px}
-  .dashboard-quick-grid .quick-tile.quick-hero .quick-hero-main strong{font-size:16px}
+  .dashboard-quick-grid .quick-hero-main .qt-ico{width:48px;height:48px;border-radius:14px}
+  .dashboard-quick-grid .quick-hero-main .qt-ico .ui-icon{width:28px;height:28px}
+  .dashboard-quick-grid .quick-tile.quick-hero .quick-hero-main strong{font-size:16px !important}
   .dashboard-quick-grid .quick-tile:nth-child(2){grid-column:3;grid-row:1}
   .dashboard-quick-grid .quick-tile:nth-child(3){grid-column:4;grid-row:1}
   .dashboard-quick-grid .quick-tile:nth-child(4){grid-column:5;grid-row:1}
@@ -1247,6 +1247,33 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   flex-shrink: 0;
   animation: ai-tts-pulse 1.2s infinite alternate;
 }
+@keyframes aiSpin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin: 6px 0;
+  background: rgba(241, 245, 249, 0.9);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 13px;
+  color: #475569;
+  width: fit-content;
+}
+
+.ai-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #cbd5e1;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: aiSpin 0.7s linear infinite;
+}
 
 .ai-speaking-banner-btn {
   background: #fee2e2;
@@ -1436,10 +1463,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 
 .ai-bubble {
-  padding: 10px 14px;
-  border-radius: 14px;
+  padding: 8px 12px;
+  border-radius: 12px;
   font-size: 13.5px;
-  line-height: 1.45;
+  line-height: 1.4;
   word-break: break-word;
 }
 
@@ -1466,13 +1493,55 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 
 .ai-bullet {
-  margin-left: 16px;
+  margin-left: 14px;
   margin-bottom: 2px;
+  line-height: 1.35;
+}
+
+.ai-sub-bullet {
+  margin-left: 24px;
+  margin-bottom: 2px;
+  line-height: 1.35;
+  color: #334155;
+  font-size: 12.5px;
+  list-style-type: circle;
+}
+
+.ai-num-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  line-height: 1.35;
+}
+
+.ai-num-badge {
+  font-weight: 600;
+  color: #334155;
+  flex-shrink: 0;
+  min-width: 16px;
+}
+
+.ai-num-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .ai-list {
-  margin: 6px 0;
+  margin: 4px 0;
   padding-left: 0;
+}
+
+.ai-divider {
+  margin: 6px 0 !important;
+  border: none !important;
+  border-top: 1px dashed #cbd5e1 !important;
+}
+
+.ai-p-gap {
+  display: block;
+  height: 6px;
 }
 
 /* Candidate Clarification Box */
@@ -2277,17 +2346,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   justify-content: space-between;
   padding: 8px 0;
   border-bottom: 1px solid #f1f5f9;
-  gap: 8px;
+  gap: 10px;
 }
 
 .ai-replenish-row:last-child {
   border-bottom: none;
 }
 
+.ai-rep-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .ai-rep-info strong {
   display: block;
   font-size: 12.5px;
   color: #0f172a;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .ai-rep-info small {
@@ -3397,37 +3473,63 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   height: 100% !important;
   object-fit: cover !important;
 }
-/* Treo tồn lên đỉnh ảnh kiểu thẻ (Floating Stock Badge) — giảm hẳn 1 dòng giúp khung thẻ gọn gàng */
+/* Treo tồn lên đỉnh ảnh kiểu thẻ (Floating Stock Badge) — nhỏ gọn, khung trắng chữ đen, chấm màu chỉ thị */
 .pos-stock-badge {
   position: absolute !important;
   top: 5px !important;
   left: 5px !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 3px !important;
-  padding: 2.5px 7px !important;
-  font-size: 10.5px !important;
-  font-weight: 750 !important;
+  gap: 3.5px !important;
+  padding: 1.5px 6px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
   line-height: 1.2 !important;
   border-radius: 6px !important;
-  background: rgba(15, 23, 42, 0.72) !important;
-  backdrop-filter: blur(4px) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
-  color: #ffffff !important;
-  letter-spacing: 0.01em !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
   pointer-events: none !important;
   z-index: 2 !important;
   white-space: nowrap !important;
 }
-.pos-stock-badge.low-stock {
-  background: rgba(217, 119, 6, 0.88) !important;
+
+/* Biểu tượng chấm tròn chỉ thị trạng thái tồn */
+.stock-dot {
+  display: inline-block !important;
+  width: 6.5px !important;
+  height: 6.5px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
 }
+.stock-dot.green {
+  background: #16a34a !important;
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.25) !important;
+}
+.stock-dot.yellow {
+  background: #eab308 !important;
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.25) !important;
+}
+
+/* Trừ khi hết hàng thì mới đỏ mới ghi chữ hết hàng */
 .pos-stock-badge.out-of-stock {
-  background: rgba(225, 29, 72, 0.9) !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+  padding: 1.5px 6px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.3) !important;
 }
+
+/* Dịch vụ */
 .pos-stock-badge.service {
-  background: rgba(124, 58, 237, 0.82) !important;
+  background: #ffffff !important;
+  color: #6b21a8 !important;
+  border-color: rgba(107, 33, 168, 0.2) !important;
+  padding: 1.5px 6px !important;
+  font-size: 10px !important;
 }
 /* Dòng 1: Tiêu đề */
 .pos-prod-title {
@@ -3452,14 +3554,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   margin-bottom: 2px !important;
   line-height: 1.25 !important;
 }
-/* Dòng 3: Giá — nằm gọn ngay dưới mã SKU (do tồn đã treo lên ảnh) */
+/* Dòng 3: Giá — khi chưa chọn (mặc định): có padding-right 38px để nhường chỗ cho nút + góc dưới phải */
 .pos-prod-price-row {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
-  margin-top: 1px !important;
+  justify-content: flex-start !important;
+  margin-top: auto !important;
+  margin-bottom: 0 !important;
   padding-right: 38px !important;
   min-height: 24px !important;
+  width: 100% !important;
 }
 .pos-prod-price {
   color: var(--q-blue-dark, #0868c6) !important;
@@ -3475,7 +3579,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     letter-spacing: -0.02em !important;
   }
 }
-/* Nút + to ra 1 tí xíu theo yêu cầu */
+
+/* Nút + mặc định từ trước đến nay: TUYỆT ĐỐI GIỮ NGUYÊN VỊ TRÍ GÓC DƯỚI BÊN PHẢI */
 .pos-add {
   position: absolute !important;
   right: 5px !important;
@@ -3503,59 +3608,205 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .pos-add::after {
   content: none !important;
 }
+
+/* KHI ĐƯỢC CHỌN (has-qty): Nút số lượng nhảy xuống ở dưới đáy và BẰNG 2 MÉP SẢN PHẨM */
+.pos-product.has-qty .pos-product-main {
+  padding-bottom: 4px !important;
+}
+.pos-product.has-qty .pos-prod-price-row {
+  padding-right: 0 !important;
+  margin-bottom: 2px !important;
+  min-height: 20px !important;
+}
 .pos-inline-qty {
-  position: absolute !important;
-  right: 6px !important;
-  bottom: 6px !important;
+  position: static !important;
+  width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  height: 28px !important;
+  min-height: 28px !important;
   display: grid !important;
-  grid-template-columns: 28px 22px 28px !important;
+  grid-template-columns: 32px 1fr 32px !important;
   align-items: center !important;
-  border: 1px solid #cfe0f4 !important;
-  border-radius: 9px !important;
-  background: #fff !important;
+  border: 0 !important;
+  border-top: 1px solid #bfdbfe !important;
+  border-radius: 0 0 11px 11px !important;
+  background: #f0f7ff !important;
   overflow: hidden !important;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
 }
 .pos-inline-qty button {
-  height: 30px !important;
-  min-height: 30px !important;
+  height: 100% !important;
+  min-height: 28px !important;
   border: 0 !important;
-  background: #edf5ff !important;
+  background: #e0eeff !important;
   color: var(--q-blue-dark, #0868c6) !important;
   font-size: 16px !important;
+  font-weight: 800 !important;
   display: grid !important;
   place-items: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+.pos-inline-qty button:hover {
+  background: #cfe0f4 !important;
+}
+.pos-inline-qty button:active {
+  background: #b9d8fc !important;
 }
 .pos-inline-qty span {
   text-align: center !important;
-  font-size: 12px !important;
+  font-size: 12.5px !important;
   font-weight: 800 !important;
+  color: #0f172a !important;
+  line-height: 28px !important;
+  padding: 0 2px !important;
 }
 
-/* List view mode: Tiêu đề -> Mã -> Tồn -> Giá */
+/* Chế độ Lưới 3 ô (Grid 3 cols) */
+.pos-grid.grid3 {
+  gap: 6px !important;
+}
+.pos-grid.grid3 .pos-product {
+  border-radius: 10px !important;
+}
+.pos-grid.grid3 .pos-product-main {
+  padding: 6px 6px 8px !important;
+}
+.pos-grid.grid3 .pos-product-image {
+  margin-bottom: 4px !important;
+  border-radius: 6px !important;
+}
+.pos-grid.grid3 .pos-prod-title {
+  font-size: 12px !important;
+  min-height: 28px !important;
+  line-height: 1.25 !important;
+  margin: 0 0 2px !important;
+}
+.pos-grid.grid3 .pos-prod-sku {
+  font-size: 10px !important;
+  margin-bottom: 1px !important;
+}
+.pos-grid.grid3 .pos-prod-price-row {
+  min-height: 20px !important;
+  padding-right: 36px !important;
+}
+.pos-grid.grid3 .pos-prod-price {
+  font-size: 12.5px !important;
+}
+.pos-grid.grid3 .pos-add {
+  right: 4px !important;
+  bottom: 4px !important;
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 24px !important;
+}
+.pos-grid.grid3 .pos-product.has-qty .pos-product-main {
+  padding: 6px 6px 3px !important;
+}
+.pos-grid.grid3 .pos-product.has-qty .pos-prod-price-row {
+  padding-right: 0 !important;
+  margin-bottom: 2px !important;
+}
+.pos-grid.grid3 .pos-product.has-qty .pos-inline-qty {
+  height: 26px !important;
+  min-height: 26px !important;
+  grid-template-columns: 28px 1fr 28px !important;
+  border-radius: 0 0 9px 9px !important;
+}
+.pos-grid.grid3 .pos-product.has-qty .pos-inline-qty button {
+  min-height: 26px !important;
+  font-size: 15px !important;
+}
+.pos-grid.grid3 .pos-product.has-qty .pos-inline-qty span {
+  font-size: 12px !important;
+  line-height: 26px !important;
+}
+
+/* Chế độ Lưới 2 ô (Grid 2 cols) */
+.pos-grid.grid2 {
+  gap: 9px !important;
+}
+.pos-grid.grid2 .pos-product {
+  border-radius: 12px !important;
+}
+.pos-grid.grid2 .pos-product-main {
+  padding: 8px 8px 10px !important;
+}
+.pos-grid.grid2 .pos-product-image {
+  margin-bottom: 6px !important;
+  border-radius: 8px !important;
+}
+.pos-grid.grid2 .pos-prod-title {
+  font-size: 13.5px !important;
+  min-height: 34px !important;
+  line-height: 1.25 !important;
+}
+.pos-grid.grid2 .pos-prod-sku {
+  font-size: 11px !important;
+}
+.pos-grid.grid2 .pos-prod-price-row {
+  min-height: 24px !important;
+  padding-right: 38px !important;
+}
+.pos-grid.grid2 .pos-prod-price {
+  font-size: 14px !important;
+}
+.pos-grid.grid2 .pos-add {
+  right: 6px !important;
+  bottom: 6px !important;
+  width: 34px !important;
+  height: 34px !important;
+  font-size: 25px !important;
+}
+.pos-grid.grid2 .pos-product.has-qty .pos-product-main {
+  padding: 8px 8px 4px !important;
+}
+.pos-grid.grid2 .pos-product.has-qty .pos-prod-price-row {
+  padding-right: 0 !important;
+  margin-bottom: 3px !important;
+}
+.pos-grid.grid2 .pos-product.has-qty .pos-inline-qty {
+  height: 30px !important;
+  min-height: 30px !important;
+  grid-template-columns: 36px 1fr 36px !important;
+  border-radius: 0 0 11px 11px !important;
+}
+.pos-grid.grid2 .pos-product.has-qty .pos-inline-qty button {
+  min-height: 30px !important;
+  font-size: 17px !important;
+}
+.pos-grid.grid2 .pos-product.has-qty .pos-inline-qty span {
+  font-size: 13px !important;
+  line-height: 30px !important;
+}
+
+/* List view mode: Tiêu đề -> Mã -> Giá bên trái, Cụm nút bên phải */
 .pos-grid.list {
   grid-template-columns: 1fr !important;
   gap: 8px !important;
 }
 .pos-grid.list .pos-product {
+  position: relative !important;
   display: block !important;
-  min-height: 96px !important;
+  min-height: 90px !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
 }
 .pos-grid.list .pos-product-main {
-  min-height: 84px !important;
+  min-height: 82px !important;
   display: grid !important;
-  grid-template-columns: 80px minmax(0, 1fr) !important;
+  grid-template-columns: 76px minmax(0, 1fr) !important;
   grid-template-rows: auto auto auto !important;
   column-gap: 12px !important;
   row-gap: 2px !important;
   align-content: center !important;
-  padding: 8px 52px 8px 8px !important;
+  padding: 6px 98px 6px 6px !important;
 }
 .pos-grid.list .pos-product-image {
   grid-column: 1 !important;
   grid-row: 1 / span 3 !important;
-  width: 80px !important;
-  height: 80px !important;
+  width: 76px !important;
+  height: 76px !important;
   margin-bottom: 0 !important;
 }
 .pos-grid.list .pos-stock-badge {
@@ -3576,6 +3827,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   grid-column: 2 !important;
   grid-row: 2 !important;
   margin-bottom: 0 !important;
+  font-size: 11px !important;
 }
 .pos-grid.list .pos-prod-price-row {
   grid-column: 2 !important;
@@ -3584,6 +3836,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   min-height: 0 !important;
   margin-top: 2px !important;
 }
+.pos-grid.list .pos-prod-price {
+  font-size: 14px !important;
+}
 .pos-grid.list .pos-add {
   top: 50% !important;
   bottom: auto !important;
@@ -3591,12 +3846,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   right: 10px !important;
   width: 36px !important;
   height: 36px !important;
+  font-size: 22px !important;
+  border-radius: 8px !important;
 }
 .pos-grid.list .pos-inline-qty {
+  position: absolute !important;
   top: 50% !important;
   bottom: auto !important;
   transform: translateY(-50%) !important;
   right: 10px !important;
+  width: 86px !important;
+  max-width: 86px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  border: 1px solid #cfe0f4 !important;
+  border-radius: 8px !important;
+  grid-template-columns: 28px 28px 28px !important;
+  margin: 0 !important;
+}
+.pos-grid.list .pos-inline-qty button {
+  height: 30px !important;
+  min-height: 30px !important;
+  font-size: 16px !important;
 }
 
 /* 3. Navigation Bar: Bán hàng nổi hơn, màu xanh đồng bộ như chữ Kho */
@@ -4149,5 +4420,312 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   padding: 2px 6px;
   border-radius: 6px;
   border: 1px solid #bbf7d0;
+}
+
+/* ===================================================================
+   QBIZ MICRO-EFFECTS: AMBIENT VITALITY & POLISH (LOCAL TEST PHASE)
+   Subtle, elegant animations to make POS & Dashboard feel alive
+   without changing layout or modifying existing component sizes.
+   =================================================================== */
+
+/* 1. HIỆU ỨNG PHÁT SÁNG CHỖ BÁN HÀNG (DASHBOARD & POS) */
+/* Nút Bán hàng chính trên Dashboard: Vệt sáng lướt sang trọng định kỳ */
+.quick-tile.quick-hero .quick-hero-main {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.quick-tile.quick-hero .quick-hero-main::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -70%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.35) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  animation: qbiz-shimmer-sweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+/* Hiệu ứng nháy (Pulse/Breathe) rõ rệt, sống động cho chữ Bán hàng */
+.dashboard-quick-grid .quick-tile.quick-hero .quick-hero-main strong {
+  animation: qbiz-ban-hang-pulse 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes qbiz-ban-hang-pulse {
+  0%, 100% {
+    color: #0f3568;
+    text-shadow: none;
+    transform: scale(1);
+  }
+  50% {
+    color: #0284c7;
+    text-shadow: 0 0 10px rgba(2, 132, 199, 0.5);
+    transform: scale(1.06);
+  }
+}
+
+/* Hiệu ứng nhịp thở đồng bộ cho logo giỏ hàng */
+.dashboard-quick-grid .quick-hero-main .qt-ico {
+  animation: qbiz-cart-ico-pulse 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes qbiz-cart-ico-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.15);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 6px 18px rgba(2, 132, 199, 0.4);
+  }
+}
+
+/* Thanh giỏ hàng POS đáy màn hình: Hào quang sáng êm dịu khi có hàng */
+.pos-cart-bar {
+  animation: qbiz-cart-glow 3.5s ease-in-out infinite alternate;
+}
+@keyframes qbiz-cart-glow {
+  0% {
+    box-shadow: 0 8px 24px rgba(20, 54, 99, 0.14), 0 0 0 1px rgba(37, 99, 235, 0.15);
+  }
+  100% {
+    box-shadow: 0 10px 28px rgba(20, 54, 99, 0.18), 0 0 16px rgba(37, 99, 235, 0.32);
+  }
+}
+
+/* Nút Tiếp tục / Thanh toán trên thanh giỏ hàng: Vệt sáng lướt nhẹ */
+.pos-cart-bar .primary-btn,
+.flow-primary {
+  position: relative;
+  overflow: hidden;
+}
+.pos-cart-bar .primary-btn::after,
+.flow-primary:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -70%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  animation: qbiz-shimmer-sweep 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes qbiz-shimmer-sweep {
+  0%, 75% {
+    left: -70%;
+  }
+  100% {
+    left: 150%;
+  }
+}
+
+/* Thẻ sản phẩm đang có số lượng trong giỏ: Viền hào quang xanh êm ái */
+.pos-product.has-qty {
+  box-shadow: 0 0 0 1.5px #3b82f6, 0 4px 14px rgba(37, 99, 235, 0.16) !important;
+  transition: box-shadow 0.25s ease, transform 0.15s ease;
+}
+
+.qbiz-ai-trigger {
+  animation: qbiz-ai-bubble-pulse 3.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.15s ease, background 0.2s ease;
+}
+body:has(.pos-cart-bar) .qbiz-ai-trigger {
+  bottom: calc(130px + env(safe-area-inset-bottom, 0px)) !important;
+}
+@keyframes qbiz-ai-bubble-pulse {
+  0% {
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.22), 0 0 0 0 rgba(56, 189, 248, 0.45);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.28), 0 0 0 7px rgba(56, 189, 248, 0);
+  }
+  100% {
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.22), 0 0 0 0 rgba(56, 189, 248, 0);
+  }
+}
+.qbiz-ai-trigger .ai-sparkle-icon {
+  animation: qbiz-sparkle-twinkle 4s ease-in-out infinite;
+}
+@keyframes qbiz-sparkle-twinkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.4));
+  }
+  50% {
+    transform: scale(1.12) rotate(8deg);
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.85));
+  }
+}
+
+/* 3. HIỆU ỨNG FLASH XÚC GIÁC (TACTILE MICRO-FLASH KHI BẤM NÚT) */
+.pos-add:active,
+.pos-inline-qty button:active,
+.quick-tile:active {
+  transform: scale(0.92) !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25) !important;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+/* 4. CHẤM TRẠNG THÁI SỐNG (LIVE BREATHING STATUS DOT) */
+.sync-pill .dot,
+.live-status-dot {
+  animation: qbiz-live-dot 2.4s infinite;
+}
+@keyframes qbiz-live-dot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55);
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0);
+  }
+}
+
+/* 5. KHỐI DOANH THU XANH: VỆT SÁNG LƯỚT MẶT KÍNH & TĂNG TRƯỞNG LỢI NHUẬN */
+.dashboard-sales-hero {
+  position: relative !important;
+  overflow: hidden !important;
+}
+.dashboard-today,
+.dashboard-month,
+.dashboard-sales-subcards {
+  position: relative;
+  z-index: 1;
+}
+.dashboard-sales-hero::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  top: -60%;
+  left: -80%;
+  width: 45%;
+  height: 220%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  animation: qbiz-hero-glass-sweep 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+@keyframes qbiz-hero-glass-sweep {
+  0%, 68% {
+    left: -80%;
+  }
+  100% {
+    left: 160%;
+  }
+}
+
+/* Icon mũi tên Lợi nhuận nhích nhẹ lên theo nhịp tăng trưởng */
+.dashboard-sales-subcard:nth-child(2) i .ui-icon,
+.dashboard-sales-subcard[data-report-open] i .ui-icon {
+  animation: qbiz-profit-trend 3.2s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+}
+@keyframes qbiz-profit-trend {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-2.5px) scale(1.08);
+  }
+  48% {
+    transform: translateY(0);
+  }
+}
+
+.dashboard-sales-subcard:active {
+  transform: scale(0.96);
+  transition: transform 0.08s ease;
+}
+
+/* 6. THANH HEADER: CHUÔNG THÔNG BÁO LẮC ĐỊNH KỲ & BADGE THỞ HÀO QUANG */
+.header-bell:has(b) .ui-icon,
+.header-bell.has-alerts .ui-icon {
+  transform-origin: top center;
+  animation: qbiz-bell-swing 5.5s ease-in-out infinite;
+}
+@keyframes qbiz-bell-swing {
+  0%, 65%, 100% {
+    transform: rotate(0deg);
+  }
+  70% {
+    transform: rotate(12deg);
+  }
+  75% {
+    transform: rotate(-10deg);
+  }
+  80% {
+    transform: rotate(7deg);
+  }
+  85% {
+    transform: rotate(-4deg);
+  }
+  90% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Chấm số đỏ thông báo thở hào quang */
+.header-bell b {
+  animation: qbiz-badge-pulse 2.8s infinite;
+}
+@keyframes qbiz-badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(216, 76, 67, 0.65);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 4px rgba(216, 76, 67, 0);
+  }
+}
+
+/* Phản hồi xúc giác vi mô cho các nút trên Header */
+.header-shortcut,
+.user-badge-btn,
+.header-bell {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.header-shortcut:active,
+.user-badge-btn:active,
+.header-bell:active {
+  transform: scale(0.92) !important;
+}
+
+/* Hỗ trợ chế độ tiết kiệm chuyển động */
+@media (prefers-reduced-motion: reduce) {
+  .quick-tile.quick-hero .quick-hero-main::after,
+  .dashboard-sales-hero::after,
+  .dashboard-sales-subcard:nth-child(2) i .ui-icon,
+  .dashboard-sales-subcard[data-report-open] i .ui-icon,
+  .header-bell:has(b) .ui-icon,
+  .header-bell b,
+  .pos-cart-bar,
+  .pos-cart-bar .primary-btn::after,
+  .flow-primary::after,
+  .qbiz-ai-trigger,
+  .qbiz-ai-trigger .ai-sparkle-icon,
+  .sync-pill .dot {
+    animation: none !important;
+  }
 }
 

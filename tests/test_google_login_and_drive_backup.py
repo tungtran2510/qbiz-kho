@@ -361,7 +361,10 @@ def test_ui_public_entry_and_backup_center(page):
     print("  [PASS] Public Entry Hero Card contains prominent 'Tiếp tục với Google' button.")
 
     # 2. Header Auth Modal
-    page.locator('[data-action="open-auth-modal"]').first.click()
+    if page.locator('.public-entry-hero [data-action="open-auth-modal"]').count() > 0:
+        page.locator('.public-entry-hero [data-action="open-auth-modal"]').click()
+    else:
+        page.locator('[data-action="open-auth-modal"]').first.click(force=True)
     page.wait_for_selector("#modalRoot .google-auth-btn")
     modal_google_btn = page.locator("#modalRoot #modalGoogleSignInBtn")
     assert modal_google_btn.is_visible(), "Google button missing inside Auth Modal!"

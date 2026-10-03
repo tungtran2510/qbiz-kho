@@ -1,0 +1,152 @@
+[
+  {
+    "test_id": "VAR_01",
+    "name": "User Exact Compound Query (Top Selling This Week + Revenue This Month + Restock This Week)",
+    "prompt": "Tuần này có những cái gì bán tốt và doanh thu tháng này là bao nhiêu cũng như là cái nào nên nhập tuần này",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 1824,
+    "preview": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **"
+  },
+  {
+    "test_id": "VAR_02",
+    "name": "Mixed Timeframe: Revenue Today + Best Seller This Week",
+    "prompt": "Hôm nay bán được bao nhiêu tiền và tuần này mặt hàng nào bán chạy nhất?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 715,
+    "preview": "Doanh số **hôm nay**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**\n\n---\n\n📊 **Hiệu suất mặt hàng hôm nay (02/10/2026):**\n\nTrong **hôm nay** (02/10/2026), cửa hàng "
+  },
+  {
+    "test_id": "VAR_03",
+    "name": "Inventory Warning + Revenue This Week",
+    "prompt": "Có mặt hàng nào sắp hết hàng không và doanh thu tuần này là bao nhiêu?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 1164,
+    "preview": "Hiện có **3 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**\n  - Còn tồn: **0 chiếc** (báo động ≤ **1 chiếc**)\n• **Gối cổ sáng chế F6**\n  - Còn tồn: **0 cái** (báo động "
+  },
+  {
+    "test_id": "VAR_04",
+    "name": "Slow-Moving / Dead Capital + Month Revenue",
+    "prompt": "Mặt hàng nào bán chậm hoặc chưa bán được tháng này và doanh thu tháng này là bao nhiêu?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 747,
+    "preview": "📊 **Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):**\n\nTrong **tháng này** (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 "
+  },
+  {
+    "test_id": "VAR_05",
+    "name": "Customer Debt Aging + Top Debtors",
+    "prompt": "Cho tôi xem báo cáo tuổi nợ của khách hàng và những ai đang nợ quá hạn?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 359,
+    "preview": "📊 **Báo cáo Phân tích Tuổi nợ Phải thu:**\n- Tổng số khách hàng đang nợ: **1 khách**\n- **Tổng công nợ phải thu:** **1.200.000 ₫**\n\n⏳ **Phân bổ theo khoảng thời gian:**\n• 🟢 **Trong h"
+  },
+  {
+    "test_id": "VAR_06",
+    "name": "Specific Customer Debt + Transaction History",
+    "prompt": "Khách hàng anh Nam còn nợ bao nhiêu tiền và lịch sử mua hàng như thế nào?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 246,
+    "preview": "👤 **Thông tin công nợ khách hàng: Nguyễn Văn Nam**\n- Mã khách: `KH-NAM01` | ĐT: 0988776655\n- **Tổng công nợ hiện tại:** **1.200.000 ₫**\n- Hạn mức công nợ: 5.000.000 ₫\n✅ **Hạn mức c"
+  },
+  {
+    "test_id": "VAR_07",
+    "name": "Operating Expenses Breakdown by Category",
+    "prompt": "Báo cáo chi phí vận hành tháng này theo từng danh mục và phương thức thanh toán",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 222,
+    "preview": "Doanh số **tháng này**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**\n\n---\n\n💰 **Báo cáo Chi phí Vận hành (Tháng này):**\n- **Tổng chi phí:** **0 ₫** (0 khoản chi)\n-"
+  },
+  {
+    "test_id": "VAR_08",
+    "name": "Stock Inquiry + Restock Advice for Red Bull",
+    "prompt": "Kiểm tra sản phẩm Nước tăng lực Red Bull 250ml còn bao nhiêu và có cần nhập thêm không?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 1072,
+    "preview": "Hiện có **3 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**\n  - Còn tồn: **0 chiếc** (báo động ≤ **1 chiếc**)\n• **Gối cổ sáng chế F6**\n  - Còn tồn: **0 cái** (báo động "
+  },
+  {
+    "test_id": "VAR_09",
+    "name": "Replenishment Proposal Generation",
+    "prompt": "Lập đề xuất nhập cho những mặt hàng cần nhập nhất",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 149,
+    "preview": "Đã tạo đề xuất nhập kho: **Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*"
+  },
+  {
+    "test_id": "VAR_10",
+    "name": "Comma-Separated Multi-Clause (Today Revenue, Week Best Seller, Urgent Restock)",
+    "prompt": "Doanh thu hôm nay, hàng bán chạy tuần này, và những món cần nhập hàng gấp",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 1822,
+    "preview": "Doanh số **hôm nay**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**\n\n---\n\n📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2"
+  },
+  {
+    "test_id": "VAR_11",
+    "name": "Business Period Review for Week",
+    "prompt": "Tổng kết tình hình kinh doanh tuần này",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 85,
+    "preview": "Doanh số **tuần này**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**"
+  },
+  {
+    "test_id": "VAR_12",
+    "name": "Overdue Debt Inquiry",
+    "prompt": "Có khách hàng nào nợ quá hạn không?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 359,
+    "preview": "📊 **Báo cáo Phân tích Tuổi nợ Phải thu:**\n- Tổng số khách hàng đang nợ: **1 khách**\n- **Tổng công nợ phải thu:** **1.200.000 ₫**\n\n⏳ **Phân bổ theo khoảng thời gian:**\n• 🟢 **Trong h"
+  },
+  {
+    "test_id": "VAR_13",
+    "name": "Expense Incurred in Period",
+    "prompt": "Tháng này đã chi bao nhiêu tiền chi phí vận hành?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 222,
+    "preview": "Doanh số **tháng này**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**\n\n---\n\n💰 **Báo cáo Chi phí Vận hành (Tháng này):**\n- **Tổng chi phí:** **0 ₫** (0 khoản chi)\n-"
+  },
+  {
+    "test_id": "VAR_14",
+    "name": "Top Performer Single Day",
+    "prompt": "Mặt hàng nào bán chạy nhất hôm nay?",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 624,
+    "preview": "📊 **Hiệu suất mặt hàng hôm nay (02/10/2026):**\n\nTrong **hôm nay** (02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát"
+  },
+  {
+    "test_id": "VAR_15",
+    "name": "Latest Transaction & Receipt Details",
+    "prompt": "Tìm hóa đơn bán hàng gần nhất",
+    "status": "PASS",
+    "missing": [],
+    "has_format_issues": false,
+    "text_length": 203,
+    "preview": "🧾 **Thông tin hóa đơn bán hàng gần nhất:**\n\n- Mã đơn: **HD-20261002-001**\n- Khách hàng: **Nguyễn Văn Nam**\n- Tổng tiền: **350.000 ₫**\n- Trạng thái: **Đã thanh toán**\n- Thời gian: 2"
+  }
+]

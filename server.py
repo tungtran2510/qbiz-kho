@@ -628,6 +628,13 @@ class QBizHandler(SimpleHTTPRequestHandler):
         '.ttf': 'font/ttf',
     })
 
+    def __init__(self, *args, **kwargs):
+        qa_snapshot_dir = os.environ.get('QBIZ_QA_SNAPSHOT_DIR')
+        if qa_snapshot_dir and os.path.exists(qa_snapshot_dir):
+            super().__init__(*args, directory=qa_snapshot_dir, **kwargs)
+        else:
+            super().__init__(*args, **kwargs)
+
     def end_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Cache-Control', 'no-cache, must-revalidate')
@@ -783,16 +790,34 @@ class QBizHandler(SimpleHTTPRequestHandler):
                 'data': purchases
             })
 
+        if self.path in ('/api/ai-deepseek', '/api/ai-deepseek-health'):
+            deepseek_key = os.environ.get('DEEPSEEK_API_KEY', '')
+            has_key = bool(deepseek_key and len(deepseek_key) > 10)
+            deepseek_model = os.environ.get('DEEPSEEK_MODEL', 'deepseek-chat')
+            return self._send_json_response(200, {
+                'status': 'active' if has_key else 'key_missing',
+                'gateway': 'QBIZ_KHO_DEEPSEEK_GATEWAY',
+                'appScope': 'qbiz-kho',
+                'hasKey': has_key,
+                'provider': 'DEEPSEEK',
+                'model': deepseek_model,
+                'aiArchVersion': 'PHASE3'
+            })
+
         if self.path in ('/api/ai-gateway', '/api/local-ai-health'):
-            # Health check
+            # Health check for live Ollama instance + DeepSeek availability
             is_healthy = False
+            model_present = False
+            active_model = os.environ.get('OLLAMA_MODEL', 'qwen2.5:1.5b')
+            deepseek_key = os.environ.get('DEEPSEEK_API_KEY', '')
+            has_deepseek = bool(deepseek_key and len(deepseek_key) > 10)
             try:
-                req = urllib.request.Request(
-                    f"{PC_GATEWAY_URL}/health",
-                    headers={'X-QBiz-Gateway-Token': GATEWAY_SECRET}
-                )
-                with urllib.request.urlopen(req, timeout=2) as r:
+                req = urllib.request.Request('http://127.0.0.1:11434/api/tags')
+                with urllib.request.urlopen(req, timeout=3) as r:
                     is_healthy = (r.status == 200)
+                    tag_data = json.loads(r.read().decode('utf-8'))
+                    model_names = [m.get('name') for m in tag_data.get('models', [])]
+                    model_present = any(active_model in m for m in model_names)
             except Exception:
                 pass
             return self._send_json_response(200, {
@@ -800,7 +825,12 @@ class QBizHandler(SimpleHTTPRequestHandler):
                 'gateway': 'QBIZ_KHO_SERVER_AI_GATEWAY',
                 'appScope': 'qbiz-kho',
                 'pcLocalHealthy': is_healthy,
-                'cloudFallbackReady': True
+                'modelPresent': model_present,
+                'deepseekHealthy': has_deepseek,
+                'defaultProvider': 'DEEPSEEK' if has_deepseek else 'LOCAL_AI',
+                'provider': 'DEEPSEEK' if has_deepseek else 'LOCAL_AI',
+                'model': os.environ.get('DEEPSEEK_MODEL', 'deepseek-chat') if has_deepseek else active_model,
+                'aiArchVersion': 'PHASE3'
             })
 
         if self.path == '/api/invoice-gateway' or self.path.startswith('/api/invoice-gateway'):
@@ -941,57 +971,303 @@ class QBizHandler(SimpleHTTPRequestHandler):
             client_origin = body.get('clientOrigin', 'PHONE')
             shop_id = body.get('shopId', '00000000-0000-0000-0000-000000000001')
 
-            # Forward to PC Local AI Gateway
-            local_result = None
-            local_err = None
-            try:
-                target_req = urllib.request.Request(
-                    f"{PC_GATEWAY_URL}/api/local-ai",
-                    data=json.dumps({
-                        'prompt': prompt,
-                        'appScope': 'qbiz-kho',
-                        'shopId': shop_id,
-                        'clientOrigin': client_origin,
-                        'context': body.get('context', {})
-                    }).encode('utf-8'),
-                    headers={
-                        'Content-Type': 'application/json',
-                        'X-QBiz-Gateway-Token': GATEWAY_SECRET
-                    }
-                )
-                with urllib.request.urlopen(target_req, timeout=3) as resp:
-                    local_result = json.loads(resp.read().decode('utf-8'))
-            except urllib.error.HTTPError as e:
-                try:
-                    local_result = json.loads(e.read().decode('utf-8'))
-                except Exception:
-                    local_err = str(e)
-            except Exception as e:
-                local_err = str(e)
+            # Direct Ollama Local AI Call on PC (Server-Side Provider Gateway)
+            start_t = time.time()
+            ollama_url = os.environ.get('OLLAMA_ENDPOINT', 'http://127.0.0.1:11434').rstrip('/')
+            ollama_model = os.environ.get('OLLAMA_MODEL', 'qwen2.5:1.5b')
 
-            if local_result and local_result.get('success') and not local_result.get('fallbackRequired'):
-                return self._send_json_response(200, {
-                    'success': True,
-                    'provider': 'LOCAL_AI',
-                    'model': local_result.get('model', 'qwen3.5:2b'),
-                    'finalProvider': 'LOCAL_AI',
-                    'finalModel': local_result.get('model', 'qwen3.5:2b'),
-                    'confidence': local_result.get('confidence', 0.95),
-                    'latencyMs': local_result.get('latencyMs', 0),
-                    'structuredResult': local_result.get('structuredResult'),
-                    'compactTrace': local_result.get('compactTrace', 'Local Qwen'),
+            print(f"[AI-Gateway] [{client_origin}] Received prompt ({len(prompt)} chars), forwarding to Ollama ({ollama_model})...")
+            sys.stdout.flush()
+
+            try:
+                messages = [
+                    {
+                        'role': 'system',
+                        'content': 'Bạn là Trợ lý vận hành QBiz Kho (App Scope: qbiz-kho). Nhiệm vụ: Phân tích câu hỏi người dùng, đối chiếu danh mục công cụ và trả về DUY NHẤT 1 JSON object hợp lệ theo schema quy định có mảng "intents". Tuyệt đối không sinh thêm văn bản hay suy nghĩ bên ngoài JSON.'
+                    },
+                    {'role': 'user', 'content': prompt}
+                ]
+                ollama_payload = {
+                    'model': ollama_model,
+                    'messages': messages,
+                    'format': 'json',
+                    'stream': False,
+                    'options': {
+                        'num_predict': 220,
+                        'num_thread': 10,
+                        'temperature': 0.1
+                    },
+                    'keep_alive': '30m'
+                }
+                target_req = urllib.request.Request(
+                    f"{ollama_url}/api/chat",
+                    data=json.dumps(ollama_payload).encode('utf-8'),
+                    headers={'Content-Type': 'application/json'}
+                )
+                with urllib.request.urlopen(target_req, timeout=22.0) as resp:
+                    ollama_res = json.loads(resp.read().decode('utf-8'))
+                    raw_content = ollama_res.get('message', {}).get('content', '').strip()
+                    latency_ms = int((time.time() - start_t) * 1000)
+                    print(f"[AI-Gateway] [{client_origin}] Ollama responded in {latency_ms}ms with status 200.")
+                    sys.stdout.flush()
+                    try:
+                        structured = json.loads(raw_content)
+                    except Exception:
+                        structured = None
+                    return self._send_json_response(200, {
+                        'success': True,
+                        'provider': 'LOCAL_AI',
+                        'model': ollama_model,
+                        'finalProvider': 'LOCAL_AI',
+                        'finalModel': ollama_model,
+                        'confidence': 0.95,
+                        'latencyMs': latency_ms,
+                        'rawText': raw_content,
+                        'structuredResult': structured,
+                        'compactTrace': f"Ollama {ollama_model} ({latency_ms}ms)",
+                        'origin': client_origin
+                    })
+            except Exception as e:
+                latency_ms = int((time.time() - start_t) * 1000)
+                err_str = str(e).lower()
+                status_code = 503
+                if 'not found' in err_str:
+                    fallback_reason = 'LOCAL_MODEL_MISSING'
+                elif 'timed out' in err_str or 'timeout' in err_str:
+                    fallback_reason = 'LOCAL_MODEL_TIMEOUT'
+                    status_code = 504
+                else:
+                    fallback_reason = 'OLLAMA_OFFLINE'
+                print(f"[AI-Gateway] [{client_origin}] Ollama call failed ({fallback_reason}) in {latency_ms}ms: {e}")
+                sys.stdout.flush()
+                return self._send_json_response(status_code, {
+                    'success': False,
+                    'error': fallback_reason,
+                    'fallbackReason': fallback_reason,
+                    'message': f"Ollama gateway error: {e}",
+                    'latencyMs': latency_ms,
                     'origin': client_origin
                 })
 
-            # Seamless Gemini Fallback
-            fallback_reason = 'LOCAL_OFFLINE'
-            if local_result and local_result.get('fallbackReason'):
-                fallback_reason = local_result['fallbackReason']
-            elif local_err:
-                fallback_reason = 'TIMEOUT' if 'timed out' in str(local_err).lower() else 'LOCAL_OFFLINE'
+        # POST /api/ai-deepseek -> DeepSeek V3 primary engine (replaces 3-layer chain)
+        if self.path == '/api/ai-deepseek' or self.path.startswith('/api/ai-deepseek'):
+            content_len = int(self.headers.get('Content-Length', 0))
+            body_bytes = self.rfile.read(content_len)
+            try:
+                body = json.loads(body_bytes.decode('utf-8'))
+            except Exception:
+                return self._send_json_response(400, {'error': 'INVALID_JSON'})
 
-            gemini_res = mock_gemini_fallback(prompt, fallback_reason, client_origin)
-            return self._send_json_response(200, gemini_res)
+            app_scope = body.get('appScope')
+            if app_scope != 'qbiz-kho':
+                return self._send_json_response(403, {
+                    'error': 'FORBIDDEN_SCOPE',
+                    'message': "Strictly locked to 'qbiz-kho'"
+                })
+
+            prompt = body.get('prompt') or body.get('promptText') or ''
+            if not prompt:
+                return self._send_json_response(400, {'error': 'MISSING_PROMPT'})
+
+            is_retry = body.get('isRetry', False)
+            client_origin = body.get('clientOrigin', 'PC')
+
+            deepseek_key = os.environ.get('DEEPSEEK_API_KEY', '')
+            if not deepseek_key:
+                print(f"[AI-DeepSeek] [{client_origin}] ADMIN WARNING: No DEEPSEEK_API_KEY configured.")
+                sys.stdout.flush()
+                return self._send_json_response(503, {
+                    'success': False,
+                    'error': 'DEEPSEEK_KEY_NOT_CONFIGURED',
+                    'message': 'No DEEPSEEK_API_KEY environment variable configured on server.'
+                })
+
+            start_t = time.time()
+            deepseek_model = os.environ.get('DEEPSEEK_MODEL', 'deepseek-chat')
+            deepseek_url = 'https://api.deepseek.com/chat/completions'
+
+            retry_label = ' (RETRY)' if is_retry else ''
+            print(f"[AI-DeepSeek] [{client_origin}]{retry_label} Calling DeepSeek ({deepseek_model}), prompt ({len(prompt)} chars)...")
+            sys.stdout.flush()
+
+            try:
+                deepseek_payload = json.dumps({
+                    'model': deepseek_model,
+                    'messages': [
+                        {'role': 'system', 'content': 'You are QBiz Kho AI semantic planner. Always output a valid JSON object matching the requested schema.'},
+                        {'role': 'user', 'content': prompt}
+                    ],
+                    'temperature': 0.1,
+                    'response_format': {'type': 'json_object'},
+                }).encode('utf-8')
+                deepseek_req = urllib.request.Request(
+                    deepseek_url,
+                    data=deepseek_payload,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Authorization': f'Bearer {deepseek_key}',
+                    }
+                )
+                with urllib.request.urlopen(deepseek_req, timeout=18.0) as resp:
+                    deepseek_res = json.loads(resp.read().decode('utf-8'))
+                    raw_content = ''
+                    choices = deepseek_res.get('choices', [])
+                    if choices:
+                        raw_content = choices[0].get('message', {}).get('content', '')
+                    latency_ms = int((time.time() - start_t) * 1000)
+
+                    # Extract token usage for cost tracking
+                    usage = deepseek_res.get('usage', {})
+                    input_tokens = usage.get('prompt_tokens', 0)
+                    output_tokens = usage.get('completion_tokens', 0)
+                    # DeepSeek-V3 pricing: $0.27/M input, $1.10/M output (cache miss)
+                    cost_usd = (input_tokens * 0.27 + output_tokens * 1.10) / 1_000_000
+
+                    print(f"[AI-DeepSeek] [{client_origin}]{retry_label} DeepSeek responded in {latency_ms}ms. Tokens: {input_tokens}+{output_tokens}, Cost: ${cost_usd:.6f}")
+                    sys.stdout.flush()
+
+                    try:
+                        structured = json.loads(raw_content)
+                    except Exception:
+                        structured = None
+
+                    return self._send_json_response(200, {
+                        'success': True,
+                        'provider': 'DEEPSEEK',
+                        'model': deepseek_model,
+                        'finalProvider': 'DEEPSEEK',
+                        'finalModel': deepseek_model,
+                        'confidence': 0.95,
+                        'latencyMs': latency_ms,
+                        'rawText': raw_content,
+                        'structuredResult': structured,
+                        'compactTrace': f"DeepSeek {deepseek_model} ({latency_ms}ms)",
+                        'origin': client_origin,
+                        'tokenUsage': {'input': input_tokens, 'output': output_tokens},
+                        'estimatedCostUSD': round(cost_usd, 6),
+                    })
+            except Exception as e:
+                err_detail = str(e)
+                if hasattr(e, 'read'):
+                    try:
+                        err_detail += " - " + e.read().decode('utf-8')
+                    except Exception:
+                        pass
+                latency_ms = int((time.time() - start_t) * 1000)
+                print(f"[AI-DeepSeek] [{client_origin}]{retry_label} DeepSeek call failed in {latency_ms}ms: {err_detail}")
+                sys.stdout.flush()
+                return self._send_json_response(503, {
+                    'success': False,
+                    'error': 'DEEPSEEK_CALL_FAILED',
+                    'message': f"DeepSeek API error: {e}",
+                    'latencyMs': latency_ms,
+                    'origin': client_origin
+                })
+
+        # POST /api/ai-cloud-escalation -> Cloud AI fallback when local model fails
+        if self.path == '/api/ai-cloud-escalation' or self.path.startswith('/api/ai-cloud-escalation'):
+            content_len = int(self.headers.get('Content-Length', 0))
+            body_bytes = self.rfile.read(content_len)
+            try:
+                body = json.loads(body_bytes.decode('utf-8'))
+            except Exception:
+                return self._send_json_response(400, {'error': 'INVALID_JSON'})
+
+            app_scope = body.get('appScope')
+            if app_scope != 'qbiz-kho':
+                return self._send_json_response(403, {
+                    'error': 'FORBIDDEN_SCOPE',
+                    'message': "Strictly locked to 'qbiz-kho'"
+                })
+
+            prompt = body.get('prompt') or body.get('promptText') or ''
+            if not prompt:
+                return self._send_json_response(400, {'error': 'MISSING_PROMPT'})
+
+            escalation_reason = body.get('escalationReason', 'PROVIDER_RESPONSE_INVALID')
+            client_origin = body.get('clientOrigin', 'PHONE')
+
+            gemini_key = os.environ.get('GEMINI_API_KEY', '')
+            if not gemini_key:
+                print(f"[AI-Cloud-Escalation] [{client_origin}] No GEMINI_API_KEY configured, cannot escalate.")
+                sys.stdout.flush()
+                return self._send_json_response(503, {
+                    'success': False,
+                    'error': 'CLOUD_KEY_NOT_CONFIGURED',
+                    'message': 'No GEMINI_API_KEY environment variable configured on server.'
+                })
+
+            start_t = time.time()
+            configured_model = os.environ.get('GEMINI_MODEL', '').strip()
+            models_to_try = [m for m in [configured_model, 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-flash-latest'] if m]
+            
+            gemini_res = None
+            raw_content = ''
+            used_model = None
+            last_err = None
+
+            for gemini_model in models_to_try:
+                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={gemini_key}"
+                print(f"[AI-Cloud-Escalation] [{client_origin}] Escalating to Gemini ({gemini_model}), reason: {escalation_reason}, prompt ({len(prompt)} chars)...")
+                sys.stdout.flush()
+
+                try:
+                    gemini_payload = json.dumps({
+                        'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
+                        'generationConfig': {'temperature': 0.1, 'responseMimeType': 'application/json'}
+                    }).encode('utf-8')
+                    gemini_req = urllib.request.Request(
+                        gemini_url,
+                        data=gemini_payload,
+                        headers={'Content-Type': 'application/json'}
+                    )
+                    with urllib.request.urlopen(gemini_req, timeout=12.0) as resp:
+                        gemini_res = json.loads(resp.read().decode('utf-8'))
+                        candidates = gemini_res.get('candidates', [])
+                        if candidates:
+                            parts = candidates[0].get('content', {}).get('parts', [])
+                            if parts:
+                                raw_content = parts[0].get('text', '')
+                        used_model = gemini_model
+                        break
+                except Exception as e:
+                    last_err = e
+                    print(f"[AI-Cloud-Escalation] [{client_origin}] Gemini ({gemini_model}) attempt failed: {e}")
+                    sys.stdout.flush()
+                    continue
+
+            latency_ms = int((time.time() - start_t) * 1000)
+            if raw_content and used_model:
+                print(f"[AI-Cloud-Escalation] [{client_origin}] Gemini ({used_model}) succeeded in {latency_ms}ms.")
+                sys.stdout.flush()
+                try:
+                    structured = json.loads(raw_content)
+                except Exception:
+                    structured = None
+                return self._send_json_response(200, {
+                    'success': True,
+                    'provider': 'GEMINI',
+                    'model': used_model,
+                    'finalProvider': 'GEMINI',
+                    'finalModel': used_model,
+                    'confidence': 0.95,
+                    'latencyMs': latency_ms,
+                    'rawText': raw_content,
+                    'structuredResult': structured,
+                    'compactTrace': f"Gemini Cloud Escalation {used_model} ({latency_ms}ms)",
+                    'origin': client_origin,
+                    'escalationReason': escalation_reason
+                })
+            else:
+                print(f"[AI-Cloud-Escalation] [{client_origin}] All Gemini models failed in {latency_ms}ms: {last_err}")
+                sys.stdout.flush()
+                return self._send_json_response(503, {
+                    'success': False,
+                    'error': 'CLOUD_ESCALATION_FAILED',
+                    'message': f"Gemini cloud escalation error: {last_err}",
+                    'latencyMs': latency_ms,
+                    'origin': client_origin
+                })
 
         # POST /api/auth/session or /api/auth/token -> Issue server-controlled session token
         if self.path in ('/api/auth/session', '/api/auth/token'):

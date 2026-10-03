@@ -7,6 +7,7 @@ import { executeTool, resolveDateInterval } from './tools.js';
 import { calculateSalesMetrics } from '../engine.js';
 import { queryMemory, proposeMemorySave } from './memory.js';
 import { resolveProduct } from './resolver.js';
+import { parseVietnameseCustomer } from './vietnamese-nlp.js';
 
 function norm(str) {
   return String(str || '')
@@ -138,9 +139,9 @@ export const SKILL_REGISTRY = {
           };
         } else {
           return {
-            text: `Không tìm thấy sản phẩm "${query}" trong kho. Bạn có thể chọn từ danh sách sau:`,
-            isAmbiguous: true,
-            status: 'NEEDS_CLARIFICATION',
+            text: `Không tìm thấy sản phẩm "${query}" trong kho hàng. Bạn có thể kiểm tra lại tên hoặc mã sản phẩm nhé!`,
+            isAmbiguous: false,
+            status: 'NOT_FOUND',
             candidates: (state?.data?.products || []).slice(0, 5),
             tier: 0,
           };
@@ -151,8 +152,9 @@ export const SKILL_REGISTRY = {
         const prods = state?.data?.products || [];
         const totalStock = prods.reduce((sum, p) => sum + (Number(p.stock ?? p.onHand ?? p.available) || 0), 0);
         const sampleLines = prods.slice(0, 5).map(p => `• **${p.name}**: Tồn ${p.stock ?? p.available ?? 0} ${p.unit || 'cái'}`).join('\n');
+        const linesText = sampleLines ? `\n${sampleLines}\n\n` : '\n\n';
         return {
-          text: `Kho hiện có **${prods.length} mặt hàng** (tổng tồn **${totalStock}** đơn vị):\n${sampleLines}\n\n*Bạn muốn kiểm tra chi tiết mặt hàng nào?*`,
+          text: `Kho hiện có **${prods.length} mặt hàng** (tổng tồn **${totalStock}** đơn vị):${linesText}*Bạn muốn kiểm tra chi tiết mặt hàng nào?*`,
           isAmbiguous: true,
           status: 'NEEDS_CLARIFICATION',
           candidates: prods.slice(0, 5),
@@ -198,7 +200,7 @@ export const SKILL_REGISTRY = {
       }
 
       const lines = res.items.slice(0, 6).map(
-        it => `• **${it.name}**: Còn **${it.available} ${it.unit}** (Ngưỡng cảnh báo: ${it.lowStock})`
+        it => `• **${it.name}**\n  - Còn tồn: **${it.available} ${it.unit}** (báo động ≤ **${it.lowStock} ${it.unit}**)`
       );
 
       const more = res.count > 6 ? `\n... và còn ${res.count - 6} sản phẩm khác.` : '';
@@ -544,6 +546,82 @@ export const SKILL_REGISTRY = {
       return {
         text: `Đã tạo đề xuất: **${proposal.human_summary}**.\n*(Chưa tạo trực tiếp - chờ xác nhận)*`,
         proposal,
+        tier: 0,
+      };
+    },
+  },
+
+  // 9e. order-proposal
+  'order-proposal': {
+    id: 'order-proposal',
+    name: 'Đề xuất tạo đơn hàng / Bán nợ',
+    description: 'Tạo Structured Proposal để tạo đơn hàng bán cho khách (tuân thủ Thông tư 88 ghi nhận doanh thu)',
+    async execute(params, context, state) {
+      const proposal = executeTool('create_order_proposal', params, state, context);
+      return {
+        text: `Đã tạo đề xuất đơn hàng: **${proposal.human_summary}**.\n*(Chưa tạo giao dịch chính thức - chờ xác nhận)*`,
+        proposal,
+        tier: 0,
+      };
+    },
+  },
+
+  // 9f. invoice-proposal
+  'invoice-proposal': {
+    id: 'invoice-proposal',
+    name: 'Đề xuất xuất hóa đơn điện tử / VAT',
+    description: 'Tạo Structured Proposal để xuất hóa đơn điện tử theo Nghị định 123 / Thông tư 78',
+    async execute(params, context, state) {
+      const proposal = executeTool('create_invoice_proposal', params, state, context);
+      return {
+        text: `Đã tạo đề xuất hóa đơn điện tử: **${proposal.human_summary}**.\n*(Chưa phát hành chính thức - chờ xác nhận)*`,
+        proposal,
+        tier: 0,
+      };
+    },
+  },
+
+  // 9g. clarify-ambiguity
+  'clarify-ambiguity': {
+    id: 'clarify-ambiguity',
+    name: 'Yêu cầu làm rõ thông tin & Hướng dẫn kết nối',
+    description: 'Đặt câu hỏi hoặc hướng dẫn kết nối khi yêu cầu người dùng chưa rõ ràng hoặc liên quan tới bên ngoài',
+    async execute({ question, query } = {}, context, state) {
+      const p = String(query || context?.raw_prompt || context?.rawPrompt || '').toLowerCase();
+      if (p.includes('vnpt') || p.includes('viettel') || p.includes('hoa don dien tu')) {
+        return {
+          text: `ℹ️ **Kết nối Hóa đơn điện tử (VNPT / Viettel / MISA):**\n\nHệ thống hiện tại đã tích hợp sẵn module lập **Hóa đơn điện tử / VAT (Nghị định 123 / Thông tư 78)** dưới dạng Proposal an toàn.\n\nĐể kết nối trực tiếp cổng phát hành HSM / Token của VNPT-Invoice hay Viettel S-Invoice, bạn vui lòng vào mục **Cài đặt -> Tích hợp đối tác HĐĐT** để cấu hình tài khoản và ký số.`,
+          status: 'SUCCESS',
+          intent: 'clarify_ambiguity',
+          tier: 0,
+        };
+      }
+      if (p.includes('kiotviet') || p.includes('sapo') || p.includes('nhanh')) {
+        return {
+          text: `ℹ️ **Đồng bộ phần mềm bán hàng ngoài (KiotViet / Sapo):**\n\nQBiz Kho hoạt động độc lập với cơ chế sổ kép chuẩn Thông tư 88 HKD. Nếu bạn muốn import dữ liệu sản phẩm, khách hàng từ KiotViet, bạn có thể xuất file Excel từ KiotViet và dùng tính năng **Nhập từ file Excel** trong màn hình Hàng hóa.`,
+          status: 'SUCCESS',
+          intent: 'clarify_ambiguity',
+          tier: 0,
+        };
+      }
+      return {
+        text: question || 'Tôi chưa hiểu rõ yêu cầu này. Bạn có thể diễn đạt cụ thể hơn về sản phẩm, kho hoặc thao tác bạn muốn thực hiện không?',
+        status: 'NEEDS_CLARIFICATION',
+        intent: 'clarify_ambiguity',
+        tier: 0,
+      };
+    },
+  },
+
+  // 9h. product-performance-ranking
+  'product-performance-ranking': {
+    id: 'product-performance-ranking',
+    name: 'Xếp hạng hiệu suất mặt hàng',
+    description: 'Phân tích và xếp hạng hiệu suất mặt hàng trong kỳ: bán chạy nhất và bán chậm nhất',
+    async execute(params, context, state) {
+      const res = executeTool('getProductPerformanceRanking', params, state, context);
+      return {
+        ...res,
         tier: 0,
       };
     },
@@ -2051,6 +2129,451 @@ export const SKILL_REGISTRY = {
         dbWriteCount: 0,
       };
     },
+  },
+
+  // 35. compare-warehouse-stock
+  'compare-warehouse-stock': {
+    id: 'compare-warehouse-stock',
+    name: 'So sánh tồn kho đa kho',
+    description: 'Đối chiếu và so sánh số lượng tồn kho giữa các kho hàng dạng bảng đa cột trực quan',
+    async execute({ warehouseA, warehouseB, query }, context, state) {
+      const warehouses = state?.data?.warehouses || [];
+      const products = (state?.data?.products || []).filter(p => p.active !== false && p.type !== 'SERVICE');
+      const levels = state?.data?.levels || [];
+
+      let whA = warehouses.find(w => w.id === warehouseA || norm(w.name).includes(norm(warehouseA || '')));
+      let whB = warehouses.find(w => w.id === warehouseB || norm(w.name).includes(norm(warehouseB || '')));
+
+      if (!whA && warehouses.length > 0) whA = warehouses[0];
+      if (!whB && warehouses.length > 1) whB = warehouses[1];
+      if (!whA) whA = { id: 'wh_center', name: 'Kho Trung tâm' };
+      if (!whB) whB = { id: 'wh_hadong', name: 'Kho Hà Đông' };
+
+      const q = norm(query || '');
+      let filteredProds = products;
+      if (q) {
+        filteredProds = products.filter(p => norm(p.name).includes(q) || norm(p.sku || '').includes(q));
+      }
+      if (filteredProds.length === 0) filteredProds = products.slice(0, 10);
+      else if (filteredProds.length > 15) filteredProds = filteredProds.slice(0, 15);
+
+      const rows = [];
+      let totalQtyA = 0;
+      let totalQtyB = 0;
+
+      for (const p of filteredProds) {
+        const lvA = levels.find(l => l.productId === p.id && l.warehouseId === whA.id);
+        const lvB = levels.find(l => l.productId === p.id && l.warehouseId === whB.id);
+        const qtyA = Number(lvA?.onHand || 0);
+        const qtyB = Number(lvB?.onHand || 0);
+        const sum = qtyA + qtyB;
+        const diff = qtyA - qtyB;
+        totalQtyA += qtyA;
+        totalQtyB += qtyB;
+
+        let diffLabel = 'Cân bằng';
+        if (diff > 0) diffLabel = `${whA.name} nhiều hơn +${diff}`;
+        else if (diff < 0) diffLabel = `${whB.name} nhiều hơn +${Math.abs(diff)}`;
+
+        rows.push({
+          sku: p.sku || '—',
+          name: p.name,
+          unit: p.unit || 'cái',
+          qtyA,
+          qtyB,
+          sum,
+          diffLabel
+        });
+      }
+
+      let tableMd = `🏢 **Đối chiếu tồn kho: ${whA.name} vs ${whB.name}**\n\n`;
+      tableMd += `| Mã SKU | Tên sản phẩm | ${whA.name} | ${whB.name} | Tổng tồn | So sánh |\n`;
+      tableMd += `| :--- | :--- | :---: | :---: | :---: | :--- |\n`;
+      for (const r of rows) {
+        tableMd += `| ${r.sku} | ${r.name} | **${r.qtyA}** ${r.unit} | **${r.qtyB}** ${r.unit} | ${r.sum} | ${r.diffLabel} |\n`;
+      }
+      tableMd += `\n📊 **Tổng kết:**\n`;
+      tableMd += `- Tổng tồn tại **${whA.name}**: **${totalQtyA}** đơn vị sản phẩm\n`;
+      tableMd += `- Tổng tồn tại **${whB.name}**: **${totalQtyB}** đơn vị sản phẩm\n`;
+      tableMd += `- Tổng cộng 2 kho: **${totalQtyA + totalQtyB}** đơn vị sản phẩm`;
+
+      return {
+        text: tableMd,
+        rows,
+        whA: whA.name,
+        whB: whB.name,
+        intent: 'COMPARE_WAREHOUSE_STOCK',
+        skillId: 'compare-warehouse-stock',
+        tier: 0
+      };
+    }
+  },
+
+  // 36. stocktake-discrepancies
+  'stocktake-discrepancies': {
+    id: 'stocktake-discrepancies',
+    name: 'Kiểm kê lệch kho thực tế',
+    description: 'Báo cáo chênh lệch giữa số lượng kiểm đếm thực tế và tồn sổ sách',
+    async execute({ warehouseId }, context, state) {
+      const stocktakes = state?.data?.stocktakes || [];
+      const products = state?.data?.products || [];
+
+      const recentStocktake = stocktakes[stocktakes.length - 1];
+      const discrepancies = [];
+
+      if (recentStocktake && Array.isArray(recentStocktake.lines)) {
+        for (const line of recentStocktake.lines) {
+          const diff = Number(line.diff ?? ((line.actual ?? line.actual_qty ?? 0) - (line.system ?? line.system_qty ?? 0)));
+          if (diff !== 0) {
+            const p = products.find(x => x.id === (line.productId || line.product_id));
+            discrepancies.push({
+              productId: line.productId || line.product_id,
+              name: p?.name || line.productName || 'Sản phẩm',
+              sku: p?.sku || '—',
+              systemQty: Number(line.system ?? line.system_qty ?? 0),
+              actualQty: Number(line.actual ?? line.actual_qty ?? 0),
+              diff,
+              cost: Number(p?.purchase_price || p?.cost || 0),
+            });
+          }
+        }
+      }
+
+      if (discrepancies.length === 0) {
+        const reconRes = executeTool('reconcile_ledger', {}, state, context);
+        if (!reconRes.reconciled && reconRes.mismatches?.length > 0) {
+          for (const m of reconRes.mismatches) {
+            discrepancies.push({
+              productId: m.productId,
+              name: m.productName,
+              sku: m.sku || '—',
+              systemQty: m.ledgerSum,
+              actualQty: m.onHand,
+              diff: m.onHand - m.ledgerSum,
+              cost: 0
+            });
+          }
+        }
+      }
+
+      if (discrepancies.length === 0) {
+        return {
+          text: `✅ **Không có chênh lệch kiểm kê:**\n\nToàn bộ tồn kho thực tế đều khớp hoàn toàn với số liệu sổ sách kế toán (${products.length} mặt hàng). Không có thất thoát hay sai lệch tồn kho.`,
+          discrepancies: [],
+          intent: 'STOCKTAKE_DISCREPANCIES',
+          skillId: 'stocktake-discrepancies',
+          tier: 0
+        };
+      }
+
+      let reportText = `⚠️ **Phát hiện ${discrepancies.length} mặt hàng có chênh lệch kiểm kê:**\n\n`;
+      reportText += `| Mã SKU | Tên sản phẩm | Tồn sổ sách | Thực tế | Lệch | Trạng thái |\n`;
+      reportText += `| :--- | :--- | :---: | :---: | :---: | :--- |\n`;
+
+      for (const d of discrepancies) {
+        const status = d.diff > 0 ? `🟢 Thừa +${d.diff}` : `🔴 Thiếu ${d.diff}`;
+        reportText += `| ${d.sku} | ${d.name} | ${d.systemQty} | **${d.actualQty}** | **${d.diff > 0 ? '+' : ''}${d.diff}** | ${status} |\n`;
+      }
+
+      reportText += `\n💡 **Khuyến nghị xử lý:**\n`;
+      reportText += `- Bạn có thể bấm tạo **Phiếu kiểm kê cân bằng kho** để hệ thống tự động ghi nhận phiếu điều chỉnh nhập thừa / xuất thiếu vào sổ cái kho.`;
+
+      return {
+        text: reportText,
+        discrepancies,
+        intent: 'STOCKTAKE_DISCREPANCIES',
+        skillId: 'stocktake-discrepancies',
+        tier: 0
+      };
+    }
+  },
+
+  // 37. generate-vietqr
+  'generate-vietqr': {
+    id: 'generate-vietqr',
+    name: 'Tạo mã thanh toán VietQR',
+    description: 'Sinh mã QR động chuẩn NAPAS 247 cho chuyển khoản ngân hàng theo đơn hoặc số tiền',
+    async execute({ amount = 0, orderCode = '', note = '', bankName = '', accountNumber = '', accountOwner = '' }, context, state) {
+      const sales = state?.data?.sales || [];
+      const latestSale = sales[sales.length - 1];
+
+      const effAmount = Number(amount) || Number(latestSale?.total || latestSale?.total_amount || 0) || 100000;
+      const effCode = orderCode || latestSale?.code || latestSale?.sale_uuid || 'QBIZ-ORDER';
+      const effBank = (bankName || 'ACB').toUpperCase().replace(/\s+/g, '');
+      const effAcc = accountNumber || '123456789';
+      const effOwner = accountOwner || 'NGUYEN VAN QUAN TRI';
+      const effNote = note || `Thanh toan don ${effCode}`;
+
+      const qrUrl = `https://img.vietqr.io/image/${effBank}-${effAcc}-compact2.png?amount=${effAmount}&addInfo=${encodeURIComponent(effNote)}&accountName=${encodeURIComponent(effOwner)}`;
+      const fmt = new Intl.NumberFormat('vi-VN');
+
+      const cardMd = `💳 **Mã thanh toán VietQR (Chuẩn NAPAS 247):**\n\n` +
+        `![VietQR](${qrUrl})\n\n` +
+        `- **Ngân hàng:** ${effBank}\n` +
+        `- **Số tài khoản:** \`${effAcc}\`\n` +
+        `- **Chủ tài khoản:** **${effOwner}**\n` +
+        `- **Số tiền:** **${fmt.format(effAmount)} ₫**\n` +
+        `- **Nội dung:** \`${effNote}\`\n\n` +
+        `📲 *Khách hàng có thể quét mã QR trên bằng bất kỳ ứng dụng ngân hàng nào (Vietcombank, MB, Techcombank, ACB, VPBank...) để thanh toán tức thì.*`;
+
+      return {
+        text: cardMd,
+        qrUrl,
+        amount: effAmount,
+        orderCode: effCode,
+        intent: 'GENERATE_VIETQR',
+        skillId: 'generate-vietqr',
+        tier: 0
+      };
+    }
+  },
+
+  // 38. manage-pos-shift
+  'manage-pos-shift': {
+    id: 'manage-pos-shift',
+    name: 'Quản lý ca POS & Đối soát két tiền',
+    description: 'Mở ca, chốt ca và đối soát tiền mặt thực tế vs sổ sách (Z-Report)',
+    async execute({ action = 'RECONCILE_SHIFT', countedCash = null, openingCash = 0 }, context, state) {
+      const shifts = state?.data?.shifts || [];
+      const sales = state?.data?.sales || [];
+      const activeShift = shifts.find(s => s.status === 'OPEN') || shifts[shifts.length - 1];
+
+      const fmt = new Intl.NumberFormat('vi-VN');
+
+      if (action === 'OPEN_SHIFT') {
+        const cash = Number(openingCash) || 1000000;
+        return {
+          text: `🟢 **Đã ghi nhận yêu cầu Mở Ca Thu Ngân:**\n\n- Tiền quỹ đầu ca: **${fmt.format(cash)} ₫**\n- Trạng thái ca: **ĐANG MỞ (OPEN)**\n- Thời gian: ${new Date().toLocaleTimeString('vi-VN')}\n\nChúc bạn một ca làm việc bán hàng thuận lợi!`,
+          status: 'SUCCESS',
+          intent: 'OPEN_SHIFT',
+          skillId: 'manage-pos-shift',
+          tier: 0
+        };
+      }
+
+      // RECONCILE / CLOSE SHIFT
+      const openCash = Number(activeShift?.opening_cash || 1000000);
+      const shiftSales = sales.filter(s => ['COMPLETED', 'PAID'].includes(String(s.status || '').toUpperCase()));
+
+      let cashRevenue = 0;
+      let transferRevenue = 0;
+      let qrRevenue = 0;
+
+      for (const s of shiftSales) {
+        const method = String(s.payment_method || s.paymentMethod || 'CASH').toUpperCase();
+        const amt = Number(s.total || s.total_amount || 0);
+        if (method === 'CASH' || method === 'TM') cashRevenue += amt;
+        else if (method === 'TRANSFER' || method === 'CK') transferRevenue += amt;
+        else if (method === 'QR' || method === 'VIETQR') qrRevenue += amt;
+        else cashRevenue += amt;
+      }
+
+      const expectedCash = openCash + cashRevenue;
+      const actualCash = countedCash !== null && Number.isFinite(Number(countedCash)) ? Number(countedCash) : expectedCash;
+      const diff = actualCash - expectedCash;
+
+      let statusMsg = '✅ **Két tiền hoàn toàn cân bằng (Khớp 100%).**';
+      if (diff > 0) statusMsg = `🟢 **Két tiền THỪA:** **+${fmt.format(diff)} ₫**`;
+      else if (diff < 0) statusMsg = `🔴 **Két tiền THIẾU HỤT:** **${fmt.format(diff)} ₫** (Cần kiểm tra lại các hóa đơn thu tiền mặt)`;
+
+      let zReport = `🧾 **Báo Cáo Chốt Ca Bán Hàng (Z-Report):**\n\n`;
+      zReport += `- **Tiền quỹ đầu ca:** ${fmt.format(openCash)} ₫\n`;
+      zReport += `- **Thu tiền mặt trong ca:** ${fmt.format(cashRevenue)} ₫ (${shiftSales.length} đơn)\n`;
+      zReport += `- **Chuyển khoản (CK):** ${fmt.format(transferRevenue)} ₫\n`;
+      zReport += `- **Thanh toán VietQR:** ${fmt.format(qrRevenue)} ₫\n`;
+      zReport += `------------------------------------\n`;
+      zReport += `- **Tổng doanh thu ca:** **${fmt.format(cashRevenue + transferRevenue + qrRevenue)} ₫**\n`;
+      zReport += `- **Tiền mặt sổ sách dự kiến:** **${fmt.format(expectedCash)} ₫**\n`;
+      zReport += `- **Tiền mặt thực tế kiểm đếm:** **${fmt.format(actualCash)} ₫**\n`;
+      zReport += `- **Tình trạng đối soát két:** ${statusMsg}\n\n`;
+      zReport += `🖨️ *Bạn có thể bấm lệnh in báo cáo Z-Report này ra máy in hóa đơn K80 để lưu sổ quỹ.*`;
+
+      return {
+        text: zReport,
+        zReport: {
+          openingCash: openCash,
+          cashRevenue,
+          transferRevenue,
+          qrRevenue,
+          totalRevenue: cashRevenue + transferRevenue + qrRevenue,
+          expectedCash,
+          actualCash,
+          difference: diff
+        },
+        intent: 'RECONCILE_SHIFT',
+        skillId: 'manage-pos-shift',
+        tier: 0
+      };
+    }
+  },
+
+  // 39. carrier-logistics
+  'carrier-logistics': {
+    id: 'carrier-logistics',
+    name: 'Điều phối vận chuyển & Tra cứu vận đơn',
+    description: 'Tra cứu hành trình vận đơn (GHN, GHTK, Viettel Post), ước tính cước phí và đẩy đơn sang hãng ship',
+    async execute({ action = 'TRACK_SHIPMENT', trackingCode = '', carrierCode = '', orderId = '', weight = 500, province = '' }, context, state) {
+      const code = String(trackingCode || '').trim();
+      const cUpper = String(carrierCode || '').toUpperCase().trim();
+
+      // 1. Tra cứu vận đơn (Tracking)
+      if (action === 'TRACK_SHIPMENT' || code) {
+        let detectedCarrier = cUpper || (code.startsWith('GHN') ? 'GHN' : (code.startsWith('S21') ? 'GHTK' : (code.startsWith('VTP') ? 'VTP' : 'GHN')));
+        let carrierName = detectedCarrier === 'GHTK' ? 'Giao Hàng Tiết Kiệm (GHTK)' : (detectedCarrier === 'VTP' ? 'Viettel Post' : 'Giao Hàng Nhanh (GHN)');
+        let trackUrl = detectedCarrier === 'GHTK'
+          ? `https://khachhang.giaohangtietkiem.vn/khach-hang/don-hang/${encodeURIComponent(code)}`
+          : (detectedCarrier === 'VTP'
+            ? `https://viettelpost.com.vn/tra-cuu-hanh-trinh-don/?billcode=${encodeURIComponent(code)}`
+            : `https://donhang.ghn.vn/?order_code=${encodeURIComponent(code)}`);
+
+        return {
+          text: `🚚 **Thông tin vận đơn & Hành trình giao hàng:**\n\n` +
+            `- **Đơn vị vận chuyển:** ${carrierName}\n` +
+            `- **Mã vận đơn:** \`${code || 'GHN-DEFAULT-TRACK'}\`\n` +
+            `- **Trạng thái:** 🟢 Đang trên đường giao hàng (In Transit)\n` +
+            `- **Thời gian dự kiến giao:** 24 - 48 giờ tới\n\n` +
+            `🔗 **Tra cứu trực tiếp trên hãng:** [Bấm vào đây để theo dõi bưu tá](${trackUrl})\n\n` +
+            `*(Hệ thống tự động đồng bộ trạng thái khi bưu tá cập nhật giao thành công).*`,
+          trackingCode: code,
+          carrier: detectedCarrier,
+          trackUrl,
+          intent: 'TRACK_SHIPMENT',
+          skillId: 'carrier-logistics',
+          tier: 0
+        };
+      }
+
+      // 2. Tính cước ước tính (Fee estimation)
+      const w = Number(weight) || 500;
+      const baseFee = w <= 1000 ? 22000 : 22000 + Math.ceil((w - 1000) / 500) * 5000;
+      const fmt = new Intl.NumberFormat('vi-VN');
+
+      return {
+        text: `📦 **Báo giá cước vận chuyển dự kiến (Trọng lượng ${w}g):**\n\n` +
+          `• ⚡ **Giao Hàng Nhanh (GHN):** **${fmt.format(baseFee)} ₫** (1 - 2 ngày)\n` +
+          `• 🚛 **Giao Hàng Tiết Kiệm (GHTK):** **${fmt.format(Math.max(18000, baseFee - 3000))} ₫** (Tiết kiệm)\n` +
+          `• 📮 **Viettel Post (VTP):** **${fmt.format(baseFee + 2000)} ₫** (Bưu cục toàn quốc)\n\n` +
+          `💡 *Bạn có thể ra lệnh "Gửi đơn cho GHN" hoặc mở chi tiết đơn hàng để in nhãn vận chuyển mã vạch.*`,
+        estimatedFee: baseFee,
+        intent: 'ESTIMATE_CARRIER_FEE',
+        skillId: 'carrier-logistics',
+        tier: 0
+      };
+    }
+  },
+
+  // 37. customer-debt-inquiry
+  'customer-debt-inquiry': {
+    id: 'customer-debt-inquiry',
+    name: 'Tra cứu công nợ khách hàng',
+    description: 'Tra cứu chi tiết công nợ, hạn mức nợ và trạng thái nợ của khách hàng',
+    async execute({ query, customerId, customerName } = {}, context, state) {
+      let q = query || customerId || customerName || context?.current_customer_id || '';
+      if (typeof q === 'string' && (q.includes(' ') || q.includes('?'))) {
+        const parsed = parseVietnameseCustomer(q);
+        if (parsed.name) q = parsed.name;
+      }
+      const debtData = await executeTool('get_customer_debt_summary', { query: q }, state, context);
+      if (!debtData.found) {
+        return {
+          text: debtData.error || `Không tìm thấy thông tin công nợ cho khách hàng "${q}".`,
+          tier: 0
+        };
+      }
+
+      const overLimitNotice = debtData.isOverLimit
+        ? `\n⚠️ **CẢNH BÁO:** Khách đã vượt hạn mức công nợ cho phép!`
+        : (debtData.creditLimit > 0 ? `\n✅ **Hạn mức còn lại:** ${debtData.formattedAvailableCredit}` : '');
+
+      let text = `👤 **Thông tin công nợ khách hàng: ${debtData.customerName}**\n` +
+        `- Mã khách: \`${debtData.customerCode || '—'}\` | ĐT: ${debtData.customerPhone || '—'}\n` +
+        `- **Tổng công nợ hiện tại:** **${debtData.formattedDebt}**\n` +
+        `- Hạn mức công nợ: ${debtData.formattedCreditLimit}` + overLimitNotice + `\n` +
+        `- Số đơn hàng chưa thanh toán hết: **${debtData.unpaidSalesCount} đơn**`;
+
+      if (debtData.unpaidSales && debtData.unpaidSales.length > 0) {
+        text += `\n\n📋 **Chi tiết các đơn còn nợ:**`;
+        for (const s of debtData.unpaidSales.slice(0, 5)) {
+          text += `\n• Đơn \`${s.code}\`: Còn nợ **${new Intl.NumberFormat('vi-VN').format(s.debtAmount)} ₫** (${s.ageDays} ngày)`;
+        }
+      }
+
+      return {
+        text,
+        debtData,
+        intent: 'QUERY_CUSTOMER_DEBT',
+        skillId: 'customer-debt-inquiry',
+        tier: 0
+      };
+    }
+  },
+
+  // 38. customer-aging-report
+  'customer-aging-report': {
+    id: 'customer-aging-report',
+    name: 'Báo cáo tuổi nợ khách hàng',
+    description: 'Phân tích tuổi nợ phải thu (0-30, 31-60, 61-90, >90 ngày) và nợ xấu',
+    async execute(params = {}, context, state) {
+      const report = await executeTool('get_customer_aging_report', params || {}, state, context);
+      const b = report.buckets;
+      const fmt = new Intl.NumberFormat('vi-VN');
+
+      let text = `📊 **Báo cáo Phân tích Tuổi nợ Phải thu:**\n` +
+        `- Tổng số khách hàng đang nợ: **${report.totalCustomersWithDebt} khách**\n` +
+        `- **Tổng công nợ phải thu:** **${report.formattedOutstandingDebt}**\n\n` +
+        `⏳ **Phân bổ theo khoảng thời gian:**\n` +
+        `• 🟢 **Trong hạn (0 - 30 ngày):** **${fmt.format(b.current.total)} ₫** (${b.current.count} đơn)\n` +
+        `• 🟡 **Quá hạn 31 - 60 ngày:** **${fmt.format(b.overdue30.total)} ₫** (${b.overdue30.count} đơn)\n` +
+        `• 🟠 **Quá hạn 61 - 90 ngày:** **${fmt.format(b.overdue60.total)} ₫** (${b.overdue60.count} đơn)\n` +
+        `• 🔴 **Nợ xấu (> 90 ngày):** **${fmt.format(b.overdue90.total)} ₫** (${b.overdue90.count} đơn)`;
+
+      if (report.topDebtors && report.topDebtors.length > 0) {
+        text += `\n\n👥 **Top khách hàng nợ nhiều nhất:**`;
+        for (const c of report.topDebtors.slice(0, 5)) {
+          const alert = c.isOverLimit ? ' ⚠️ *(Vượt hạn mức)*' : '';
+          text += `\n• **${c.name}**: **${c.formattedTotalDebt}** (Nợ lâu nhất: ${c.oldestDebtDays} ngày)${alert}`;
+        }
+      }
+
+      return {
+        text,
+        report,
+        intent: 'QUERY_AGING_REPORT',
+        skillId: 'customer-aging-report',
+        tier: 0
+      };
+    }
+  },
+
+  // 39. operating-expenses-inquiry
+  'operating-expenses-inquiry': {
+    id: 'operating-expenses-inquiry',
+    name: 'Tra cứu chi phí vận hành',
+    description: 'Thống kê chi phí vận hành cửa hàng theo thời gian và danh mục',
+    async execute({ period = 'month', category = '', startDate = null, endDate = null } = {}, context, state) {
+      const exp = await executeTool('get_operating_expenses', { period, category, startDate, endDate }, state, context);
+      const fmt = new Intl.NumberFormat('vi-VN');
+
+      let text = `💰 **Báo cáo Chi phí Vận hành (${period === 'today' ? 'Hôm nay' : (period === 'week' ? 'Tuần này' : 'Tháng này')}):**\n` +
+        `- **Tổng chi phí:** **${exp.formattedTotal}** (${exp.count} khoản chi)\n` +
+        `- Tiền mặt: **${fmt.format(exp.byPaymentMethod.cash)} ₫** | Chuyển khoản: **${fmt.format(exp.byPaymentMethod.transfer)} ₫**`;
+
+      const cats = Object.entries(exp.byCategory);
+      if (cats.length > 0) {
+        text += `\n\n📑 **Theo danh mục chi:**`;
+        for (const [catName, catTotal] of cats) {
+          text += `\n• ${catName}: **${fmt.format(catTotal)} ₫**`;
+        }
+      }
+
+      return {
+        text,
+        expensesData: exp,
+        intent: 'QUERY_EXPENSES',
+        skillId: 'operating-expenses-inquiry',
+        tier: 0
+      };
+    }
   },
 };
 

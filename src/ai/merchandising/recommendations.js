@@ -302,7 +302,16 @@ export function rankReplenishmentCandidates(items = []) {
     return b.plan.suggestedQuantity - a.plan.suggestedQuantity;
   });
 
-  return needing;
+  const seenNames = new Set();
+  const dedupedNeeding = [];
+  for (const it of needing) {
+    const normName = String(it.snapshot?.product?.name || '').trim().toLowerCase();
+    if (normName && seenNames.has(normName)) continue;
+    if (normName) seenNames.add(normName);
+    dedupedNeeding.push(it);
+  }
+
+  return dedupedNeeding;
 }
 
 /**

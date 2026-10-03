@@ -1,0 +1,208 @@
+[
+  {
+    "test_id": "1.1",
+    "name": "4 Tenders Simultaneously (Cash, Transfer, QR, Debt)",
+    "status": "PASS",
+    "details": {
+      "success": true,
+      "saleCode": "POS-000001",
+      "grandTotal": 10000000,
+      "method": "split",
+      "status": "PARTIAL",
+      "paidAmount": 6000000,
+      "debtAmount": 4000000,
+      "paymentsCount": 4
+    }
+  },
+  {
+    "test_id": "1.2",
+    "name": "Negative Tender Amount Injection",
+    "status": "PASS",
+    "details": {
+      "blocked": true,
+      "message": "Tổng các khoản thanh toán (2.500.000 ₫) không khớp tổng tiền đơn hàng (2.000.000 ₫)."
+    }
+  },
+  {
+    "test_id": "1.3",
+    "name": "Floating-Point Fraction Tenders Rounding",
+    "status": "PASS",
+    "details": {
+      "success": true,
+      "grandTotal": 2000000,
+      "paidAmount": 2000000,
+      "cashAmount": 1500000,
+      "transferAmount": 500000
+    }
+  },
+  {
+    "test_id": "1.4",
+    "name": "Exact Credit Limit Boundary (Limit vs Limit + 1 VND)",
+    "status": "PASS",
+    "details": {
+      "subcaseA_success": true,
+      "subcaseA_error": "",
+      "subcaseB_blocked": true,
+      "subcaseB_message": "Khách hàng Khách Boundary hvpew có hạn mức công nợ 2.000.000 ₫. Tổng nợ sau đơn (2.000.001 ₫) vượt quá hạn mức công nợ cho phép."
+    }
+  },
+  {
+    "test_id": "1.5",
+    "name": "Sequential Partial Debt Collections to Full Settlement",
+    "status": "PASS",
+    "details": {
+      "step1": {
+        "paid": 1800000,
+        "debt": 1200000,
+        "status": "PARTIAL"
+      },
+      "step2": {
+        "paid": 2800000,
+        "debt": 200000,
+        "status": "PARTIAL"
+      },
+      "step3": {
+        "paid": 3000000,
+        "debt": 0,
+        "status": "PAID"
+      },
+      "step4": {
+        "status": "PAID",
+        "debt": 0,
+        "paid": 3000000
+      }
+    }
+  },
+  {
+    "test_id": "1.6",
+    "name": "Complex Cash Drawer Interleaving (Sales, Split, Expenses, Collections)",
+    "status": "PASS",
+    "details": {
+      "shiftId": "shift_muqpq5h5_k7plcb",
+      "openingCash": 2000000,
+      "expectedCash": 3600000,
+      "countedCash": 3600000,
+      "difference": 0,
+      "summary": {
+        "sales_count": 2,
+        "sales_total": 3400000,
+        "cash_sales": 1900000,
+        "transfer_sales": 1500000,
+        "qr_sales": 0,
+        "refund_total": 0,
+        "cash_refunds": 0,
+        "cash_expenses": 300000,
+        "expense_total": 500000
+      }
+    }
+  },
+  {
+    "test_id": "2.1",
+    "name": "Extremely Long Product Names & Symbols in ESC/POS",
+    "status": "PASS",
+    "details": {
+      "success80": true,
+      "len80": 1207,
+      "success58": true,
+      "len58": 983
+    }
+  },
+  {
+    "test_id": "2.2",
+    "name": "Cash Drawer Kick Pulse Bounds Clamping",
+    "status": "PASS",
+    "details": {
+      "length": 5,
+      "t1": 1,
+      "t2": 255,
+      "hex": "1b 70 00 01 ff"
+    }
+  },
+  {
+    "test_id": "2.3",
+    "name": "Large VietQR URL (>256 bytes) ESC/POS Length Encoding",
+    "status": "PASS",
+    "details": {
+      "bytesLength": 1427,
+      "payloadLength": 369,
+      "pL": 116,
+      "pH": 1,
+      "foundMultiByteLength": true
+    }
+  },
+  {
+    "test_id": "3.1",
+    "name": "Aging Buckets Boundary Precision (0-30, 31-60, 61-90, >90 days)",
+    "status": "PASS",
+    "details": {
+      "current": {
+        "label": "Trong hạn (0-30 ngày)",
+        "total": 200000,
+        "count": 1
+      },
+      "overdue30": {
+        "label": "Quá hạn 31-60 ngày",
+        "total": 200000,
+        "count": 1
+      },
+      "overdue60": {
+        "label": "Quá hạn 61-90 ngày",
+        "total": 200000,
+        "count": 1
+      },
+      "overdue90": {
+        "label": "Nợ xấu (>90 ngày)",
+        "total": 200000,
+        "count": 1
+      },
+      "totalOutstandingDebt": 800000
+    }
+  },
+  {
+    "test_id": "3.2",
+    "name": "Non-existent & Empty Query Graceful Handling",
+    "status": "PASS",
+    "details": {
+      "emptyQuery": {
+        "found": false,
+        "error": "Cần mã hoặc tên khách hàng để tra cứu công nợ."
+      },
+      "nonExistent": {
+        "found": false,
+        "error": "Không tìm thấy khách hàng \"KH_KHONG_TON_TAI_9999\"."
+      },
+      "emptyHistory": {
+        "found": false,
+        "error": "Cần mã hoặc tên khách hàng để xem lịch sử mua hàng."
+      }
+    }
+  },
+  {
+    "test_id": "3.3",
+    "name": "RBAC Security Enforcement: Cashier HARD DENY on Expenses",
+    "status": "PASS",
+    "details": {
+      "cashierBlocked": true,
+      "cashierError": "HARD DENY: Tool \"get_operating_expenses\" không được phép thực thi đối với vai trò cashier (Vi phạm Tool Allowlist).",
+      "ownerAllowed": true
+    }
+  },
+  {
+    "test_id": "4.1",
+    "name": "Variant-Level Stock Isolation",
+    "status": "PASS",
+    "details": {
+      "productId": "p_muqpq5t0_iy4mg0",
+      "stockM": 10,
+      "stockL": 0
+    }
+  },
+  {
+    "test_id": "4.2",
+    "name": "Multi-Tab Reactive Broadcast Sync Event",
+    "status": "PASS",
+    "details": {
+      "events_received": 1
+    }
+  }
+]

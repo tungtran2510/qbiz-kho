@@ -58,6 +58,7 @@ def run_gate():
         page.on("request", lambda req: network_calls.append(req.url) if "generativelanguage.googleapis.com" in req.url else None)
 
         page.goto(APP_URL)
+        page.wait_for_function("() => window.__qbiz_app__ && window.__qbiz_app__.ai", timeout=15000)
         wait_idle(page, 500)
 
         if gemini_key:

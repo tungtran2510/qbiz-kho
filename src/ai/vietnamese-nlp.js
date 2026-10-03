@@ -787,7 +787,11 @@ export function parseAppNavigationAction(text) {
     let tab = 'devices';
     if (c.includes('mau in') || c.includes('template')) tab = 'templates';
     if (c.includes('nhat ky') || c.includes('lich su in') || c.includes('job')) tab = 'jobs';
-    return { actionId: 'open_print_settings', params: { tab }, label: 'Đã mở Cài đặt Máy in & Thiết bị.' };
+    const isTem = c.includes('tem') || c.includes('ma vach') || c.includes('barcode') || c.includes('bluetooth');
+    const label = isTem
+      ? 'Đã mở Cài đặt Máy in & Thiết bị: Sẵn sàng kết nối máy in tem mã vạch Bluetooth/LAN.'
+      : 'Đã mở Cài đặt Máy in & Thiết bị.';
+    return { actionId: 'open_print_settings', params: { tab }, label };
   }
 
   // 2. Cài đặt hệ thống / Thiết lập chung
@@ -1127,6 +1131,7 @@ export function isIdentityQuery(text) {
 export function isDailyOverviewQuery(text) {
   const c = canonicalizeVietnamese(text);
   if (!c) return false;
+  if (c.includes('ban tot') || c.includes('ban khong tot') || c.includes('ban kem') || c.includes('ban e') || c.includes('ban chay') || c.includes('e am') || c.includes('e khong') || c.includes('khong ban duoc') || c.includes('chua ban duoc')) return false;
 
   return (
     c === 'hom nay the nao' ||
@@ -1171,9 +1176,13 @@ export function parseVietnameseNumberWord(str) {
   if (/\b(?:hai\s*chuc|2\s*chuc)\b/i.test(s)) return 20;
   if (/\b(?:ba\s*chuc|3\s*chuc)\b/i.test(s)) return 30;
   if (/\b(?:bon\s*chuc|4\s*chuc)\b/i.test(s)) return 40;
-  if (/\b(?:nam\s*chuc|5\s*chuc)\b/i.test(s)) return 50;
-
   // Multipliers with attached or separate units: 500k, 50tr, 50 trieu, 50 cu, 2 lit
+  // Attached or separate units / abbreviations: 5c, 10c, 5 cái, 5 chiếc, 5sp, 5 hộp, 5 thùng, 5 ly, 5 gói, 5 món
+  const unitMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*(?:c|cai|chiec|sp|hop|thung|ly|goi|mon)\b/i);
+  if (unitMatch) {
+    return parseFloat(unitMatch[1].replace(',', '.'));
+  }
+
   const cuMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*(?:cu|m)\b/i);
   if (cuMatch) {
     return Math.round(parseFloat(cuMatch[1].replace(',', '.')) * 1000000);
@@ -1347,7 +1356,7 @@ export function parseContextualStockIncrease(text) {
     const qty = parseVietnameseNumberWord(c);
     if (qty !== null && qty > 0) {
       let prodQuery = null;
-      const matchProd = c.match(/(?:them|nhap them|nhap vao|bo sung|cong them|nhap)\s+(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)?\s*(?:cai|chiec|hop|goi|sp|ly)?\s+(.+)$/i);
+      const matchProd = c.match(/(?:them|nhap them|nhap vao|bo sung|cong them|nhap)\s+(?:\d+|mot|hai|ba|bon|nam|sau|bay|tam|chin|muoi)?\s*(?:c|cai|chiec|hop|goi|sp|ly)?\s+(.+)$/i);
       if (matchProd) {
         let p = matchProd[1].trim();
         p = p.replace(/\b(?:cai nay|mon nay|sp nay|nay|vao kho\s+[a-z0-9\s]+)\b/gi, '').trim();
@@ -1830,5 +1839,175 @@ export function parseSystemOrDataQuery(text) {
   }
   return null;
 }
+
+/**
+ * VIETNAMESE BUSINESS & COMMERCE PARSING ENGINE
+ * Supports:
+ * - Currency slang: k, lít (100k), củ/tr/m (triệu), đ/vnd
+ * - Tax identification (MST 10 & 13 digits)
+ * - Bank names & VietQR/Napas recognition
+ * - Credit terms & payment deadlines (TT88 HKD)
+ * - Discounts & shipping fees
+ * - Company & customer name extraction
+ */
+
+export function parseVietnameseCurrency(text) {
+  if (!text) return 0;
+  const str = String(text).trim().toLowerCase();
+  
+  if (str.includes('%')) {
+    const val = parseFloat(str.replace('%', '').trim());
+    return isNaN(val) ? 0 : val;
+  }
+  
+  let clean = str.replace(/[đdvn\s]/gi, '');
+  if (/^\d{1,3}(?:[.,]\d{3})+$/.test(clean)) {
+    clean = clean.replace(/[.,]/g, '');
+    return parseInt(clean, 10);
+  }
+
+  let multiplier = 1;
+  if (clean.includes('k') || clean.includes('nghin') || clean.includes('ngan')) {
+    multiplier = 1000;
+    clean = clean.replace(/(?:k|nghin|ngan)/gi, '');
+  } else if (clean.includes('lit')) {
+    multiplier = 100000;
+    clean = clean.replace(/lit/gi, '');
+  } else if (clean.includes('cu') || clean.includes('tr') || clean.includes('trieu') || clean.includes('m')) {
+    multiplier = 1000000;
+    clean = clean.replace(/(?:cu|trieu|tr|m)/gi, '');
+  }
+  
+  clean = clean.replace(',', '.');
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : Math.round(num * multiplier);
+}
+
+export function parseVietnameseTaxCode(text) {
+  if (!text) return null;
+  const str = String(text);
+  // 1. Explicit MST prefix (e.g. "MST: 0312345678", "Mã số thuế 0312345678")
+  const explicit = str.match(/\b(?:mst|ma so thue|mã số thuế)[:\s]*([0-9]{10}(?:-[0-9]{3})?|[0-9]{13})\b/i);
+  if (explicit) return explicit[1].trim();
+
+  // 2. Look for standalone 10 or 13 digits but NEVER match phone numbers
+  const isPhonePattern = /\b(?:sdt|sđt|so dien thoai|số điện thoại|phone|dt)[:\s]*([0-9]{10})\b/i;
+  const phoneMatch = str.match(isPhonePattern);
+  const phoneVal = phoneMatch ? phoneMatch[1] : null;
+
+  const matches = str.matchAll(/\b([0-9]{10}(?:-[0-9]{3})?|[0-9]{13})\b/g);
+  for (const m of matches) {
+    if (phoneVal && m[1] === phoneVal) continue;
+    // Skip personal mobile phone prefix unless explicit MST prefix was given
+    if (/^0[35789]\d{8}$/.test(m[1]) && !str.toLowerCase().includes('mst') && !str.toLowerCase().includes('thue')) {
+      continue;
+    }
+    return m[1].trim();
+  }
+  return null;
+}
+
+export function parseVietnameseBank(text) {
+  if (!text) return null;
+  const match = String(text).match(/\b(acb|vcb|vietcombank|vietinbank|bidv|agribank|mbbank|mb|techcombank|vpbank|tpbank|sacombank|ocb|vib|shb|hdbank|vietqr|napas)\b/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+export function parseVietnamesePaymentTerm(text) {
+  if (!text) return null;
+  const norm = removeVietnameseDiacritics(text);
+  const match = norm.match(/(?:hen|tra|thanh toan|han)(?:\s+thanh\s+toan)?\s+(?:sau\s+)?(\d+)\s+ngay/i);
+  if (match) return parseInt(match[1], 10);
+  if (norm.includes('cuoi thang') || norm.includes('het thang')) return 30;
+  if (norm.includes('tuan sau')) return 7;
+  return null;
+}
+
+export function parseVietnameseDiscount(text) {
+  if (!text) return null;
+  const norm = removeVietnameseDiacritics(text);
+  const match = norm.match(/(?:chiet khau|giam gia|giam|bot)\s+(\d+(?:[.,]\d+)?\s*%|\d+(?:[.,]\d+)*(?:\s*k|\s*lit|\s*cu|\s*tr|\s*d|\s*vnd)?)/i);
+  if (!match) return null;
+  const rawVal = match[1].trim();
+  if (rawVal.includes('%')) {
+    const pct = parseFloat(rawVal.replace('%', '').trim());
+    return { type: 'PERCENT', value: pct, raw: rawVal };
+  }
+  const amt = parseVietnameseCurrency(rawVal);
+  return { type: 'AMOUNT', value: amt, raw: rawVal };
+}
+
+export function parseVietnameseShippingFee(text) {
+  if (!text) return 0;
+  const norm = removeVietnameseDiacritics(text);
+  const match = norm.match(/(?:phi\s*ship|tien\s*ship|ship)\s*[:\s]*(\d+(?:[.,]\d+)*(?:\s*k|\s*lit|\s*cu|\s*tr|\s*d|\s*vnd)?)/i);
+  if (!match) return 0;
+  return parseVietnameseCurrency(match[1]);
+}
+
+export function parseVietnameseCustomer(text) {
+  if (!text) return { name: null, phone: null, address: null, company: null };
+  const raw = String(text);
+  
+  const phoneMatch = raw.match(/(?:sdt|sđt|so dien thoai|dt|phone)?[:\s]*(0[235789]\d{8})\b/i);
+  const phone = phoneMatch ? phoneMatch[1] : null;
+
+  const addrMatch = raw.match(/(?:địa chỉ|dia chi|đ\/c|dc|giao về|giao ve|giao đến|giao den)[:\s]*([^,]+)/i);
+  const address = addrMatch ? addrMatch[1].trim() : null;
+
+  const compMatch = raw.match(/(?:cho\s+)?((?:công ty|cong ty|doanh nghiệp|doanh nghiep|cty|hộ kinh doanh|ho kinh doanh|hkd)[^,:]+)/i);
+  const company = compMatch ? compMatch[1].replace(/^(?:cho\s+)/i, '').trim() : null;
+
+  let name = null;
+  const nameMatch = raw.match(/(?:khách hàng|khach hang|người nhận|nguoi nhan|cho\s+anh|cho\s+chị|cho\s+bác|cho\s+chú|cho\s+cô|anh|chị|bác|chú|cô)\s+([A-ZÀ-Ỹa-zà-ỹ\s]+?)(?=\s+(?:\d|sđt|sdt|kho|thanh\s+toán|thanh\s+toan|chuyển\s+khoản|chuyen\s+khoan|tiền\s+mặt|tien\s+mat|vietqr|qr|ngân\s+hàng|ngan\s+hang|acb|vcb|mbbank|bidv|cho\s+đơn|cho\s+don|đơn|don|chiết\s+khấu|chiet\s+khau|giảm|giam|hẹn|hen|ship|lấy|mua|xuất|xuat|giao|còn|con|nợ|no|hỏi|xem|đang|dang|bao\s+nhiêu|bao\s+nhieu)\b|\s*[,.:;?!]|\s*$)/i);
+  if (nameMatch) {
+    let candidate = nameMatch[1].trim();
+    const stopTrailingRegex = /\b(?:thanh\s*toan|thanh\s*toán|chuyen\s*khoan|chuyển\s*khoản|tien\s*mat|tiền\s*mặt|vietqr|qr|ngan\s*hang|ngân\s*hàng|acb|vcb|mb|don|đơn|cho\s*don|cho\s*đơn|kho|chiet\s*khau|chiết\s*khấu|giam|giảm|con|còn|no|nợ|dang|đang|bao\s*nhieu|bao\s*nhiêu|tien|tiền)\b.*$/i;
+    candidate = candidate.replace(stopTrailingRegex, '').trim();
+
+    const words = candidate.split(/\s+/).filter(Boolean);
+    if (words.length >= 1 && words.length <= 5) {
+      name = words.join(' ');
+    } else if (words.length > 5) {
+      name = words.slice(0, 4).join(' ');
+    }
+  }
+
+  return { name, phone, address, company };
+}
+
+export function extractVietnameseOrderItems(text, allProducts = []) {
+  if (!text) return [];
+  const normText = removeVietnameseDiacritics(text);
+  const matched = [];
+
+  for (const prod of (allProducts || [])) {
+    const pNorm = removeVietnameseDiacritics(prod.name);
+    const tokens = pNorm.split(/\s+/).filter(t => !['sang', 'che', 'co', 'lung', 'chan'].includes(t));
+    const distinctiveCode = tokens.slice(1).join(' ');
+
+    if (distinctiveCode) {
+      const rx = new RegExp(`\\b${distinctiveCode}\\b`, 'i');
+      const m = normText.match(rx);
+      if (m) {
+        const idx = m.index;
+        const prefix = normText.slice(Math.max(0, idx - 35), idx);
+        const nums = [...prefix.matchAll(/(\d+)/g)];
+        const qty = nums.length > 0 ? parseInt(nums[nums.length - 1][1], 10) : 1;
+        matched.push({
+          productId: prod.id,
+          productName: prod.name,
+          quantity: qty,
+          unitPrice: prod.price || 0,
+          unit: prod.unit || 'cái',
+          matchIndex: idx,
+        });
+      }
+    }
+  }
+
+  return matched.sort((a, b) => a.matchIndex - b.matchIndex);
+}
+
 
 

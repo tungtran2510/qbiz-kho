@@ -16,6 +16,7 @@ import { logAuditEvent, logDecisionChain } from './audit.js';
 
 export const PROPOSAL_STATUS = {
   DRAFT: 'DRAFT',
+  PROPOSAL_DRAFT: 'DRAFT',
   NEEDS_CLARIFICATION: 'NEEDS_CLARIFICATION',
   READY: 'READY',
   CONFIRMED: 'CONFIRMED',
@@ -31,6 +32,13 @@ const ALLOWED_TRANSITIONS = {
   [PROPOSAL_STATUS.DRAFT]: new Set([
     PROPOSAL_STATUS.NEEDS_CLARIFICATION,
     PROPOSAL_STATUS.READY,
+    PROPOSAL_STATUS.CONFIRMED,
+    PROPOSAL_STATUS.CANCELLED,
+  ]),
+  'PROPOSAL_DRAFT': new Set([
+    PROPOSAL_STATUS.NEEDS_CLARIFICATION,
+    PROPOSAL_STATUS.READY,
+    PROPOSAL_STATUS.CONFIRMED,
     PROPOSAL_STATUS.CANCELLED,
   ]),
   [PROPOSAL_STATUS.NEEDS_CLARIFICATION]: new Set([
@@ -302,30 +310,51 @@ export function validateProposal(proposal, currentState, actor = { role: 'owner'
   // 3. Section G: Quantity & Unit Validation
   const { parameters = {}, intent } = proposal;
   if (intent === 'create_receipt_proposal' || intent === 'RECEIVE_STOCK' || intent === 'create_issue_proposal' || intent === 'ISSUE_STOCK') {
-    if (!parameters.productId) errors.push('Thiếu mã sản phẩm.');
-    
-    const prod = (currentState?.data?.products || []).find(p => p.id === parameters.productId);
-    const qtyCheck = validateQuantityAndUnit({
-      qty: parameters.qty,
-      unit: parameters.unit,
-      product: prod,
-    });
-    if (!qtyCheck.valid) errors.push(qtyCheck.error);
+    if (Array.isArray(parameters.lines) && parameters.lines.length > 0) {
+      for (const line of parameters.lines) {
+        const prod = (currentState?.data?.products || []).find(p => p.id === line.productId);
+        if (!prod) errors.push(`Không tìm thấy sản phẩm ${line.productId || line.productName}.`);
+        const qtyCheck = validateQuantityAndUnit({
+          qty: line.quantity || line.qty,
+          unit: line.unit,
+          product: prod,
+        });
+        if (!qtyCheck.valid) errors.push(`Mặt hàng ${line.productName || line.productId}: ${qtyCheck.error}`);
+      }
+    } else {
+      if (!parameters.productId) errors.push('Thiếu mã sản phẩm.');
+      
+      const prod = (currentState?.data?.products || []).find(p => p.id === parameters.productId);
+      const qtyCheck = validateQuantityAndUnit({
+        qty: parameters.qty,
+        unit: parameters.unit,
+        product: prod,
+      });
+      if (!qtyCheck.valid) errors.push(qtyCheck.error);
 
-    // Section H: Warehouse Scope
-    const scopeCheck = validateWarehouseScope(actor, parameters.warehouseId, null, null, currentState);
-    if (!scopeCheck.allowed) errors.push(scopeCheck.error);
+      // Section H: Warehouse Scope
+      const scopeCheck = validateWarehouseScope(actor, parameters.warehouseId, null, null, currentState);
+      if (!scopeCheck.allowed) errors.push(scopeCheck.error);
 
-    // For issue / reduce: check if stock is sufficient
-    if (intent === 'create_issue_proposal' || intent === 'ISSUE_STOCK') {
-      const whId = parameters.warehouseId || (currentState?.data?.warehouses || [])[0]?.id;
-      const lv = whId ? levelFor(currentState?.data, parameters.productId, whId) : null;
-      const avail = lv ? available(lv) : 0;
-      if (Number(parameters.qty) > avail) {
-        errors.push(`Số lượng xuất (${parameters.qty}) vượt quá số lượng có thể bán hiện có (${avail}).`);
+      // For issue / reduce: check if stock is sufficient
+      if (intent === 'create_issue_proposal' || intent === 'ISSUE_STOCK') {
+        const whId = parameters.warehouseId || (currentState?.data?.warehouses || [])[0]?.id;
+        const lv = whId ? levelFor(currentState?.data, parameters.productId, whId) : null;
+        const avail = lv ? available(lv) : 0;
+        if (Number(parameters.qty) > avail) {
+          errors.push(`Số lượng xuất (${parameters.qty}) vượt quá số lượng có thể bán hiện có (${avail}).`);
+        }
       }
     }
 
+  } else if (intent === 'create_order_proposal' || intent === 'order_proposal' || intent === 'ORDER_PROPOSAL') {
+    if (!Array.isArray(parameters.items) || !parameters.items.length) {
+      errors.push('Đơn hàng cần ít nhất một mặt hàng.');
+    }
+  } else if (intent === 'electronic_invoice_proposal' || intent === 'create_invoice_proposal' || intent === 'ELECTRONIC_INVOICE_PROPOSAL') {
+    if (!Array.isArray(parameters.items) || !parameters.items.length) {
+      errors.push('Hóa đơn cần ít nhất một mặt hàng.');
+    }
   } else if (intent === 'create_transfer_proposal' || intent === 'TRANSFER_STOCK') {
     if (!parameters.fromWarehouseId || !parameters.toWarehouseId) errors.push('Thiếu kho xuất hoặc kho nhận.');
     if (parameters.fromWarehouseId === parameters.toWarehouseId) errors.push('Kho xuất và kho nhận không được trùng nhau.');
@@ -415,6 +444,27 @@ export function isProposalStale(proposal, currentState) {
  * @returns {{ success: boolean, proposal: Object, message: string }}
  */
 export function confirmProposal(proposal, currentState, actor = { id: 'owner_1', role: 'owner' }) {
+  if (!proposal) return { success: false, proposal, message: 'Đề xuất không tồn tại.' };
+
+  // If outer proposal wrapped an inner raw_proposal, inherit missing fields
+  if (proposal.raw_proposal && typeof proposal.raw_proposal === 'object') {
+    const raw = proposal.raw_proposal;
+    if (!proposal.parameters && raw.parameters) proposal.parameters = raw.parameters;
+    if (!proposal.params && raw.params) proposal.params = raw.params;
+    if (!proposal.intent && (raw.intent || proposal.source_intent)) proposal.intent = raw.intent || proposal.source_intent;
+    if (!proposal.entities && raw.entities) proposal.entities = raw.entities;
+    if (!proposal.human_summary && (raw.human_summary || raw.humanSummary || proposal.mutation_summary)) {
+      proposal.human_summary = raw.human_summary || raw.humanSummary || proposal.mutation_summary;
+    }
+    if (!proposal.inventory_snapshot && (raw.inventory_snapshot || raw.inventorySnapshot)) {
+      proposal.inventory_snapshot = raw.inventory_snapshot || raw.inventorySnapshot;
+    }
+  }
+
+  // Ensure canonical ID parity
+  if (!proposal.id && proposal.proposal_id) proposal.id = proposal.proposal_id;
+  if (!proposal.proposal_id && proposal.id) proposal.proposal_id = proposal.id;
+
   if (isProposalExpired(proposal)) {
     return { success: false, proposal, message: 'Không thể xác nhận đề xuất đã hết hạn (EXPIRED).' };
   }
@@ -559,6 +609,24 @@ export async function verifyLedgerReconciliation(productId, warehouseId) {
  * @returns {Promise<{ success: boolean, result?: Object, error?: string, isIdempotentReplay?: boolean }>}
  */
 export async function executeProposal(proposal, appState, idempotencyKey, actor = { id: 'owner_1', role: 'owner' }) {
+  if (!proposal) return { success: false, error: 'Đề xuất không tồn tại.' };
+
+  // If outer proposal wrapped an inner raw_proposal, inherit missing fields
+  if (proposal.raw_proposal && typeof proposal.raw_proposal === 'object') {
+    const raw = proposal.raw_proposal;
+    if (!proposal.parameters && raw.parameters) proposal.parameters = raw.parameters;
+    if (!proposal.params && raw.params) proposal.params = raw.params;
+    if (!proposal.intent && (raw.intent || proposal.source_intent)) proposal.intent = raw.intent || proposal.source_intent;
+    if (!proposal.entities && raw.entities) proposal.entities = raw.entities;
+    if (!proposal.human_summary && (raw.human_summary || raw.humanSummary || proposal.mutation_summary)) {
+      proposal.human_summary = raw.human_summary || raw.humanSummary || proposal.mutation_summary;
+    }
+  }
+
+  // Ensure canonical ID parity
+  if (!proposal.id && proposal.proposal_id) proposal.id = proposal.proposal_id;
+  if (!proposal.proposal_id && proposal.id) proposal.proposal_id = proposal.id;
+
   const opKey = idempotencyKey || proposal.idempotency_key || `idem_${proposal.id}`;
 
   // 1. Section B: Business-Grade Idempotency Check
@@ -696,26 +764,127 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
       }
 
     } else if (proposal.intent === 'create_issue_proposal' || proposal.intent === 'ISSUE_STOCK') {
-      const { productId, warehouseId, qty, reason } = proposal.parameters;
-      // Call domain engine issue
-      executionResult = await engine.issue({
-        productId,
-        warehouseId,
-        qty: Number(qty),
-        reference: reason || proposal.human_summary,
-        operationId: opKey,
+      const { productId, warehouseId, qty, lines, reason } = proposal.parameters || {};
+      if (Array.isArray(lines) && lines.length > 0) {
+        // Multi-line batch issue via domain engine
+        executionResult = await engine.applyWarehouseBatch({
+          kind: 'out',
+          warehouseId,
+          lines: lines.map(l => ({ productId: l.productId, qty: Number(l.quantity || l.qty) })),
+          reference: reason || proposal.human_summary,
+          operationId: opKey,
+        });
+
+        // Section V: Post-Write Reconciliation for batch issue lines
+        for (const line of lines) {
+          const recon = await verifyLedgerReconciliation(line.productId, warehouseId);
+          if (!recon.pass) {
+            logAuditEvent('RECONCILIATION_FAILED', { productId: line.productId, warehouseId });
+            proposal.status = PROPOSAL_STATUS.FAILED;
+            return {
+              success: false,
+              error: `Xuất kho đã ghi nhưng đối soát sổ kho thất bại. Yêu cầu kiểm tra sổ cái.`,
+            };
+          }
+        }
+      } else {
+        // Single product issue
+        executionResult = await engine.issue({
+          productId,
+          warehouseId,
+          qty: Number(qty),
+          reference: reason || proposal.human_summary,
+          operationId: opKey,
+        });
+
+        // Section V: Post-Write Reconciliation Check
+        const recon = await verifyLedgerReconciliation(productId, warehouseId);
+        if (!recon.pass) {
+          logAuditEvent('RECONCILIATION_FAILED', { productId, warehouseId, mismatch: recon.mismatch });
+          proposal.status = PROPOSAL_STATUS.FAILED;
+          return {
+            success: false,
+            error: `Giao dịch đã ghi nhưng đối soát sổ kho thất bại. Yêu cầu kiểm tra sổ cái.`,
+          };
+        }
+      }
+
+    } else if (proposal.intent === 'create_order_proposal' || proposal.intent === 'order_proposal' || proposal.intent === 'ORDER_PROPOSAL') {
+      const { items, warehouseId, customerLabel, customerName, discount, note } = proposal.parameters || {};
+      const orderLines = (items || []).map(i => ({
+        itemId: i.itemId || i.productId,
+        quantity: Math.max(1, Number(i.quantity || 1)),
+        unitPrice: Number(i.unitPrice || 0),
+        discount: Number(i.discount || 0),
+      }));
+
+      executionResult = await engine.createOrder({
+        items: orderLines,
+        warehouseId: warehouseId || 'wh_center',
+        customerLabel: customerLabel || customerName || 'Khách lẻ',
+        note: note || proposal.human_summary,
+        discount: Number(discount || 0),
       });
 
-      // Section V: Post-Write Reconciliation Check
-      const recon = await verifyLedgerReconciliation(productId, warehouseId);
-      if (!recon.pass) {
-        logAuditEvent('RECONCILIATION_FAILED', { productId, warehouseId, mismatch: recon.mismatch });
-        proposal.status = PROPOSAL_STATUS.FAILED;
-        return {
-          success: false,
-          error: `Giao dịch đã ghi nhưng đối soát sổ kho thất bại. Yêu cầu kiểm tra sổ cái.`,
-        };
-      }
+    } else if (proposal.intent === 'electronic_invoice_proposal' || proposal.intent === 'create_invoice_proposal' || proposal.intent === 'ELECTRONIC_INVOICE_PROPOSAL') {
+      const db = await import('../db.js');
+      const invoiceModule = await import('../invoice/domain.js');
+      const { taxCode, companyName, address, email, items, vatRate, paymentMethod } = proposal.parameters || {};
+
+      const now = new Date().toISOString();
+      const invoiceId = `inv_ai_${Date.now().toString(36)}`;
+      const normalizedBuyer = invoiceModule.createInvoiceBuyer({
+        tax_code: taxCode,
+        company_name: companyName,
+        address,
+        email,
+        name: companyName || 'Doanh nghiệp mua hàng',
+      });
+      const normalizedLines = (items || []).map((it, idx) => invoiceModule.createInvoiceLine({
+        itemId: it.productId || it.itemId,
+        name: it.productName || it.name,
+        unit: it.unit || 'cái',
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        vatRate: vatRate || 10,
+        vatAmount: Math.round(((it.quantity * it.unitPrice) * (vatRate || 10)) / 100),
+      }, idx));
+
+      const subtotal = normalizedLines.reduce((acc, l) => acc + (l.quantity * l.unit_price), 0);
+      const vat = normalizedLines.reduce((acc, l) => acc + l.vat_amount, 0);
+
+      const invoiceDraft = {
+        id: invoiceId,
+        sale_id: `sale_ai_${Date.now().toString(36)}`,
+        sale_code: `DH-AI-${Date.now().toString().slice(-6)}`,
+        lineage_id: invoiceId,
+        version: 1,
+        operation: invoiceModule.InvoiceOperation.CREATE_DRAFT,
+        idempotency_key: opKey,
+        status: invoiceModule.InvoiceStatus.DRAFT,
+        buyer: normalizedBuyer,
+        items: normalizedLines,
+        amounts: {
+          subtotal,
+          discount: 0,
+          vat,
+          grand_total: subtotal + vat,
+        },
+        payment_method: paymentMethod || 'CK',
+        audit_log: [
+          {
+            action: 'DRAFT_CREATED',
+            actor: actor.id || 'owner',
+            timestamp: now,
+            details: `Lập bản nháp HĐĐT theo NĐ 123 / TT 78 từ đề xuất AI Trợ lý: ${proposal.human_summary}`,
+          }
+        ],
+        created_at: now,
+        updated_at: now,
+      };
+
+      await db.put('electronic_invoices', invoiceDraft);
+      executionResult = invoiceDraft;
 
     } else if (proposal.intent === 'create_transfer_proposal' || proposal.intent === 'TRANSFER_STOCK') {
       const { fromWarehouseId, toWarehouseId, lines, note } = proposal.parameters;

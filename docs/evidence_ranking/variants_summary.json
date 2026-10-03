@@ -1,0 +1,2794 @@
+{
+  "all_passed": true,
+  "total": 8,
+  "passed": 8,
+  "results": [
+    {
+      "id": 1,
+      "query": "Tuần này bán tốt/không tốt mặt hàng nào?",
+      "description": "Tuần này bán tốt/không tốt mặt hàng nào? (Bán tốt / không tốt)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 140,
+      "total_latency_s": 1.0,
+      "assistant_text": "📊 Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):\n\nTrong tuần này (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_1.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "this_week",
+          "period": "this_week",
+          "query": "Tuần này bán tốt/không tốt mặt hàng nào?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877809682_uy3v0",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-27T17:00:00.000Z",
+              "end": "2026-10-02T16:59:59.999Z",
+              "label": "tuần này",
+              "code": "this_week",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:30.417Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "this_week",
+              "periodLabel": "tuần này",
+              "startDate": "2026-09-27T17:00:00.000Z",
+              "endDate": "2026-10-02T16:59:59.999Z",
+              "dateRangeStr": "28/09/2026 - 02/10/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    },
+    {
+      "id": 2,
+      "query": "Tháng này mặt hàng nào bán chạy nhất?",
+      "description": "Tháng này mặt hàng nào bán chạy nhất? (Bán chạy nhất)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 114,
+      "total_latency_s": 1.56,
+      "assistant_text": "📊 Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):\n\nTrong tháng này (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_2.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):**\n\nTrong **tháng này** (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "this_month",
+          "period": "month",
+          "query": "Tháng này mặt hàng nào bán chạy nhất?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877812189_7ugqu",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-02T16:59:59.999Z",
+              "label": "tháng này",
+              "code": "month",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:33.278Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):**\n\nTrong **tháng này** (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "month",
+              "periodLabel": "tháng này",
+              "startDate": "2026-09-30T17:00:00.000Z",
+              "endDate": "2026-10-02T16:59:59.999Z",
+              "dateRangeStr": "01/10/2026 - 02/10/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    },
+    {
+      "id": 3,
+      "query": "Hôm nay có mặt hàng nào ế không?",
+      "description": "Hôm nay có mặt hàng nào ế không? (Hàng ế)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 97,
+      "total_latency_s": 1.02,
+      "assistant_text": "📊 Hiệu suất mặt hàng hôm nay (02/10/2026):\n\nTrong hôm nay (02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_3.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng hôm nay (02/10/2026):**\n\nTrong **hôm nay** (02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "today",
+          "ranking_type": "slow_selling",
+          "period": "today",
+          "query": "Hôm nay có mặt hàng nào ế không?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877815143_ylu5a",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-10-01T17:00:00.000Z",
+              "end": "2026-10-02T16:59:59.999Z",
+              "label": "hôm nay",
+              "code": "today",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:35.962Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng hôm nay (02/10/2026):**\n\nTrong **hôm nay** (02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "today",
+              "periodLabel": "hôm nay",
+              "startDate": "2026-10-01T17:00:00.000Z",
+              "endDate": "2026-10-02T16:59:59.999Z",
+              "dateRangeStr": "02/10/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    },
+    {
+      "id": 4,
+      "query": "Tuần trước bán được những gì, cái gì không bán được?",
+      "description": "Tuần trước bán được những gì, cái gì không bán được? (Bán được / không bán được)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 68,
+      "total_latency_s": 1.69,
+      "assistant_text": "📊 Hiệu suất mặt hàng tuần trước (21/09/2026 - 27/09/2026):\n\nTrong tuần trước (21/09/2026 - 27/09/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_4.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng tuần trước (21/09/2026 - 27/09/2026):**\n\nTrong **tuần trước** (21/09/2026 - 27/09/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "last_week",
+          "period": "last_week",
+          "query": "Tuần trước bán được những gì, cái gì không bán được?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877817241_thbp1",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-20T17:00:00.000Z",
+              "end": "2026-09-27T16:59:59.999Z",
+              "label": "tuần trước",
+              "code": "last_week",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:38.202Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng tuần trước (21/09/2026 - 27/09/2026):**\n\nTrong **tuần trước** (21/09/2026 - 27/09/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "last_week",
+              "periodLabel": "tuần trước",
+              "startDate": "2026-09-20T17:00:00.000Z",
+              "endDate": "2026-09-27T16:59:59.999Z",
+              "dateRangeStr": "21/09/2026 - 27/09/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    },
+    {
+      "id": 5,
+      "query": "Những món nào bán chạy trong tuần này?",
+      "description": "Những món nào bán chạy trong tuần này? (Món bán chạy tuần này)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 76,
+      "total_latency_s": 0.82,
+      "assistant_text": "📊 Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):\n\nTrong tuần này (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_5.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "this_week",
+          "ranking_type": "best_selling",
+          "period": "this_week",
+          "query": "Những món nào bán chạy trong tuần này?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877820259_vvung",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-27T17:00:00.000Z",
+              "end": "2026-10-02T16:59:59.999Z",
+              "label": "tuần này",
+              "code": "this_week",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:40.963Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "this_week",
+              "periodLabel": "tuần này",
+              "startDate": "2026-09-27T17:00:00.000Z",
+              "endDate": "2026-10-02T16:59:59.999Z",
+              "dateRangeStr": "28/09/2026 - 02/10/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    },
+    {
+      "id": 6,
+      "query": "Tuần này mặt hàng nào bán kém nhất?",
+      "description": "Tuần này mặt hàng nào bán kém nhất? (Bán kém nhất)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 94,
+      "total_latency_s": 1.35,
+      "assistant_text": "📊 Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):\n\nTrong tuần này (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_6.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "this_week",
+          "ranking_type": "worst_selling",
+          "period": "this_week",
+          "query": "Tuần này mặt hàng nào bán kém nhất?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877822512_g28jy",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-27T17:00:00.000Z",
+              "end": "2026-10-02T16:59:59.999Z",
+              "label": "tuần này",
+              "code": "this_week",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:43.682Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "this_week",
+              "periodLabel": "tuần này",
+              "startDate": "2026-09-27T17:00:00.000Z",
+              "endDate": "2026-10-02T16:59:59.999Z",
+              "dateRangeStr": "28/09/2026 - 02/10/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    },
+    {
+      "id": 7,
+      "query": "Sản phẩm nào nổi bật và sản phẩm nào ế ẩm tháng này?",
+      "description": "Sản phẩm nào nổi bật và sản phẩm nào ế ẩm tháng này? (Nổi bật / ế ẩm)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 74,
+      "total_latency_s": 1.62,
+      "assistant_text": "📊 Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):\n\nTrong tháng này (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_7.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):**\n\nTrong **tháng này** (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "tháng này",
+          "period": "month",
+          "query": "Sản phẩm nào nổi bật và sản phẩm nào ế ẩm tháng này?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877824995_l0eag",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-02T16:59:59.999Z",
+              "label": "tháng này",
+              "code": "month",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:46.334Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):**\n\nTrong **tháng này** (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "month",
+              "periodLabel": "tháng này",
+              "startDate": "2026-09-30T17:00:00.000Z",
+              "endDate": "2026-10-02T16:59:59.999Z",
+              "dateRangeStr": "01/10/2026 - 02/10/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    },
+    {
+      "id": 8,
+      "query": "Hôm nay mặt hàng nào bán được nhiều, cái nào ít người mua?",
+      "description": "Hôm nay mặt hàng nào bán được nhiều, cái nào ít người mua? (Nhiều / ít người mua)",
+      "passed": true,
+      "intent": "PRODUCT_PERFORMANCE_RANKING",
+      "tools_executed": [
+        "getProductPerformanceRanking"
+      ],
+      "provider_badge": "DeepSeek V3 (Online)",
+      "feedback_ms": 562,
+      "total_latency_s": 1.49,
+      "assistant_text": "📊 Hiệu suất mặt hàng hôm nay (02/10/2026):\n\nTrong hôm nay (02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):\n1. Gối cổ sáng chế F5/S: Đã bán 0 cái (Tồn kho: 120 cái)\n2. Gối lưng sáng chế F1: Đã bán 0 cái (Tồn kho: 112 cái)\n3. Gối lưng sáng chế F3/C: Đã bán 0 cái (Tồn kho: 102 cái)\n4. Ghế sáng chế 90D: Đã bán 0 chiếc (Tồn kho: 90 chiếc)\n5. Ghế sáng chế 90T: Đã bán 0 chiếc (Tồn kho: 82 chiếc)\n(và 14 mặt hàng khác chưa bán được)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_ranking\\variant_8.png",
+      "trace": {
+        "text": "📊 **Hiệu suất mặt hàng hôm nay (02/10/2026):**\n\nTrong **hôm nay** (02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "intent": "PRODUCT_PERFORMANCE_RANKING",
+        "skillId": "product-performance-ranking",
+        "summary": null,
+        "parameters": {
+          "time_range": "today",
+          "period": "today",
+          "query": "Hôm nay mặt hàng nào bán được nhiều, cái nào ít người mua?"
+        },
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "DEEPSEEK",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790877804310_mmeol",
+        "request_id": "plan_1790877828574_jsvsh",
+        "planner_provider": "DEEPSEEK",
+        "planner_model": "deepseek-chat",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "product_performance_ranking"
+        ],
+        "selected_capabilities": [
+          "product_performance_ranking"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "getProductPerformanceRanking"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "product_performance_ranking",
+            "tool_binding": "getProductPerformanceRanking",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-10-01T17:00:00.000Z",
+              "end": "2026-10-02T16:59:59.999Z",
+              "label": "hôm nay",
+              "code": "today",
+              "time_origin": "EXPLICIT_PROMPT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T18:03:49.274Z",
+            "payload": {
+              "text": "📊 **Hiệu suất mặt hàng hôm nay (02/10/2026):**\n\nTrong **hôm nay** (02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+              "period": "today",
+              "periodLabel": "hôm nay",
+              "startDate": "2026-10-01T17:00:00.000Z",
+              "endDate": "2026-10-02T16:59:59.999Z",
+              "dateRangeStr": "02/10/2026",
+              "totalSalesCount": 0,
+              "totalRevenue": 0,
+              "topPerformers": [],
+              "bottomPerformers": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                }
+              ],
+              "unsoldProducts": [
+                {
+                  "id": "p_f5",
+                  "name": "Gối cổ sáng chế F5/S",
+                  "sku": "DL-F5",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 120,
+                  "isService": false
+                },
+                {
+                  "id": "p_f1",
+                  "name": "Gối lưng sáng chế F1",
+                  "sku": "DL-F1",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 112,
+                  "isService": false
+                },
+                {
+                  "id": "p_f3",
+                  "name": "Gối lưng sáng chế F3/C",
+                  "sku": "DL-F3",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 102,
+                  "isService": false
+                },
+                {
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 90,
+                  "isService": false
+                },
+                {
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 82,
+                  "isService": false
+                },
+                {
+                  "id": "p_f4",
+                  "name": "Gối cổ sáng chế F4/09",
+                  "sku": "DL-F4",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 78,
+                  "isService": false
+                },
+                {
+                  "id": "p_lumbar",
+                  "name": "Gối lưng DoctorLoan",
+                  "sku": "DL-LUMBAR",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 75,
+                  "isService": false
+                },
+                {
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 72,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_high",
+                  "name": "Ghế N85 - chân cao",
+                  "sku": "N85-NAVY-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 67,
+                  "isService": false
+                },
+                {
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 63,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_navy_low",
+                  "name": "Ghế N85 - chân thấp",
+                  "sku": "N85-NAVY-L",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 57,
+                  "isService": false
+                },
+                {
+                  "id": "p_meditation",
+                  "name": "Đệm thiền DoctorLoan",
+                  "sku": "DL-MEDITATION",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 52,
+                  "isService": false
+                },
+                {
+                  "id": "p_n85_pink_high",
+                  "name": "Ghế N85 màu hồng - chân cao",
+                  "sku": "N85-PINK-H",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 37,
+                  "isService": false
+                },
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "unit": "chiếc",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "unit": "cái",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": false
+                },
+                {
+                  "id": "s_goi_dau_duong_sinh",
+                  "name": "Gội đầu dưỡng sinh",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_massage_co_vai_gay",
+                  "name": "Massage cổ vai gáy",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_tu_van_tu_the",
+                  "name": "Tư vấn tư thế & cột sống",
+                  "sku": "",
+                  "unit": "buổi",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                },
+                {
+                  "id": "s_xong_hoi_thao_moc",
+                  "name": "Xông hơi thảo mộc",
+                  "sku": "",
+                  "unit": "lần",
+                  "qty": 0,
+                  "revenue": 0,
+                  "onHand": 0,
+                  "isService": true
+                }
+              ],
+              "hasSales": false,
+              "intent": "PRODUCT_PERFORMANCE_RANKING",
+              "skillId": "product-performance-ranking",
+              "tier": 0,
+              "toolExecuted": "getProductPerformanceRanking"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [getProductPerformanceRanking]",
+        "trace": "Semantic Planner (deepseek-chat) -> getProductPerformanceRanking [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_R2_213033B15C2D",
+        "ai_arch_version": "PHASE3"
+      }
+    }
+  ]
+}

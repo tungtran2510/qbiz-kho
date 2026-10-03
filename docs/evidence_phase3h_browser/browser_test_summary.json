@@ -1,0 +1,911 @@
+{
+  "QA_URL": "http://localhost:4180",
+  "qa_build_info": {
+    "baseGitSha": "9837b84a8b40126536874dfe53b613b46fff52f5",
+    "worktreeDirty": true,
+    "qaArtifactFingerprint": "QA_RC_PHASE3H_20261001",
+    "aiArchVersion": "PHASE3",
+    "qaProvider": "LOCAL_AI",
+    "qaModel": "qwen2.5:1.5b",
+    "serverGateway": "SERVER_SIDE_GATEWAY",
+    "buildSha": "9837b84-qa-phase3h",
+    "buildTime": "2026-10-01T06:00:00+07:00"
+  },
+  "cases": {
+    "case1_stock_lookup": {
+      "status": "PASS",
+      "query": "Kiểm tra tồn kho Ghế sáng chế 150 tại kho trung tâm",
+      "duration_s": 32.83,
+      "trace": {
+        "text": "Sản phẩm **Ghế sáng chế 150**:\n- Tổng có thể bán: **0 chiếc** (Thực tồn: 0, Đang giữ: 0)\n- Chi tiết theo kho:\n  • **Kho Trung tâm**: Còn bán được **0**, thực tế 0\n  • **Kho Hà Đông**: Còn bán được **0**, thực tế 0",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "LOCAL_AI",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790830036074_01fpv",
+        "request_id": "plan_1790830039013_ttbb4",
+        "planner_provider": "LOCAL_AI",
+        "planner_model": "qwen2.5:1.5b",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "check_stock"
+        ],
+        "selected_capabilities": [
+          "check_stock"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "check-stock"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "check_stock",
+            "tool_binding": "check-stock",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": "p_150",
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:47:50.360Z",
+            "payload": {
+              "text": "Sản phẩm **Ghế sáng chế 150**:\n- Tổng có thể bán: **0 chiếc** (Thực tồn: 0, Đang giữ: 0)\n- Chi tiết theo kho:\n  • **Kho Trung tâm**: Còn bán được **0**, thực tế 0\n  • **Kho Hà Đông**: Còn bán được **0**, thực tế 0",
+              "product": {
+                "id": "p_150",
+                "name": "Ghế sáng chế 150",
+                "sku": "DL-150",
+                "barcode": "8938500010205",
+                "price": 53762000,
+                "cost": 0,
+                "unit": "chiếc",
+                "lowStock": 1,
+                "type": "PRODUCT",
+                "trackInventory": true
+              },
+              "stockTotals": {
+                "onHand": 0,
+                "reserved": 0,
+                "available": 0
+              },
+              "warehouses": [
+                {
+                  "warehouseId": "wh_center",
+                  "warehouseName": "Kho Trung tâm",
+                  "onHand": 0,
+                  "reserved": 0,
+                  "available": 0
+                },
+                {
+                  "warehouseId": "wh_hadong",
+                  "warehouseName": "Kho Hà Đông",
+                  "onHand": 0,
+                  "reserved": 0,
+                  "available": 0
+                }
+              ],
+              "tier": 0,
+              "intent": "QUERY_STOCK",
+              "toolExecuted": "check-stock",
+              "productId": "p_150",
+              "productName": "Ghế sáng chế 150"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [check-stock]",
+        "trace": "Semantic Planner (qwen2.5:1.5b) -> check-stock [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "Sản phẩm Ghế sáng chế 150:\nTổng có thể bán: 0 chiếc (Thực tồn: 0, Đang giữ: 0)\nChi tiết theo kho:\nKho Trung tâm: Còn bán được 0, thực tế 0\nKho Hà Đông: Còn bán được 0, thực tế 0",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\01_stock_lookup.png"
+    },
+    "case2_low_stock": {
+      "status": "PASS",
+      "query": "Tìm những món hàng sắp hết trong kho",
+      "duration_s": 15.89,
+      "trace": {
+        "text": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "LOCAL_AI",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790830036074_01fpv",
+        "request_id": "plan_1790830072100_fkfdv",
+        "planner_provider": "LOCAL_AI",
+        "planner_model": "qwen2.5:1.5b",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "find_low_stock"
+        ],
+        "selected_capabilities": [
+          "find_low_stock"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "find-low-stock"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "find_low_stock",
+            "tool_binding": "find-low-stock",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "warehouse",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:48:06.541Z",
+            "payload": {
+              "text": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)",
+              "items": [
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "available": 0,
+                  "onHand": 0,
+                  "lowStock": 1,
+                  "unit": "chiếc",
+                  "deficit": 2
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "available": 0,
+                  "onHand": 0,
+                  "lowStock": 6,
+                  "unit": "cái",
+                  "deficit": 12
+                }
+              ],
+              "tier": 0,
+              "intent": "LOW_STOCK_INQUIRY",
+              "toolExecuted": "find-low-stock"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [find-low-stock]",
+        "trace": "Semantic Planner (qwen2.5:1.5b) -> find-low-stock [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "Hiện có 2 sản phẩm sắp hết hoặc đã hết hàng:\nGhế sáng chế 150: Còn 0 chiếc (Ngưỡng cảnh báo: 1)\nGối cổ sáng chế F6: Còn 0 cái (Ngưỡng cảnh báo: 6)",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\02_low_stock.png"
+    },
+    "case3_price_lookup": {
+      "status": "PASS",
+      "query": "Ghế sáng chế 90D giá bao nhiêu?",
+      "duration_s": 45.74,
+      "trace": {
+        "text": "Giá bán của **Ghế sáng chế 90D**:\n- Giá niêm yết: **34.937.000 ₫** / chiếc\n- Mã SKU: DL-90D\n- Trạng thái: Đang kinh doanh",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "LOCAL_AI",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790830036074_01fpv",
+        "request_id": "plan_1790830088430_i3ra4",
+        "planner_provider": "LOCAL_AI",
+        "planner_model": "qwen2.5:1.5b",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "price_lookup"
+        ],
+        "selected_capabilities": [
+          "price_lookup"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "price-lookup"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "price_lookup",
+            "tool_binding": "price-lookup",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": "p_90d",
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:48:52.626Z",
+            "payload": {
+              "text": "Giá bán của **Ghế sáng chế 90D**:\n- Giá niêm yết: **34.937.000 ₫** / chiếc\n- Mã SKU: DL-90D\n- Trạng thái: Đang kinh doanh",
+              "product": {
+                "type": "PRODUCT",
+                "categoryId": "",
+                "price": 34937000,
+                "images": [
+                  "./assets/products/optimized/chair-90d.webp"
+                ],
+                "active": true,
+                "websiteVisibility": false,
+                "variants": [],
+                "trackInventory": true,
+                "id": "p_90d",
+                "name": "Ghế sáng chế 90D",
+                "sku": "DL-90D",
+                "barcode": "8938500010201",
+                "category": "Ghế",
+                "unit": "chiếc",
+                "brand": "DoctorLoan",
+                "warranty": "10 năm",
+                "description": "Ghế sáng chế DoctorLoan 90D với thiết kế nâng đỡ chuyên sâu.",
+                "lowStock": 2,
+                "image": "./assets/products/optimized/chair-90d.webp",
+                "low_stock_threshold": 2
+              },
+              "tier": 0,
+              "intent": "PRICE_LOOKUP",
+              "toolExecuted": "price-lookup",
+              "productId": "p_90d"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [price-lookup]",
+        "trace": "Semantic Planner (qwen2.5:1.5b) -> price-lookup [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "Giá bán của Ghế sáng chế 90D:\nGiá niêm yết: 34.937.000 ₫ / chiếc\nMã SKU: DL-90D\nTrạng thái: Đang kinh doanh",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\03_price_lookup.png"
+    },
+    "case4_multiturn_followup": {
+      "status": "PASS",
+      "query": "Món này giá bao nhiêu?",
+      "duration_s": 16.9,
+      "trace": {
+        "text": "Giá bán của **Gối lưng sáng chế F1**:\n- Giá niêm yết: **3.500.000 ₫** / cái\n- Mã SKU: DL-F1\n- Trạng thái: Đang kinh doanh",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "LOCAL_AI",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790830036074_01fpv",
+        "request_id": "plan_1790830151880_b2h1m",
+        "planner_provider": "LOCAL_AI",
+        "planner_model": "qwen2.5:1.5b",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "price_lookup"
+        ],
+        "selected_capabilities": [
+          "price_lookup"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "price-lookup"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "price_lookup",
+            "tool_binding": "price-lookup",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": "p_f1",
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:49:27.404Z",
+            "payload": {
+              "text": "Giá bán của **Gối lưng sáng chế F1**:\n- Giá niêm yết: **3.500.000 ₫** / cái\n- Mã SKU: DL-F1\n- Trạng thái: Đang kinh doanh",
+              "product": {
+                "type": "PRODUCT",
+                "categoryId": "",
+                "price": 3500000,
+                "images": [
+                  "./assets/products/optimized/back-f1.webp"
+                ],
+                "active": true,
+                "websiteVisibility": false,
+                "variants": [],
+                "trackInventory": true,
+                "id": "p_f1",
+                "name": "Gối lưng sáng chế F1",
+                "sku": "DL-F1",
+                "barcode": "8938500010110",
+                "category": "Gối lưng",
+                "unit": "cái",
+                "brand": "DoctorLoan",
+                "description": "Gối lưng F1 hỗ trợ vùng thắt lưng khi ngồi lâu.",
+                "lowStock": 8,
+                "image": "./assets/products/optimized/back-f1.webp",
+                "low_stock_threshold": 8
+              },
+              "tier": 0,
+              "intent": "PRICE_LOOKUP",
+              "toolExecuted": "price-lookup",
+              "productId": "p_f1"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [price-lookup]",
+        "trace": "Semantic Planner (qwen2.5:1.5b) -> price-lookup [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "Giá bán của Gối lưng sáng chế F1:\nGiá niêm yết: 3.500.000 ₫ / cái\nMã SKU: DL-F1\nTrạng thái: Đang kinh doanh",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\04_multiturn_followup.png"
+    },
+    "case5_multi_intent": {
+      "status": "PASS",
+      "query": "Kiểm tra tồn kho Ghế sáng chế 150 và tìm những món sắp hết hàng",
+      "duration_s": 26.62,
+      "trace": {
+        "text": "Sản phẩm **Ghế sáng chế 150**:\n- Tổng có thể bán: **0 chiếc** (Thực tồn: 0, Đang giữ: 0)\n- Chi tiết theo kho:\n  • **Kho Trung tâm**: Còn bán được **0**, thực tế 0\n  • **Kho Hà Đông**: Còn bán được **0**, thực tế 0\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 2,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "LOCAL_AI",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790830036074_01fpv",
+        "request_id": "plan_1790830169362_y8alh",
+        "planner_provider": "LOCAL_AI",
+        "planner_model": "qwen2.5:1.5b",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 2,
+        "capabilities": [
+          "check_stock",
+          "find_low_stock"
+        ],
+        "selected_capabilities": [
+          "check_stock",
+          "find_low_stock"
+        ],
+        "risk_class": "READ_MULTI",
+        "tools_executed": [
+          "check-stock",
+          "find-low-stock"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "check_stock",
+            "tool_binding": "check-stock",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": "p_150",
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:49:54.266Z",
+            "payload": {
+              "text": "Sản phẩm **Ghế sáng chế 150**:\n- Tổng có thể bán: **0 chiếc** (Thực tồn: 0, Đang giữ: 0)\n- Chi tiết theo kho:\n  • **Kho Trung tâm**: Còn bán được **0**, thực tế 0\n  • **Kho Hà Đông**: Còn bán được **0**, thực tế 0",
+              "product": {
+                "id": "p_150",
+                "name": "Ghế sáng chế 150",
+                "sku": "DL-150",
+                "barcode": "8938500010205",
+                "price": 53762000,
+                "cost": 0,
+                "unit": "chiếc",
+                "lowStock": 1,
+                "type": "PRODUCT",
+                "trackInventory": true
+              },
+              "stockTotals": {
+                "onHand": 0,
+                "reserved": 0,
+                "available": 0
+              },
+              "warehouses": [
+                {
+                  "warehouseId": "wh_center",
+                  "warehouseName": "Kho Trung tâm",
+                  "onHand": 0,
+                  "reserved": 0,
+                  "available": 0
+                },
+                {
+                  "warehouseId": "wh_hadong",
+                  "warehouseName": "Kho Hà Đông",
+                  "onHand": 0,
+                  "reserved": 0,
+                  "available": 0
+                }
+              ],
+              "tier": 0,
+              "intent": "QUERY_STOCK",
+              "toolExecuted": "check-stock",
+              "productId": "p_150",
+              "productName": "Ghế sáng chế 150"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          },
+          {
+            "capability_id": "find_low_stock",
+            "tool_binding": "find-low-stock",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": "p_150",
+            "entity_type": "warehouse",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:49:54.266Z",
+            "payload": {
+              "text": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)",
+              "items": [
+                {
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "available": 0,
+                  "onHand": 0,
+                  "lowStock": 1,
+                  "unit": "chiếc",
+                  "deficit": 2
+                },
+                {
+                  "id": "p_f6",
+                  "name": "Gối cổ sáng chế F6",
+                  "sku": "DL-F6",
+                  "available": 0,
+                  "onHand": 0,
+                  "lowStock": 6,
+                  "unit": "cái",
+                  "deficit": 12
+                }
+              ],
+              "tier": 0,
+              "intent": "LOW_STOCK_INQUIRY",
+              "toolExecuted": "find-low-stock"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [check-stock + find-low-stock]",
+        "trace": "Semantic Planner (qwen2.5:1.5b) -> check-stock, find-low-stock [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "Sản phẩm Ghế sáng chế 150:\nTổng có thể bán: 0 chiếc (Thực tồn: 0, Đang giữ: 0)\nChi tiết theo kho:\nKho Trung tâm: Còn bán được 0, thực tế 0\nKho Hà Đông: Còn bán được 0, thực tế 0\n--",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\05_multi_intent.png"
+    },
+    "case6_clarification": {
+      "status": "PASS",
+      "query": "Hàng hóa thế nào?",
+      "duration_s": 58.96,
+      "trace": {
+        "text": "Không tìm thấy sản phẩm \"không có\" trong kho. Bạn có thể chọn từ danh sách sau:",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "LOCAL_AI",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790830036074_01fpv",
+        "request_id": "plan_1790830196461_ir1hb",
+        "planner_provider": "LOCAL_AI",
+        "planner_model": "qwen2.5:1.5b",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "check_stock"
+        ],
+        "selected_capabilities": [
+          "check_stock"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "check-stock"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "check_stock",
+            "tool_binding": "check-stock",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "product",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:50:53.851Z",
+            "payload": {
+              "text": "Không tìm thấy sản phẩm \"không có\" trong kho. Bạn có thể chọn từ danh sách sau:",
+              "isAmbiguous": true,
+              "status": "NEEDS_CLARIFICATION",
+              "candidates": [
+                {
+                  "type": "PRODUCT",
+                  "categoryId": "",
+                  "price": 53762000,
+                  "images": [
+                    "./assets/products/optimized/chair-135.webp"
+                  ],
+                  "active": true,
+                  "websiteVisibility": false,
+                  "variants": [],
+                  "trackInventory": true,
+                  "id": "p_135",
+                  "name": "Ghế sáng chế 135",
+                  "sku": "DL-135",
+                  "barcode": "8938500010204",
+                  "category": "Ghế",
+                  "unit": "chiếc",
+                  "brand": "DoctorLoan",
+                  "warranty": "10 năm",
+                  "description": "Ghế sáng chế DoctorLoan 135 cho trải nghiệm thư giãn chuyên sâu.",
+                  "lowStock": 1,
+                  "image": "./assets/products/optimized/chair-135.webp",
+                  "low_stock_threshold": 1
+                },
+                {
+                  "type": "PRODUCT",
+                  "categoryId": "",
+                  "price": 53762000,
+                  "images": [
+                    "./assets/products/optimized/chair-150.webp"
+                  ],
+                  "active": true,
+                  "websiteVisibility": false,
+                  "variants": [],
+                  "trackInventory": true,
+                  "id": "p_150",
+                  "name": "Ghế sáng chế 150",
+                  "sku": "DL-150",
+                  "barcode": "8938500010205",
+                  "category": "Ghế",
+                  "unit": "chiếc",
+                  "brand": "DoctorLoan",
+                  "warranty": "10 năm",
+                  "description": "Ghế sáng chế DoctorLoan 150, thiết kế cao cấp cho không gian chuyên nghiệp.",
+                  "lowStock": 1,
+                  "image": "./assets/products/optimized/chair-150.webp",
+                  "low_stock_threshold": 1
+                },
+                {
+                  "type": "PRODUCT",
+                  "categoryId": "",
+                  "price": 34937000,
+                  "images": [
+                    "./assets/products/optimized/chair-90d.webp"
+                  ],
+                  "active": true,
+                  "websiteVisibility": false,
+                  "variants": [],
+                  "trackInventory": true,
+                  "id": "p_90d",
+                  "name": "Ghế sáng chế 90D",
+                  "sku": "DL-90D",
+                  "barcode": "8938500010201",
+                  "category": "Ghế",
+                  "unit": "chiếc",
+                  "brand": "DoctorLoan",
+                  "warranty": "10 năm",
+                  "description": "Ghế sáng chế DoctorLoan 90D với thiết kế nâng đỡ chuyên sâu.",
+                  "lowStock": 2,
+                  "image": "./assets/products/optimized/chair-90d.webp",
+                  "low_stock_threshold": 2
+                },
+                {
+                  "type": "PRODUCT",
+                  "categoryId": "",
+                  "price": 34937000,
+                  "images": [
+                    "./assets/products/optimized/chair-90t.webp"
+                  ],
+                  "active": true,
+                  "websiteVisibility": false,
+                  "variants": [],
+                  "trackInventory": true,
+                  "id": "p_90t",
+                  "name": "Ghế sáng chế 90T",
+                  "sku": "DL-90T",
+                  "barcode": "8938500010202",
+                  "category": "Ghế",
+                  "unit": "chiếc",
+                  "brand": "DoctorLoan",
+                  "warranty": "10 năm",
+                  "description": "Ghế sáng chế DoctorLoan 90T, phù hợp khu vực trị liệu và thư giãn.",
+                  "lowStock": 2,
+                  "image": "./assets/products/optimized/chair-90t.webp",
+                  "low_stock_threshold": 2
+                },
+                {
+                  "type": "PRODUCT",
+                  "categoryId": "",
+                  "price": 39249000,
+                  "images": [
+                    "./assets/products/optimized/chair-95.webp"
+                  ],
+                  "active": true,
+                  "websiteVisibility": false,
+                  "variants": [],
+                  "trackInventory": true,
+                  "id": "p_95",
+                  "name": "Ghế sáng chế 95",
+                  "sku": "DL-95",
+                  "barcode": "8938500010203",
+                  "category": "Ghế",
+                  "unit": "chiếc",
+                  "brand": "DoctorLoan",
+                  "warranty": "10 năm",
+                  "description": "Ghế sáng chế DoctorLoan 95, kết cấu lớn và vững chắc.",
+                  "lowStock": 2,
+                  "image": "./assets/products/optimized/chair-95.webp",
+                  "low_stock_threshold": 2
+                }
+              ],
+              "tier": 0,
+              "intent": "QUERY_STOCK",
+              "toolExecuted": "check-stock",
+              "productId": null,
+              "productName": null
+            },
+            "status": "NEEDS_CLARIFICATION",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [check-stock]",
+        "trace": "Semantic Planner (qwen2.5:1.5b) -> check-stock [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "Không tìm thấy sản phẩm \"không có\" trong kho. Bạn có thể chọn từ danh sách sau:",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\06_clarification.png"
+    },
+    "case7a_cashier_denied": {
+      "status": "PASS",
+      "query": "Cho tôi xem báo cáo lợi nhuận và doanh thu tháng này",
+      "duration_s": 15.0,
+      "trace": {
+        "text": "⚠️ **Từ chối quyền truy cập (HARD DENY):** Tài khoản vai trò **cashier** không được cấp quyền xem giá vốn và báo cáo lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).",
+        "status": "BLOCKED",
+        "isBlocked": true,
+        "permissionDenied": true,
+        "tier": 0,
+        "provider": "POST_PLAN_RISK_GUARD",
+        "authority_path": "POST_PLAN_RISK_GUARD",
+        "final_answer_source": "POLICY_GUARD",
+        "compactTrace": "Post-Plan Risk Guard (Blocked)",
+        "conversation_id": "conv_1790830255378_jwj35",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "⚠️ Từ chối quyền truy cập (HARD DENY): Tài khoản vai trò cashier không được cấp quyền xem giá vốn và báo cáo lợi nhuận cửa hàng (yêu cầu quyền VIEW_COST).",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\07a_cashier_denied.png"
+    },
+    "case7b_owner_allowed": {
+      "status": "PASS",
+      "query": "Cho tôi xem báo cáo doanh thu hôm nay",
+      "duration_s": 14.41,
+      "trace": {
+        "text": "Doanh số **hôm nay**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**",
+        "status": "SUCCESS",
+        "evidence_verified": true,
+        "proposal": null,
+        "suggestions": [],
+        "actions": [],
+        "evidence_count": 1,
+        "composer_provider": "DETERMINISTIC_COMPOSER",
+        "composer_model": "grounded-template",
+        "is_real_composer": false,
+        "BUILD_SHA": "9837b84-qa-phase3r",
+        "build_sha": "9837b84-qa-phase3r",
+        "tier": 1,
+        "provider": "LOCAL_AI",
+        "authority_path": "SEMANTIC_PLANNER",
+        "conversation_id": "conv_1790830271666_lr0kp",
+        "request_id": "plan_1790830273186_t3vst",
+        "planner_provider": "LOCAL_AI",
+        "planner_model": "qwen2.5:1.5b",
+        "composer_source": "DETERMINISTIC_COMPOSER",
+        "plan_intent_count": 1,
+        "capabilities": [
+          "sales_summary"
+        ],
+        "selected_capabilities": [
+          "sales_summary"
+        ],
+        "risk_class": "READ_SINGLE",
+        "tools_executed": [
+          "sales-summary"
+        ],
+        "evidence_status": "PASS",
+        "evidence_packets": [
+          {
+            "capability_id": "sales_summary",
+            "tool_binding": "sales-summary",
+            "shop_id": "shop_default",
+            "warehouse_id": "wh_center",
+            "entity_id": null,
+            "entity_type": "GENERAL",
+            "time_range": {
+              "start": "2026-09-30T17:00:00.000Z",
+              "end": "2026-10-01T16:59:59.999Z",
+              "label": "hôm nay",
+              "time_origin": "DEFAULT"
+            },
+            "data_authority": "INDEXED_DB_LOCAL",
+            "fetched_at": "2026-10-01T04:51:25.864Z",
+            "payload": {
+              "text": "Doanh số **hôm nay**:\n- Doanh thu thực thu: **0 ₫**\n- Số phiếu hoàn tất: **0 phiếu**",
+              "summary": {
+                "period": "hôm nay",
+                "periodLabel": "hôm nay",
+                "completedCount": 0,
+                "totalRevenue": 0,
+                "grossRevenue": 0,
+                "refundTotal": 0,
+                "unpaidCount": 0,
+                "unpaidTotal": 0,
+                "paymentMethods": {
+                  "cash": 0,
+                  "transfer": 0,
+                  "qr": 0
+                },
+                "formattedRevenue": "0 ₫"
+              },
+              "intent": "SALES_SUMMARY",
+              "skillId": "sales-summary",
+              "tier": 0,
+              "toolExecuted": "sales-summary"
+            },
+            "status": "SUCCESS",
+            "is_proposal": false,
+            "error": null
+          }
+        ],
+        "verification": "PASS",
+        "proposal_state": "NONE",
+        "clarification_state": "NONE",
+        "final_answer_source": "SEMANTIC_MODEL",
+        "is_real_ai": true,
+        "compactTrace": "Semantic Plan [sales-summary]",
+        "trace": "Semantic Planner (qwen2.5:1.5b) -> sales-summary [Composer: DETERMINISTIC_COMPOSER, Evidence: PASS]",
+        "qa_artifact_fingerprint": "QA_RC_PHASE3H_20261001",
+        "ai_arch_version": "PHASE3"
+      },
+      "response_preview": "Doanh số hôm nay:\nDoanh thu thực thu: 0 ₫\nSố phiếu hoàn tất: 0 phiếu",
+      "screenshot": "D:\\google driver\\Codex PC\\Quản lý kho - bán hàng trên Qbiz\\app\\tests\\..\\docs\\evidence_phase3h_browser\\07b_owner_allowed.png"
+    }
+  },
+  "all_passed": true
+}

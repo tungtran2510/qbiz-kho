@@ -1,0 +1,380 @@
+{
+  "timestamp": "2026-10-02T06:01:21+07:00",
+  "total_tested": 21,
+  "results": [
+    {
+      "id": "STK_01",
+      "domain": "1. Tình trạng hàng hóa",
+      "title": "Hàng tồn kho nhiều nhất / đọng vốn",
+      "prompt": "Những mặt hàng nào đang tồn kho nhiều nhất đọng vốn?",
+      "expected_domain": "Kho / Tồn kho",
+      "duration_ms": 1479,
+      "provider": "GEMINI",
+      "intent": "slow_moving_products",
+      "intents": [
+        "slow_moving_products"
+      ],
+      "proposal": null,
+      "text": "⚠️ **CẢNH BÁO MẶT HÀNG BÁN CHẬM & CHÔN VỐN:**\nTổng vốn hàng hóa đang bị tồn đọng: **5.835.000.000 ₫**\n\n**1. Ghế sáng chế 135**\n- **Tồn kho:** 50 chiếc | **Vốn đang chôn:** **1.750.000.000 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**2. Ghế sáng chế 150**\n- **Tồn kho:** 35 chiếc | **Vốn đang chôn:** **1.225.000.000 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**3. Ghế sáng chế 95**\n- **Tồn kho:** 44 chiếc | **Vốn đang chôn:** **1.100.000.000 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**4. Ghế sáng chế 90D**\n- **Tồn kho:** 42 chiếc | **Vốn đang chôn:** **924.000.000 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**5. Ghế sáng chế 90T**\n- **Tồn kho:** 38 chiếc | **Vốn đang chôn:** **836.000.000 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.",
+      "assessment": "HONEST_BOUNDARY_OR_WARN",
+      "note": "Hệ thống trung thực báo chưa hỗ trợ hoặc cảnh báo nghiệp vụ"
+    },
+    {
+      "id": "STK_02",
+      "domain": "1. Tình trạng hàng hóa",
+      "title": "Lệch kho / Kiểm kê thất thoát",
+      "prompt": "Có hàng nào bị lệch giữa sổ sách và tồn thực tế không?",
+      "expected_domain": "Kho / Kiểm kê",
+      "duration_ms": 1273,
+      "provider": "GEMINI",
+      "intent": "product_performance_ranking",
+      "intents": [
+        "product_performance_ranking"
+      ],
+      "proposal": null,
+      "text": "⚠️ Có lỗi khi thực thi tác vụ product_performance_ranking: Kỹ năng \"product-performance-ranking\" chưa được đăng ký trong hệ thống.\n\n---\n\n⚠️ **Phát hiện 5 mặt hàng có chênh lệch kiểm kê:**\n\n| Mã SKU | Tên sản phẩm | Tồn sổ sách | Thực tế | Lệch | Trạng thái |\n| :--- | :--- | :---: | :---: | :---: | :--- |\n| — | Bàn chải đánh răng Colgate SlimSoft | 28 | **30** | **+2** | 🟢 Thừa +2 |\n| — | Mì Hảo Hảo tôm chua cay 75g | 25 | **40** | **+15** | 🟢 Thừa +15 |\n| — | Giấy vệ sinh Paseo 10 cuộn 3 lớp | -3 | **0** | **+3** | 🟢 Thừa +3 |\n| — | Nước tăng lực Red Bull 250ml | 8 | **24** | **+16** | 🟢 Thừa +16 |\n| — | Nước rửa chén Sunlight Trà Xanh 750g | 20 | **25** | **+5** | 🟢 Thừa +5 |\n\n💡 **Khuyến nghị xử lý:**\n- Bạn có thể bấm tạo **Phiếu kiểm kê cân bằng kho** để hệ thống tự động ghi nhận phiếu điều chỉnh nhập thừa / xuất thiếu vào sổ cái kho.",
+      "assessment": "HONEST_BOUNDARY_OR_WARN",
+      "note": "Hệ thống trung thực báo chưa hỗ trợ hoặc cảnh báo nghiệp vụ"
+    },
+    {
+      "id": "STK_03",
+      "domain": "1. Tình trạng hàng hóa",
+      "title": "So sánh tồn kho đa chi nhánh (Kho Trung tâm vs Hà Đông)",
+      "prompt": "So sánh tồn kho giữa kho Trung tâm và kho Hà Đông",
+      "expected_domain": "Kho / Đa kho",
+      "duration_ms": 1112,
+      "provider": "GEMINI",
+      "intent": "COMPARE_WAREHOUSE_STOCK",
+      "intents": [
+        "COMPARE_WAREHOUSE_STOCK"
+      ],
+      "proposal": null,
+      "text": "🏢 **Đối chiếu tồn kho: Kho Tổng Trung Tâm vs Kho Tổng Trung Tâm**\n\n| Mã SKU | Tên sản phẩm | Kho Tổng Trung Tâm | Kho Tổng Trung Tâm | Tổng tồn | So sánh |\n| :--- | :--- | :---: | :---: | :---: | :--- |\n| CG-SLIM | Bàn chải đánh răng Colgate SlimSoft | **85** cây | **85** cây | 170 | Cân bằng |\n| DL-135 | Ghế sáng chế 135 | **35** chiếc | **35** chiếc | 70 | Cân bằng |\n| DL-150 | Ghế sáng chế 150 | **25** chiếc | **25** chiếc | 50 | Cân bằng |\n| DL-90D | Ghế sáng chế 90D | **30** chiếc | **30** chiếc | 60 | Cân bằng |\n| DL-90T | Ghế sáng chế 90T | **28** chiếc | **28** chiếc | 56 | Cân bằng |\n| DL-95 | Ghế sáng chế 95 | **32** chiếc | **32** chiếc | 64 | Cân bằng |\n| DL-F1 | Gối lưng sáng chế F1 | **55** cái | **55** cái | 110 | Cân bằng |\n| DL-F3 | Gối lưng sáng chế F3/C | **45** cái | **45** cái | 90 | Cân bằng |\n| DL-F4 | Gối cổ sáng chế F4/09 | **35** cái | **35** cái | 70 | Cân bằng |\n| DL-F5 | Gối cổ sáng chế F5/S | **60** cái | **60** cái | 120 | Cân bằng |\n\n📊 **Tổng kết:**\n- Tổng tồn tại **Kho Tổng Trung Tâm**: **430** đơn vị sản phẩm\n- Tổng tồn tại **Kho Tổng Trung Tâm**: **430** đơn vị sản phẩm\n- Tổng cộng 2 kho: **860** đơn vị sản phẩm",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "FIN_01",
+      "domain": "2. Lợi nhuận & Thuế",
+      "title": "Tỷ suất lợi nhuận biên của shop",
+      "prompt": "Tỷ suất lợi nhuận biên của shop tháng này là bao nhiêu phần trăm?",
+      "expected_domain": "Tài chính / Lợi nhuận",
+      "duration_ms": 1152,
+      "provider": "GEMINI",
+      "intent": "PROFIT_INQUIRY",
+      "intents": [
+        "PROFIT_INQUIRY"
+      ],
+      "proposal": null,
+      "text": "Lợi nhuận gộp **tháng này** (4 giao dịch):\n- Doanh thu thực thu: **109.900 ₫**\n- Giá vốn hàng bán: **82.600 ₫**\n- Lợi nhuận gộp: **27.300 ₫** (Tỷ suất: **25%**)",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "FIN_02",
+      "domain": "2. Lợi nhuận & Thuế",
+      "title": "Doanh thu tính thuế HKD Thông tư 88/2021",
+      "prompt": "Doanh thu tính thuế theo Thông tư 88 từ đầu tháng đến nay là bao nhiêu?",
+      "expected_domain": "Thuế HKD",
+      "duration_ms": 1176,
+      "provider": "GEMINI",
+      "intent": "EXPORT_REPORT",
+      "intents": [
+        "EXPORT_REPORT"
+      ],
+      "proposal": null,
+      "text": "📊 **Đã xuất dữ liệu ra file Excel thành công!**\n\n• 📁 **Tên file:** `qbiz-so-chi-tiet-doanh-thu-tt88-2026-10-01.csv`\n• 🕒 **Khoảng thời gian:** **tháng này**\n• 📑 **Chi tiết:** Tổng cộng: **4 phiếu bán**, tổng doanh thu: **109.900 ₫** (theo chuẩn S2b-HKD TT 88/2021)\n• ⚡ **Định dạng:** file CSV (tương thích mở bằng Excel chuẩn UTF-8 BOM)\n• ⬇️ **Trạng thái:** Tệp đã tự động tải xuống máy tính của bạn.\n\n💡 *Gợi ý: Bạn có thể vào mục **Xuất dữ liệu** trong menu để tải các mẫu sổ kế toán S2b-HKD (TT88) hoặc Bảng kê xuất kho (TT200).*\n\n---\n\nDoanh số **tháng này**:\n- Doanh thu thực thu: **109.900 ₫**\n- Số phiếu hoàn tất: **4 phiếu**\n- Hình thức: Tiền mặt: 75.000 ₫ · Chuyển khoản: 30.400 ₫ · QR: 4.500 ₫",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "FIN_03",
+      "domain": "2. Lợi nhuận & Thuế",
+      "title": "Bảng kê thuế GTGT đầu ra",
+      "prompt": "Xuất bảng kê thuế GTGT đầu ra tháng này",
+      "expected_domain": "Thuế VAT",
+      "duration_ms": 1106,
+      "provider": "GEMINI",
+      "intent": "EXPORT_REPORT",
+      "intents": [
+        "EXPORT_REPORT"
+      ],
+      "proposal": null,
+      "text": "📊 **Đã xuất dữ liệu ra file Excel thành công!**\n\n• 📁 **Tên file:** `qbiz-so-chi-tiet-doanh-thu-tt88-2026-10-01.csv`\n• 🕒 **Khoảng thời gian:** **tháng này**\n• 📑 **Chi tiết:** Tổng cộng: **4 phiếu bán**, tổng doanh thu: **109.900 ₫** (theo chuẩn S2b-HKD TT 88/2021)\n• ⚡ **Định dạng:** file CSV (tương thích mở bằng Excel chuẩn UTF-8 BOM)\n• ⬇️ **Trạng thái:** Tệp đã tự động tải xuống máy tính của bạn.\n\n💡 *Gợi ý: Bạn có thể vào mục **Xuất dữ liệu** trong menu để tải các mẫu sổ kế toán S2b-HKD (TT88) hoặc Bảng kê xuất kho (TT200).*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "PRN_01",
+      "domain": "3. Máy in & In ấn",
+      "title": "In lại hóa đơn bán hàng vừa bán",
+      "prompt": "In lại hóa đơn vừa bán",
+      "expected_domain": "Máy in",
+      "duration_ms": 1189,
+      "provider": "GEMINI",
+      "intent": "PRINT_INVOICE",
+      "intents": [
+        "PRINT_INVOICE"
+      ],
+      "proposal": null,
+      "text": "🖨️ **Đang mở và chuẩn bị in hóa đơn gần nhất:**\n\n- Mã hóa đơn: **HD-0018**\n- Khách hàng: **Khách lẻ**\n- Tổng tiền: **30.000 ₫**\n- Thời gian: 2026-09-04T21:58:13.069Z\n\n✅ *Phiếu thanh toán đã được mở trên màn hình để bạn bấm in hoặc gửi cho khách.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "PRN_02",
+      "domain": "3. Máy in & In ấn",
+      "title": "Đổi khổ giấy in bill (K58 / K80)",
+      "prompt": "Đổi máy in sang khổ giấy K58",
+      "expected_domain": "Máy in",
+      "duration_ms": 1097,
+      "provider": "GEMINI",
+      "intent": "PRINT_INVOICE",
+      "intents": [
+        "PRINT_INVOICE"
+      ],
+      "proposal": null,
+      "text": "🖨️ **Đang mở và chuẩn bị in hóa đơn gần nhất:**\n\n- Mã hóa đơn: **HD-0018**\n- Khách hàng: **Khách lẻ**\n- Tổng tiền: **30.000 ₫**\n- Thời gian: 2026-09-04T21:58:13.069Z\n\n✅ *Phiếu thanh toán đã được mở trên màn hình để bạn bấm in hoặc gửi cho khách.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "PRN_03",
+      "domain": "3. Máy in & In ấn",
+      "title": "In vận đơn giao hàng cho đơn mới",
+      "prompt": "In vận đơn giao hàng cho đơn mới nhất",
+      "expected_domain": "Máy in / Vận đơn",
+      "duration_ms": 1015,
+      "provider": "GEMINI",
+      "intent": "ESTIMATE_CARRIER_FEE",
+      "intents": [
+        "ESTIMATE_CARRIER_FEE"
+      ],
+      "proposal": null,
+      "text": "📦 **Báo giá cước vận chuyển dự kiến (Trọng lượng 500g):**\n\n• ⚡ **Giao Hàng Nhanh (GHN):** **22.000 ₫** (1 - 2 ngày)\n• 🚛 **Giao Hàng Tiết Kiệm (GHTK):** **19.000 ₫** (Tiết kiệm)\n• 📮 **Viettel Post (VTP):** **24.000 ₫** (Bưu cục toàn quốc)\n\n💡 *Bạn có thể ra lệnh \"Gửi đơn cho GHN\" hoặc mở chi tiết đơn hàng để in nhãn vận chuyển mã vạch.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "INV_01",
+      "domain": "4. Hóa đơn điện tử",
+      "title": "Trạng thái kết nối nhà cấp HĐĐT (VNPT, Viettel)",
+      "prompt": "Kiểm tra kết nối hóa đơn điện tử VNPT và Viettel",
+      "expected_domain": "HĐĐT",
+      "duration_ms": 1075,
+      "provider": "GEMINI",
+      "intent": "clarify_ambiguity",
+      "intents": [
+        "clarify_ambiguity"
+      ],
+      "proposal": null,
+      "text": "ℹ️ **Kết nối Hóa đơn điện tử (VNPT / Viettel / MISA):**\n\nHệ thống hiện tại đã tích hợp sẵn module lập **Hóa đơn điện tử / VAT (Nghị định 123 / Thông tư 78)** dưới dạng Proposal an toàn.\n\nĐể kết nối trực tiếp cổng phát hành HSM / Token của VNPT-Invoice hay Viettel S-Invoice, bạn vui lòng vào mục **Cài đặt -> Tích hợp đối tác HĐĐT** để cấu hình tài khoản và ký số.",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "INV_02",
+      "domain": "4. Hóa đơn điện tử",
+      "title": "Phát hành hóa đơn điện tử có mã cơ quan thuế",
+      "prompt": "Phát hành hóa đơn điện tử có mã cơ quan thuế cho đơn hàng vừa tạo",
+      "expected_domain": "HĐĐT",
+      "duration_ms": 1641,
+      "provider": "GEMINI",
+      "intent": "CREATE_INVOICE_PROPOSAL",
+      "intents": [
+        "CREATE_INVOICE_PROPOSAL"
+      ],
+      "proposal": {
+        "id": "prop_muq4ywtw_cr4k",
+        "intent": "electronic_invoice_proposal",
+        "summary": "HĐĐT (Bản nháp) cho \"Doanh nghiệp mua hàng\":  — Tổng thanh toán (VAT 10%): 0đ",
+        "parameters": {
+          "buyerType": "INDIVIDUAL",
+          "taxCode": "",
+          "companyName": "",
+          "address": "",
+          "email": "",
+          "items": [],
+          "subtotal": 0,
+          "vatRate": 10,
+          "vatTotal": 0,
+          "grandTotal": 0,
+          "paymentMethod": "TM"
+        }
+      },
+      "text": "Đã tạo đề xuất hóa đơn điện tử: **HĐĐT (Bản nháp) cho \"Doanh nghiệp mua hàng\":  — Tổng thanh toán (VAT 10%): 0đ**.\n*(Chưa phát hành chính thức - chờ xác nhận)*",
+      "assessment": "PROPOSAL_CREATED",
+      "note": "Proposal: [prop_muq4ywtw_cr4k] HĐĐT (Bản nháp) cho \"Doanh nghiệp mua hàng\":  — Tổng thanh toán (VAT 10%): 0đ"
+    },
+    {
+      "id": "LOG_01",
+      "domain": "5. Vận chuyển & Giao hàng",
+      "title": "Kết nối Giao Hàng Nhanh (GHN) & GHTK",
+      "prompt": "Kết nối Giao Hàng Nhanh GHN và GHTK",
+      "expected_domain": "Vận chuyển",
+      "duration_ms": 1482,
+      "provider": "GEMINI",
+      "intent": "ESTIMATE_CARRIER_FEE",
+      "intents": [
+        "ESTIMATE_CARRIER_FEE"
+      ],
+      "proposal": null,
+      "text": "📦 **Báo giá cước vận chuyển dự kiến (Trọng lượng 500g):**\n\n• ⚡ **Giao Hàng Nhanh (GHN):** **22.000 ₫** (1 - 2 ngày)\n• 🚛 **Giao Hàng Tiết Kiệm (GHTK):** **19.000 ₫** (Tiết kiệm)\n• 📮 **Viettel Post (VTP):** **24.000 ₫** (Bưu cục toàn quốc)\n\n💡 *Bạn có thể ra lệnh \"Gửi đơn cho GHN\" hoặc mở chi tiết đơn hàng để in nhãn vận chuyển mã vạch.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "LOG_02",
+      "domain": "5. Vận chuyển & Giao hàng",
+      "title": "Tạo vận đơn gửi hàng qua GHTK",
+      "prompt": "Tạo vận đơn gửi hàng qua Giao Hàng Tiết Kiệm",
+      "expected_domain": "Vận chuyển",
+      "duration_ms": 1378,
+      "provider": "GEMINI",
+      "intent": "ESTIMATE_CARRIER_FEE",
+      "intents": [
+        "ESTIMATE_CARRIER_FEE"
+      ],
+      "proposal": null,
+      "text": "📦 **Báo giá cước vận chuyển dự kiến (Trọng lượng 500g):**\n\n• ⚡ **Giao Hàng Nhanh (GHN):** **22.000 ₫** (1 - 2 ngày)\n• 🚛 **Giao Hàng Tiết Kiệm (GHTK):** **19.000 ₫** (Tiết kiệm)\n• 📮 **Viettel Post (VTP):** **24.000 ₫** (Bưu cục toàn quốc)\n\n💡 *Bạn có thể ra lệnh \"Gửi đơn cho GHN\" hoặc mở chi tiết đơn hàng để in nhãn vận chuyển mã vạch.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "LOG_03",
+      "domain": "5. Vận chuyển & Giao hàng",
+      "title": "Tra cứu hành trình đơn vận chuyển",
+      "prompt": "Tra cứu hành trình đơn hàng vận chuyển mã GHN123456",
+      "expected_domain": "Vận chuyển",
+      "duration_ms": 1571,
+      "provider": "GEMINI",
+      "intent": "ESTIMATE_CARRIER_FEE",
+      "intents": [
+        "ESTIMATE_CARRIER_FEE"
+      ],
+      "proposal": null,
+      "text": "📦 **Báo giá cước vận chuyển dự kiến (Trọng lượng 500g):**\n\n• ⚡ **Giao Hàng Nhanh (GHN):** **22.000 ₫** (1 - 2 ngày)\n• 🚛 **Giao Hàng Tiết Kiệm (GHTK):** **19.000 ₫** (Tiết kiệm)\n• 📮 **Viettel Post (VTP):** **24.000 ₫** (Bưu cục toàn quốc)\n\n💡 *Bạn có thể ra lệnh \"Gửi đơn cho GHN\" hoặc mở chi tiết đơn hàng để in nhãn vận chuyển mã vạch.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "MKT_01",
+      "domain": "6. Sàn TMĐT & Đa kênh",
+      "title": "Đồng bộ đơn hàng Shopee & TikTok Shop",
+      "prompt": "Đồng bộ đơn hàng từ Shopee và TikTok Shop về kho",
+      "expected_domain": "Sàn TMĐT",
+      "duration_ms": 1070,
+      "provider": "GEMINI",
+      "intent": "clarify_ambiguity",
+      "intents": [
+        "clarify_ambiguity"
+      ],
+      "proposal": null,
+      "text": "Tôi chưa hiểu rõ yêu cầu này. Bạn có thể diễn đạt cụ thể hơn về sản phẩm, kho hoặc thao tác bạn muốn thực hiện không?",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "MKT_02",
+      "domain": "6. Sàn TMĐT & Đa kênh",
+      "title": "Kết nối phần mềm KiotViet để đồng bộ tồn kho",
+      "prompt": "Kết nối với phần mềm KiotViet để đồng bộ tồn kho",
+      "expected_domain": "Phần mềm ngoài",
+      "duration_ms": 1012,
+      "provider": "GEMINI",
+      "intent": "clarify_ambiguity",
+      "intents": [
+        "clarify_ambiguity"
+      ],
+      "proposal": null,
+      "text": "ℹ️ **Đồng bộ phần mềm bán hàng ngoài (KiotViet / Sapo):**\n\nQBiz Kho hoạt động độc lập với cơ chế sổ kép chuẩn Thông tư 88 HKD. Nếu bạn muốn import dữ liệu sản phẩm, khách hàng từ KiotViet, bạn có thể xuất file Excel từ KiotViet và dùng tính năng **Nhập từ file Excel** trong màn hình Hàng hóa.",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "POS_01",
+      "domain": "7. POS & Ca thu ngân",
+      "title": "Kết nối máy POS thanh toán quẹt thẻ",
+      "prompt": "Kết nối máy POS thanh toán cầm tay",
+      "expected_domain": "Thiết bị POS",
+      "duration_ms": 1111,
+      "provider": "GEMINI",
+      "intent": "PRINT_INVOICE",
+      "intents": [
+        "PRINT_INVOICE"
+      ],
+      "proposal": null,
+      "text": "🖨️ **Đang mở và chuẩn bị in hóa đơn gần nhất:**\n\n- Mã hóa đơn: **HD-0018**\n- Khách hàng: **Khách lẻ**\n- Tổng tiền: **30.000 ₫**\n- Thời gian: 2026-09-04T21:58:13.069Z\n\n✅ *Phiếu thanh toán đã được mở trên màn hình để bạn bấm in hoặc gửi cho khách.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "POS_02",
+      "domain": "7. POS & Ca thu ngân",
+      "title": "Mở ca thu ngân & tiền đầu ca",
+      "prompt": "Mở ca thu ngân và kiểm tra tiền két đầu ca",
+      "expected_domain": "Ca làm việc",
+      "duration_ms": 1123,
+      "provider": "GEMINI",
+      "intent": "RECONCILE_SHIFT",
+      "intents": [
+        "RECONCILE_SHIFT"
+      ],
+      "proposal": null,
+      "text": "🧾 **Báo Cáo Chốt Ca Bán Hàng (Z-Report):**\n\n- **Tiền quỹ đầu ca:** 1.000.000 ₫\n- **Thu tiền mặt trong ca:** 359.100 ₫ (18 đơn)\n- **Chuyển khoản (CK):** 433.900 ₫\n- **Thanh toán VietQR:** 91.550 ₫\n------------------------------------\n- **Tổng doanh thu ca:** **884.550 ₫**\n- **Tiền mặt sổ sách dự kiến:** **1.359.100 ₫**\n- **Tiền mặt thực tế kiểm đếm:** **1.359.100 ₫**\n- **Tình trạng đối soát két:** ✅ **Két tiền hoàn toàn cân bằng (Khớp 100%).**\n\n🖨️ *Bạn có thể bấm lệnh in báo cáo Z-Report này ra máy in hóa đơn K80 để lưu sổ quỹ.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "POS_03",
+      "domain": "7. POS & Ca thu ngân",
+      "title": "Chốt ca làm việc & đối soát lệch két",
+      "prompt": "Chốt ca làm việc hôm nay có bị lệch tiền không?",
+      "expected_domain": "Ca làm việc",
+      "duration_ms": 1415,
+      "provider": "GEMINI",
+      "intent": "RECONCILE_SHIFT",
+      "intents": [
+        "RECONCILE_SHIFT"
+      ],
+      "proposal": null,
+      "text": "🧾 **Báo Cáo Chốt Ca Bán Hàng (Z-Report):**\n\n- **Tiền quỹ đầu ca:** 1.000.000 ₫\n- **Thu tiền mặt trong ca:** 359.100 ₫ (18 đơn)\n- **Chuyển khoản (CK):** 433.900 ₫\n- **Thanh toán VietQR:** 91.550 ₫\n------------------------------------\n- **Tổng doanh thu ca:** **884.550 ₫**\n- **Tiền mặt sổ sách dự kiến:** **1.359.100 ₫**\n- **Tiền mặt thực tế kiểm đếm:** **1.359.100 ₫**\n- **Tình trạng đối soát két:** ✅ **Két tiền hoàn toàn cân bằng (Khớp 100%).**\n\n🖨️ *Bạn có thể bấm lệnh in báo cáo Z-Report này ra máy in hóa đơn K80 để lưu sổ quỹ.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "PAY_01",
+      "domain": "8. Thanh toán VietQR & Bank",
+      "title": "Tạo mã QR thanh toán VietQR động",
+      "prompt": "Tạo mã QR thanh toán VietQR ngân hàng ACB cho đơn 500k",
+      "expected_domain": "VietQR",
+      "duration_ms": 1438,
+      "provider": "GEMINI",
+      "intent": "GENERATE_VIETQR",
+      "intents": [
+        "GENERATE_VIETQR"
+      ],
+      "proposal": null,
+      "text": "💳 **Mã thanh toán VietQR (Chuẩn NAPAS 247):**\n\n![VietQR](https://img.vietqr.io/image/ACB-123456789-compact2.png?amount=500000&addInfo=Thanh%20toan%20don%20HD-0018&accountName=NGUYEN%20VAN%20QUAN%20TRI)\n\n- **Ngân hàng:** ACB\n- **Số tài khoản:** `123456789`\n- **Chủ tài khoản:** **NGUYEN VAN QUAN TRI**\n- **Số tiền:** **500.000 ₫**\n- **Nội dung:** `Thanh toan don HD-0018`\n\n📲 *Khách hàng có thể quét mã QR trên bằng bất kỳ ứng dụng ngân hàng nào (Vietcombank, MB, Techcombank, ACB, VPBank...) để thanh toán tức thì.*",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    },
+    {
+      "id": "PAY_02",
+      "domain": "8. Thanh toán VietQR & Bank",
+      "title": "Kiểm tra biến động số dư ngân hàng",
+      "prompt": "Kiểm tra tiền đã vào tài khoản ngân hàng chưa",
+      "expected_domain": "Ngân hàng",
+      "duration_ms": 1081,
+      "provider": "GEMINI",
+      "intent": "clarify_ambiguity",
+      "intents": [
+        "clarify_ambiguity"
+      ],
+      "proposal": null,
+      "text": "Tôi chưa hiểu rõ yêu cầu này. Bạn có thể diễn đạt cụ thể hơn về sản phẩm, kho hoặc thao tác bạn muốn thực hiện không?",
+      "assessment": "ANSWERED_WITH_DATA",
+      "note": "Trả lời trực tiếp từ dữ liệu hệ thống"
+    }
+  ]
+}

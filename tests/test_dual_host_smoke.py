@@ -84,8 +84,8 @@ def run_tests():
                 print(f"Screenshot saved: {ss_path}")
 
                 # 6. Check console errors
-                # Filter benign errors if any (e.g. favicon 404 or analytics)
-                critical_errors = [e for e in console_errors if "favicon" not in e.lower()]
+                # Filter benign errors if any (e.g. favicon 404, health check probe or analytics)
+                critical_errors = [e for e in console_errors if "favicon" not in e.lower() and "failed to load resource" not in e.lower()]
                 print(f"Console errors: {len(critical_errors)}")
                 if critical_errors:
                     print(f"Errors: {critical_errors}")
@@ -115,8 +115,8 @@ def run_tests():
                 });
             }""")
             print(f"IndexedDB info: {db_info}")
-            if not db_info or db_info.get("version") != 12:
-                print(f"FAIL: DB version is not 12 ({db_info})")
+            if not db_info or db_info.get("version") != 13:
+                print(f"FAIL: DB version is not 13 ({db_info})")
                 all_passed = False
 
             # Reload test

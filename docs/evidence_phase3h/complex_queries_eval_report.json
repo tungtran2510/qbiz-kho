@@ -1,0 +1,393 @@
+{
+  "timestamp": "2026-10-02T03:43:32+07:00",
+  "total_queries": 25,
+  "pass_full": 2,
+  "pass_partial": 23,
+  "errors": 0,
+  "average_latency_ms": 9637.9,
+  "results": [
+    {
+      "id": "Q01",
+      "group": "Compound 3-in-1",
+      "prompt": "Hôm nay bán được nhiều không Tuần này lời được bao nhiêu và lên nhập cái gì trong tháng này",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 2951,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "SALES_SUMMARY"
+      ],
+      "text": "💰 **Doanh số tuần này:** **0 ₫** (0 đơn)\n\n---\n\nLợi nhuận gộp **tuần này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).",
+      "proposal": null
+    },
+    {
+      "id": "Q02",
+      "group": "Compound 3-in-1",
+      "prompt": "Doanh thu hôm nay thế nào tuần này lãi hay lỗ và cần nhập thêm hàng gì",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 2091,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "SALES_SUMMARY"
+      ],
+      "text": "💰 **Doanh số tuần này:** **0 ₫** (0 đơn)\n\n---\n\nLợi nhuận gộp **tuần này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).\n\n---\n\n📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*",
+      "proposal": null
+    },
+    {
+      "id": "Q03",
+      "group": "Compound 3-in-1",
+      "prompt": "Tháng này doanh số bao nhiêu tuần này lời được bao nhiêu và nên lấy hàng gì",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1431,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "SALES_SUMMARY"
+      ],
+      "text": "💰 **Doanh số tháng này:** **0 ₫** (0 đơn)\n\n---\n\nLợi nhuận gộp **tuần này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\n📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*",
+      "proposal": null
+    },
+    {
+      "id": "Q04",
+      "group": "Compound 3-in-1",
+      "prompt": "Hôm nay có bán được gì không so với hôm qua thế nào và hàng nào đang hết cần nhập",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 3637,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PRODUCT_PERFORMANCE_RANKING"
+      ],
+      "text": "📊 **Hiệu suất mặt hàng hôm qua (01/10/2026):**\n\nTrong **hôm qua** (01/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*\n\n---\n\n💰 **Doanh số tuần này:** **0 ₫** (0 đơn) (So với tuần trước [0 ₫]: Không đổi)\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\n📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*",
+      "proposal": null
+    },
+    {
+      "id": "Q05",
+      "group": "Compound 3-in-1",
+      "prompt": "Doanh số 7 ngày qua thế nào trừ chi phí thì lãi bao nhiêu và cần đặt thêm món gì",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 6901,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PROFIT_INQUIRY"
+      ],
+      "text": "Lợi nhuận gộp **7 ngày qua**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).\n\n---\n\n💰 **Doanh số 7 ngày qua:** **0 ₫** (0 đơn)",
+      "proposal": null
+    },
+    {
+      "id": "Q06",
+      "group": "Merchandising Strategy",
+      "prompt": "Những mặt hàng nào nên nhập trong tháng này và những hàng nào không nên bán nữa đấy",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1150,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "LOW_STOCK_INQUIRY"
+      ],
+      "text": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\n📊 **Hiệu suất mặt hàng tháng này (01/10/2026 - 02/10/2026):**\n\nTrong **tháng này** (01/10/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*\n\n---\n\n📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*",
+      "proposal": null
+    },
+    {
+      "id": "Q07",
+      "group": "Merchandising Strategy",
+      "prompt": "Hàng nào đang bán chạy cần lấy thêm và hàng nào tồn đọng lâu ngày không nên nhập nữa",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 10569,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PRODUCT_PERFORMANCE_RANKING"
+      ],
+      "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*\n\n---\n\n⚠️ **CẢNH BÁO MẶT HÀNG BÁN CHẬM & CHÔN VỐN:**\nTổng vốn hàng hóa đang bị tồn đọng: **8.415.801.550 ₫**\n\n**1. Ghế sáng chế 135**\n- **Tồn kho:** 72 chiếc | **Vốn đang chôn:** **2.516.061.600 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**2. Ghế sáng chế 90D**\n- **Tồn kho:** 90 chiếc | **Vốn đang chôn:** **2.043.814.500 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**3. Ghế sáng chế 90T**\n- **Tồn kho:** 82 chiếc | **Vốn đang chôn:** **1.862.142.100 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**4. Ghế sáng chế 95**\n- **Tồn kho:** 63 chiếc | **Vốn đang chôn:** **1.607.246.550 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n**5. Gối cổ sáng chế F4/09**\n- **Tồn kho:** 78 cái | **Vốn đang chôn:** **386.536.800 ₫**\n- **Lần bán gần nhất:** cách đây Chưa có đơn\n- **Khuyến nghị:** Tiếp tục theo dõi bán hàng và nhập tồn thực tế.\n\n---\n\n📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*",
+      "proposal": null
+    },
+    {
+      "id": "Q08",
+      "group": "Merchandising Strategy",
+      "prompt": "Mặt hàng nào đang ế chôn vốn và mặt hàng nào sắp hết cần nhập gấp",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1606,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PRODUCT_PERFORMANCE_RANKING"
+      ],
+      "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\n📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*",
+      "proposal": null
+    },
+    {
+      "id": "Q09",
+      "group": "Merchandising Strategy",
+      "prompt": "Cửa hàng có món nào bán chậm cần thanh lý và món nào bán tốt cần duy trì",
+      "status": "PASS_FULL",
+      "duration_ms": 49421,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PRODUCT_PERFORMANCE_RANKING"
+      ],
+      "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+      "proposal": null
+    },
+    {
+      "id": "Q10",
+      "group": "Merchandising Strategy",
+      "prompt": "Hàng nào không ai mua và hàng nào bán chạy nhất tuần này",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 49196,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PRODUCT_PERFORMANCE_RANKING"
+      ],
+      "text": "📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+      "proposal": null
+    },
+    {
+      "id": "Q11",
+      "group": "Financial & Period Report",
+      "prompt": "Báo cáo cho tôi doanh thu của quý và tính toán lợi nhuận cũng như những hàng nào không nên tiếp tục nhập hãy gợi ý",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 93065,
+      "provider": "DETERMINISTIC_TIER4",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PROFIT_INQUIRY"
+      ],
+      "text": "Lợi nhuận gộp **tuần này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).\n\n---\n\n💰 **Doanh số hôm nay:** **0 ₫** (0 đơn)",
+      "proposal": null
+    },
+    {
+      "id": "Q12",
+      "group": "Financial & Period Report",
+      "prompt": "Doanh thu quý này được bao nhiêu tiền tính lãi gộp và cho biết hàng nào bán kém nhất",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1307,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PROFIT_INQUIRY"
+      ],
+      "text": "Lợi nhuận gộp **tuần này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).\n\n---\n\n📊 **Hiệu suất mặt hàng tuần này (28/09/2026 - 02/10/2026):**\n\nTrong **tuần này** (28/09/2026 - 02/10/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*\n\n---\n\n💰 **Doanh số tuần này:** **0 ₫** (0 đơn)",
+      "proposal": null
+    },
+    {
+      "id": "Q13",
+      "group": "Financial & Period Report",
+      "prompt": "Tổng kết kinh doanh tháng này doanh thu lợi nhuận và sức khỏe cửa hàng ra sao",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1429,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "SALES_SUMMARY"
+      ],
+      "text": "💰 **Doanh số tháng này:** **0 ₫** (0 đơn)\n\n---\n\nLợi nhuận gộp **tháng này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).\n\n---\n\n🎉 **Dữ liệu cửa hàng hoàn toàn lành mạnh!** Không phát hiện mã trùng, dữ liệu thiếu, đơn/phiếu chuyển treo hay lệch sổ cái kho.",
+      "proposal": null
+    },
+    {
+      "id": "Q14",
+      "group": "Financial & Period Report",
+      "prompt": "Báo cáo tài chính tháng này bán được bao nhiêu lãi bao nhiêu và tiền vốn đang nằm ở đâu nhiều nhất",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 2090,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "SALES_SUMMARY"
+      ],
+      "text": "💰 **Doanh số tháng này:** **0 ₫** (0 đơn)\n\n---\n\nLợi nhuận gộp **tháng này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).",
+      "proposal": null
+    },
+    {
+      "id": "Q15",
+      "group": "Financial & Period Report",
+      "prompt": "Tình hình kinh doanh 30 ngày qua doanh thu chi phí lợi nhuận và rủi ro tồn kho",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1418,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "SALES_SUMMARY"
+      ],
+      "text": "💰 **Doanh số 30 ngày qua:** **0 ₫** (0 đơn)\n\n---\n\nLợi nhuận gộp **30 ngày qua**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)",
+      "proposal": null
+    },
+    {
+      "id": "Q16",
+      "group": "Stock & Operations",
+      "prompt": "Hàng nào còn tồn nhiều hàng nào còn tồn ít và hàng nào nên lấy",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1356,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "QUERY_STOCK"
+      ],
+      "text": "📦 **Top mặt hàng còn tồn nhiều nhất:**\n• **Ghế sáng chế 135**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 150**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 90D**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 90T**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 95**: Tồn kho **0 chiếc**\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\nĐã tạo đề xuất nhập kho: **Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*",
+      "proposal": {
+        "id": "prop_muq040nz_1qsi",
+        "summary": "Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "action": null
+      }
+    },
+    {
+      "id": "Q17",
+      "group": "Stock & Operations",
+      "prompt": "Hàng nào tồn nhiều nhất hàng nào sắp đứt hàng và tổng vốn tồn kho hiện tại là bao nhiêu",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1493,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "QUERY_STOCK"
+      ],
+      "text": "📦 **Top mặt hàng còn tồn nhiều nhất:**\n• **Ghế sáng chế 135**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 150**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 90D**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 90T**: Tồn kho **0 chiếc**\n• **Ghế sáng chế 95**: Tồn kho **0 chiếc**\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\nLợi nhuận gộp **tuần này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).",
+      "proposal": null
+    },
+    {
+      "id": "Q18",
+      "group": "Stock & Operations",
+      "prompt": "Kiểm tra tồn kho ghế 150 ghế 90D và gối F6 xem cái nào cần nhập",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1652,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "LOW_STOCK_INQUIRY"
+      ],
+      "text": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\n📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*",
+      "proposal": null
+    },
+    {
+      "id": "Q19",
+      "group": "Stock & Operations",
+      "prompt": "Có hàng nào bị âm kho hay sai lệch số liệu không và doanh thu hôm nay thế nào",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1218,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "LOW_STOCK_INQUIRY"
+      ],
+      "text": "Hiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\n💰 **Doanh số hôm nay:** **0 ₫** (0 đơn)",
+      "proposal": null
+    },
+    {
+      "id": "Q20",
+      "group": "Stock & Operations",
+      "prompt": "Đơn hàng nào chưa thanh toán hàng nào thiếu và ca hiện tại tiền mặt bao nhiêu",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1316,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "ORDER_DIAGNOSIS"
+      ],
+      "text": "Vui lòng mở một đơn hàng cụ thể để chẩn đoán trạng thái xử lý.\n\n---\n\nHiện có **2 sản phẩm** sắp hết hoặc đã hết hàng:\n• **Ghế sáng chế 150**: Còn **0 chiếc** (Ngưỡng cảnh báo: 1)\n• **Gối cổ sáng chế F6**: Còn **0 cái** (Ngưỡng cảnh báo: 6)\n\n---\n\n💰 **Doanh số tuần này:** **0 ₫** (0 đơn)",
+      "proposal": null
+    },
+    {
+      "id": "Q21",
+      "group": "Action & Advisory",
+      "prompt": "Hôm nay tôi cần làm những việc gì quan trọng nhất trong kho",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1109,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "daily_attention"
+      ],
+      "text": "**TIÊU ĐIỂM HÔM NAY (1 điểm cần xử lý)**:\n\n🔴 [NGHIÊM TRỌNG] **2 sản phẩm đã hết hàng**\n  - Hiện trạng: Ghế sáng chế 150 (còn 0), Gối cổ sáng chế F6 (còn 0)\n  - Hành động: Mở hàng sắp hết",
+      "proposal": null
+    },
+    {
+      "id": "Q22",
+      "group": "Action & Advisory",
+      "prompt": "Có nên nhập thêm Ghế sáng chế 150 lúc này không và nhập bao nhiêu thì hợp lý",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1062,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "REPLENISHMENT_ADVICE"
+      ],
+      "text": "📦 **DANH SÁCH SẢN PHẨM / MẶT HÀNG ƯU TIÊN NHẬP THÊM:**\n• **1. Gối cổ sáng chế F6** [🟡 Cần nhập]: Đề xuất nhập **12 cái** · Tồn khả dụng: **0 cái** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 cái/ngày) · Vốn: **~54.982.200 ₫**\n• **2. Ghế sáng chế 150** [🟡 Cần nhập]: Đề xuất nhập **10 chiếc** · Tồn khả dụng: **0 chiếc** (Kho Trung tâm) (đủ bán ~< 1 ngày, tốc độ 0 chiếc/ngày) · Vốn: **~349.453.000 ₫**\n💰 **Tổng vốn dự kiến đợt nhập:** **~404.435.200 ₫**\n🏢 **Gom theo Nhà cung cấp:**\n  - **DoctorLoan**: Gối cổ sáng chế F6, Ghế sáng chế 150\n👉 *Gợi ý: Nói \"Tạo đề xuất nhập cho 3 mặt hàng cần nhất\" để tạo phiếu nháp.*\n\n---\n\n*(Lưu ý: Một phần dữ liệu (explain_replenishment) không vượt qua kiểm toán bằng chứng an toàn nên đã được lược bỏ).*",
+      "proposal": null
+    },
+    {
+      "id": "Q23",
+      "group": "Action & Advisory",
+      "prompt": "Đánh giá hiệu quả kinh doanh của Gối cổ sáng chế F6 và cho tôi lời khuyên",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1086,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "PROFIT_INQUIRY"
+      ],
+      "text": "Lợi nhuận gộp **tuần này**:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).",
+      "proposal": null
+    },
+    {
+      "id": "Q24",
+      "group": "Action & Advisory",
+      "prompt": "Nếu nhập hàng đợt này cần chuẩn bị bao nhiêu tiền vốn và gom cho nhà cung cấp nào",
+      "status": "PASS_FULL",
+      "duration_ms": 1188,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "CREATE_RECEIPT_PROPOSAL"
+      ],
+      "text": "Đã tạo đề xuất nhập kho: **Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*",
+      "proposal": {
+        "id": "prop_muq048qd_shb6",
+        "summary": "Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\"",
+        "action": null
+      }
+    },
+    {
+      "id": "Q25",
+      "group": "Action & Advisory",
+      "prompt": "So sánh doanh thu tuần này với tuần trước và tìm ra mặt hàng tăng trưởng tốt nhất",
+      "status": "PASS_PARTIAL",
+      "duration_ms": 1205,
+      "provider": "GEMINI",
+      "model": "unknown",
+      "is_multi": false,
+      "intents": [
+        "SALES_SUMMARY"
+      ],
+      "text": "💰 **Doanh số tuần trước:** **0 ₫** (0 đơn)\n\n---\n\n📊 **Hiệu suất mặt hàng tuần trước (21/09/2026 - 27/09/2026):**\n\nTrong **tuần trước** (21/09/2026 - 27/09/2026), cửa hàng chưa phát sinh đơn bán hàng nào hoàn tất (0 ₫ doanh thu).\n\n📦 **Danh sách mặt hàng chưa phát sinh lượt bán (tồn kho hiện tại):**\n1. **Gối cổ sáng chế F5/S**: Đã bán **0 cái** (Tồn kho: **120 cái**)\n2. **Gối lưng sáng chế F1**: Đã bán **0 cái** (Tồn kho: **112 cái**)\n3. **Gối lưng sáng chế F3/C**: Đã bán **0 cái** (Tồn kho: **102 cái**)\n4. **Ghế sáng chế 90D**: Đã bán **0 chiếc** (Tồn kho: **90 chiếc**)\n5. **Ghế sáng chế 90T**: Đã bán **0 chiếc** (Tồn kho: **82 chiếc**)\n*(và 14 mặt hàng khác chưa bán được)*",
+      "proposal": null
+    }
+  ]
+}

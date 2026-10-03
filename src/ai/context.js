@@ -9,6 +9,7 @@
 
 import { computeAllowedTools, hasCapability, PERMISSIONS, ROLES } from './policy.js';
 import { logAuditEvent } from './audit.js';
+import { resetConversation } from './conversation-state.js';
 
 const uuid = () => {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -109,6 +110,7 @@ export function switchActor(roleOrActor) {
   lastResolvedWarehouse = null;
   pendingIntent = null;
   previousIntent = null;
+  resetConversation();
 
   logAuditEvent('ACTOR_SWITCHED', {
     from: prevRole,

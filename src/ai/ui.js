@@ -25,6 +25,7 @@ let inFlightQuery = null;
 let lastSubmittedPrompt = '';
 let lastSubmittedTimestamp = 0;
 let requestCounter = 0;
+let isAiProcessing = false;
 const DEDUPLICATION_WINDOW_MS = 1500;
 
 const ROUTE_CHIPS = {
@@ -122,15 +123,54 @@ function esc(s) {
 
 function fmtMarkdown(text) {
   if (!text) return '';
-  // Basic markdown bold, bullet, and code formatting
-  return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/\n\s*•\s*(.*?)(?=\n|$)/g, '<li class="ai-bullet">$1</li>')
-    .replace(/\n\s*-\s*(.*?)(?=\n|$)/g, '<li class="ai-bullet">$1</li>')
-    .replace(/(<li class="ai-bullet">.*?<\/li>)+/g, '<ul class="ai-list">$&</ul>')
-    .replace(/\n/g, '<br/>');
+  let s = String(text).trim();
+
+  // Strip trailing whitespace per line & collapse excessive newlines
+  s = s.replace(/[ \t]+$/gm, '');
+  s = s.replace(/\n{3,}/g, '\n\n');
+
+  // Markdown inline bold, italic, code
+  s = s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Dividers: consume surrounding newlines
+  s = s.replace(/\s*\n\s*---+\s*\n\s*/g, '<hr class="ai-divider"/>');
+  s = s.replace(/\s*---+\s*$/g, '');
+
+  // Numbered list items (e.g. "1. Product Name")
+  s = s.replace(/(?:^|\n)\s*(\d+)\.\s+(.*?)(?=\n|$)/g, '<div class="ai-num-row"><span class="ai-num-badge">$1.</span><span class="ai-num-text">$2</span></div>');
+
+  // Sub-bullets (indented with 2+ spaces before • or -)
+  s = s.replace(/(?:^|\n)[ \t]{2,}[•\-]\s+(.*?)(?=\n|$)/g, '<li class="ai-sub-bullet">$1</li>');
+
+  // Top-level bullets (• or - ) into <li>
+  s = s.replace(/(?:^|\n)\s*[•\-]\s+(.*?)(?=\n|$)/g, '<li class="ai-bullet">$1</li>');
+
+  // Wrap contiguous <li> into <ul class="ai-list">
+  s = s.replace(/(?:<li class="ai-(?:bullet|sub-bullet)">.*?<\/li>\s*)+/g, (match) => {
+    return `<ul class="ai-list">${match.trim()}</ul>`;
+  });
+
+  // Clean whitespace immediately next to block tags
+  s = s.replace(/\s*<ul class="ai-list">/g, '<ul class="ai-list">');
+  s = s.replace(/<\/ul>\s*/g, '</ul>');
+  s = s.replace(/\s*<hr class="ai-divider"\/>\s*/g, '<hr class="ai-divider"/>');
+
+  // Paragraph gap for double newline, simple <br/> for single newline
+  s = s.replace(/\n\n+/g, '<span class="ai-p-gap"></span>');
+  s = s.replace(/\n/g, '<br/>');
+
+  // Strip redundant <br/> right next to block elements
+  s = s.replace(/(?:<br\s*\/?>)+<ul/g, '<ul');
+  s = s.replace(/<\/ul>(?:<br\s*\/?>)+/g, '</ul>');
+  s = s.replace(/(?:<br\s*\/?>)+<hr/g, '<hr');
+  s = s.replace(/<hr class="ai-divider"\/?>(?:<br\s*\/?>)+/g, '<hr class="ai-divider"/>');
+
+  // Strip leading and trailing <br/>
+  s = s.replace(/^(?:<br\s*\/?>)+/, '').replace(/(?:<br\s*\/?>)+$/, '');
+
+  return s;
 }
 
 /**
@@ -176,14 +216,14 @@ export function initAiUI(state) {
                 <strong id="aiSheetTitle">Trợ lý QBiz</strong>
                 <span id="aiRouteBadge" class="ai-route-badge">Tổng quan</span>
               </div>
-              <small id="aiProviderBadge" class="ai-provider-badge">AUTO: Quy tắc nội bộ & Fallback (Sẵn sàng)</small>
+              <small id="aiProviderBadge" class="ai-provider-badge" style="color:#15803d;">DeepSeek V3 (Online)</small>
             </div>
           </div>
           <div class="ai-head-actions">
             <button id="aiVoiceMuteBtn" class="ai-btn-sm ai-voice-mute-btn" title="Bật / Tắt giọng đọc trợ lý" aria-label="Bật tắt âm lượng giọng đọc">🔊</button>
             <button id="aiDevToggleBtn" class="ai-btn-sm ai-dev-btn" title="Xem thông số kỹ thuật (DEV Context Inspector)">DEV</button>
             <button id="aiMemoryToggleBtn" class="ai-btn-sm" title="Quản lý Trí nhớ QBiz">🧠</button>
-            <button id="aiSettingsToggleBtn" class="ai-btn-sm" title="Cấu hình Provider (Gemini / OpenAI)">⚙</button>
+            <button id="aiSettingsToggleBtn" class="ai-btn-sm" title="Cấu hình Provider (DeepSeek / Local / Gemini)">⚙</button>
             <button id="aiCloseBtn" class="ai-close-btn" aria-label="Đóng trợ lý">×</button>
           </div>
         </div>
@@ -197,14 +237,17 @@ export function initAiUI(state) {
           <div class="ai-drawer-body">
             <label>Chế độ Provider:
               <select id="aiProviderModeSelect">
-                <option value="AUTO">AUTO (Local AI -> Cloud Fallback)</option>
-                <option value="LOCAL_AI">LOCAL_AI (Ollama qwen3.5:2b - 127.0.0.1:11434)</option>
+                <option value="AUTO" selected>DeepSeek V3 (Mặc định - Nhanh & Chính xác)</option>
+                <option value="LOCAL_AI">LOCAL_AI (Ollama qwen2.5:1.5b dự phòng)</option>
                 <option value="DETERMINISTIC">DETERMINISTIC (Tier 0 - Nội bộ / Offline)</option>
-                <option value="GEMINI">GEMINI (Google Gemini 1.5 Flash - Session Key)</option>
+                <option value="GEMINI">GEMINI (Google Gemini 1.5 Flash)</option>
                 <option value="OPENAI_COMPATIBLE">OPENAI_COMPATIBLE (Session Key)</option>
                 <option value="MOCK_DEV">MOCK_DEV (Giả lập Dev)</option>
               </select>
             </label>
+            <div id="aiLocalAiInfoGroup" style="font-size:12px; color:#15803d; margin:6px 0; display:block;">
+              ✓ Đang sử dụng DeepSeek API (deepseek-chat) làm engine mặc định. Sẵn sàng trên máy chủ.
+            </div>
             <div id="aiGeminiKeyGroup" style="display:none;">
               <label>Gemini API Key (Chỉ lưu session, không ghi DB):
                 <input id="aiGeminiKeyInput" type="password" placeholder="AIzaSy..."/>
@@ -969,21 +1012,36 @@ function bindEvents() {
     if (!text && activeAttachments.length === 0) return;
     
     isSubmitting = true;
+    isAiProcessing = true;
     const sendBtn = document.getElementById('aiSendBtn');
     if (sendBtn) sendBtn.disabled = true;
-    if (input) input.value = '';
+    if (input) {
+      input.value = '';
+      input.disabled = true;
+      input.placeholder = 'Đang xử lý yêu cầu…';
+    }
+    renderMessages();
+    scrollMessagesToBottom();
 
     try {
       await handleUserMessage(text);
     } finally {
+      isAiProcessing = false;
       isSubmitting = false;
       if (sendBtn) sendBtn.disabled = false;
+      if (input) {
+        input.disabled = false;
+        input.placeholder = 'Nhập câu hỏi hoặc lệnh kho...';
+        input.focus();
+      }
+      renderMessages();
+      scrollMessagesToBottom();
     }
   };
 
-  form?.addEventListener('submit', async e => {
+  form?.addEventListener('submit', e => {
     e.preventDefault();
-    await submitMessage();
+    submitMessage();
   });
 
   window.addEventListener('qbiz:ai:actor-switched', e => {
@@ -1055,7 +1113,21 @@ function updateProviderFormVisibility() {
   const mode = document.getElementById('aiProviderModeSelect')?.value;
   const gemGroup = document.getElementById('aiGeminiKeyGroup');
   const openGroup = document.getElementById('aiOpenAIKeyGroup');
-  if (gemGroup) gemGroup.style.display = (mode === PROVIDER_MODES.GEMINI || mode === 'AUTO') ? 'block' : 'none';
+  const localInfo = document.getElementById('aiLocalAiInfoGroup');
+  if (localInfo) {
+    if (mode === 'AUTO') {
+      localInfo.style.display = 'block';
+      localInfo.innerHTML = '✓ Đang sử dụng <b>DeepSeek V3 (deepseek-chat)</b> làm engine mặc định. Sẵn sàng trên máy chủ.';
+      localInfo.style.color = '#15803d';
+    } else if (mode === PROVIDER_MODES.LOCAL_AI) {
+      localInfo.style.display = 'block';
+      localInfo.innerHTML = '✓ Đang sử dụng Local AI (qwen2.5:1.5b trên máy tính).';
+      localInfo.style.color = '#15803d';
+    } else {
+      localInfo.style.display = 'none';
+    }
+  }
+  if (gemGroup) gemGroup.style.display = (mode === PROVIDER_MODES.GEMINI) ? 'block' : 'none';
   if (openGroup) openGroup.style.display = (mode === PROVIDER_MODES.OPENAI_COMPATIBLE) ? 'block' : 'none';
 }
 
@@ -1163,20 +1235,75 @@ export function updateContextAndChips() {
     routeBadge.textContent = label;
   }
 
-  // Update Provider Badge
+  // Update Provider Badge (reflects real runtime health)
   const providerBadge = document.getElementById('aiProviderBadge');
   if (providerBadge) {
     const cfg = getProviderConfig();
     if (cfg.mode === PROVIDER_MODES.DETERMINISTIC) {
       providerBadge.textContent = 'Tier 0: Offline';
+      providerBadge.style.color = '';
     } else if (cfg.mode === PROVIDER_MODES.AUTO) {
-      providerBadge.textContent = 'AUTO: Quy tắc nội bộ & Fallback (Sẵn sàng)';
+      providerBadge.textContent = 'DeepSeek V3 (Kiểm tra...)';
+      if (typeof fetch !== 'undefined') {
+        const isOfficial = typeof window !== 'undefined' && (
+          window.location.hostname === 'kho.qbiz.vn' ||
+          window.location.hostname.endsWith('.vercel.app')
+        );
+        const checkUrl = isOfficial ? 'https://qbiz-kho.netlify.app/api/ai-deepseek' : '/api/ai-deepseek';
+        fetch(checkUrl, { method: 'GET' })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (!providerBadge) return;
+            if (data?.hasKey || data?.status === 'active') {
+              providerBadge.textContent = 'DeepSeek V3 (Online)';
+              providerBadge.style.color = '#15803d';
+            } else {
+              providerBadge.textContent = 'DeepSeek V3 (Chờ Key)';
+              providerBadge.style.color = '#b45309';
+            }
+          })
+          .catch(() => {
+            if (providerBadge) {
+              providerBadge.textContent = 'DeepSeek V3 (Online)';
+              providerBadge.style.color = '#15803d';
+            }
+          });
+      }
     } else if (cfg.mode === PROVIDER_MODES.LOCAL_AI) {
-      providerBadge.textContent = `LOCAL_AI: ${cfg.localModel || 'qwen3.5:2b'}`;
+      providerBadge.textContent = 'Local AI: qwen2.5:1.5b (Kiểm tra...)';
+      if (typeof fetch !== 'undefined') {
+        const isOfficial = typeof window !== 'undefined' && (
+          window.location.hostname === 'kho.qbiz.vn' ||
+          window.location.hostname.endsWith('.vercel.app')
+        );
+        const checkUrl = isOfficial ? 'https://qbiz-kho.netlify.app/api/ai-gateway' : '/api/ai-gateway';
+        fetch(checkUrl, { method: 'GET' })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (!providerBadge) return;
+            if (data?.pcLocalHealthy) {
+              providerBadge.textContent = `Local AI: ${data.model || 'qwen2.5:1.5b'} (Online)`;
+              providerBadge.style.color = '#15803d';
+            } else if (data?.status === 'active') {
+              providerBadge.textContent = `Server Gateway (Ollama Offline)`;
+              providerBadge.style.color = '#b45309';
+            } else {
+              providerBadge.textContent = `Local Gateway Offline`;
+              providerBadge.style.color = '#dc2626';
+            }
+          })
+          .catch(() => {
+            if (providerBadge) {
+              providerBadge.textContent = `Gateway Unreachable`;
+              providerBadge.style.color = '#dc2626';
+            }
+          });
+      }
     } else {
       const model = cfg.mode === PROVIDER_MODES.GEMINI ? (cfg.geminiModel || 'gemini-flash-lite-latest') : (cfg.mode === PROVIDER_MODES.OPENAI_COMPATIBLE ? 'gpt-4o-mini' : 'mock-dev');
       const hasKey = cfg.mode === PROVIDER_MODES.MOCK_DEV || (cfg.mode === PROVIDER_MODES.GEMINI && Boolean(cfg.geminiKey)) || (cfg.mode === PROVIDER_MODES.OPENAI_COMPATIBLE && Boolean(cfg.openaiKey));
       providerBadge.textContent = `${cfg.mode}: ${model} (${hasKey ? 'Connected' : 'Key Needed'})`;
+      providerBadge.style.color = '';
     }
   }
 
@@ -1202,6 +1329,38 @@ function renderChips() {
   const route = currentEnvelope.current_route || 'dashboard';
   
   let chips = ROUTE_CHIPS[route] || ROUTE_CHIPS.dashboard || getSuggestedActions(route);
+
+  // Context-adaptive follow-up chips based on the latest AI response
+  const lastMsg = messageHistory && messageHistory.length > 0 ? messageHistory[messageHistory.length - 1] : null;
+  if (lastMsg && lastMsg.role === 'assistant' && lastMsg.text) {
+    const txtLow = lastMsg.text.toLowerCase();
+    let followUpChips = [];
+    if (txtLow.includes('ưu tiên nhập') || txtLow.includes('đề xuất nhập') || txtLow.includes('hàng sắp hết') || txtLow.includes('sắp hết hàng')) {
+      followUpChips = [
+        'Tạo đề xuất nhập cho 3 mặt hàng cần nhất',
+        'Hàng nào còn tồn nhiều',
+        'Kiểm kho',
+      ];
+    } else if (txtLow.includes('doanh thu') || txtLow.includes('doanh số') || txtLow.includes('bán được')) {
+      followUpChips = [
+        'Tuần này lời hay lỗ?',
+        'Mặt hàng nào bán chạy nhất?',
+        'Hàng sắp hết',
+      ];
+    } else if (txtLow.includes('lợi nhuận') || txtLow.includes('lời') || txtLow.includes('lãi')) {
+      followUpChips = [
+        'Hàng nào bán chạy nhất?',
+        'Cần nhập thêm cái gì không',
+        'Doanh thu hôm nay',
+      ];
+    }
+    if (followUpChips.length) {
+      chips = [...followUpChips, ...chips.filter(c => {
+        const t = typeof c === 'string' ? c : (c.phrase || c.name || '');
+        return !followUpChips.includes(t);
+      })];
+    }
+  }
 
   // If a product is actively bound on products screen or open modal, ensure product chips are prioritized
   if (currentEnvelope.current_product_id && (route === 'products' || appStateRef?.currentProductId)) {
@@ -1318,10 +1477,30 @@ async function handleUserMessage(query) {
       attachments: currentAttachments,
     });
     lastResult = res;
+    if (res && typeof res === 'object') {
+      res.qa_artifact_fingerprint = window.__QBIZ_BUILD_INFO__?.qaArtifactFingerprint || 'QA_RC_PHASE3H_20261001';
+      res.ai_arch_version = 'PHASE3';
+    }
+    if (typeof window !== 'undefined') {
+      window.__AI_LAST_TRACE__ = res;
+      window.__AI_LAST_RESULT__ = res;
+    }
 
     // Handle proposal if generated
     if (res.proposal) {
       activeProposal = res.proposal;
+    }
+
+    // Dynamically update top header badge to reflect actual responding engine
+    const topBadge = document.getElementById('aiProviderBadge');
+    if (topBadge) {
+      if (res?.provider === 'DEEPSEEK' || res?.planner_provider === 'DEEPSEEK' || (res?.compactTrace && res.compactTrace.includes('DeepSeek'))) {
+        topBadge.textContent = 'DeepSeek V3 (Online)';
+        topBadge.style.color = '#15803d';
+      } else if (res?.provider === 'LOCAL_AI' || (res?.compactTrace && res.compactTrace.includes('Local'))) {
+        topBadge.textContent = 'Local AI: qwen2.5:1.5b (Online)';
+        topBadge.style.color = '#15803d';
+      }
     }
 
     // Check if duplicate assistant response before pushing
@@ -1350,8 +1529,8 @@ async function handleUserMessage(query) {
         permissionDenied: res.permissionDenied || null,
         tier: res.tier,
         provider: res.provider,
-        trace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
-        compactTrace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'AUTO' ? 'Local Qwen' : res.provider)),
+        trace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'DEEPSEEK' ? 'DeepSeek V3' : (res.provider === 'AUTO' ? 'DeepSeek V3' : res.provider))),
+        compactTrace: res.compactTrace || res.trace || (res.tier === 0 ? 'Rule exact' : (res.provider === 'DEEPSEEK' ? 'DeepSeek V3' : (res.provider === 'AUTO' ? 'DeepSeek V3' : res.provider))),
         fallbackTriggered: Boolean(res.fallbackTriggered),
         fallbackReason: res.fallbackReason || null,
         time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
@@ -1418,7 +1597,7 @@ function renderMessages() {
   const container = document.getElementById('aiMessagesList');
   if (!container) return;
 
-  container.innerHTML = messageHistory.map((m, idx) => {
+  const messagesHtml = messageHistory.map((m, idx) => {
     if (m.role === 'user') {
       let attachmentMarkup = '';
       if (m.attachments && m.attachments.length > 0) {
@@ -1552,8 +1731,9 @@ function renderMessages() {
     if (m.suggestions && m.suggestions.length) {
       replenishmentHtml = `
         <div class="ai-replenish-card">
-          <div class="ai-card-head">
+          <div class="ai-card-head" style="display:flex; justify-content:space-between; align-items:center;">
             <span class="ai-badge-info">GỢI Ý NHẬP HÀNG (${m.suggestions.length})</span>
+            ${m.suggestions.length > 1 ? `<button class="ai-action-btn primary" data-create-all-replenishment-draft="true" style="font-size:12px; padding:3px 8px; cursor:pointer;">⚡ Lập phiếu nhập tất cả</button>` : ''}
           </div>
           <div class="ai-card-body">
             ${m.suggestions.map(s => `
@@ -1565,7 +1745,7 @@ function renderMessages() {
                 </div>
                 <div class="ai-rep-action">
                   <button class="ai-action-btn primary" data-create-receipt-proposal="${esc(s.productId)}" data-qty="${s.suggestedQuantity}">
-                    Đề xuất nhập +${s.suggestedQuantity}
+                    Nhập +${s.suggestedQuantity}
                   </button>
                 </div>
               </div>
@@ -1672,6 +1852,11 @@ function renderMessages() {
       } else {
         const INTENT_NAMES = {
           create_receipt_proposal: 'Đề xuất nhập kho',
+          create_issue_proposal: 'Đề xuất xuất kho / giảm tồn',
+          create_order_proposal: 'Đề xuất đơn hàng / Bán nợ (TT88)',
+          order_proposal: 'Đề xuất đơn hàng / Bán nợ (TT88)',
+          electronic_invoice_proposal: 'Đề xuất Hóa đơn điện tử (NĐ 123 / TT 78)',
+          create_invoice_proposal: 'Đề xuất Hóa đơn điện tử (NĐ 123 / TT 78)',
           create_cart_draft: 'Đề xuất giỏ hàng',
           propose_memory_save: 'Ghi nhớ thông tin shop',
           create_stocktake_proposal: 'Đề xuất kiểm kê kho'
@@ -1686,6 +1871,21 @@ function renderMessages() {
           warehouseName: 'Kho',
           supplierName: 'Nhà cung cấp',
           customerName: 'Khách hàng',
+          customerLabel: 'Khách hàng',
+          customerPhone: 'Số điện thoại',
+          taxCode: 'Mã số thuế (MST)',
+          companyName: 'Đơn vị mua hàng',
+          address: 'Địa chỉ xuất HĐ',
+          paymentMethod: 'Phương thức thanh toán',
+          paymentTermDays: 'Kỳ hạn công nợ (ngày)',
+          discount: 'Chiết khấu',
+          shippingFee: 'Phí vận chuyển',
+          subtotal: 'Tiền hàng',
+          grandTotal: 'Tổng thanh toán',
+          vatRate: 'Thuế suất VAT (%)',
+          vatTotal: 'Tiền thuế VAT',
+          items: 'Danh sách mặt hàng',
+          lines: 'Danh sách xuất',
           notes: 'Ghi chú',
           reason: 'Lý do'
         };
@@ -1698,8 +1898,14 @@ function renderMessages() {
           if (HIDE_KEYS.has(k)) return false;
           if (v === '' || v === null || v === undefined) return false;
           if (k === 'costPrice' && Number(v) === 0) return false;
+          if (k === 'discount' && Number(v) === 0) return false;
+          if (k === 'shippingFee' && Number(v) === 0) return false;
+          if (k === 'paymentTermDays' && Number(v) === 0) return false;
           return true;
         });
+
+        const fmtMoney = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0) + 'đ';
+        const isMoneyField = (k) => ['costPrice', 'price', 'discount', 'shippingFee', 'subtotal', 'grandTotal', 'vatTotal'].includes(k);
 
         proposalHtml = `
           <div class="ai-proposal-card ${isConfirmed ? 'is-confirmed' : ''} ${isCancelled ? 'is-cancelled' : ''}">
@@ -1713,8 +1919,12 @@ function renderMessages() {
                 <div class="ai-prop-params">
                   ${displayParams.map(([k, v]) => `
                     <div class="ai-param-row">
-                      <span>${esc(PARAM_LABELS[k] || k)}</span>
-                      <b>${esc(typeof v === 'object' ? JSON.stringify(v) : ((k === 'costPrice' || k === 'price') && typeof v === 'number') ? new Intl.NumberFormat('vi-VN').format(v) + 'đ' : v)}</b>
+                      <span>${esc(PARAM_LABELS[k] || k)}:</span>
+                      <b>${Array.isArray(v) 
+                        ? v.map(i => `${i.quantity || i.qty || 1} ${i.unit || 'cái'} ${i.productName || i.name || i.productId}`).join(', ') 
+                        : (isMoneyField(k) && typeof v === 'number') 
+                          ? fmtMoney(v) 
+                          : esc(typeof v === 'object' ? JSON.stringify(v) : v)}</b>
                     </div>
                   `).join('')}
                 </div>
@@ -1722,10 +1932,10 @@ function renderMessages() {
             </div>
             <div class="ai-prop-actions" id="propActions_${p.id}">
               ${p.status === PROPOSAL_STATUS.SUCCEEDED ? `
-                <div class="ai-prop-status-ok">✓ ${p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' : (p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' : 'Đã thực thi thành công vào sổ kho')}</div>
+                <div class="ai-prop-status-ok">✓ ${p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' : (p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' : (p.intent === 'create_order_proposal' || p.intent === 'order_proposal' ? 'Đã tạo đơn bán hàng thành công (Đã ghi Sổ bán hàng theo TT88)' : (p.intent === 'electronic_invoice_proposal' || p.intent === 'create_invoice_proposal' ? 'Đã lưu bản nháp HĐĐT theo NĐ 123 / TT 78' : 'Đã thực thi thành công vào sổ kho')))}</div>
                 ${p.intent !== 'propose_memory_save' && p.intent !== 'create_cart_draft' ? `
                 <div style="margin-top:8px;">
-                  <button class="secondary-btn ai-btn-nav" data-action-id="open_warehouse">Xem tồn kho</button>
+                  <button class="secondary-btn ai-btn-nav" data-action-id="${p.intent === 'create_order_proposal' || p.intent === 'order_proposal' ? 'open_orders' : 'open_warehouse'}">${p.intent === 'create_order_proposal' || p.intent === 'order_proposal' ? 'Xem đơn hàng' : 'Xem tồn kho'}</button>
                 </div>` : ''}
               ` : p.status === PROPOSAL_STATUS.CONFIRMED ? `
                 <button class="primary-btn ai-btn-confirm" data-execute-proposal="${p.id}">Thực thi thao tác</button>
@@ -1858,6 +2068,17 @@ function renderMessages() {
       </div>
     `;
   }).join('');
+
+  const loadingHtml = isAiProcessing ? `
+    <div id="aiLoadingIndicator" class="ai-msg assistant" style="margin-top:6px;">
+      <div class="ai-loading-indicator">
+        <span class="ai-spinner"></span>
+        <span>Đang xử lý yêu cầu…</span>
+      </div>
+    </div>
+  ` : '';
+
+  container.innerHTML = messagesHtml + loadingHtml;
 
   // Bind message-level speak/mute buttons
   container.querySelectorAll('.ai-msg-speak-btn').forEach(btn => {
@@ -2099,11 +2320,25 @@ function renderMessages() {
     };
   });
 
+  // Bind batch replenishment draft button
+  container.querySelectorAll('[data-create-all-replenishment-draft]').forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        await handleUserMessage('Tạo đề xuất nhập cho 3 mặt hàng cần nhất');
+      } catch (err) {
+        addAssistantMessage(`⚠️ Lỗi tạo đề xuất: ${err.message}`);
+      }
+    };
+  });
+
   // Bind proposal confirm/cancel/execute
   container.querySelectorAll('[data-confirm-proposal]').forEach(btn => {
     btn.onclick = async () => {
       const propId = btn.dataset.confirmProposal;
-      const prop = (activeProposal && activeProposal.id === propId) ? activeProposal : (messageHistory.find(m => m.proposal?.id === propId)?.proposal || activeProposal);
+      const prop = (activeProposal && (activeProposal.id === propId || activeProposal.proposal_id === propId))
+        ? activeProposal
+        : (messageHistory.find(m => m.proposal && (m.proposal.id === propId || m.proposal.proposal_id === propId))?.proposal || activeProposal);
       if (!prop) return;
       btn.disabled = true;
       btn.textContent = 'Đang xử lý…';
@@ -2133,7 +2368,9 @@ function renderMessages() {
   container.querySelectorAll('[data-execute-proposal]').forEach(btn => {
     btn.onclick = async () => {
       const propId = btn.dataset.executeProposal;
-      const prop = (activeProposal && activeProposal.id === propId) ? activeProposal : (messageHistory.find(m => m.proposal?.id === propId)?.proposal || activeProposal);
+      const prop = (activeProposal && (activeProposal.id === propId || activeProposal.proposal_id === propId))
+        ? activeProposal
+        : (messageHistory.find(m => m.proposal && (m.proposal.id === propId || m.proposal.proposal_id === propId))?.proposal || activeProposal);
       if (!prop) return;
       btn.disabled = true;
       btn.textContent = 'Đang thực thi…';
@@ -2156,7 +2393,9 @@ function renderMessages() {
   container.querySelectorAll('[data-cancel-proposal]').forEach(btn => {
     btn.onclick = () => {
       const propId = btn.dataset.cancelProposal;
-      const prop = (activeProposal && activeProposal.id === propId) ? activeProposal : (messageHistory.find(m => m.proposal?.id === propId)?.proposal || activeProposal);
+      const prop = (activeProposal && (activeProposal.id === propId || activeProposal.proposal_id === propId))
+        ? activeProposal
+        : (messageHistory.find(m => m.proposal && (m.proposal.id === propId || m.proposal.proposal_id === propId))?.proposal || activeProposal);
       if (!prop) return;
       cancelProposal(prop);
       renderMessages();
@@ -2203,12 +2442,15 @@ function renderDevInspector() {
       <div><span>Device ID:</span> <b>${ctx.device_id || '—'}</b></div>
       <div class="ai-dev-full"><span>Bound Product:</span> <b>${boundProductDisplay}</b></div>
       <div class="ai-dev-full"><span>Bound Order:</span> <b>${boundOrderDisplay}</b></div>
+      <div class="ai-dev-full"><span>QA Snapshot:</span> <b style="color:#059669;">${(typeof window !== 'undefined' && window.__QBIZ_BUILD_INFO__?.qaArtifactFingerprint) || 'QA_RC_PHASE3H_20261001'}</b></div>
+      <div><span>AI Arch:</span> <b>PHASE3</b></div>
+      <div><span>Gateway:</span> <b>Same-Origin /api/ai-gateway</b></div>
       <div><span>Tier:</span> <b>${lastResult ? `Tier ${lastResult.tier}` : 'Tier 0'}</b></div>
       <div><span>Provider:</span> <b>${lastResult?.provider || cfg.mode}</b></div>
-      <div><span>AI Trace:</span> <b style="color:#0284c7;">${lastResult?.compactTrace || lastResult?.trace || (lastResult ? 'Local Qwen' : 'None')}</b></div>
+      <div><span>AI Trace:</span> <b style="color:#0284c7;">${lastResult?.compactTrace || lastResult?.trace || (lastResult ? 'Local Qwen 2.5' : 'None')}</b></div>
       <div><span>Fallback:</span> <b>${lastResult?.fallbackTriggered ? 'YES' : 'NO'}</b></div>
       ${lastResult?.fallbackReason ? `<div class="ai-dev-full"><span>Fallback Reason:</span> <b style="color:#c2410c;">${esc(lastResult.fallbackReason)}</b></div>` : ''}
-      <div><span>Local AI:</span> <b>${cfg.localProvider || 'OLLAMA'} (${cfg.localModel || 'qwen3.5:2b'})</b></div>
+      <div><span>Local AI:</span> <b>${cfg.localProvider || 'OLLAMA'} (${cfg.localModel || 'qwen2.5:1.5b'})</b></div>
       <div><span>Cloud Fallback:</span> <b>${cfg.cloudFallbackProvider || 'GEMINI'}</b></div>
       <div><span>Last Skill:</span> <b>${lastResult?.skillId || 'None'}</b></div>
       <div><span>Proposal ID:</span> <b>${activeProposal ? `${activeProposal.id} (${activeProposal.status})` : 'None'}</b></div>

@@ -1,0 +1,245 @@
+{
+  "timestamp": "2026-10-02T05:13:30+07:00",
+  "total_tested": 5,
+  "results": [
+    {
+      "id": "EXP_01",
+      "title": "Xuất kho kèm Khách hàng, Chiết khấu, Công nợ",
+      "prompt": "Lập phiếu xuất kho cho khách hàng Nguyễn Văn Tuấn 5 chiếc Ghế sáng chế 150 kho Trung tâm, chiết khấu 10%, hẹn thanh toán sau 7 ngày",
+      "target_aspects": [
+        "Khách hàng",
+        "Chiết khấu",
+        "Hạn nợ",
+        "Kiểm tra tồn khả dụng"
+      ],
+      "duration_ms": 1385,
+      "provider": "GEMINI",
+      "intent": "CREATE_ORDER_PROPOSAL",
+      "intents": [
+        "CREATE_ORDER_PROPOSAL"
+      ],
+      "proposal": {
+        "id": "prop_muq3bryv_f2k4",
+        "intent": "create_order_proposal",
+        "summary": "Đơn bán hàng cho \"Nguyễn Văn Tuấn\": 5 chiếc Ghế sáng chế 150 — Tổng: 241.929.000đ, Giảm 26.881.000đ (Hạn nợ: 7 ngày)",
+        "parameters": {
+          "customerName": "Nguyễn Văn Tuấn",
+          "customerPhone": "",
+          "customerLabel": "Nguyễn Văn Tuấn",
+          "address": "",
+          "items": [
+            {
+              "productId": "p_rt_dl_150",
+              "itemId": "p_rt_dl_150",
+              "productName": "Ghế sáng chế 150",
+              "unit": "chiếc",
+              "quantity": 5,
+              "unitPrice": 53762000,
+              "lineTotal": 268810000,
+              "available": 25,
+              "isSufficient": true
+            }
+          ],
+          "subtotal": 268810000,
+          "discount": 26881000,
+          "shippingFee": 0,
+          "grandTotal": 241929000,
+          "paymentMethod": "TM",
+          "paymentTermDays": 7,
+          "warehouseId": "wh_retail_main",
+          "warehouseName": "Kho Tổng Trung Tâm",
+          "note": "Đơn hàng qua AI Trợ lý (Hạn nợ: 7 ngày)"
+        },
+        "status": "READY",
+        "requires_confirmation": null
+      },
+      "text": "Đã lập đề xuất đơn bán hàng: **Đơn bán hàng cho \"Nguyễn Văn Tuấn\": 5 chiếc Ghế sáng chế 150 — Tổng: 241.929.000đ, Giảm 26.881.000đ (Hạn nợ: 7 ngày)**.\n*(Chưa ghi nhận doanh thu - chờ duyệt xác nhận theo Thông tư 88)*",
+      "screenshot": "docs/evidence_phase3h/live_export_exp_01.png"
+    },
+    {
+      "id": "EXP_02",
+      "title": "Xuất hóa đơn GTGT / VAT Doanh nghiệp có MST, Địa chỉ",
+      "prompt": "Xuất hóa đơn bán hàng cho Công ty TNHH Giải Pháp QBiz, MST: 0312345678, địa chỉ 123 Lê Lợi Q1, gồm 2 Ghế 90D và 5 Gối F6, thanh toán chuyển khoản ACB",
+      "target_aspects": [
+        "MST",
+        "Tên Công ty",
+        "Địa chỉ",
+        "Nhiều mặt hàng (Multi-line)",
+        "Hình thức thanh toán"
+      ],
+      "duration_ms": 1418,
+      "provider": "GEMINI",
+      "intent": "CREATE_INVOICE_PROPOSAL",
+      "intents": [
+        "CREATE_INVOICE_PROPOSAL"
+      ],
+      "proposal": {
+        "id": "prop_muq3bvhz_ngtj",
+        "intent": "electronic_invoice_proposal",
+        "summary": "HĐĐT (Bản nháp) cho \"Công ty TNHH Giải Pháp QBiz\" (MST: 0312345678): 2 chiếc Ghế sáng chế 90D, 5 cái Gối cổ sáng chế F6 — Tổng thanh toán (VAT 10%): 115.630.900đ",
+        "parameters": {
+          "buyerType": "BUSINESS",
+          "taxCode": "0312345678",
+          "companyName": "Công ty TNHH Giải Pháp QBiz",
+          "address": "123 Lê Lợi Q1",
+          "email": "",
+          "items": [
+            {
+              "line_index": 1,
+              "productId": "p_rt_dl_90d",
+              "itemId": "p_rt_dl_90d",
+              "name": "Ghế sáng chế 90D",
+              "unit": "chiếc",
+              "quantity": 2,
+              "unitPrice": 34937000,
+              "unit_price": 34937000,
+              "vat_rate": 10,
+              "vat_amount": 6987400,
+              "line_total": 76861400
+            },
+            {
+              "line_index": 2,
+              "productId": "p_rt_dl_f6",
+              "itemId": "p_rt_dl_f6",
+              "name": "Gối cổ sáng chế F6",
+              "unit": "cái",
+              "quantity": 5,
+              "unitPrice": 7049000,
+              "unit_price": 7049000,
+              "vat_rate": 10,
+              "vat_amount": 3524500,
+              "line_total": 38769500
+            }
+          ],
+          "subtotal": 105119000,
+          "vatRate": 10,
+          "vatTotal": 10511900,
+          "grandTotal": 115630900,
+          "paymentMethod": "ACB"
+        },
+        "status": "READY",
+        "requires_confirmation": null
+      },
+      "text": "Đã lập đề xuất hóa đơn điện tử (Bản nháp): **HĐĐT (Bản nháp) cho \"Công ty TNHH Giải Pháp QBiz\" (MST: 0312345678): 2 chiếc Ghế sáng chế 90D, 5 cái Gối cổ sáng chế F6 — Tổng thanh toán (VAT 10%): 115.630.900đ**.\n*(Bản nháp chuẩn thuế - chờ kế toán soát xét và xác nhận)*",
+      "screenshot": "docs/evidence_phase3h/live_export_exp_02.png"
+    },
+    {
+      "id": "EXP_03",
+      "title": "Phiếu xuất kho nhiều mặt hàng (Multi-line issue)",
+      "prompt": "Tạo phiếu xuất kho xuất đồng thời 2 Ghế sáng chế 150 và 5 Gối cổ sáng chế F6 lý do xuất mẫu cho đối tác xem hàng",
+      "target_aspects": [
+        "Xuất nhiều mặt hàng cùng 1 phiếu",
+        "Lý do xuất kho mẫu"
+      ],
+      "duration_ms": 1357,
+      "provider": "GEMINI",
+      "intent": "CREATE_ISSUE_PROPOSAL",
+      "intents": [
+        "CREATE_ISSUE_PROPOSAL"
+      ],
+      "proposal": {
+        "id": "prop_1790892798160_6x5i",
+        "intent": "issue_proposal",
+        "summary": "⚠️ **Không thể lập phiếu xuất kho:** Các mặt hàng sau hiện đã hết hàng:\n• Gối cổ sáng chế F6 (Tồn hiện tại: 0)\nVui lòng kiểm tra lại tồn kho thực tế!",
+        "parameters": {
+          "productId": null,
+          "warehouseId": "wh_retail_main"
+        },
+        "status": "READY",
+        "requires_confirmation": null
+      },
+      "text": "⚠️ **Không thể lập phiếu xuất kho:** Các mặt hàng sau hiện đã hết hàng:\n• Gối cổ sáng chế F6 (Tồn hiện tại: 0)\nVui lòng kiểm tra lại tồn kho thực tế!",
+      "screenshot": "docs/evidence_phase3h/live_export_exp_03.png"
+    },
+    {
+      "id": "EXP_04",
+      "title": "Xuất kho vượt quá tồn khả dụng (Kiểm tra chặn âm kho)",
+      "prompt": "Xuất kho 10 chiếc Ghế sáng chế 150 khỏi kho Trung tâm ngay bây giờ",
+      "target_aspects": [
+        "Chặn xuất âm",
+        "Bảo vệ tồn kho an toàn"
+      ],
+      "duration_ms": 1259,
+      "provider": "GEMINI",
+      "intent": "CREATE_ISSUE_PROPOSAL",
+      "intents": [
+        "CREATE_ISSUE_PROPOSAL"
+      ],
+      "proposal": {
+        "id": "prop_muq3c2lz_j25b",
+        "intent": "create_issue_proposal",
+        "summary": "Xuất kho / Giảm 10 chiếc \"Ghế sáng chế 150\" khỏi kho \"Kho Tổng Trung Tâm\" (Lý do: Đề xuất xuất kho từ trợ lý AI)",
+        "parameters": {
+          "productId": "p_rt_dl_150",
+          "productName": "Ghế sáng chế 150",
+          "warehouseId": "wh_retail_main",
+          "warehouseName": "Kho Tổng Trung Tâm",
+          "qty": 10,
+          "available": 25,
+          "isSufficient": true,
+          "reason": "Đề xuất xuất kho từ trợ lý AI",
+          "variantId": null,
+          "variantName": null
+        },
+        "status": "READY",
+        "requires_confirmation": null
+      },
+      "text": "Đã tạo đề xuất xuất kho: **Xuất kho / Giảm 10 chiếc \"Ghế sáng chế 150\" khỏi kho \"Kho Tổng Trung Tâm\" (Lý do: Đề xuất xuất kho từ trợ lý AI)**.\n*(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)*",
+      "screenshot": "docs/evidence_phase3h/live_export_exp_04.png"
+    },
+    {
+      "id": "EXP_05",
+      "title": "Hóa đơn bán lẻ có Giảm giá, Phụ thu ship, Thông tin người nhận",
+      "prompt": "Lập hóa đơn xuất bán 3 Gối cổ sáng chế F6 giảm giá 100.000đ, phí ship 30.000đ giao về 45 Nguyễn Huệ, người nhận Chị Lan SĐT 0909123456",
+      "target_aspects": [
+        "Giảm giá tiền mặt",
+        "Phí ship",
+        "Địa chỉ giao",
+        "SĐT người nhận"
+      ],
+      "duration_ms": 1315,
+      "provider": "GEMINI",
+      "intent": "CREATE_ORDER_PROPOSAL",
+      "intents": [
+        "CREATE_ORDER_PROPOSAL"
+      ],
+      "proposal": {
+        "id": "prop_muq3c620_xkjr",
+        "intent": "create_order_proposal",
+        "summary": "Đơn bán hàng cho \"Chị Lan\": 3 cái Gối cổ sáng chế F6 — Tổng: 21.077.000đ, Giảm 100.000đ, Ship 30.000đ",
+        "parameters": {
+          "customerName": "Chị Lan",
+          "customerPhone": "0909123456",
+          "customerLabel": "Chị Lan - 0909123456",
+          "address": "45 Nguyễn Huệ",
+          "items": [
+            {
+              "productId": "p_rt_dl_f6",
+              "itemId": "p_rt_dl_f6",
+              "productName": "Gối cổ sáng chế F6",
+              "unit": "cái",
+              "quantity": 3,
+              "unitPrice": 7049000,
+              "lineTotal": 21147000,
+              "available": 0,
+              "isSufficient": false
+            }
+          ],
+          "subtotal": 21147000,
+          "discount": 100000,
+          "shippingFee": 30000,
+          "grandTotal": 21077000,
+          "paymentMethod": "TM",
+          "paymentTermDays": 0,
+          "warehouseId": "wh_retail_main",
+          "warehouseName": "Kho Tổng Trung Tâm",
+          "note": "Đơn hàng qua AI Trợ lý"
+        },
+        "status": "READY",
+        "requires_confirmation": null
+      },
+      "text": "Đã lập đề xuất đơn bán hàng: **Đơn bán hàng cho \"Chị Lan\": 3 cái Gối cổ sáng chế F6 — Tổng: 21.077.000đ, Giảm 100.000đ, Ship 30.000đ**.\n*(Chưa ghi nhận doanh thu - chờ duyệt xác nhận theo Thông tư 88)*",
+      "screenshot": "docs/evidence_phase3h/live_export_exp_05.png"
+    }
+  ]
+}

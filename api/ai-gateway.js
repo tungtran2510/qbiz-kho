@@ -109,12 +109,13 @@ function mockGeminiFallback(prompt, fallbackReason = 'LOCAL_OFFLINE') {
 
   return {
     success: true,
-    provider: 'GEMINI_FALLBACK',
-    model: 'gemini-2.5-flash',
-    finalProvider: 'GEMINI_FALLBACK',
-    finalModel: 'gemini-2.5-flash',
+    provider: 'DEGRADED_RULE_SIMULATOR',
+    model: 'rule-based-fallback',
+    finalProvider: 'DEGRADED_RULE_SIMULATOR',
+    finalModel: 'rule-based-fallback',
     fallbackTriggered: true,
     fallbackReason,
+    isRealModel: false,
     confidence: 0.95,
     latencyMs: 120,
     structuredResult: {

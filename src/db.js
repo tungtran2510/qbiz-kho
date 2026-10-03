@@ -143,12 +143,24 @@ export async function getAll(name){
 export async function getOne(name,id){
   const s=await store(name); return new Promise((r,j)=>{const q=s.get(id);q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)});
 }
+let liveBroadcastChannel = null;
+function notifyDataChanged(stores = []){
+  if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
+    try {
+      if(!liveBroadcastChannel){
+        liveBroadcastChannel = new BroadcastChannel('qbiz_live_data_sync');
+      }
+      liveBroadcastChannel.postMessage({ type: 'DATA_CHANGED', stores: Array.isArray(stores) ? stores : [stores], timestamp: Date.now() });
+    } catch(_) {}
+  }
+}
+
 export async function put(name,value){
   const s=await store(name,'readwrite');
   beginBusyTransaction();
   return new Promise((r,j)=>{
     const q=s.put(value);
-    q.onsuccess=()=>{ endBusyTransaction(); r(value); };
+    q.onsuccess=()=>{ endBusyTransaction(); notifyDataChanged(name); r(value); };
     q.onerror=()=>{ endBusyTransaction(); j(q.error); };
   });
 }
@@ -157,12 +169,12 @@ export async function putMany(name,values){
   beginBusyTransaction();
   return new Promise((resolve,reject)=>{
     const tx=db.transaction(name,'readwrite'); const s=tx.objectStore(name); values.forEach(v=>s.put(v));
-    tx.oncomplete=()=>{ endBusyTransaction(); resolve(values); };
+    tx.oncomplete=()=>{ endBusyTransaction(); notifyDataChanged(name); resolve(values); };
     tx.onerror=()=>{ endBusyTransaction(); reject(tx.error); };
   });
 }
 export async function remove(name,id){
-  const s=await store(name,'readwrite'); return new Promise((r,j)=>{const q=s.delete(id);q.onsuccess=()=>r();q.onerror=()=>j(q.error)});
+  const s=await store(name,'readwrite'); return new Promise((r,j)=>{const q=s.delete(id);q.onsuccess=()=>{notifyDataChanged(name);r();};q.onerror=()=>j(q.error)});
 }
 export async function clearAll(){
   const db=await openDB();
@@ -170,7 +182,7 @@ export async function clearAll(){
   return Promise.all(existingStores.map(name=>new Promise((resolve,reject)=>{
     const tx=db.transaction(name,'readwrite');
     tx.objectStore(name).clear();
-    tx.oncomplete=resolve;
+    tx.oncomplete=()=>{ notifyDataChanged(name); resolve(); };
     tx.onerror=()=>reject(tx.error);
   })));
 }
@@ -185,7 +197,7 @@ export async function runTransaction(names, work){
     let result; let failure;
     const context={abort(error){failure=error;try{tx.abort();}catch{}}};
     try { result=work(stores,tx,context); } catch(error){ context.abort(error); }
-    tx.oncomplete=()=>{ endBusyTransaction(); resolve(result); };
+    tx.oncomplete=()=>{ endBusyTransaction(); notifyDataChanged(names); resolve(result); };
     tx.onerror=()=>{ endBusyTransaction(); reject(tx.error||new Error('Giao dịch dữ liệu thất bại.')); };
     tx.onabort=()=>{ endBusyTransaction(); reject(failure||tx.error||new Error('Giao dịch dữ liệu đã được hoàn tác.')); };
   });
