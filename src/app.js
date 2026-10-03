@@ -270,10 +270,16 @@ async function refresh(){ state.data=await snapshot(); state.businessProfile = b
 if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
   try {
     const liveSyncChannel = new BroadcastChannel('qbiz_live_data_sync');
-    liveSyncChannel.onmessage = async (msg) => {
-      if(msg?.data?.type === 'DATA_CHANGED'){
+    // Gom nhiều tín hiệu DATA_CHANGED liên tiếp (seed/khởi động/ghi hàng loạt) thành 1 lần vẽ lại
+    // để tránh nháy màn hình. Bỏ qua khi app chưa khởi động xong (boot tự render).
+    let liveRefreshTimer = null;
+    liveSyncChannel.onmessage = (msg) => {
+      if(msg?.data?.type !== 'DATA_CHANGED') return;
+      if(!state.data) return;
+      clearTimeout(liveRefreshTimer);
+      liveRefreshTimer = setTimeout(async () => {
         try { await refresh(); } catch(_) {}
-      }
+      }, 400);
     };
   } catch(_) {}
 }
@@ -7707,7 +7713,27 @@ function openDemoIndustryModal() {
   });
 }
 
-window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.installPrompt=e; });
+if(window.__qbizInstallPrompt) state.installPrompt = window.__qbizInstallPrompt;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); state.installPrompt=e; window.__qbizInstallPrompt=e; });
+window.addEventListener('appinstalled',()=>{
+  state.installPrompt=null; window.__qbizInstallPrompt=null;
+  $('.header-install-btn')?.remove(); $('#firstVisitInstallBanner')?.remove();
+  try{ localStorage.setItem('qbiz_install_dismissed','true'); }catch(_){}
+  toast('Đã cài QBiz Kho về thiết bị.','ok');
+});
+// Nút "Cài ngay / Cài App": cài thẳng ứng dụng nếu trình duyệt cho phép; nếu chưa thì mới hiện hướng dẫn thủ công.
+async function runInstallApp(){
+  const ev = state.installPrompt || window.__qbizInstallPrompt;
+  if(!ev) return openInstall();
+  try{
+    ev.prompt();
+    const choice = await ev.userChoice;
+    state.installPrompt=null; window.__qbizInstallPrompt=null;
+    if(choice && choice.outcome==='accepted'){
+      $('.header-install-btn')?.remove(); $('#firstVisitInstallBanner')?.remove();
+    }
+  }catch(err){ console.warn('Install error:', err); openInstall(); }
+}
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)){setTimeout(()=>{try{t.scrollIntoView({block:'center',behavior:'smooth'})}catch{}},220);}});
 document.addEventListener('click', async e=>{
   const pick=e.target.closest('[data-pick-group]'); if(pick){const grp=pick.dataset.pickGroup; $$(`[data-pick-group="${grp}"]`).forEach(x=>x.classList.toggle('active',x===pick)); return;}
@@ -7898,7 +7924,7 @@ document.addEventListener('click', async e=>{
   if(action==='new-warehouse') return openNewWarehouse();
   if(action==='warehouse-management') return openWarehouseManagement();
   if(action==='show-qr') return openQR(e.target.closest('[data-product-id]')?.dataset.productId);
-  if(action==='install-app') return openInstall();
+  if(action==='install-app') return runInstallApp();
   if(action==='export-backup') return exportBackup();
   if(action==='backup-now'){await exportBackup();localStorage.setItem('qbiz_last_backup_at',new Date().toISOString());renderBackupCenter();toast('Đã tạo tệp sao lưu local.','ok');return;}
   if(action==='mark-all-read'){buildNotifications().forEach(n=>state.notificationRead.add(n.id));renderNotificationCenter();return;}
