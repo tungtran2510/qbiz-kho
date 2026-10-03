@@ -1,4 +1,9 @@
 import sys, os, time
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 from playwright.sync_api import sync_playwright
 
 HOSTS = [
