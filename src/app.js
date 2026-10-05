@@ -33,6 +33,12 @@ import {
   getPlatformShops,
   togglePlatformShop,
   getPlatformAuditLogs,
+  getPlatformUsers,
+  updateUserSubscription,
+  togglePlatformUser,
+  deletePlatformUser,
+  getPlatformCommercialConfig,
+  savePlatformCommercialConfig,
   bootstrapSuperAdmin,
   signInWithGoogle,
 } from './auth.js';
@@ -7531,6 +7537,83 @@ function openUserMenuModal() {
   }
 }
 
+function openExtendSubscriptionModal(user) {
+  const isForever = user.expiresAt && new Date(user.expiresAt).getFullYear() >= 2090;
+  const currentExpFormatted = isForever ? 'Vĩnh viễn (Không thời hạn)' : (user.expiresAt ? dt(user.expiresAt).split(' ')[0] : 'Chưa thiết lập');
+
+  openModal({
+    title: 'Gia hạn Thuê bao & Bản quyền',
+    sub: `Tài khoản: ${esc(user.email)} · ${esc(user.fullName || '')}`,
+    body: `
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:13.5px">
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;padding:10px 12px;border-radius:8px">
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:#0369a1;font-weight:600">Gói hiện tại:</span>
+            <strong style="color:#0284c7">${esc(user.planName || user.plan || 'Chưa có')}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span style="color:#0369a1;font-weight:600">Hạn sử dụng hiện tại:</span>
+            <strong>${esc(currentExpFormatted)}</strong>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Thời gian gia hạn thêm</label>
+          <select id="modalExtendDays" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px;background:#fff">
+            <option value="30">+ 30 ngày (1 tháng)</option>
+            <option value="90">+ 90 ngày (3 tháng - Quý)</option>
+            <option value="180">+ 180 ngày (6 tháng)</option>
+            <option value="365" selected>+ 365 ngày (1 năm - Tiêu chuẩn)</option>
+            <option value="730">+ 2 năm</option>
+            <option value="forever">Vĩnh viễn (Không giới hạn thời gian)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Nâng cấp / Chọn Gói cước dịch vụ</label>
+          <select id="modalExtendPlan" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px;background:#fff">
+            <option value="trial" ${user.plan === 'trial' ? 'selected' : ''}>Gói Dùng Thử 30 ngày (Trial)</option>
+            <option value="standard" ${user.plan === 'standard' ? 'selected' : ''}>Gói Tiêu Chuẩn (Standard - 199.000 ₫/tháng)</option>
+            <option value="pro" ${user.plan === 'pro' ? 'selected' : ''}>Gói Chuyên Nghiệp (Pro - 399.000 ₫/tháng)</option>
+            <option value="enterprise" ${user.plan === 'enterprise' ? 'selected' : ''}>Gói Chuỗi Cửa Hàng (Enterprise - 799.000 ₫/tháng)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Trạng thái tài khoản</label>
+          <select id="modalExtendStatus" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:8px;font-size:13.5px;background:#fff">
+            <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>Đang hoạt động (ACTIVE)</option>
+            <option value="SUSPENDED" ${user.status === 'SUSPENDED' ? 'selected' : ''}>Tạm khóa (SUSPENDED)</option>
+          </select>
+        </div>
+      </div>
+    `,
+    submitText: 'Lưu Gia Hạn & Cập Nhật',
+    onSubmit: async (root) => {
+      const daysVal = $('#modalExtendDays', root)?.value;
+      const planVal = $('#modalExtendPlan', root)?.value;
+      const statusVal = $('#modalExtendStatus', root)?.value;
+      const planNames = {
+        trial: 'Dùng Thử 30 Ngày',
+        standard: 'Gói Tiêu Chuẩn',
+        pro: 'Gói Chuyên Nghiệp',
+        enterprise: 'Gói Chuỗi Cửa Hàng'
+      };
+
+      const daysToAdd = daysVal === 'forever' ? 'forever' : Number(daysVal);
+      await updateUserSubscription(user.id, {
+        plan: planVal,
+        planName: planNames[planVal] || planVal.toUpperCase(),
+        daysToAdd: daysToAdd,
+        status: statusVal
+      });
+
+      toast(`Đã gia hạn thành công cho ${user.email}!`, 'ok');
+      await renderPlatformAdmin();
+    }
+  });
+}
+
 async function renderPlatformAdmin() {
   setTitle('Platform Admin Console', 'QBiz Nền tảng');
   if (!isSuperAdmin()) {
@@ -7540,37 +7623,53 @@ async function renderPlatformAdmin() {
   }
 
   const auth = getAuthState();
-  const currentTab = state.platformAdminTab || 'metrics';
+  const currentTab = state.platformAdminTab || 'users';
 
   $('#content').innerHTML = `
-    <section class="platform-admin-screen card" style="display:flex;flex-direction:column;gap:16px;padding:16px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:14px">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <h2 style="margin:0;font-size:20px;font-weight:700">Platform Admin Console</h2>
-            <span class="role-badge" style="background:#fee2e2;color:#b91c1c;font-weight:700;font-size:12px;padding:3px 8px;border-radius:4px">SUPER_ADMIN</span>
+    <section class="platform-admin-screen" style="display:flex;flex-direction:column;gap:16px;padding:4px">
+      <!-- Dark Navy Command Header: Chuyên trang riêng biệt cấp cao -->
+      <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);color:#fff;padding:16px 20px;border-radius:14px;box-shadow:0 4px 16px rgba(15,23,42,0.18)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:42px;height:42px;border-radius:10px;background:#0284c7;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 2px 8px rgba(2,132,199,0.3)">
+              ${icon('shield-alert')}
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <h2 style="margin:0;font-size:18px;font-weight:700;color:#f8fafc;letter-spacing:0.01em">QBiz Platform Super Admin Console</h2>
+                <span class="badge" style="background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 6px">TOÀN QUYỀN HỆ THỐNG</span>
+              </div>
+              <div style="font-size:12px;color:#94a3b8;margin-top:2px">
+                Quản trị viên tối cao: <b>${esc(auth.user?.email || 'tungtran2510@gmail.com')}</b> · Supabase Cloud: <span style="color:#38bdf8">ofcooslacddbizlykobh</span>
+              </div>
+            </div>
           </div>
-          <div style="font-size:13px;color:var(--text-muted,#64748b);margin-top:4px">
-            Tài khoản quản trị viên nền tảng: <b>${esc(auth.user?.email || '')}</b>
-          </div>
+          <button class="primary-btn" id="exitPlatformAdminBtn" style="gap:8px;background:#334155;border:1px solid #475569;color:#fff;font-weight:600;padding:9px 16px;border-radius:8px;cursor:pointer">
+            ${icon('arrow-left-right')} <span>Quay về Cửa hàng / Bán hàng</span>
+          </button>
         </div>
-        <button class="secondary-btn" id="exitPlatformAdminBtn" style="gap:6px">
-          ${icon('arrow-left-right')} Quay về Cửa hàng
-        </button>
       </div>
 
-      <div class="pos-chips" style="display:flex;gap:8px">
-        <button class="${currentTab === 'metrics' ? 'active' : ''}" data-admin-tab="metrics">
-          ${icon('layout-dashboard')} Tổng quan Nền tảng
+      <!-- Navigation Tabs: Chuyên trang Quản trị Nền tảng -->
+      <div class="pos-chips" style="display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:8px">
+        <button class="${currentTab === 'users' ? 'active' : ''}" data-admin-tab="users" style="font-weight:600">
+          ${icon('users')} Quản lý Người dùng & Thuê bao
         </button>
-        <button class="${currentTab === 'shops' ? 'active' : ''}" data-admin-tab="shops">
+        <button class="${currentTab === 'commercial' ? 'active' : ''}" data-admin-tab="commercial" style="font-weight:600">
+          ${icon('credit-card')} Gói Cước & Thương Mại
+        </button>
+        <button class="${currentTab === 'shops' ? 'active' : ''}" data-admin-tab="shops" style="font-weight:600">
           ${icon('store')} Quản lý Cửa hàng
         </button>
-        <button class="${currentTab === 'audit' ? 'active' : ''}" data-admin-tab="audit">
+        <button class="${currentTab === 'metrics' ? 'active' : ''}" data-admin-tab="metrics" style="font-weight:600">
+          ${icon('layout-dashboard')} Tổng quan Nền tảng
+        </button>
+        <button class="${currentTab === 'audit' ? 'active' : ''}" data-admin-tab="audit" style="font-weight:600">
           ${icon('file-text')} Nhật ký Hệ thống (Audit)
         </button>
       </div>
 
+      <!-- Tab Content Area -->
       <div id="adminTabContent">
         <div style="text-align:center;padding:32px;color:var(--text-muted,#64748b)">Đang tải dữ liệu máy chủ...</div>
       </div>
@@ -7593,7 +7692,322 @@ async function renderPlatformAdmin() {
   if (!tabContainer) return;
 
   try {
-    if (currentTab === 'metrics') {
+    if (currentTab === 'users') {
+      const users = await getPlatformUsers();
+      const filter = state.platformUserFilter || 'all';
+      const query = (state.platformUserQuery || '').trim().toLowerCase();
+
+      const totalCount = users.length;
+      const activeCount = users.filter(u => u.status === 'ACTIVE').length;
+      const expiringCount = users.filter(u => {
+        if (u.status !== 'ACTIVE' || !u.expiresAt) return false;
+        const diffDays = Math.ceil((new Date(u.expiresAt).getTime() - Date.now()) / 86400000);
+        return diffDays >= 0 && diffDays <= 15;
+      }).length;
+      const expiredOrLockedCount = users.filter(u => u.status === 'EXPIRED' || u.status === 'SUSPENDED').length;
+
+      const filteredUsers = users.filter(u => {
+        if (filter === 'active' && u.status !== 'ACTIVE') return false;
+        if (filter === 'suspended' && u.status !== 'SUSPENDED') return false;
+        if (filter === 'expired' && u.status !== 'EXPIRED') return false;
+        if (filter === 'expiring') {
+          const diffDays = Math.ceil((new Date(u.expiresAt).getTime() - Date.now()) / 86400000);
+          if (u.status !== 'ACTIVE' || diffDays < 0 || diffDays > 15) return false;
+        }
+        if (query) {
+          const match = (u.email || '').toLowerCase().includes(query) ||
+                        (u.fullName || '').toLowerCase().includes(query) ||
+                        (u.phone || '').toLowerCase().includes(query) ||
+                        (u.shopName || '').toLowerCase().includes(query) ||
+                        (u.planName || '').toLowerCase().includes(query);
+          if (!match) return false;
+        }
+        return true;
+      });
+
+      tabContainer.innerHTML = `
+        <div class="metric-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px">
+          ${metricCard('Tổng Người dùng', fmt(totalCount), 'Tài khoản đăng ký', 'blue')}
+          ${metricCard('Đang hoạt động', fmt(activeCount), 'Được phép sử dụng', 'green')}
+          ${metricCard('Sắp hết hạn', fmt(expiringCount), 'Còn dưới 15 ngày', expiringCount > 0 ? 'amber' : 'green')}
+          ${metricCard('Đã khóa / Quá hạn', fmt(expiredOrLockedCount), 'Cần gia hạn / xử lý', expiredOrLockedCount > 0 ? 'red' : 'green')}
+        </div>
+
+        <div class="card" style="padding:14px;margin-bottom:14px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+            <div style="flex:1;min-width:240px;position:relative">
+              <input type="text" id="adminUserSearch" value="${esc(state.platformUserQuery || '')}" placeholder="Tìm theo Email, Tên, SĐT, Tên Shop, Gói cước..." style="width:100%;padding:9px 12px 9px 34px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box" />
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;display:flex">${icon('search')}</span>
+            </div>
+            <div class="filter-tabs" style="display:flex;gap:6px;flex-wrap:wrap">
+              ${[
+                ['all', 'Tất cả (' + totalCount + ')'],
+                ['active', 'Hoạt động (' + activeCount + ')'],
+                ['expiring', 'Sắp hết hạn (' + expiringCount + ')'],
+                ['expired', 'Quá hạn'],
+                ['suspended', 'Tạm khóa']
+              ].map(([k, label]) => `
+                <button type="button" class="filter-pill ${filter === k ? 'active' : ''}" data-user-filter="${k}" style="padding:6px 12px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid ${filter === k ? '#0284c7' : '#cbd5e1'};background:${filter === k ? '#0284c7' : '#fff'};color:${filter === k ? '#fff' : '#475569'};cursor:pointer">
+                  ${label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="overflow-x:auto">
+            <table class="data-table" style="width:100%;font-size:13px;border-collapse:collapse">
+              <thead>
+                <tr style="background:#f8fafc;border-bottom:2px solid var(--border,#e2e8f0);text-align:left">
+                  <th style="padding:12px 10px">Người dùng</th>
+                  <th style="padding:12px 10px">Cửa hàng & Vai trò</th>
+                  <th style="padding:12px 10px">Gói cước</th>
+                  <th style="padding:12px 10px">Hạn sử dụng</th>
+                  <th style="padding:12px 10px">Trạng thái</th>
+                  <th style="padding:12px 10px;text-align:right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredUsers.map(u => {
+                  const isSuper = u.role === 'SUPER_ADMIN' || u.email === 'tungtran2510@gmail.com';
+                  const isSuspended = u.status === 'SUSPENDED';
+                  const expDate = u.expiresAt ? new Date(u.expiresAt) : null;
+                  const isForever = expDate && expDate.getFullYear() >= 2090;
+                  const diffDays = expDate ? Math.ceil((expDate.getTime() - Date.now()) / 86400000) : 0;
+                  
+                  let expiryBadge = '';
+                  if (isForever) {
+                    expiryBadge = `<span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:11px">Vĩnh viễn</span>`;
+                  } else if (diffDays < 0) {
+                    expiryBadge = `<span class="badge danger" style="font-size:11px">Quá hạn ${Math.abs(diffDays)} ngày</span>`;
+                  } else if (diffDays <= 15) {
+                    expiryBadge = `<span class="badge warn" style="font-size:11px">Còn ${diffDays} ngày</span>`;
+                  } else {
+                    expiryBadge = `<span class="badge ok" style="font-size:11px">Còn ${diffDays} ngày</span>`;
+                  }
+
+                  let statusBadge = '';
+                  if (isSuspended) {
+                    statusBadge = `<span class="badge danger">Tạm khóa</span>`;
+                  } else if (diffDays < 0 && !isForever) {
+                    statusBadge = `<span class="badge warn">Hết hạn</span>`;
+                  } else {
+                    statusBadge = `<span class="badge ok">Hoạt động</span>`;
+                  }
+
+                  return `
+                    <tr style="border-bottom:1px solid var(--border,#e2e8f0);transition:background .1s">
+                      <td style="padding:12px 10px">
+                        <div style="font-weight:700;color:#0f172a">${esc(u.fullName || u.email.split('@')[0])}</div>
+                        <div style="font-size:12px;color:#64748b">${esc(u.email)}</div>
+                        ${u.phone ? `<div style="font-size:11px;color:#94a3b8">${esc(u.phone)}</div>` : ''}
+                      </td>
+                      <td style="padding:12px 10px">
+                        <div style="font-weight:600;color:#1e293b">${esc(u.shopName || 'Chưa gắn shop')}</div>
+                        <span class="role-badge" style="font-size:10.5px;margin-top:2px;display:inline-block">${esc(u.role)}</span>
+                      </td>
+                      <td style="padding:12px 10px">
+                        <span class="badge" style="font-size:11px;font-weight:700;background:#f1f5f9;border:1px solid #cbd5e1;color:#1e293b">
+                          ${esc(u.planName || u.plan?.toUpperCase() || 'STANDARD')}
+                        </span>
+                      </td>
+                      <td style="padding:12px 10px">
+                        <div style="display:flex;flex-direction:column;gap:3px">
+                          <span style="font-size:12.5px;color:#334155">${isForever ? 'Không thời hạn' : (expDate ? dt(expDate).split(' ')[0] : '---')}</span>
+                          ${expiryBadge}
+                        </div>
+                      </td>
+                      <td style="padding:12px 10px">
+                        ${statusBadge}
+                      </td>
+                      <td style="padding:12px 10px;text-align:right">
+                        <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
+                          <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="font-size:11px;padding:4px 8px;gap:3px;border-radius:5px">
+                            ${icon('sparkles')} Gia hạn
+                          </button>
+                          ${!isSuper ? `
+                            <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:4px 8px;border-radius:5px;color:${isSuspended ? '#16a34a' : '#ea580c'}">
+                              ${isSuspended ? 'Mở khóa' : 'Khóa'}
+                            </button>
+                            <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:4px 7px;border-radius:5px;color:#dc2626;border:1px solid #fecaca;background:#fff5f5">
+                              ${icon('trash-2')}
+                            </button>
+                          ` : `
+                            <span style="font-size:11px;color:#94a3b8;font-style:italic;padding:4px 6px">Platform Owner</span>
+                          `}
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('') || `
+                  <tr>
+                    <td colspan="6" style="padding:32px;text-align:center;color:#64748b">
+                      Không tìm thấy người dùng nào phù hợp với bộ lọc.
+                    </td>
+                  </tr>
+                `}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      const searchInput = $('#adminUserSearch', tabContainer);
+      if (searchInput) {
+        searchInput.oninput = (e) => {
+          state.platformUserQuery = e.target.value;
+          renderPlatformAdmin();
+        };
+      }
+
+      $$('[data-user-filter]', tabContainer).forEach(btn => {
+        btn.onclick = () => {
+          state.platformUserFilter = btn.dataset.userFilter;
+          renderPlatformAdmin();
+        };
+      });
+
+      $$('[data-user-extend]', tabContainer).forEach(btn => {
+        btn.onclick = () => {
+          const uId = btn.dataset.userExtend;
+          const targetUser = users.find(x => x.id === uId);
+          if (targetUser) openExtendSubscriptionModal(targetUser);
+        };
+      });
+
+      $$('[data-user-toggle]', tabContainer).forEach(btn => {
+        btn.onclick = async () => {
+          const uId = btn.dataset.userToggle;
+          const curStatus = btn.dataset.userStatus;
+          const nextStatus = curStatus === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+          const actionLabel = nextStatus === 'SUSPENDED' ? 'KHÓA' : 'MỞ KHÓA';
+          if (!confirm(`Bạn có chắc chắn muốn ${actionLabel} tài khoản người dùng này?`)) return;
+          try {
+            await togglePlatformUser(uId, nextStatus);
+            toast(`Đã ${actionLabel.toLowerCase()} tài khoản thành công!`, 'ok');
+            renderPlatformAdmin();
+          } catch (err) {
+            toast(err.message, 'error');
+          }
+        };
+      });
+
+      $$('[data-user-delete]', tabContainer).forEach(btn => {
+        btn.onclick = async () => {
+          const uId = btn.dataset.userDelete;
+          const targetUser = users.find(x => x.id === uId);
+          if (!targetUser) return;
+          if (!confirm(`CẢNH BÁO XÓA:\nBạn có chắc chắn muốn XÓA vĩnh viễn người dùng ${targetUser.email} khỏi hệ thống không?`)) return;
+          try {
+            await deletePlatformUser(uId);
+            toast(`Đã xóa người dùng ${targetUser.email} thành công!`, 'ok');
+            renderPlatformAdmin();
+          } catch (err) {
+            toast(err.message, 'error');
+          }
+        };
+      });
+    } else if (currentTab === 'commercial') {
+      const comm = await getPlatformCommercialConfig();
+      tabContainer.innerHTML = `
+        <div style="margin-bottom:16px">
+          <h3 style="margin:0 0 10px;font-size:16px;font-weight:700;color:#0f172a">1. Bảng Gói Cước & Hạn Mức Thương Mại Nền Tảng</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+            ${comm.plans.map(p => `
+              <div class="card" style="padding:14px;border:1.5px solid ${p.popular ? '#0284c7' : '#e2e8f0'};background:${p.popular ? '#f0f9ff' : '#fff'};border-radius:10px;display:flex;flex-direction:column;position:relative">
+                ${p.popular ? `<span style="position:absolute;top:-10px;right:12px;background:#0284c7;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase">Khuyên Dùng</span>` : ''}
+                <strong style="font-size:15px;color:#0f172a">${esc(p.name)}</strong>
+                <div style="margin:6px 0 10px;font-size:20px;font-weight:800;color:${p.popular ? '#0284c7' : '#0f172a'}">
+                  ${p.price > 0 ? `${fmt(p.price)} ₫` : 'Miễn phí'}
+                  <span style="font-size:12px;font-weight:400;color:#64748b">/${p.period}</span>
+                </div>
+                <ul style="margin:0 0 12px;padding-left:18px;font-size:12px;color:#334155;line-height:1.6;flex:1">
+                  <li>Tối đa <b>${p.maxProducts >= 99999 ? 'Không giới hạn' : fmt(p.maxProducts)}</b> sản phẩm</li>
+                  <li>Tối đa <b>${p.maxWarehouses}</b> kho hàng</li>
+                  <li>Tối đa <b>${p.maxPos}</b> quầy bán hàng / thiết bị</li>
+                  ${p.features.map(f => `<li>${esc(f)}</li>`).join('')}
+                </ul>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="card" style="padding:16px">
+          <h3 style="margin:0 0 12px;font-size:16px;font-weight:700;color:#0f172a">2. Cấu Hình Tài Khoản Thu Tiền Bản Quyền & Thuê Bao Nền Tảng</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+            <div class="field">
+              <label>Tên Nền tảng (Brand Name)</label>
+              <input type="text" id="commPlatformName" value="${esc(comm.platformName)}" />
+            </div>
+            <div class="field">
+              <label>Hotline Hỗ Trợ Kỹ Thuật & Kinh Doanh</label>
+              <input type="text" id="commHotline" value="${esc(comm.hotline)}" />
+            </div>
+            <div class="field">
+              <label>Email Hỗ Trợ Khách Hàng</label>
+              <input type="email" id="commSupportEmail" value="${esc(comm.supportEmail)}" />
+            </div>
+            <div class="field">
+              <label>Thời Gian Dùng Thử Mặc Định (Ngày)</label>
+              <input type="number" id="commTrialDays" value="${comm.trialDays || 30}" min="7" max="90" />
+            </div>
+            <div class="field">
+              <label>Ngân Hàng Nhận Tiền Bản Quyền (VietQR)</label>
+              <input type="text" id="commBankName" value="${esc(comm.bankName)}" placeholder="vd: MBBANK, VCB, TECHCOMBANK..." />
+            </div>
+            <div class="field">
+              <label>Số Tài Khoản Nhận Thanh Toán</label>
+              <input type="text" id="commBankAccount" value="${esc(comm.bankAccount)}" placeholder="vd: 0901234567..." />
+            </div>
+            <div class="field">
+              <label>Tên Chủ Tài Khoản (Không dấu)</label>
+              <input type="text" id="commBankAccountOwner" value="${esc(comm.bankAccountOwner)}" placeholder="vd: TRAN QUANG TUNG" />
+            </div>
+            <div class="field">
+              <label>Cú Pháp Chuyển Khoản Mẫu</label>
+              <input type="text" id="commTransferSyntax" value="${esc(comm.transferSyntax)}" />
+            </div>
+          </div>
+
+          <div style="margin-top:16px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <div style="background:#fff;padding:8px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+              <img src="https://img.vietqr.io/image/${esc(comm.bankName)}-${esc(comm.bankAccount)}-compact2.png?amount=399000&addInfo=QBIZ%20GIAHAN%20PRO&accountName=${encodeURIComponent(comm.bankAccountOwner)}" alt="VietQR Nền tảng" style="width:120px;height:120px;object-fit:contain;display:block" onerror="this.style.display='none'" />
+            </div>
+            <div style="flex:1;min-width:200px">
+              <strong style="font-size:14px;color:#0f172a">Xem trước mã VietQR Thu Phí Bản Quyền Tự Động:</strong>
+              <p style="margin:4px 0 0;font-size:12.5px;color:#64748b">Mã QR này được dùng để các chủ Shop quét chuyển khoản gia hạn dịch vụ tự động. Khi khách quét mã, thông tin Ngân hàng, STK và cú pháp sẽ tự động điền sẵn chính xác 100%.</p>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;display:flex;justify-content:flex-end">
+            <button type="button" class="primary-btn" id="btnSaveCommercialSettings" style="gap:6px;padding:10px 20px">
+              ${icon('check')} Lưu Cấu Hình Thương Mại
+            </button>
+          </div>
+        </div>
+      `;
+
+      $('#btnSaveCommercialSettings').onclick = async () => {
+        try {
+          const updated = {
+            platformName: $('#commPlatformName')?.value?.trim() || comm.platformName,
+            hotline: $('#commHotline')?.value?.trim() || comm.hotline,
+            supportEmail: $('#commSupportEmail')?.value?.trim() || comm.supportEmail,
+            trialDays: Number($('#commTrialDays')?.value || 30),
+            bankName: $('#commBankName')?.value?.trim() || comm.bankName,
+            bankAccount: $('#commBankAccount')?.value?.trim() || comm.bankAccount,
+            bankAccountOwner: $('#commBankAccountOwner')?.value?.trim()?.toUpperCase() || comm.bankAccountOwner,
+            transferSyntax: $('#commTransferSyntax')?.value?.trim() || comm.transferSyntax,
+          };
+          await savePlatformCommercialConfig(updated);
+          toast('Đã lưu cấu hình thương mại nền tảng thành công!', 'ok');
+          renderPlatformAdmin();
+        } catch (err) {
+          toast('Lỗi khi lưu cấu hình: ' + err.message, 'error');
+        }
+      };
+    } else if (currentTab === 'metrics') {
       const metrics = await getPlatformMetrics();
       tabContainer.innerHTML = `
         <div class="metric-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
@@ -7608,48 +8022,50 @@ async function renderPlatformAdmin() {
 
         <div class="callout" style="margin-top:16px;font-size:13px">
           <strong>Chính sách An toàn Platform Super Admin:</strong>
-          <p style="margin:4px 0 0 0">Super Admin chỉ quản trị vòng đời shop, tài khoản và tình trạng đồng bộ. Super Admin không được tự ý ghi đè số liệu giao dịch, xuất nhập kho hay bypass sổ cái của các Shop mà không thông qua engine hợp lệ có lưu vết kiểm toán.</p>
+          <p style="margin:4px 0 0 0">Super Admin quản trị vòng đời shop, tài khoản, gia hạn thuê bao và tình trạng đồng bộ. Super Admin không được tự ý ghi đè số liệu giao dịch, xuất nhập kho hay bypass sổ cái của các Shop mà không thông qua engine hợp lệ có lưu vết kiểm toán.</p>
         </div>
       `;
     } else if (currentTab === 'shops') {
       const shops = await getPlatformShops();
       tabContainer.innerHTML = `
-        <div style="overflow-x:auto">
-          <table class="data-table" style="width:100%;font-size:13px;border-collapse:collapse">
-            <thead>
-              <tr style="border-bottom:2px solid var(--border,#e2e8f0);text-align:left">
-                <th style="padding:10px 8px">Cửa hàng</th>
-                <th style="padding:10px 8px">Mã / ID</th>
-                <th style="padding:10px 8px">Chủ sở hữu</th>
-                <th style="padding:10px 8px">Nhân viên</th>
-                <th style="padding:10px 8px">Thiết bị</th>
-                <th style="padding:10px 8px">Trạng thái</th>
-                <th style="padding:10px 8px;text-align:right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${shops.map(s => {
-                const isActive = s.status === 'ACTIVE';
-                return `
-                  <tr style="border-bottom:1px solid var(--border,#e2e8f0)">
-                    <td style="padding:10px 8px;font-weight:700">${esc(s.name)}</td>
-                    <td style="padding:10px 8px;color:var(--text-muted,#64748b)">${esc(s.code || s.id?.slice(0, 8))}</td>
-                    <td style="padding:10px 8px">${esc(s.owner_email || 'Chưa liên kết')}</td>
-                    <td style="padding:10px 8px">${fmt(s.member_count || 1)}</td>
-                    <td style="padding:10px 8px">${fmt(s.device_count || 1)}</td>
-                    <td style="padding:10px 8px">
-                      <span class="badge ${isActive ? 'ok' : 'danger'}">${isActive ? 'Hoạt động' : 'Tạm khóa'}</span>
-                    </td>
-                    <td style="padding:10px 8px;text-align:right">
-                      <button class="secondary-btn tiny" data-toggle-shop-id="${esc(s.id)}" data-shop-status="${esc(s.status)}">
-                        ${isActive ? 'Khóa Shop' : 'Mở khóa Shop'}
-                      </button>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="overflow-x:auto">
+            <table class="data-table" style="width:100%;font-size:13px;border-collapse:collapse">
+              <thead>
+                <tr style="background:#f8fafc;border-bottom:2px solid var(--border,#e2e8f0);text-align:left">
+                  <th style="padding:12px 10px">Cửa hàng</th>
+                  <th style="padding:12px 10px">Mã / ID</th>
+                  <th style="padding:12px 10px">Chủ sở hữu</th>
+                  <th style="padding:12px 10px">Nhân viên</th>
+                  <th style="padding:12px 10px">Thiết bị</th>
+                  <th style="padding:12px 10px">Trạng thái</th>
+                  <th style="padding:12px 10px;text-align:right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${shops.map(s => {
+                  const isActive = s.status === 'ACTIVE';
+                  return `
+                    <tr style="border-bottom:1px solid var(--border,#e2e8f0)">
+                      <td style="padding:12px 10px;font-weight:700">${esc(s.name)}</td>
+                      <td style="padding:12px 10px;color:var(--text-muted,#64748b)">${esc(s.code || s.id?.slice(0, 8))}</td>
+                      <td style="padding:12px 10px">${esc(s.owner_email || 'Chưa liên kết')}</td>
+                      <td style="padding:12px 10px">${fmt(s.member_count || 1)}</td>
+                      <td style="padding:12px 10px">${fmt(s.device_count || 1)}</td>
+                      <td style="padding:12px 10px">
+                        <span class="badge ${isActive ? 'ok' : 'danger'}">${isActive ? 'Hoạt động' : 'Tạm khóa'}</span>
+                      </td>
+                      <td style="padding:12px 10px;text-align:right">
+                        <button class="secondary-btn tiny" data-toggle-shop-id="${esc(s.id)}" data-shop-status="${esc(s.status)}">
+                          ${isActive ? 'Khóa Shop' : 'Mở khóa Shop'}
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       `;
 
@@ -7673,29 +8089,31 @@ async function renderPlatformAdmin() {
     } else if (currentTab === 'audit') {
       const logs = await getPlatformAuditLogs(50);
       tabContainer.innerHTML = `
-        <div style="overflow-x:auto">
-          <table class="data-table" style="width:100%;font-size:13px;border-collapse:collapse">
-            <thead>
-              <tr style="border-bottom:2px solid var(--border,#e2e8f0);text-align:left">
-                <th style="padding:10px 8px">Thời gian</th>
-                <th style="padding:10px 8px">Người thực hiện</th>
-                <th style="padding:10px 8px">Hành động</th>
-                <th style="padding:10px 8px">Kết quả</th>
-                <th style="padding:10px 8px">Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${logs.map(l => `
-                <tr style="border-bottom:1px solid var(--border,#e2e8f0)">
-                  <td style="padding:10px 8px;white-space:nowrap">${dt(l.created_at)}</td>
-                  <td style="padding:10px 8px"><span class="role-badge" style="font-size:11px">${esc(l.actor_platform_role || 'SUPER_ADMIN')}</span></td>
-                  <td style="padding:10px 8px;font-weight:600">${esc(l.action)}</td>
-                  <td style="padding:10px 8px"><span class="badge ${l.result === 'SUCCESS' ? 'ok' : 'danger'}">${esc(l.result)}</span></td>
-                  <td style="padding:10px 8px;color:var(--text-muted,#64748b);font-family:monospace;font-size:11px">${esc(JSON.stringify(l.details || {}))}</td>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="overflow-x:auto">
+            <table class="data-table" style="width:100%;font-size:13px;border-collapse:collapse">
+              <thead>
+                <tr style="background:#f8fafc;border-bottom:2px solid var(--border,#e2e8f0);text-align:left">
+                  <th style="padding:12px 10px">Thời gian</th>
+                  <th style="padding:12px 10px">Người thực hiện</th>
+                  <th style="padding:12px 10px">Hành động</th>
+                  <th style="padding:12px 10px">Kết quả</th>
+                  <th style="padding:12px 10px">Chi tiết</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${logs.map(l => `
+                  <tr style="border-bottom:1px solid var(--border,#e2e8f0)">
+                    <td style="padding:12px 10px;white-space:nowrap">${dt(l.created_at)}</td>
+                    <td style="padding:12px 10px"><span class="role-badge" style="font-size:11px">${esc(l.actor_platform_role || 'SUPER_ADMIN')}</span></td>
+                    <td style="padding:12px 10px;font-weight:600">${esc(l.action)}</td>
+                    <td style="padding:12px 10px"><span class="badge ${l.result === 'SUCCESS' ? 'ok' : 'danger'}">${esc(l.result)}</span></td>
+                    <td style="padding:12px 10px;color:var(--text-muted,#64748b);font-family:monospace;font-size:11px">${esc(JSON.stringify(l.details || {}))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
         </div>
       `;
     }

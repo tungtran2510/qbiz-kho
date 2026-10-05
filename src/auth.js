@@ -943,17 +943,35 @@ export async function togglePlatformShop(shopId, nextStatus) {
  */
 export async function getPlatformAuditLogs(limit = 50) {
   if (!isSuperAdmin()) throw new Error('Từ chối truy cập: Cần quyền Platform Super Admin.');
+  let localLogs = [];
+  try {
+    const raw = localStorage.getItem('qbiz_platform_audit_logs');
+    if (raw) localLogs = JSON.parse(raw);
+  } catch (_) {}
+
   const isMockToken = currentSession?.access_token?.startsWith('mock_');
   const { url, anonKey } = getSupabaseConfig();
   if (!url || !anonKey || isMockToken) {
-    return [
-      { id: 'log_1', actor_platform_role: 'SUPER_ADMIN', action: 'BOOTSTRAP_SUPER_ADMIN', result: 'SUCCESS', details: { email: 'tungtran2510@gmail.com' }, created_at: new Date(Date.now() - 3600000).toISOString() },
-      { id: 'log_2', actor_platform_role: 'SUPER_ADMIN', action: 'VIEW_PLATFORM_CONSOLE', result: 'SUCCESS', details: {}, created_at: new Date().toISOString() },
-    ];
+    if (!localLogs.length) {
+      localLogs = [
+        { id: 'log_1', actor_platform_role: 'SUPER_ADMIN', action: 'BOOTSTRAP_SUPER_ADMIN', result: 'SUCCESS', details: { email: 'tungtran2510@gmail.com' }, created_at: new Date(Date.now() - 3600000).toISOString() },
+        { id: 'log_2', actor_platform_role: 'SUPER_ADMIN', action: 'VIEW_PLATFORM_CONSOLE', result: 'SUCCESS', details: {}, created_at: new Date().toISOString() },
+      ];
+    }
+    return localLogs.slice(0, limit);
   }
-  return await supabaseFetch(`/rest/v1/platform_audit_logs?select=*&order=created_at.desc&limit=${limit}`, {
-    method: 'GET',
-  });
+
+  try {
+    const serverLogs = await supabaseFetch(`/rest/v1/platform_audit_logs?select=*&order=created_at.desc&limit=${limit}`, {
+      method: 'GET',
+    });
+    if (Array.isArray(serverLogs)) {
+      const combined = [...localLogs, ...serverLogs];
+      combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return combined.slice(0, limit);
+    }
+  } catch (_) {}
+  return localLogs.slice(0, limit);
 }
 
 /**
@@ -968,4 +986,301 @@ export async function bootstrapSuperAdmin(email) {
     method: 'POST',
     body: JSON.stringify({ p_email: email }),
   });
+}
+
+// ==============================================================================
+// PLATFORM COMMERCIAL CONFIG & USER SUBSCRIPTION EXTENSION APIS
+// ==============================================================================
+
+const DEFAULT_COMMERCIAL_CONFIG = {
+  platformName: 'QBiz · Quản Lý Kho & Bán Hàng Đa Kênh',
+  hotline: '0901.234.567',
+  supportEmail: 'hotro@qbiz.vn',
+  trialDays: 30,
+  expiryPolicy: 'warn_and_grace',
+  bankName: 'MBBANK',
+  bankAccount: '0901234567',
+  bankAccountOwner: 'TRAN QUANG TUNG',
+  transferSyntax: 'QBIZ [EMAIL_HOAC_SHOP]',
+  plans: [
+    {
+      id: 'trial',
+      name: 'Dùng thử 30 ngày',
+      price: 0,
+      period: '30 ngày',
+      maxProducts: 200,
+      maxWarehouses: 1,
+      maxPos: 1,
+      features: ['POS bán hàng cơ bản', 'Quản lý tồn kho', 'Báo cáo doanh thu']
+    },
+    {
+      id: 'standard',
+      name: 'Gói Tiêu chuẩn',
+      price: 199000,
+      period: 'tháng',
+      maxProducts: 1000,
+      maxWarehouses: 2,
+      maxPos: 2,
+      features: ['POS bán hàng tốc độ cao', 'Quản lý 2 kho hàng', 'Báo cáo lãi lỗ chi tiết', 'In hóa đơn K80/K58']
+    },
+    {
+      id: 'pro',
+      name: 'Gói Chuyên nghiệp',
+      price: 399000,
+      period: 'tháng',
+      maxProducts: 10000,
+      maxWarehouses: 5,
+      maxPos: 5,
+      popular: true,
+      features: ['Không giới hạn sản phẩm', 'Đa kho & điều chuyển hàng', 'Trợ lý AI QBiz Agent thông minh', 'Hóa đơn điện tử MISA/VNPT', 'Sổ quỹ & công nợ nhà cung cấp']
+    },
+    {
+      id: 'enterprise',
+      name: 'Gói Chuỗi Cửa Hàng',
+      price: 799000,
+      period: 'tháng',
+      maxProducts: 99999,
+      maxWarehouses: 99,
+      maxPos: 99,
+      features: ['Không giới hạn toàn bộ hệ thống', 'Quản lý chuỗi nhiều chi nhánh', 'Phân quyền phân cấp nhân viên', 'API kết nối TMĐT & Webhook', 'Kênh hỗ trợ ưu tiên 24/7']
+    }
+  ]
+};
+
+export async function getPlatformCommercialConfig() {
+  try {
+    const raw = localStorage.getItem('qbiz_platform_commercial_config');
+    if (raw) return { ...DEFAULT_COMMERCIAL_CONFIG, ...JSON.parse(raw) };
+  } catch (_) {}
+  return DEFAULT_COMMERCIAL_CONFIG;
+}
+
+export async function savePlatformCommercialConfig(config) {
+  if (!isSuperAdmin()) throw new Error('Từ chối truy cập: Cần quyền Platform Super Admin.');
+  const merged = { ...DEFAULT_COMMERCIAL_CONFIG, ...(config || {}) };
+  localStorage.setItem('qbiz_platform_commercial_config', JSON.stringify(merged));
+  await recordPlatformAudit('UPDATE_COMMERCIAL_CONFIG', 'SUCCESS', {
+    platformName: merged.platformName,
+    bankName: merged.bankName,
+    bankAccount: merged.bankAccount,
+    updated_at: new Date().toISOString()
+  });
+  return merged;
+}
+
+export async function recordPlatformAudit(action, result = 'SUCCESS', details = {}) {
+  const logItem = {
+    id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    actor_user_id: currentSession?.user?.id || 'admin',
+    actor_platform_role: 'SUPER_ADMIN',
+    action,
+    result,
+    details,
+    created_at: new Date().toISOString()
+  };
+  try {
+    const raw = localStorage.getItem('qbiz_platform_audit_logs');
+    const logs = raw ? JSON.parse(raw) : [];
+    logs.unshift(logItem);
+    if (logs.length > 200) logs.pop();
+    localStorage.setItem('qbiz_platform_audit_logs', JSON.stringify(logs));
+  } catch (_) {}
+
+  const { url, anonKey } = getSupabaseConfig();
+  if (url && anonKey && currentSession?.access_token) {
+    supabaseFetch('/rest/v1/platform_audit_logs', {
+      method: 'POST',
+      body: JSON.stringify(logItem)
+    }).catch(() => {});
+  }
+}
+
+const DEFAULT_PLATFORM_USERS = [
+  {
+    id: 'usr_super_admin',
+    email: 'tungtran2510@gmail.com',
+    fullName: 'Trần Quang Tùng (Platform Owner)',
+    phone: '0901234567',
+    role: 'SUPER_ADMIN',
+    plan: 'enterprise',
+    planName: 'Gói Chuỗi Cửa Hàng (Vĩnh Viễn)',
+    expiresAt: '2099-12-31T23:59:59.000Z',
+    status: 'ACTIVE',
+    shopName: 'QBiz Flagship & Chuỗi Shop',
+    shopCount: 3,
+    createdAt: '2026-09-01T08:00:00.000Z'
+  },
+  {
+    id: 'usr_fashion_01',
+    email: 'fashion_owner@qbiz.vn',
+    fullName: 'Lê Hoàng Yến',
+    phone: '0912345678',
+    role: 'OWNER',
+    plan: 'pro',
+    planName: 'Gói Chuyên Nghiệp',
+    expiresAt: new Date(Date.now() + 18 * 86400000).toISOString(),
+    status: 'ACTIVE',
+    shopName: 'Thời Trang Thiết Kế Yến Boutique',
+    shopCount: 1,
+    createdAt: new Date(Date.now() - 35 * 86400000).toISOString()
+  },
+  {
+    id: 'usr_fnb_02',
+    email: 'quanly_fnb@gmail.com',
+    fullName: 'Nguyễn Văn Minh',
+    phone: '0987654321',
+    role: 'OWNER',
+    plan: 'standard',
+    planName: 'Gói Tiêu Chuẩn',
+    expiresAt: new Date(Date.now() + 3 * 86400000).toISOString(),
+    status: 'ACTIVE',
+    shopName: 'The Morning Cafe & Bakery',
+    shopCount: 2,
+    createdAt: new Date(Date.now() - 40 * 86400000).toISOString()
+  },
+  {
+    id: 'usr_trial_exp',
+    email: 'taphoa_thanhson@gmail.com',
+    fullName: 'Trần Thanh Sơn',
+    phone: '0934567890',
+    role: 'OWNER',
+    plan: 'trial',
+    planName: 'Dùng Thử 30 Ngày',
+    expiresAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    status: 'EXPIRED',
+    shopName: 'Tạp Hóa & Tiện Lợi Thanh Sơn',
+    shopCount: 1,
+    createdAt: new Date(Date.now() - 32 * 86400000).toISOString()
+  },
+  {
+    id: 'usr_locked_03',
+    email: 'spammer_violation@gmail.com',
+    fullName: 'Tài khoản Vi Phạm Quy Chế',
+    phone: '0977889900',
+    role: 'OWNER',
+    plan: 'standard',
+    planName: 'Gói Tiêu Chuẩn',
+    expiresAt: new Date(Date.now() + 60 * 86400000).toISOString(),
+    status: 'SUSPENDED',
+    shopName: 'Shop Hàng Nhái (Đã Khóa)',
+    shopCount: 1,
+    createdAt: new Date(Date.now() - 15 * 86400000).toISOString()
+  }
+];
+
+export async function getPlatformUsers() {
+  if (!isSuperAdmin()) throw new Error('Từ chối truy cập: Cần quyền Platform Super Admin.');
+  
+  let stored = [];
+  try {
+    const raw = localStorage.getItem('qbiz_platform_users_list');
+    if (raw) stored = JSON.parse(raw);
+  } catch (_) {}
+
+  if (!stored || stored.length === 0) {
+    stored = [...DEFAULT_PLATFORM_USERS];
+    localStorage.setItem('qbiz_platform_users_list', JSON.stringify(stored));
+  }
+
+  // Ensure current authenticated user is included
+  if (currentSession?.user) {
+    const email = (currentSession.user.email || '').toLowerCase();
+    const existingIndex = stored.findIndex(u => (u.email || '').toLowerCase() === email);
+    if (existingIndex >= 0) {
+      if (email === 'tungtran2510@gmail.com') {
+        stored[existingIndex].role = 'SUPER_ADMIN';
+        stored[existingIndex].status = 'ACTIVE';
+        stored[existingIndex].expiresAt = '2099-12-31T23:59:59.000Z';
+        stored[existingIndex].plan = 'enterprise';
+        stored[existingIndex].planName = 'Gói Chuỗi Cửa Hàng (Vĩnh Viễn)';
+      }
+    } else {
+      stored.unshift({
+        id: currentSession.user.id || `usr_${Date.now()}`,
+        email: email,
+        fullName: currentSession.user.user_metadata?.full_name || email.split('@')[0],
+        phone: '',
+        role: email === 'tungtran2510@gmail.com' ? 'SUPER_ADMIN' : 'OWNER',
+        plan: email === 'tungtran2510@gmail.com' ? 'enterprise' : 'trial',
+        planName: email === 'tungtran2510@gmail.com' ? 'Gói Chuỗi Cửa Hàng (Vĩnh Viễn)' : 'Dùng Thử 30 Ngày',
+        expiresAt: email === 'tungtran2510@gmail.com' ? '2099-12-31T23:59:59.000Z' : new Date(Date.now() + 30 * 86400000).toISOString(),
+        status: 'ACTIVE',
+        shopName: currentShop?.name || 'Cửa hàng của tôi',
+        shopCount: 1,
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem('qbiz_platform_users_list', JSON.stringify(stored));
+    }
+  }
+
+  return stored;
+}
+
+export async function updateUserSubscription(userId, { plan, planName, daysToAdd, expiresAt, status }) {
+  if (!isSuperAdmin()) throw new Error('Từ chối truy cập: Cần quyền Platform Super Admin.');
+  const users = await getPlatformUsers();
+  const target = users.find(u => u.id === userId);
+  if (!target) throw new Error('Không tìm thấy người dùng.');
+
+  if (plan) target.plan = plan;
+  if (planName) target.planName = planName;
+  if (status) target.status = status;
+
+  if (daysToAdd === 'forever') {
+    target.expiresAt = '2099-12-31T23:59:59.000Z';
+  } else if (typeof daysToAdd === 'number' && daysToAdd > 0) {
+    const currentExp = new Date(target.expiresAt || Date.now());
+    const baseDate = currentExp.getTime() > Date.now() ? currentExp : new Date();
+    target.expiresAt = new Date(baseDate.getTime() + daysToAdd * 86400000).toISOString();
+  } else if (expiresAt) {
+    target.expiresAt = new Date(expiresAt).toISOString();
+  }
+
+  if (target.status !== 'SUSPENDED') {
+    target.status = new Date(target.expiresAt).getTime() > Date.now() ? 'ACTIVE' : 'EXPIRED';
+  }
+
+  localStorage.setItem('qbiz_platform_users_list', JSON.stringify(users));
+  await recordPlatformAudit('EXTEND_SUBSCRIPTION', 'SUCCESS', {
+    user_id: userId,
+    email: target.email,
+    plan: target.plan,
+    expiresAt: target.expiresAt,
+    status: target.status
+  });
+  return target;
+}
+
+export async function togglePlatformUser(userId, nextStatus) {
+  if (!isSuperAdmin()) throw new Error('Từ chối truy cập: Cần quyền Platform Super Admin.');
+  const users = await getPlatformUsers();
+  const target = users.find(u => u.id === userId);
+  if (!target) throw new Error('Không tìm thấy người dùng.');
+
+  target.status = nextStatus;
+  localStorage.setItem('qbiz_platform_users_list', JSON.stringify(users));
+  await recordPlatformAudit('TOGGLE_USER_STATUS', 'SUCCESS', {
+    user_id: userId,
+    email: target.email,
+    new_status: nextStatus
+  });
+  return target;
+}
+
+export async function deletePlatformUser(userId) {
+  if (!isSuperAdmin()) throw new Error('Từ chối truy cập: Cần quyền Platform Super Admin.');
+  let users = await getPlatformUsers();
+  const target = users.find(u => u.id === userId);
+  if (!target) throw new Error('Không tìm thấy người dùng.');
+  if (target.email === 'tungtran2510@gmail.com') {
+    throw new Error('CẤM: Không thể xóa tài khoản Sovereign Platform Owner.');
+  }
+
+  users = users.filter(u => u.id !== userId);
+  localStorage.setItem('qbiz_platform_users_list', JSON.stringify(users));
+  await recordPlatformAudit('DELETE_USER', 'SUCCESS', {
+    user_id: userId,
+    email: target.email
+  });
+  return { success: true, deleted_id: userId };
 }
