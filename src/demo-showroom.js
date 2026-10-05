@@ -281,11 +281,11 @@ export const DEMO_INDUSTRIES = Object.freeze({
         unit: 'lốc',
         price: 115000,
         cost_price: 88000,
-        lowStock: 5, // Available 0 -> triggers Hết hàng! (Mẫu hết hàng #1)
+        lowStock: 5,
         trackInventory: true,
         image: 'https://images.unsplash.com/photo-1584556812952-905ffd0c611a?auto=format&fit=crop&w=600&q=85',
-        onHandMain: 0,
-        onHandPos: 0,
+        onHandMain: 45,
+        onHandPos: 20,
       },
       {
         id: 'p_rt_colgate',
@@ -428,8 +428,8 @@ export const DEMO_INDUSTRIES = Object.freeze({
         lowStock: 4,
         trackInventory: true,
         image: './assets/products/optimized/neck-f6.webp',
-        onHandMain: 0, // Available 0 -> triggers Hết hàng! (Mẫu hết hàng #2)
-        onHandPos: 0,
+        onHandMain: 50,
+        onHandPos: 20,
       },
       {
         id: 'p_rt_dl_n85_high',
@@ -657,7 +657,7 @@ export const DEMO_INDUSTRIES = Object.freeze({
         variants: [
           { id: 'v_be_s', name: 'Be / S', onHand: 24 },
           { id: 'v_be_m', name: 'Be / M', onHand: 18 },
-          { id: 'v_den_m', name: 'Đen / M (Hết hàng)', onHand: 0 },
+          { id: 'v_den_m', name: 'Đen / M', onHand: 20 },
         ],
         onHandMain: 30,
         onHandPos: 12,
@@ -712,8 +712,8 @@ export const DEMO_INDUSTRIES = Object.freeze({
         lowStock: 6,
         trackInventory: true,
         image: 'https://images.unsplash.com/photo-1604176354204-9268737828e4?auto=format&fit=crop&w=600&q=85',
-        onHandMain: 0, // Available 0 -> triggers Hết hàng! (Mẫu hết hàng #1 thời trang)
-        onHandPos: 0,
+        onHandMain: 45,
+        onHandPos: 20,
       },
       {
         id: 'p_fs_bag_lock',
@@ -745,7 +745,7 @@ export const DEMO_INDUSTRIES = Object.freeze({
     aiSuggestions: [
       'Váy nào sắp hết size M?',
       'Mẫu thời trang nào bán chạy nhất tháng này?',
-      'Biến thể nào đang hết hàng trong kho?',
+      'Tồn kho mẫu váy linen còn bao nhiêu chiếc?',
     ],
   },
 
@@ -876,8 +876,8 @@ export const DEMO_INDUSTRIES = Object.freeze({
         lowStock: 8,
         trackInventory: true,
         image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=85',
-        onHandMain: 0, // Available 0 -> triggers Hết hàng! (Mẫu hết hàng #1 F&B)
-        onHandPos: 0,
+        onHandMain: 50,
+        onHandPos: 25,
       },
       {
         id: 'p_fb_combo_sang',
@@ -1078,8 +1078,8 @@ export const DEMO_INDUSTRIES = Object.freeze({
         lowStock: 5,
         trackInventory: true,
         image: 'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?auto=format&fit=crop&w=600&q=85',
-        onHandMain: 0, // Available 0 -> triggers Hết hàng! (Mẫu hết hàng #1 Service)
-        onHandPos: 0,
+        onHandMain: 40,
+        onHandPos: 18,
       },
     ],
     customers: [
@@ -1118,8 +1118,8 @@ function buildIndustryOperationalHistory(indKey) {
   // 1. Initial Opening Movements
   prods.forEach(p => {
     if (p.type === 'SERVICE') return;
-    const qMain = Number(p.onHandMain || 0);
-    const qPos = Number(p.onHandPos || 0);
+    const qMain = Math.max(15, Number(p.onHandMain || 0));
+    const qPos = Math.max(10, Number(p.onHandPos || 0));
     if (qMain > 0) {
       movements.push({
         id: `mv_open_${p.id}_main`,
@@ -1432,8 +1432,8 @@ export async function loadDemoIndustry(industryKey = 'retail', role = ROLES.OWNE
   const nowStamp = new Date().toISOString();
   ind.products.forEach(p => {
     if (p.type === 'SERVICE') return;
-    const qMain = Number(p.onHandMain || 0);
-    const qPos = Number(p.onHandPos || 0);
+    const qMain = Math.max(15, Number(p.onHandMain || 0));
+    const qPos = Math.max(10, Number(p.onHandPos || 0));
     levels.push({
       id: `${p.id}:${ind.warehouses[0].id}`,
       productId: p.id,
@@ -1464,12 +1464,21 @@ export async function loadDemoIndustry(industryKey = 'retail', role = ROLES.OWNE
   // 4. Populate IndexedDB Stores
   await putMany('warehouses', ind.warehouses);
   await putMany('categories', ind.categories);
-  await putMany('products', ind.products.map(p => ({
-    ...p,
-    priceNote: p.priceNote || '',
-    description: p.description || '',
-    active: true,
-  })));
+  await putMany('products', ind.products.map(p => {
+    const prod = {
+      ...p,
+      priceNote: p.priceNote || '',
+      description: p.description || '',
+      active: true,
+    };
+    if (Array.isArray(prod.variants)) {
+      prod.variants = prod.variants.map(v => ({
+        ...v,
+        onHand: Math.max(15, Number(v.onHand || 0)),
+      }));
+    }
+    return prod;
+  }));
   await putMany('levels', levels);
   await putMany('customers', ind.customers.map(c => ({
     ...c,
@@ -1614,6 +1623,7 @@ export async function loadDemoIndustry(industryKey = 'retail', role = ROLES.OWNE
     { id: 'device_id', value: 'dev_demo_pc', updated_at: dayAgo(30) },
     { id: 'register_id', value: 'reg_pos_01', updated_at: dayAgo(30) },
     { id: 'active_user_name', value: 'Thu ngân 01', updated_at: dayAgo(30) },
+    { id: 'demo_data_version', value: 'v20261005_all_in_stock', updated_at: dayAgo(30) },
   ];
   await putMany('settings', initialSettings);
 

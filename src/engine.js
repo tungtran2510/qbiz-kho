@@ -186,15 +186,18 @@ export async function ensureOpeningMovements(){
 }
 
 export async function ensureSeed(){
+  if(typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_preview_demo') === '1'){
+    return;
+  }
   const products=await getAll('products');
   const warehouses=await getAll('warehouses');
   const wss=warehouses.length?warehouses:SAMPLE_WAREHOUSES;
   if(!warehouses.length) await putMany('warehouses',SAMPLE_WAREHOUSES);
   const seedQty=new Map(SAMPLE_LEVELS.filter(l=>l.warehouseId===wss[0].id).map(l=>[l.productId,l.onHand]));
-  const ensureLevels=async(productId,fallbackQty=0)=>{
+  const ensureLevels=async(productId,fallbackQty=50)=>{
     const levels=await getAll('levels');
     if(levels.some(l=>l.productId===productId)) return;
-    const q=seedQty.has(productId)?seedQty.get(productId):(Number(fallbackQty)||0);
+    const q=seedQty.has(productId)?seedQty.get(productId):(Number(fallbackQty)||50);
     for(const w of wss) await put('levels',{id:`${productId}:${w.id}`,productId,warehouseId:w.id,onHand:w.id===wss[0].id?q:Math.max(0,Math.floor(q/2)),reserved:0,damaged:0,updatedAt:now()});
   };
   if(!products.length){
@@ -202,28 +205,28 @@ export async function ensureSeed(){
     await put('settings',{id:'seededAt',value:now()}); await put('settings',{id:'sample_stock_version',value:'v4_all_in_stock'}); await ensureCategorySeed(); await ensureLegacySuppliers(); await ensureOpeningMovements(); return;
   }
   // Đồng bộ tồn kho mẫu dồi dào cho 100% sản phẩm (không để bất kỳ sản phẩm nào hết hàng)
-  const seedStockVersion = (await getOne('settings', 'sample_stock_version'))?.value;
-  if (seedStockVersion !== 'v4_all_in_stock') {
-    const isSampleShop = products.some(p => p.id === 'p_135' || p.id === 'p_90d' || p.id === 'p_150');
-    if (isSampleShop) {
+  const isSampleShop = products.some(p => p.id === 'p_135' || p.id === 'p_90d' || p.id === 'p_150');
+  if (isSampleShop) {
+    const seedStockVersion = (await getOne('settings', 'sample_stock_version'))?.value;
+    if (seedStockVersion !== 'v4_all_in_stock') {
       for (const sl of SAMPLE_LEVELS) {
         await put('levels', sl);
       }
+      await put('settings', { id: 'sample_stock_version', value: 'v4_all_in_stock' });
     }
-    await put('settings', { id: 'sample_stock_version', value: 'v4_all_in_stock' });
+    const existing=new Map(products.map(p=>[p.id,p]));
+    for(const seed of SAMPLE_PRODUCTS){
+      const old=existing.get(seed.id);
+      if(!old){ await put('products',seed); await ensureLevels(seed.id, 50); continue; }
+      const patch={};
+      if((old.price==null||old.price==='')&&seed.price!=null) patch.price=seed.price;
+      if(!old.image || old.image.startsWith('data:image/svg+xml') || !old.type) Object.assign(patch,seed);
+      if(Object.keys(patch).length) await put('products',{...asItem(old),...patch,id:old.id});
+      await ensureLevels(seed.id, 50);
+    }
+    const haveServices=new Set(products.filter(p=>p.type==='SERVICE').map(p=>p.id));
+    for(const svc of SAMPLE_SERVICES){ if(!haveServices.has(svc.id)) await put('products',svc); }
   }
-  const existing=new Map(products.map(p=>[p.id,p]));
-  for(const seed of SAMPLE_PRODUCTS){
-    const old=existing.get(seed.id);
-    if(!old){ await put('products',seed); await ensureLevels(seed.id); continue; }
-    const patch={};
-    if((old.price==null||old.price==='')&&seed.price!=null) patch.price=seed.price;
-    if(!old.image || old.image.startsWith('data:image/svg+xml') || !old.type) Object.assign(patch,seed);
-    if(Object.keys(patch).length) await put('products',{...asItem(old),...patch,id:old.id});
-    await ensureLevels(seed.id);
-  }
-  const haveServices=new Set(products.filter(p=>p.type==='SERVICE').map(p=>p.id));
-  for(const svc of SAMPLE_SERVICES){ if(!haveServices.has(svc.id)) await put('products',svc); }
   await ensureCategorySeed();
   await ensureLegacySuppliers();
   await ensureSampleCustomers();

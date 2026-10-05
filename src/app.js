@@ -67,6 +67,7 @@ import {
   switchDemoRole,
   resetDemo,
   getActiveDemoIndustry,
+  getActiveDemoIndustryKey,
   getActiveDemoRole,
   DEMO_ROLES,
   DEMO_INDUSTRIES,
@@ -8004,7 +8005,6 @@ document.addEventListener('click', async e=>{
   if(action==='mark-all-read'){buildNotifications().forEach(n=>state.notificationRead.add(n.id));renderNotificationCenter();return;}
   if(action==='export-csv') return exportProductsCsv();
   if(action==='sync-now'){ try{ const r=await flushOutbox(); toast(r.skipped?'Bản local: chưa bật API QBiz.':`Đã gửi ${r.sent} thay đổi.`,'ok'); } catch(err){ toast(err.message,'error'); } return; }
-  if(action==='reset-demo'){ if(confirm('Khôi phục dữ liệu demo? Dữ liệu hiện tại trên thiết bị sẽ bị xóa.')){ await clearAll(); await ensureSeed(); await refresh(); toast('Đã khôi phục dữ liệu demo.','ok'); } return; }
   const orderActionBtn=e.target.closest('[data-order-action]');
   const orderAction=orderActionBtn?.dataset.orderAction; const orderId=e.target.closest('[data-order-id]')?.dataset.orderId;
   if(orderAction&&orderId){
@@ -8093,7 +8093,14 @@ async function boot(){
       }
     }).catch(() => {});
   }
-  await ensureSeed();
+  if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_preview_demo') === '1') {
+    const demoVer = (await getOne('settings', 'demo_data_version'))?.value;
+    if (demoVer !== 'v20261005_all_in_stock') {
+      await loadDemoIndustry(getActiveDemoIndustryKey(), getActiveDemoRole());
+    }
+  } else {
+    await ensureSeed();
+  }
   await ensureLocalIdentity();
   await ensurePrintTemplates();
   await initAuth();
@@ -8136,6 +8143,8 @@ async function boot(){
     openDebtCollectionModal,
     openReturnFlow,
     openTransaction,
+    previewDemo,
+    exitDemo,
     addSaleItem,
     submitSale,
     openPosQuickShiftModal,
