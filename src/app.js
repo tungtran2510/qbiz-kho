@@ -449,8 +449,8 @@ function openCustomerPicker(){
 }
 function openNewCustomer(){openModal({title:'Thêm khách hàng',sub:'Tên là thông tin bắt buộc.',body:`<div class="form-grid"><div class="field full-span"><label>Tên khách hàng</label><input id="customerName" required placeholder="VD: Nguyễn Thị Lan"/></div><div class="field"><label>Số điện thoại</label><input id="customerPhone" inputmode="tel" placeholder="090..."/></div><div class="field"><label>Mã khách</label><input id="customerCode"/></div><div class="field"><label>Loại khách</label><select id="customerType"><option value="retail">Khách lẻ</option><option value="individual">Cá nhân</option><option value="company">Công ty</option><option value="agent">Đại lý</option></select></div><div class="field"><label>Nhóm khách</label><input id="customerGroup" placeholder="Tùy chọn"/></div><div class="field"><label>Hạn mức nợ (₫)</label><input id="customerCreditLimit" type="number" inputmode="decimal" min="0" placeholder="0 = Không giới hạn" value="0"/></div><div class="field"><label>Chiết khấu mặc định (%)</label><input id="customerDiscount" type="number" inputmode="decimal" min="0" max="100" value="0"/></div><div class="field"><label>Mã số thuế</label><input id="customerTax" inputmode="numeric"/></div><div class="field full-span"><label>Ghi chú</label><input id="customerNote"/></div></div>`,submitText:'Lưu khách hàng',onSubmit:async root=>{const name=$('#customerName',root).value.trim(),phone=$('#customerPhone',root).value.trim(),code=$('#customerCode',root).value.trim();if(!name)throw new Error('Hãy nhập tên khách hàng.');const all=await customerRecords(),dup=phone&&all.find(c=>normalizePhone(c.phone)===normalizePhone(phone));if(dup&&confirm('Số điện thoại đã có trong danh bạ. Dùng khách hàng hiện có?')){state.saleCustomer=dup;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();return;}if(dup)throw new Error('Số điện thoại đã tồn tại.');const now=new Date().toISOString(),id=saleUuid(),c={id,customer_id:id,customer_code:code,name,phone,phone_normalized:normalizePhone(phone),customer_type:$('#customerType',root).value,customer_group:$('#customerGroup',root).value.trim(),creditLimit:Math.max(0,Number($('#customerCreditLimit',root)?.value)||0),credit_limit:Math.max(0,Number($('#customerCreditLimit',root)?.value)||0),default_discount:Math.min(100,Math.max(0,Number($('#customerDiscount',root).value)||0)),tax_id:$('#customerTax',root).value.trim(),note:$('#customerNote',root).value,active:true,created_at:now,updated_at:now,last_used_at:now};await put('customers',c);state.saleCustomer=c;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();toast('Đã lưu khách hàng.','ok')}})}
 function addSaleItem(id){const p=product(id);if(!p||p.active===false)return;normalizeSaleCart();const found=state.saleCart.find(x=>x.itemId===id),next=(found?.quantity||0)+1;if(!allowSaleQuantity(id,next))return;if(found)found.quantity=next;else state.saleCart.push({itemId:id,quantity:1,unitPrice:Number(p.price)||0,discount:0});renderSales();}
-function updateSaleLine(id,field,value){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;const n=Number(value);if(field==='quantity'){const next=Math.max(1,Math.floor(n||1));if(!allowSaleQuantity(id,next)){renderSales();return;}line.quantity=next;}else line[field]=Math.max(0,n||0);renderSales();}
-function adjustSaleQuantity(id,delta){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;const next=Math.max(1,line.quantity+delta);if(!allowSaleQuantity(id,next))return;line.quantity=next;renderSales();}
+function updateSaleLine(id,field,value){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;if(field==='quantity'){const raw=String(value??'').trim();if(raw===''){renderSales();return;}const n=Number(raw);if(isNaN(n)||n<=0){state.saleCart=state.saleCart.filter(x=>x.itemId!==id);renderSales();return;}const next=Math.max(1,Math.floor(n));if(!allowSaleQuantity(id,next)){renderSales();return;}line.quantity=next;}else line[field]=Math.max(0,Number(value)||0);renderSales();}
+function adjustSaleQuantity(id,delta){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;const next=line.quantity+delta;if(next<=0){state.saleCart=state.saleCart.filter(x=>x.itemId!==id);renderSales();return;}if(!allowSaleQuantity(id,next))return;line.quantity=next;renderSales();}
 function renderSalesLegacy(){
   setTitle('Bán hàng','QBiz');
   const q=state.saleSearch.toLowerCase();
@@ -500,7 +500,7 @@ function saleProductTile(p){
         <b class="pos-prod-price">${priceText}</b>
       </div>
     </button>
-    ${line ? `<div class="pos-inline-qty"><button type="button" data-sale-adjust="-1" data-sale-id="${p.id}" aria-label="Giảm">−</button><span>${line.quantity}</span><button type="button" data-sale-adjust="1" data-sale-id="${p.id}" aria-label="Tăng">+</button></div>` : `<button type="button" class="pos-add" data-sale-add="${p.id}" aria-label="Thêm ${esc(p.name)}">+</button>`}
+    ${line ? `<div class="pos-inline-qty"><button type="button" data-sale-adjust="-1" data-sale-id="${p.id}" aria-label="Giảm">−</button><input type="number" inputmode="numeric" pattern="[0-9]*" min="1" step="1" value="${line.quantity}" data-sale-field="quantity" data-sale-id="${p.id}" class="pos-inline-qty-input" aria-label="Số lượng ${esc(p.name)}" /><button type="button" data-sale-adjust="1" data-sale-id="${p.id}" aria-label="Tăng">+</button></div>` : `<button type="button" class="pos-add" data-sale-add="${p.id}" aria-label="Thêm ${esc(p.name)}">+</button>`}
   </article>`;
 }
 function saleStepHeader(title){const soundIco=state.paymentPrefs?.soundEnabled?'volume-2':'volume-x';return `<div class="flow-head"><button class="flow-back" data-sale-back aria-label="Quay lại">‹</button><h2>${title}</h2><button class="flow-pref-btn" data-action="sale-preferences" title="Cài đặt thanh toán & âm báo" aria-label="Cài đặt thanh toán">${icon(soundIco)}</button></div>`}
@@ -586,6 +586,27 @@ function bindSaleControls(){
   $$('[data-sale-remove]').forEach(b=>b.onclick=()=>{state.saleCart=state.saleCart.filter(x=>x.itemId!==b.dataset.saleRemove);renderSales()});
   $$('[data-sale-adjust]').forEach(b=>b.onclick=()=>adjustSaleQuantity(b.dataset.saleId,Number(b.dataset.saleAdjust)));
   $$('[data-sale-field]').forEach(i=>i.addEventListener('change',()=>updateSaleLine(i.dataset.saleId,i.dataset.saleField,i.value)));
+  $$('input[data-sale-field="quantity"]').forEach(input => {
+    const selectAll = () => {
+      try {
+        input.select();
+        input.setSelectionRange?.(0, 9999);
+      } catch (_) {}
+    };
+    input.addEventListener('click', e => {
+      e.stopPropagation();
+      selectAll();
+    });
+    input.addEventListener('focus', () => {
+      setTimeout(selectAll, 40);
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur();
+      }
+    });
+  });
   $$('input[data-sale-field="discount"]').forEach(input => {
     input.addEventListener('input', () => {
       const itemId = input.dataset.saleId;

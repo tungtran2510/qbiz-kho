@@ -3653,13 +3653,47 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .pos-inline-qty button:active {
   background: #b9d8fc !important;
 }
-.pos-inline-qty span {
+.pos-inline-qty span,
+.pos-inline-qty input,
+.pos-inline-qty-input {
   text-align: center !important;
   font-size: 12.5px !important;
   font-weight: 800 !important;
   color: #0f172a !important;
   line-height: 28px !important;
   padding: 0 2px !important;
+}
+.pos-inline-qty input,
+.pos-inline-qty-input {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: normal !important;
+  box-sizing: border-box !important;
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+  outline: none !important;
+  cursor: text !important;
+  border-radius: 0 !important;
+}
+.pos-inline-qty input::-webkit-outer-spin-button,
+.pos-inline-qty input::-webkit-inner-spin-button,
+.pos-inline-qty-input::-webkit-outer-spin-button,
+.pos-inline-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+.pos-inline-qty input:focus,
+.pos-inline-qty-input:focus {
+  background: #ffffff !important;
+  box-shadow: inset 0 0 0 1.5px #0284c7 !important;
+  color: #0284c7 !important;
 }
 
 /* Chế độ Lưới 3 ô (Grid 3 cols) */
@@ -3721,6 +3755,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   font-size: 12px !important;
   line-height: 26px !important;
 }
+.pos-grid.grid3 .pos-product.has-qty .pos-inline-qty input {
+  font-size: 12px !important;
+  line-height: normal !important;
+  height: 26px !important;
+  min-height: 0 !important;
+}
 
 /* Chế độ Lưới 2 ô (Grid 2 cols) */
 .pos-grid.grid2 {
@@ -3778,6 +3818,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .pos-grid.grid2 .pos-product.has-qty .pos-inline-qty span {
   font-size: 13px !important;
   line-height: 30px !important;
+}
+.pos-grid.grid2 .pos-product.has-qty .pos-inline-qty input {
+  font-size: 13px !important;
+  line-height: normal !important;
+  height: 30px !important;
+  min-height: 0 !important;
 }
 
 /* List view mode: Tiêu đề -> Mã -> Giá bên trái, Cụm nút bên phải */
