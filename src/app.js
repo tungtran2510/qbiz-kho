@@ -391,9 +391,18 @@ function injectLocalNotice(){
     const content=$('#content');
     if(content && !$('#localDataNotice', content)){
       const banner=document.createElement('div');
-      banner.className='local-data-banner';
+      banner.className='local-data-banner-compact';
       banner.id='localDataNotice';
-      banner.innerHTML=`<div class="banner-body"><strong>Thiết bị này đang có dữ liệu cục bộ (${state.data.products.length} sản phẩm).</strong><span>Bước tiếp theo có thể đưa dữ liệu này lên Shop.</span></div><div class="banner-actions"><button class="secondary-btn tiny" data-action="dismiss-local-notice">Để sau</button><button class="ghost-btn tiny" data-action="prepare-sync-info">Chuẩn bị đồng bộ</button></div>`;
+      banner.innerHTML=`
+        <div style="display:flex;align-items:center;gap:6px;min-width:0">
+          <span style="display:inline-flex;align-items:center;justify-content:center;background:#0284c7;color:#fff;border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:700;flex-shrink:0">CỤC BỘ</span>
+          <span style="font-size:11.5px;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>${state.data.products.length} sp</b> chờ đưa lên Shop Cloud</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <button class="ghost-btn tiny" data-action="prepare-sync-info" style="font-size:11px;padding:2px 6px;color:#0284c7;font-weight:600">Đồng bộ</button>
+          <button class="tip-dismiss-btn" data-action="dismiss-local-notice" title="Đóng" style="padding:2px 5px;font-size:12px;line-height:1;color:#64748b;background:transparent;border:none;cursor:pointer">✕</button>
+        </div>
+      `;
       content.prepend(banner);
     }
   }
@@ -422,6 +431,19 @@ function isServiceMode(){
 function nav(){
   const isSvc = isServiceMode();
   const activePage=NAV.some(([id])=>id===state.page)?state.page:'more';
+  const isPlatformAdmin = state.page === 'platform-admin';
+  const mobileNav = $('#mobileNav');
+  const desktopNav = $('#desktopNav');
+
+  if(isPlatformAdmin){
+    if(mobileNav) mobileNav.style.display = 'none';
+    if(desktopNav) desktopNav.style.display = 'none';
+    return;
+  } else {
+    if(mobileNav) mobileNav.style.display = '';
+    if(desktopNav) desktopNav.style.display = '';
+  }
+
   $('#desktopNav').innerHTML=NAV.map(([id,label,ico])=>{
     const displayLabel = (id === 'products' && isSvc) ? 'Dịch vụ' : label;
     const isSales = id === 'sales';
@@ -1402,26 +1424,22 @@ function renderDashboard(){
         `;
       })() : (auth.user ? (() => {
         const isSuper = auth.isSuperAdmin;
-        const currentShopName = auth.shop?.name || (isSuper ? 'Quản lý Nền tảng QBiz' : 'Cửa hàng của tôi');
+        const currentShopName = auth.shop?.name || (isSuper ? 'Quản trị Nền tảng' : 'Cửa hàng của tôi');
         return `
-        <section class="card auth-user-banner" style="margin-bottom:12px;padding:8px 12px;background:${isSuper ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#f8fafc'};border:1px solid ${isSuper ? '#334155' : '#cbd5e1'};border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);color:${isSuper ? '#fff' : '#0f172a'}">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0">
-              <span class="badge" style="background:${isSuper ? '#ef4444' : '#0284c7'};color:#fff;font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px;letter-spacing:0.03em;flex-shrink:0">${isSuper ? 'SUPER ADMIN' : (esc(auth.role || 'CHỦ SHOP'))}</span>
-              <div style="display:flex;flex-direction:column;min-width:0">
-                <strong style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${isSuper ? '#f8fafc' : '#0f172a'}">${esc(currentShopName)}</strong>
-                <span style="font-size:11px;color:${isSuper ? '#94a3b8' : '#64748b'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(auth.user.email)}</span>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              ${isSuper ? `
-              <button type="button" class="primary-btn compact" data-action="go-platform-admin" style="font-size:11px;font-weight:700;padding:4px 9px;background:#0284c7;border:none;border-radius:6px;gap:4px;cursor:pointer">${icon('shield-alert')} Quản trị Nền tảng</button>
-              ` : ''}
-              <button type="button" class="secondary-btn compact" data-action="open-create-shop-modal" style="font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;background:${isSuper ? '#334155' : '#fff'};border-color:${isSuper ? '#475569' : '#cbd5e1'};color:${isSuper ? '#f8fafc' : '#1e293b'};gap:4px;cursor:pointer">${icon('store')} Tạo Shop mới</button>
-              <button type="button" class="secondary-btn compact" data-action="clear-demo-fresh" style="font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;background:${isSuper ? '#451a03' : '#fffbeb'};border-color:${isSuper ? '#78350f' : '#f59e0b'};color:${isSuper ? '#fde68a' : '#b45309'};gap:4px;cursor:pointer" title="Xóa sạch dữ liệu mẫu để bắt đầu cửa hàng trắng">${icon('trash-2')} Xóa dữ liệu mẫu</button>
-            </div>
+        <div class="auth-user-bar-compact" style="margin-bottom:8px;padding:4px 8px;background:${isSuper ? '#0f172a' : '#f8fafc'};border:1px solid ${isSuper ? '#1e293b' : '#e2e8f0'};border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,0.04);font-size:11.5px">
+          <div style="display:flex;align-items:center;gap:5px;min-width:0;flex:1">
+            <span class="badge" style="background:${isSuper ? '#ef4444' : '#0284c7'};color:#fff;font-weight:700;font-size:9.5px;padding:1px 5px;border-radius:4px;flex-shrink:0">${isSuper ? 'SUPER ADMIN' : (esc(auth.role || 'SHOP'))}</span>
+            <span style="font-weight:600;color:${isSuper ? '#f1f5f9' : '#0f172a'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(auth.user.email)}">${esc(auth.user.email.split('@')[0])}</span>
+            <span style="color:${isSuper ? '#64748b' : '#94a3b8'};font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">· ${esc(currentShopName)}</span>
           </div>
-        </section>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+            ${isSuper ? `
+            <button type="button" class="primary-btn tiny" data-action="go-platform-admin" style="font-size:11px;font-weight:700;padding:3px 7px;background:#0284c7;border:none;border-radius:5px;gap:3px;cursor:pointer;white-space:nowrap">⚡ Quản trị</button>
+            ` : ''}
+            <button type="button" class="secondary-btn tiny" data-action="open-create-shop-modal" title="Tạo cửa hàng mới" style="font-size:11px;font-weight:600;padding:3px 6px;border-radius:5px;background:${isSuper ? '#1e293b' : '#fff'};border-color:${isSuper ? '#334155' : '#cbd5e1'};color:${isSuper ? '#e2e8f0' : '#334155'};cursor:pointer;white-space:nowrap">+ Shop</button>
+            <button type="button" class="secondary-btn tiny" data-action="clear-demo-fresh" title="Xóa sạch dữ liệu mẫu để bắt đầu cửa hàng trắng" style="font-size:11px;padding:3px 5px;border-radius:5px;background:${isSuper ? '#2d1515' : '#fef2f2'};border-color:${isSuper ? '#7f1d1d' : '#fecaca'};color:${isSuper ? '#fca5a5' : '#dc2626'};cursor:pointer">${icon('trash-2')}</button>
+          </div>
+        </div>
         `;
       })() : '')}
       ${dashboardBodyHtml}
@@ -7626,52 +7644,45 @@ async function renderPlatformAdmin() {
   const currentTab = state.platformAdminTab || 'users';
 
   $('#content').innerHTML = `
-    <section class="platform-admin-screen" style="display:flex;flex-direction:column;gap:16px;padding:4px">
-      <!-- Dark Navy Command Header: Chuyên trang riêng biệt cấp cao -->
-      <div style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);color:#fff;padding:16px 20px;border-radius:14px;box-shadow:0 4px 16px rgba(15,23,42,0.18)">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:42px;height:42px;border-radius:10px;background:#0284c7;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 2px 8px rgba(2,132,199,0.3)">
-              ${icon('shield-alert')}
-            </div>
-            <div>
-              <div style="display:flex;align-items:center;gap:8px">
-                <h2 style="margin:0;font-size:18px;font-weight:700;color:#f8fafc;letter-spacing:0.01em">QBiz Platform Super Admin Console</h2>
-                <span class="badge" style="background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:2px 6px">TOÀN QUYỀN HỆ THỐNG</span>
-              </div>
-              <div style="font-size:12px;color:#94a3b8;margin-top:2px">
-                Quản trị viên tối cao: <b>${esc(auth.user?.email || 'tungtran2510@gmail.com')}</b> · Supabase Cloud: <span style="color:#38bdf8">ofcooslacddbizlykobh</span>
-              </div>
-            </div>
-          </div>
-          <button class="primary-btn" id="exitPlatformAdminBtn" style="gap:8px;background:#334155;border:1px solid #475569;color:#fff;font-weight:600;padding:9px 16px;border-radius:8px;cursor:pointer">
-            ${icon('arrow-left-right')} <span>Quay về Cửa hàng / Bán hàng</span>
+    <section class="platform-admin-screen" style="display:flex;flex-direction:column;gap:8px;padding:2px 4px">
+      <!-- Dark Navy Command Header: Ultra-compact 40px topbar -->
+      <div style="background:#0f172a;color:#fff;padding:6px 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 1px 4px rgba(0,0,0,0.12)">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0">
+          <button type="button" id="exitPlatformAdminBtn" style="background:#1e293b;border:1px solid #334155;color:#f8fafc;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:3px;flex-shrink:0">
+            ← Về Shop
           </button>
+          <div style="display:flex;align-items:center;gap:5px;min-width:0">
+            <h2 style="margin:0;font-size:12.5px;font-weight:700;color:#f8fafc;white-space:nowrap;line-height:1.2">⚡ Platform Super Admin Console</h2>
+            <span class="badge" style="background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;flex-shrink:0">ROOT</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right" title="${esc(auth.user?.email || 'tungtran2510@gmail.com')}">
+          ${esc(auth.user?.email ? auth.user.email.split('@')[0] : 'admin')}
         </div>
       </div>
 
-      <!-- Navigation Tabs: Chuyên trang Quản trị Nền tảng -->
-      <div class="pos-chips" style="display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:8px">
-        <button class="${currentTab === 'users' ? 'active' : ''}" data-admin-tab="users" style="font-weight:600">
-          ${icon('users')} Quản lý Người dùng & Thuê bao
+      <!-- Navigation Tabs: Horizontal Swipeable Bar (Single Line) -->
+      <div class="pos-chips" style="display:flex;gap:4px;overflow-x:auto;white-space:nowrap;padding:2px 0 4px;border-bottom:1px solid var(--border,#e2e8f0);scrollbar-width:none;-webkit-overflow-scrolling:touch">
+        <button class="filter-pill ${currentTab === 'users' ? 'active' : ''}" data-admin-tab="users" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'users' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'users' ? '#0284c7' : '#fff'};color:${currentTab === 'users' ? '#fff' : '#334155'}">
+          👥 Người dùng & Thuê bao
         </button>
-        <button class="${currentTab === 'commercial' ? 'active' : ''}" data-admin-tab="commercial" style="font-weight:600">
-          ${icon('credit-card')} Gói Cước & Thương Mại
+        <button class="filter-pill ${currentTab === 'commercial' ? 'active' : ''}" data-admin-tab="commercial" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'commercial' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'commercial' ? '#0284c7' : '#fff'};color:${currentTab === 'commercial' ? '#fff' : '#334155'}">
+          💳 Gói cước & VietQR
         </button>
-        <button class="${currentTab === 'shops' ? 'active' : ''}" data-admin-tab="shops" style="font-weight:600">
-          ${icon('store')} Quản lý Cửa hàng
+        <button class="filter-pill ${currentTab === 'shops' ? 'active' : ''}" data-admin-tab="shops" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'shops' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'shops' ? '#0284c7' : '#fff'};color:${currentTab === 'shops' ? '#fff' : '#334155'}">
+          🏪 Cửa hàng
         </button>
-        <button class="${currentTab === 'metrics' ? 'active' : ''}" data-admin-tab="metrics" style="font-weight:600">
-          ${icon('layout-dashboard')} Tổng quan Nền tảng
+        <button class="filter-pill ${currentTab === 'metrics' ? 'active' : ''}" data-admin-tab="metrics" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'metrics' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'metrics' ? '#0284c7' : '#fff'};color:${currentTab === 'metrics' ? '#fff' : '#334155'}">
+          📊 Thống kê Nền tảng
         </button>
-        <button class="${currentTab === 'audit' ? 'active' : ''}" data-admin-tab="audit" style="font-weight:600">
-          ${icon('file-text')} Nhật ký Hệ thống (Audit)
+        <button class="filter-pill ${currentTab === 'audit' ? 'active' : ''}" data-admin-tab="audit" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'audit' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'audit' ? '#0284c7' : '#fff'};color:${currentTab === 'audit' ? '#fff' : '#334155'}">
+          📜 Nhật ký (Audit)
         </button>
       </div>
 
       <!-- Tab Content Area -->
       <div id="adminTabContent">
-        <div style="text-align:center;padding:32px;color:var(--text-muted,#64748b)">Đang tải dữ liệu máy chủ...</div>
+        <div style="text-align:center;padding:24px;color:var(--text-muted,#64748b);font-size:12.5px">Đang tải dữ liệu máy chủ...</div>
       </div>
     </section>
   `;
@@ -7726,46 +7737,59 @@ async function renderPlatformAdmin() {
       });
 
       tabContainer.innerHTML = `
-        <div class="metric-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px">
-          ${metricCard('Tổng Người dùng', fmt(totalCount), 'Tài khoản đăng ký', 'blue')}
-          ${metricCard('Đang hoạt động', fmt(activeCount), 'Được phép sử dụng', 'green')}
-          ${metricCard('Sắp hết hạn', fmt(expiringCount), 'Còn dưới 15 ngày', expiringCount > 0 ? 'amber' : 'green')}
-          ${metricCard('Đã khóa / Quá hạn', fmt(expiredOrLockedCount), 'Cần gia hạn / xử lý', expiredOrLockedCount > 0 ? 'red' : 'green')}
-        </div>
-
-        <div class="card" style="padding:14px;margin-bottom:14px">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-            <div style="flex:1;min-width:240px;position:relative">
-              <input type="text" id="adminUserSearch" value="${esc(state.platformUserQuery || '')}" placeholder="Tìm theo Email, Tên, SĐT, Tên Shop, Gói cước..." style="width:100%;padding:9px 12px 9px 34px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box" />
-              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;display:flex">${icon('search')}</span>
-            </div>
-            <div class="filter-tabs" style="display:flex;gap:6px;flex-wrap:wrap">
-              ${[
-                ['all', 'Tất cả (' + totalCount + ')'],
-                ['active', 'Hoạt động (' + activeCount + ')'],
-                ['expiring', 'Sắp hết hạn (' + expiringCount + ')'],
-                ['expired', 'Quá hạn'],
-                ['suspended', 'Tạm khóa']
-              ].map(([k, label]) => `
-                <button type="button" class="filter-pill ${filter === k ? 'active' : ''}" data-user-filter="${k}" style="padding:6px 12px;font-size:12px;font-weight:600;border-radius:6px;border:1px solid ${filter === k ? '#0284c7' : '#cbd5e1'};background:${filter === k ? '#0284c7' : '#fff'};color:${filter === k ? '#fff' : '#475569'};cursor:pointer">
-                  ${label}
-                </button>
-              `).join('')}
-            </div>
+        <!-- Metric Strip (Single 4-Col Row) -->
+        <div class="admin-metric-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#f8fafc;padding:5px 6px;border-radius:7px;border:1px solid #e2e8f0;text-align:center">
+          <div style="min-width:0">
+            <div style="font-size:15px;font-weight:800;color:#0284c7;line-height:1.2">${fmt(totalCount)}</div>
+            <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tổng User</div>
+          </div>
+          <div style="min-width:0;border-left:1px solid #e2e8f0">
+            <div style="font-size:15px;font-weight:800;color:#16a34a;line-height:1.2">${fmt(activeCount)}</div>
+            <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Hoạt động</div>
+          </div>
+          <div style="min-width:0;border-left:1px solid #e2e8f0">
+            <div style="font-size:15px;font-weight:800;color:${expiringCount>0?'#d97706':'#64748b'};line-height:1.2">${fmt(expiringCount)}</div>
+            <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sắp hết</div>
+          </div>
+          <div style="min-width:0;border-left:1px solid #e2e8f0">
+            <div style="font-size:15px;font-weight:800;color:${expiredOrLockedCount>0?'#dc2626':'#64748b'};line-height:1.2">${fmt(expiredOrLockedCount)}</div>
+            <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Khóa/Hạn</div>
           </div>
         </div>
 
-        <div class="card" style="padding:0;overflow:hidden">
+        <!-- Search & Filter Controls -->
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+          <div style="position:relative">
+            <input type="text" id="adminUserSearch" value="${esc(state.platformUserQuery || '')}" placeholder="Tìm nhanh Email, Tên, SĐT, Shop..." style="width:100%;height:32px;padding:4px 8px 4px 28px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px;background:#fff;box-sizing:border-box" />
+            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:#94a3b8;display:flex">${icon('search')}</span>
+          </div>
+          <div style="display:flex;gap:4px;overflow-x:auto;white-space:nowrap;padding-bottom:2px;scrollbar-width:none;-webkit-overflow-scrolling:touch">
+            ${[
+              ['all', 'Tất cả (' + totalCount + ')'],
+              ['active', 'Hoạt động (' + activeCount + ')'],
+              ['expiring', 'Sắp hết (' + expiringCount + ')'],
+              ['expired', 'Quá hạn'],
+              ['suspended', 'Tạm khóa']
+            ].map(([k, label]) => `
+              <button type="button" class="filter-pill ${filter === k ? 'active' : ''}" data-user-filter="${k}" style="padding:3px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1px solid ${filter === k ? '#0284c7' : '#e2e8f0'};background:${filter === k ? '#0284c7' : '#fff'};color:${filter === k ? '#fff' : '#64748b'};cursor:pointer;flex-shrink:0">
+                ${label}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Desktop Table: Hiển thị trên màn hình rộng PC / Tablet -->
+        <div class="platform-user-table-wrap card" style="margin-top:8px;padding:0;overflow:hidden">
           <div style="overflow-x:auto">
             <table class="data-table" style="width:100%;font-size:13px;border-collapse:collapse">
               <thead>
                 <tr style="background:#f8fafc;border-bottom:2px solid var(--border,#e2e8f0);text-align:left">
-                  <th style="padding:12px 10px">Người dùng</th>
-                  <th style="padding:12px 10px">Cửa hàng & Vai trò</th>
-                  <th style="padding:12px 10px">Gói cước</th>
-                  <th style="padding:12px 10px">Hạn sử dụng</th>
-                  <th style="padding:12px 10px">Trạng thái</th>
-                  <th style="padding:12px 10px;text-align:right">Thao tác</th>
+                  <th style="padding:10px 10px">Người dùng</th>
+                  <th style="padding:10px 10px">Cửa hàng & Vai trò</th>
+                  <th style="padding:10px 10px">Gói cước</th>
+                  <th style="padding:10px 10px">Hạn sử dụng</th>
+                  <th style="padding:10px 10px">Trạng thái</th>
+                  <th style="padding:10px 10px;text-align:right">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -7798,43 +7822,46 @@ async function renderPlatformAdmin() {
 
                   return `
                     <tr style="border-bottom:1px solid var(--border,#e2e8f0);transition:background .1s">
-                      <td style="padding:12px 10px">
+                      <td style="padding:10px">
                         <div style="font-weight:700;color:#0f172a">${esc(u.fullName || u.email.split('@')[0])}</div>
                         <div style="font-size:12px;color:#64748b">${esc(u.email)}</div>
                         ${u.phone ? `<div style="font-size:11px;color:#94a3b8">${esc(u.phone)}</div>` : ''}
                       </td>
-                      <td style="padding:12px 10px">
+                      <td style="padding:10px">
                         <div style="font-weight:600;color:#1e293b">${esc(u.shopName || 'Chưa gắn shop')}</div>
                         <span class="role-badge" style="font-size:10.5px;margin-top:2px;display:inline-block">${esc(u.role)}</span>
                       </td>
-                      <td style="padding:12px 10px">
+                      <td style="padding:10px">
                         <span class="badge" style="font-size:11px;font-weight:700;background:#f1f5f9;border:1px solid #cbd5e1;color:#1e293b">
                           ${esc(u.planName || u.plan?.toUpperCase() || 'STANDARD')}
                         </span>
                       </td>
-                      <td style="padding:12px 10px">
-                        <div style="display:flex;flex-direction:column;gap:3px">
-                          <span style="font-size:12.5px;color:#334155">${isForever ? 'Không thời hạn' : (expDate ? dt(expDate).split(' ')[0] : '---')}</span>
+                      <td style="padding:10px">
+                        <div style="display:flex;flex-direction:column;gap:2px">
+                          <span style="font-size:12px;color:#334155">${isForever ? 'Không thời hạn' : (expDate ? dt(expDate).split(' ')[0] : '---')}</span>
                           ${expiryBadge}
                         </div>
                       </td>
-                      <td style="padding:12px 10px">
+                      <td style="padding:10px">
                         ${statusBadge}
                       </td>
-                      <td style="padding:12px 10px;text-align:right">
-                        <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">
-                          <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="font-size:11px;padding:4px 8px;gap:3px;border-radius:5px">
-                            ${icon('sparkles')} Gia hạn
+                      <td style="padding:10px;text-align:right">
+                        <div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">
+                          <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="font-size:11px;padding:3px 7px;gap:3px;border-radius:5px">
+                            ⚡ Gia hạn
+                          </button>
+                          <button type="button" class="secondary-btn tiny" data-user-zalo="${esc(u.id)}" title="Sao chép tin nhắn nhắc cước Zalo kèm VietQR" style="font-size:11px;padding:3px 6px;border-radius:5px;background:#eff6ff;color:#0284c7;border:1px solid #bfdbfe">
+                            📋 Zalo
                           </button>
                           ${!isSuper ? `
-                            <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:4px 8px;border-radius:5px;color:${isSuspended ? '#16a34a' : '#ea580c'}">
-                              ${isSuspended ? 'Mở khóa' : 'Khóa'}
+                            <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:3px 6px;border-radius:5px;color:${isSuspended ? '#16a34a' : '#ea580c'}">
+                              ${isSuspended ? 'Mở' : 'Khóa'}
                             </button>
-                            <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:4px 7px;border-radius:5px;color:#dc2626;border:1px solid #fecaca;background:#fff5f5">
+                            <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:3px 6px;border-radius:5px;color:#dc2626;border:1px solid #fecaca;background:#fff5f5">
                               ${icon('trash-2')}
                             </button>
                           ` : `
-                            <span style="font-size:11px;color:#94a3b8;font-style:italic;padding:4px 6px">Platform Owner</span>
+                            <span style="font-size:11px;color:#94a3b8;font-style:italic;padding:3px 6px">Platform Owner</span>
                           `}
                         </div>
                       </td>
@@ -7842,7 +7869,7 @@ async function renderPlatformAdmin() {
                   `;
                 }).join('') || `
                   <tr>
-                    <td colspan="6" style="padding:32px;text-align:center;color:#64748b">
+                    <td colspan="6" style="padding:28px;text-align:center;color:#64748b">
                       Không tìm thấy người dùng nào phù hợp với bộ lọc.
                     </td>
                   </tr>
@@ -7850,6 +7877,83 @@ async function renderPlatformAdmin() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- Mobile User Cards: Thân thiện ngón tay, 0% tràn ngang -->
+        <div class="platform-user-cards" style="margin-top:6px;display:flex;flex-direction:column;gap:8px">
+          ${filteredUsers.map(u => {
+            const isSuper = u.role === 'SUPER_ADMIN' || u.email === 'tungtran2510@gmail.com';
+            const isSuspended = u.status === 'SUSPENDED';
+            const expDate = u.expiresAt ? new Date(u.expiresAt) : null;
+            const isForever = expDate && expDate.getFullYear() >= 2090;
+            const diffDays = expDate ? Math.ceil((expDate.getTime() - Date.now()) / 86400000) : 0;
+            
+            let expiryBadge = '';
+            let expDateFormatted = isForever ? 'Vĩnh viễn' : (expDate ? dt(expDate).split(' ')[0] : '---');
+            if (isForever) {
+              expiryBadge = `<span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:10px">Vĩnh viễn</span>`;
+            } else if (diffDays < 0) {
+              expiryBadge = `<span class="badge danger" style="font-size:10px">Quá hạn ${Math.abs(diffDays)}d</span>`;
+            } else if (diffDays <= 15) {
+              expiryBadge = `<span class="badge warn" style="font-size:10px">Còn ${diffDays}d</span>`;
+            } else {
+              expiryBadge = `<span class="badge ok" style="font-size:10px">Còn ${diffDays}d</span>`;
+            }
+
+            let statusBadge = '';
+            if (isSuspended) {
+              statusBadge = `<span class="badge danger" style="font-size:10px">Khóa</span>`;
+            } else if (diffDays < 0 && !isForever) {
+              statusBadge = `<span class="badge warn" style="font-size:10px">Hết hạn</span>`;
+            } else {
+              statusBadge = `<span class="badge ok" style="font-size:10px">Hoạt động</span>`;
+            }
+
+            return `
+              <div class="platform-user-card" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;box-shadow:0 1px 2px rgba(0,0,0,0.03)">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+                  <div style="min-width:0;flex:1">
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <strong style="font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.fullName || u.email.split('@')[0])}</strong>
+                      <span class="badge" style="font-size:9.5px;font-weight:700;background:#f1f5f9;border:1px solid #cbd5e1;color:#1e293b;padding:1px 4px">${esc(u.planName || u.plan?.toUpperCase() || 'STANDARD')}</span>
+                    </div>
+                    <div style="font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">${esc(u.email)}${u.phone ? ` · ${esc(u.phone)}` : ''}</div>
+                    <div style="font-size:11px;color:#0284c7;margin-top:2px">🏪 <b>${esc(u.shopName || 'Chưa gắn shop')}</b> · <span style="color:#64748b">${esc(u.role || 'OWNER')}</span></div>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0">
+                    <div>${statusBadge}</div>
+                    <div style="margin-top:3px">${expiryBadge}</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px dashed #e2e8f0">
+                  <div style="font-size:10.5px;color:#64748b">
+                    Hạn: <b style="color:#334155">${expDateFormatted}</b>
+                  </div>
+                  <div style="display:flex;gap:4px;flex-wrap:nowrap">
+                    <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="font-size:11px;padding:3px 7px;border-radius:5px">
+                      ⚡ Gia hạn
+                    </button>
+                    <button type="button" class="secondary-btn tiny" data-user-zalo="${esc(u.id)}" title="Sao chép tin nhắn nhắc cước Zalo kèm VietQR" style="font-size:11px;padding:3px 6px;border-radius:5px;background:#eff6ff;color:#0284c7;border:1px solid #bfdbfe">
+                      📋 Zalo
+                    </button>
+                    ${!isSuper ? `
+                      <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:3px 6px;border-radius:5px;color:${isSuspended ? '#16a34a' : '#ea580c'}">
+                        ${isSuspended ? 'Mở' : 'Khóa'}
+                      </button>
+                      <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:3px 6px;border-radius:5px;color:#dc2626;border:1px solid #fecaca;background:#fff5f5">
+                        ${icon('trash-2')}
+                      </button>
+                    ` : '<span style="font-size:10.5px;color:#94a3b8;padding:2px 4px">Owner</span>'}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('') || `
+            <div style="padding:20px;text-align:center;color:#64748b;font-size:12px;background:#fff;border-radius:8px;border:1px solid #e2e8f0">
+              Không tìm thấy người dùng nào phù hợp với bộ lọc.
+            </div>
+          `}
         </div>
       `;
 
@@ -7865,6 +7969,24 @@ async function renderPlatformAdmin() {
         btn.onclick = () => {
           state.platformUserFilter = btn.dataset.userFilter;
           renderPlatformAdmin();
+        };
+      });
+
+      $$('[data-user-zalo]', tabContainer).forEach(btn => {
+        btn.onclick = async () => {
+          const uId = btn.dataset.userZalo;
+          const targetUser = users.find(x => x.id === uId);
+          if (!targetUser) return;
+          const comm = await getPlatformCommercialConfig();
+          const expDate = targetUser.expiresAt ? new Date(targetUser.expiresAt) : null;
+          const expDateFormatted = expDate ? dt(expDate).split(' ')[0] : 'chưa xác định';
+          const reminderMsg = `[QBiz Kho] Kính gửi Quý khách ${targetUser.fullName || targetUser.email.split('@')[0]},\nTài khoản sử dụng hệ thống QBiz Kho của Cửa hàng "${targetUser.shopName || 'Cửa hàng'}" sắp đến hạn gia hạn gói ${targetUser.planName || 'STANDARD'} (Hạn: ${expDateFormatted}).\nQuý khách vui lòng chuyển khoản gia hạn:\n- Ngân hàng: ${comm.bankName}\n- STK: ${comm.bankAccount}\n- Chủ TK: ${comm.bankAccountOwner}\n- Cú pháp CK: ${comm.transferSyntax || 'QBIZ GIAHAN'} ${targetUser.phone || targetUser.email}\nHotline hỗ trợ: ${comm.hotline}\nXin trân trọng cảm ơn!`;
+          try {
+            await navigator.clipboard.writeText(reminderMsg);
+            toast('Đã copy tin nhắn nhắc cước Zalo kèm VietQR!', 'ok');
+          } catch (_) {
+            toast('Đã chuẩn bị tin nhắn nhắc cước Zalo!', 'ok');
+          }
         };
       });
 
