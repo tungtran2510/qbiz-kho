@@ -521,7 +521,7 @@ const INJECTION_PATTERNS = [
   /(?:lenh\s+ngam|lệnh\s+ngầm|doanh\s+so\s+ao|doanh\s+số\s+ảo)/i,
   /<(?:img|iframe|svg|body|input|embed)\b|onerror\s*=|onload\s*=/i,
   /(?:cua\s+hang\s+khac|cửa\s+hàng\s+khác|chi\s+nhanh\s+khac|chi\s+nhánh\s+khác|shop\s+khac|shop\s+khác)/i,
-  /(?:mã\s+bí\s+mật|ma\s+bi\s+mat|service_role|supabase_service_role|service-role|anon_key|jwt_secret)/i,
+  /(?:mã\s+bí\s+mật|ma\s+bi\s+mat|service[_-]role|supabase[_-]service[_-]role|anon_key|jwt_secret)/i,
   /(?:đánh\s+dấu|danh\s+dau|chuyển|chuyen|xác\s+nhận|xac\s+nhan).*đơn.*(?:đã\s+thanh\s+toán|da\s+thanh\s+toan).*(?:không\s+cần|khong\s+can).*(?:tiền|thanh\s+toán)/i,
   /(?:không\s+cần|khong\s+can)\s+(?:nhận\s+tiền|thu\s+tiền|tra\s+tien|trả\s+tiền)/i,
   /(?:tự\s+động|tu\s+dong)\s+(?:tăng\s+giá|tang\s+gia|giảm\s+giá|giam\s+gia|thay\s+đổi\s+giá|thay\s+doi\s+gia)/i,

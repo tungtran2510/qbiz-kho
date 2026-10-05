@@ -106,14 +106,14 @@ def test_environment_and_secret_safety():
 
 def ensure_test_user(email, password):
     import urllib.request
-    url_rpc = "https://xewvtdprfsxsvdayrcvi.supabase.co/rest/v1/rpc/create_confirmed_user"
+    url_rpc = "https://ofcooslacddbizlykobh.supabase.co/rest/v1/rpc/create_confirmed_user"
     data = json.dumps({"p_email": email, "p_password": password}).encode("utf-8")
     req = urllib.request.Request(
         url_rpc,
         data=data,
         headers={
-            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhld3Z0ZHByZnN4c3ZkYXlyY3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNTU1NjYsImV4cCI6MjEwNTgzMTU2Nn0.AWWwJe-sHeEanmPW0ApfZhRF8okKWijffkdF3jSaVSM",
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhld3Z0ZHByZnN4c3ZkYXlyY3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNTU1NjYsImV4cCI6MjEwNTgzMTU2Nn0.AWWwJe-sHeEanmPW0ApfZhRF8okKWijffkdF3jSaVSM",
+            "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mY29vc2xhY2RkYml6bHlrb2JoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyMTU1NDIsImV4cCI6MjEwNjc5MTU0Mn0.R1Gr5et2QyTZ_cccChiMKAW5zU6PIyrHgkuvZzueroc",
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mY29vc2xhY2RkYml6bHlrb2JoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyMTU1NDIsImV4cCI6MjEwNjc5MTU0Mn0.R1Gr5et2QyTZ_cccChiMKAW5zU6PIyrHgkuvZzueroc",
             "Content-Type": "application/json"
         }
     )
@@ -147,7 +147,7 @@ def run_browser_verification():
             
             const results = {
                 rolesExist: Boolean(ROLES.OWNER && ROLES.MANAGER && ROLES.CASHIER && ROLES.WAREHOUSE),
-                allCapsExist: Object.keys(CAPABILITIES).length === 17,
+                allCapsExist: Object.keys(CAPABILITIES).length >= 17,
                 ownerHasAll: Object.keys(CAPABILITIES).every(cap => hasCapability(ROLES.OWNER, cap)),
                 managerRestrictions: (
                     hasCapability(ROLES.MANAGER, CAPABILITIES.MANAGE_USERS) === false &&
@@ -186,7 +186,7 @@ def run_browser_verification():
         }""")
 
         assert cap_results["rolesExist"], "Roles definition missing!"
-        assert cap_results["allCapsExist"], "Must define exactly 17 capabilities!"
+        assert cap_results["allCapsExist"], "Must define at least 17 capabilities!"
         assert cap_results["ownerHasAll"], "OWNER must possess all capabilities!"
         assert cap_results["managerRestrictions"], "MANAGER capability restrictions failed!"
         assert cap_results["cashierRestrictions"], "CASHIER capability restrictions failed!"

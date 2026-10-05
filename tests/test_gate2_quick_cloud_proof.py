@@ -43,7 +43,7 @@ def load_env():
     return env
 
 ENV = load_env()
-URL = ENV.get("VITE_SUPABASE_URL", "https://xewvtdprfsxsvdayrcvi.supabase.co").rstrip("/")
+URL = ENV.get("VITE_SUPABASE_URL", "https://ofcooslacddbizlykobh.supabase.co").rstrip("/")
 ANON_KEY = ENV.get("VITE_SUPABASE_ANON_KEY", "")
 
 def auth_signup(email, password):

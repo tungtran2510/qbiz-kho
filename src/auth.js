@@ -189,13 +189,39 @@ function translateAuthError(msg) {
  */
 export async function initAuth() {
   try {
-    // 1. Check for OAuth callback tokens in URL hash (from Google OAuth callback)
-    if (typeof window !== 'undefined' && window.location && window.location.hash) {
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      const expiresIn = params.get('expires_in');
+    // 1. Check for OAuth callback tokens in URL hash or search code (from Google OAuth callback)
+    if (typeof window !== 'undefined' && window.location) {
+      let accessToken = null;
+      let refreshToken = null;
+      let expiresIn = null;
+
+      if (window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        accessToken = params.get('access_token');
+        refreshToken = params.get('refresh_token');
+        expiresIn = params.get('expires_in');
+      }
+
+      if (!accessToken && window.location.search) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const code = searchParams.get('code');
+        if (code) {
+          try {
+            const tokenRes = await supabaseFetch('/auth/v1/token?grant_type=pkce', {
+              method: 'POST',
+              body: JSON.stringify({ auth_code: code }),
+            }).catch(() => null);
+            if (tokenRes?.access_token) {
+              accessToken = tokenRes.access_token;
+              refreshToken = tokenRes.refresh_token;
+              expiresIn = tokenRes.expires_in;
+            }
+          } catch (e) {
+            console.warn('Lỗi đổi mã OAuth code:', e);
+          }
+        }
+      }
 
       if (accessToken) {
         try {
@@ -218,7 +244,7 @@ export async function initAuth() {
 
           // Clean tokens from browser URL address bar immediately for security
           if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            window.history.replaceState(null, '', window.location.pathname);
           }
         } catch (e) {
           console.warn('Lỗi phân tích OAuth callback tokens:', e);
