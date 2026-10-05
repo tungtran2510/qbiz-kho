@@ -330,10 +330,12 @@ function headerActions(){
   const alerts=notificationItems();
   const auth=getAuthState();
   let userBadge='';
-  if(auth.status===AUTH_STATES.AUTHENTICATED_SHOP_READY){
+  if(auth.isSuperAdmin){
+    userBadge=`<button class="user-badge-btn" data-action="open-user-menu" style="background:#0f172a;color:#38bdf8;border:1px solid #0284c7" title="Super Admin: ${esc(auth.user?.email)}">${icon('shield-alert')}<span>${esc(auth.shop?.name || 'Super Admin')}</span></button>`;
+  } else if(auth.status===AUTH_STATES.AUTHENTICATED_SHOP_READY){
     userBadge=`<button class="user-badge-btn" data-action="open-user-menu" title="${esc(auth.user?.email||'Tài khoản')}">${icon('user')}<span>${esc(auth.shop?.name||'Shop')}</span></button>`;
   } else if(auth.status===AUTH_STATES.AUTHENTICATED_NO_SHOP){
-    userBadge=`<button class="user-badge-btn" data-action="create-shop-modal" title="Tạo cửa hàng mới">${icon('store')}<span>Tạo Shop</span></button>`;
+    userBadge=`<button class="user-badge-btn" data-action="open-user-menu" title="${esc(auth.user?.email||'Tài khoản')}">${icon('user')}<span>Tạo Shop</span></button>`;
   } else {
     userBadge = `<button class="user-badge-btn icon-only" data-action="open-auth-modal" title="Tài khoản / Đăng nhập" aria-label="Đăng nhập">${icon('user')}</button>`;
   }
@@ -1150,7 +1152,7 @@ function renderDashboard(){
     alertItems.push({page:'replenish',icon:'package-plus',label:`${replenishCount} mặt hàng đề xuất nhập`,badge:'amber'});
   }
 
-  const isDemo = sessionStorage.getItem('qbiz_preview_demo') === '1';
+  const isDemo = sessionStorage.getItem('qbiz_preview_demo') === '1' && !auth.user;
   const isUnauth = auth.status === AUTH_STATES.UNAUTHENTICATED;
 
   const dashboardBodyHtml = `
@@ -1392,7 +1394,30 @@ function renderDashboard(){
           </div>
         </section>
         `;
-      })() : ''}
+      })() : (auth.user ? (() => {
+        const isSuper = auth.isSuperAdmin;
+        const currentShopName = auth.shop?.name || (isSuper ? 'Quản lý Nền tảng QBiz' : 'Cửa hàng của tôi');
+        return `
+        <section class="card auth-user-banner" style="margin-bottom:12px;padding:8px 12px;background:${isSuper ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)' : '#f8fafc'};border:1px solid ${isSuper ? '#334155' : '#cbd5e1'};border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);color:${isSuper ? '#fff' : '#0f172a'}">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span class="badge" style="background:${isSuper ? '#ef4444' : '#0284c7'};color:#fff;font-weight:700;font-size:10px;padding:2px 7px;border-radius:4px;letter-spacing:0.03em;flex-shrink:0">${isSuper ? 'SUPER ADMIN' : (esc(auth.role || 'CHỦ SHOP'))}</span>
+              <div style="display:flex;flex-direction:column;min-width:0">
+                <strong style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${isSuper ? '#f8fafc' : '#0f172a'}">${esc(currentShopName)}</strong>
+                <span style="font-size:11px;color:${isSuper ? '#94a3b8' : '#64748b'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(auth.user.email)}</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${isSuper ? `
+              <button type="button" class="primary-btn compact" data-action="go-platform-admin" style="font-size:11px;font-weight:700;padding:4px 9px;background:#0284c7;border:none;border-radius:6px;gap:4px;cursor:pointer">${icon('shield-alert')} Quản trị Nền tảng</button>
+              ` : ''}
+              <button type="button" class="secondary-btn compact" data-action="open-create-shop-modal" style="font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;background:${isSuper ? '#334155' : '#fff'};border-color:${isSuper ? '#475569' : '#cbd5e1'};color:${isSuper ? '#f8fafc' : '#1e293b'};gap:4px;cursor:pointer">${icon('store')} Tạo Shop mới</button>
+              <button type="button" class="secondary-btn compact" data-action="clear-demo-fresh" style="font-size:11px;font-weight:600;padding:4px 8px;border-radius:6px;background:${isSuper ? '#451a03' : '#fffbeb'};border-color:${isSuper ? '#78350f' : '#f59e0b'};color:${isSuper ? '#fde68a' : '#b45309'};gap:4px;cursor:pointer" title="Xóa sạch dữ liệu mẫu để bắt đầu cửa hàng trắng">${icon('trash-2')} Xóa dữ liệu mẫu</button>
+            </div>
+          </div>
+        </section>
+        `;
+      })() : '')}
       ${dashboardBodyHtml}
     `;
   }
@@ -7280,6 +7305,7 @@ function openCreateShopModal() {
       if (!name) throw new Error('Vui lòng nhập tên Cửa hàng.');
       await createShop({ name });
       toast('Đã tạo cửa hàng thành công!', 'ok');
+      await refresh();
     }
   });
 }
@@ -7350,6 +7376,52 @@ function openSwitchShopModal() {
   }
 }
 
+function openClearDemoFreshModal() {
+  const auth = getAuthState();
+  openModal({
+    title: 'Xóa sạch dữ liệu mẫu Demo?',
+    sub: 'Khởi tạo Cửa hàng trắng tinh tươm để bắt đầu kinh doanh thật.',
+    body: `
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:13.5px;color:#1e293b;line-height:1.5">
+        <p style="margin:0">Bạn sắp xóa toàn bộ <b>sản phẩm mẫu, đơn hàng mẫu, phiếu bán mẫu và kho demo</b> trên thiết bị này.</p>
+        <div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:12px;border-radius:8px;font-size:13px">
+          ⚠️ <b>Sau khi xóa:</b>
+          <ul style="margin:6px 0 0 16px;padding:0">
+            <li>Cửa hàng sẽ có <b>0 sản phẩm, 0 giao dịch</b> (sạch sẽ 100%).</li>
+            <li>Kho chính (KHO-CHINH) và Quầy 01 (POS-01) sẵn sàng hoạt động.</li>
+            <li>Chế độ xem thử demo sẽ được tắt hoàn toàn.</li>
+          </ul>
+        </div>
+      </div>
+    `,
+    submitText: 'Xóa sạch & Khởi tạo Shop trắng',
+    onSubmit: async () => {
+      try {
+        localStorage.setItem('qbiz_fresh_clean_shop', 'true');
+        sessionStorage.removeItem('qbiz_preview_demo');
+        sessionStorage.removeItem('qbiz_demo_shop');
+        sessionStorage.removeItem('qbiz_demo_industry');
+        sessionStorage.removeItem('qbiz_demo_role');
+
+        const { clearAll, put, ensureLocalIdentity } = await import('./db.js');
+        await clearAll();
+        await put('warehouses', { id: 'wh_main', name: 'Kho chính', code: 'KHO-CHINH', status: 'active', isDefault: true });
+        await ensureLocalIdentity();
+
+        if (auth.user && !auth.shop) {
+          const shopName = 'Cửa hàng của ' + (auth.user.user_metadata?.full_name || auth.user.email.split('@')[0]);
+          await createShop({ name: shopName }).catch(() => {});
+        }
+
+        await refresh();
+        toast('Đã dọn sạch dữ liệu demo! Cửa hàng trắng tinh tươm đã sẵn sàng.', 'ok');
+      } catch (err) {
+        toast('Lỗi khi xóa dữ liệu demo: ' + err.message, 'error');
+      }
+    }
+  });
+}
+
 function openUserMenuModal() {
   const auth = getAuthState();
   const user = getCurrentUser();
@@ -7368,27 +7440,30 @@ function openUserMenuModal() {
             <span style="font-size:12px;color:var(--text-muted,#64748b)">CỬA HÀNG ĐANG CHỌN</span>
             <span class="role-badge role-${(role||'').toLowerCase()}" style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px">${esc(roleLabel)}</span>
           </div>
-          <div style="font-weight:700;font-size:16px">${esc(shop?.name || 'Chưa có Shop')}</div>
+          <div style="font-weight:700;font-size:16px">${esc(shop?.name || (auth.isSuperAdmin ? 'Quản lý toàn bộ Shop hệ thống' : 'Chưa có Shop'))}</div>
           <div style="font-size:12px;color:var(--text-muted,#64748b);margin-top:2px">ID: ${esc(shop?.id || '---')}</div>
         </div>
 
         <div style="display:flex;flex-direction:column;gap:8px">
-          <button class="secondary-btn" id="menuBtnSwitchShop" style="text-align:left;justify-content:flex-start;gap:8px">
-            ${icon('arrow-left-right')} Đổi cửa hàng (Switch Shop)
-          </button>
           ${auth.isSuperAdmin ? `
-          <button class="secondary-btn" id="menuBtnPlatformAdmin" style="text-align:left;justify-content:flex-start;gap:8px;border-color:var(--primary,#0284c7);color:var(--primary,#0284c7);font-weight:700">
-            ${icon('shield-alert')} Platform Admin Console (Nền tảng)
-          </button>
-          ` : ''}
-          ${userCan('MANAGE_USERS') ? `
-          <button class="secondary-btn" id="menuBtnAddMember" style="text-align:left;justify-content:flex-start;gap:8px">
-            ${icon('users')} Quản lý / Mời nhân viên
+          <button class="primary-btn" id="menuBtnPlatformAdmin" style="text-align:left;justify-content:flex-start;gap:8px;background:#0284c7;color:#fff;font-weight:700">
+            ${icon('shield-alert')} Platform Admin Console (Quản trị Nền tảng)
           </button>
           ` : ''}
           <button class="secondary-btn" id="menuBtnCreateShop" style="text-align:left;justify-content:flex-start;gap:8px">
             ${icon('store')} Tạo thêm Cửa hàng mới
           </button>
+          <button class="secondary-btn" id="menuBtnSwitchShop" style="text-align:left;justify-content:flex-start;gap:8px">
+            ${icon('arrow-left-right')} Đổi cửa hàng (Switch Shop)
+          </button>
+          <button class="secondary-btn" id="menuBtnClearDemoFresh" style="text-align:left;justify-content:flex-start;gap:8px;border-color:#f59e0b;color:#b45309;background:#fffbeb;font-weight:600">
+            ${icon('trash-2')} Xóa sạch dữ liệu mẫu Demo (Bắt đầu cửa hàng trắng)
+          </button>
+          ${userCan('MANAGE_USERS') ? `
+          <button class="secondary-btn" id="menuBtnAddMember" style="text-align:left;justify-content:flex-start;gap:8px">
+            ${icon('users')} Quản lý / Mời nhân viên
+          </button>
+          ` : ''}
           <button class="secondary-btn" id="menuBtnPermissions" style="text-align:left;justify-content:flex-start;gap:8px">
             ${icon('shield-check')} Xem bảng phân quyền & tính năng
           </button>
@@ -7427,6 +7502,12 @@ function openUserMenuModal() {
     $('#menuBtnCreateShop', root).onclick = () => {
       root.innerHTML = '';
       openCreateShopModal();
+    };
+  }
+  if ($('#menuBtnClearDemoFresh', root)) {
+    $('#menuBtnClearDemoFresh', root).onclick = () => {
+      root.innerHTML = '';
+      openClearDemoFreshModal();
     };
   }
   if ($('#menuBtnPermissions', root)) {
@@ -7823,7 +7904,7 @@ document.addEventListener('click', async e=>{
     return;
   }
   if(action==='open-auth-modal' || action==='open-hero-auth') return openAuthModal();
-  if(action==='create-shop-modal') return openCreateShopModal();
+  if(action==='create-shop-modal' || action==='open-create-shop-modal') return openCreateShopModal();
   if(action==='preview-demo') return previewDemo('retail');
   if(action==='select-demo-industry') {
     const ind = e.target.closest('[data-industry]')?.dataset.industry || 'retail';
@@ -7839,12 +7920,13 @@ document.addEventListener('click', async e=>{
     }
     return;
   }
+  if(action==='clear-demo-fresh') return openClearDemoFreshModal();
   if(action==='exit-demo') return exitDemo();
   if(action==='open-user-menu') return openUserMenuModal();
   if(action==='add-member-modal') return openAddMemberModal();
   if(action==='open-forgot-password-modal') return openForgotPasswordModal();
-  if(action==='switch-shop-modal') return openSwitchShopModal();
-  if(action==='open-platform-admin') { state.page = 'platform-admin'; return render(); }
+  if(action==='switch-shop-modal' || action==='open-switch-shop-modal') return openSwitchShopModal();
+  if(action==='open-platform-admin' || action==='go-platform-admin') { state.page = 'platform-admin'; return render(); }
   if(action==='connect-google-drive') {
     const auth = getAuthState();
     if (!userCan('MANAGE_SETTINGS')) {
@@ -8093,7 +8175,9 @@ async function boot(){
       }
     }).catch(() => {});
   }
-  if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_preview_demo') === '1') {
+  await initAuth();
+  const auth = getAuthState();
+  if (!auth.user && typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_preview_demo') === '1') {
     const demoVer = (await getOne('settings', 'demo_data_version'))?.value;
     if (demoVer !== 'v20261005_all_in_stock') {
       await loadDemoIndustry(getActiveDemoIndustryKey(), getActiveDemoRole());
@@ -8103,7 +8187,6 @@ async function boot(){
   }
   await ensureLocalIdentity();
   await ensurePrintTemplates();
-  await initAuth();
   state.data=await snapshot();
   await businessProfileModule.initBusinessProfile(state.data?.settings);
   state.businessProfile = businessProfileModule.getBusinessProfile();

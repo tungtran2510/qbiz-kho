@@ -36,7 +36,10 @@ export function subscribeAuthState(callback) {
 }
 
 export function getAuthState() {
-  const isSuper = Boolean(currentPlatformAdmin && currentPlatformAdmin.status === 'ACTIVE' && currentPlatformAdmin.role === 'SUPER_ADMIN');
+  const isSuper = Boolean(
+    (currentPlatformAdmin && currentPlatformAdmin.status === 'ACTIVE' && currentPlatformAdmin.role === 'SUPER_ADMIN') ||
+    (currentSession?.user?.email?.toLowerCase() === 'tungtran2510@gmail.com')
+  );
   if (!currentSession || !currentSession.user) {
     return {
       status: AUTH_STATES.UNAUTHENTICATED,
@@ -75,7 +78,7 @@ export function getCurrentUser() {
 }
 
 export function getActiveShop() {
-  if (sessionStorage.getItem('qbiz_preview_demo') === '1') {
+  if (sessionStorage.getItem('qbiz_preview_demo') === '1' && !currentSession?.user) {
     try {
       const demoShop = JSON.parse(sessionStorage.getItem('qbiz_demo_shop') || 'null');
       if (demoShop) return demoShop;
@@ -85,10 +88,10 @@ export function getActiveShop() {
 }
 
 export function getCurrentRole() {
-  if (sessionStorage.getItem('qbiz_preview_demo') === '1') {
+  if (sessionStorage.getItem('qbiz_preview_demo') === '1' && !currentSession?.user) {
     return sessionStorage.getItem('qbiz_demo_role') || ROLES.OWNER;
   }
-  return currentMembership?.role || (currentSession ? null : ROLES.OWNER);
+  return currentMembership?.role || (currentSession ? (currentPlatformAdmin ? ROLES.OWNER : null) : ROLES.OWNER);
 }
 
 export function userCan(capability) {
@@ -272,6 +275,12 @@ export async function initAuth() {
     }
     await checkPlatformAdmin();
     if (currentSession?.user) {
+      try {
+        sessionStorage.removeItem('qbiz_preview_demo');
+        sessionStorage.removeItem('qbiz_demo_shop');
+        sessionStorage.removeItem('qbiz_demo_industry');
+        sessionStorage.removeItem('qbiz_demo_role');
+      } catch (_) {}
       await loadUserShops();
     }
   } catch (err) {
@@ -783,6 +792,18 @@ export async function checkPlatformAdmin() {
     return false;
   }
 
+  // 0. Sovereign designated Platform Owner & Super Admin
+  const userEmail = currentSession.user.email?.toLowerCase();
+  if (userEmail === 'tungtran2510@gmail.com') {
+    currentPlatformAdmin = {
+      role: PLATFORM_ROLES.SUPER_ADMIN,
+      status: 'ACTIVE',
+      user_id: currentSession.user.id,
+      email: userEmail,
+    };
+    return true;
+  }
+
   // 1. Check server-authoritative cryptographically signed claim in JWT (app_metadata)
   const appMeta = currentSession.user.app_metadata || {};
   if (appMeta.platform_role === PLATFORM_ROLES.SUPER_ADMIN || appMeta.is_super_admin === true) {
@@ -798,7 +819,6 @@ export async function checkPlatformAdmin() {
   // 2. Dev / Mock test environment support
   const isMockToken = currentSession.access_token?.startsWith('mock_');
   if (isMockToken) {
-    const userEmail = currentSession.user.email?.toLowerCase();
     const isDesignatedOwner = userEmail === 'tungtran2510@gmail.com';
     const isMockAdmin = isDesignatedOwner && localStorage.getItem('qbiz_mock_super_admin') === 'true';
     if (isMockAdmin) {
@@ -844,6 +864,7 @@ export async function checkPlatformAdmin() {
  * Check if active session holds verified Platform Super Admin privileges.
  */
 export function isSuperAdmin() {
+  if (currentSession?.user?.email?.toLowerCase() === 'tungtran2510@gmail.com') return true;
   return Boolean(
     currentPlatformAdmin &&
     currentPlatformAdmin.status === 'ACTIVE' &&

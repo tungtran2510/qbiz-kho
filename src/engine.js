@@ -189,6 +189,14 @@ export async function ensureSeed(){
   if(typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_preview_demo') === '1'){
     return;
   }
+  // Nếu người dùng chọn bắt đầu Cửa hàng trắng sạch (không lấy hàng mẫu):
+  if(typeof localStorage !== 'undefined' && localStorage.getItem('qbiz_fresh_clean_shop') === 'true'){
+    const warehouses = await getAll('warehouses');
+    if (!warehouses.length) {
+      await put('warehouses', { id: 'wh_main', name: 'Kho chính', code: 'KHO-CHINH', status: 'active', isDefault: true });
+    }
+    return;
+  }
   const products=await getAll('products');
   const warehouses=await getAll('warehouses');
   const wss=warehouses.length?warehouses:SAMPLE_WAREHOUSES;
