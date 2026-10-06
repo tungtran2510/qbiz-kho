@@ -1,7 +1,12 @@
 import { CONFIG } from './config.js';
 import { getAll,put,remove } from './db.js';
+import { webFlushOutbox, webSyncStatus } from './web/flush.js';
 
 export async function syncStatus(){
+  if(CONFIG.BACKEND==='web'){
+    const s=await webSyncStatus();
+    return {mode:'web',pending:s.pending,review:s.review,deferred:s.deferred,connected:true,label:'QBiz (web)'};
+  }
   const pending=(await getAll('outbox')).filter(x=>normalize(x).sync_status==='PENDING'||normalize(x).sync_status==='ERROR').length;
   return {mode:CONFIG.SYNC_MODE,pending,connected:CONFIG.SYNC_MODE==='api',label:CONFIG.SYNC_MODE==='api'?'QBiz Cloud':'Thiết bị này'};
 }
@@ -39,6 +44,7 @@ export async function pruneSyncedOutbox({ maxAgeDays = 30 } = {}){
 // Hợp đồng đồng bộ V1: client KHÔNG ghi thẳng DB production.
 // Khi API thật có, endpoint phải idempotent và backend mới là nơi kiểm quyền/transaction.
 export async function flushOutbox(){
+  if(CONFIG.BACKEND==='web') return webFlushOutbox();
   if(CONFIG.SYNC_MODE!=='api') return {sent:0,skipped:true};
   const now=Date.now();const rows=(await getAll('outbox')).map(normalize);let sent=0,failed=0;
   const seenOperations=new Set();

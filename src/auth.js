@@ -36,7 +36,9 @@ export function subscribeAuthState(callback) {
 }
 
 export function getAuthState() {
-  const isSuper = Boolean(
+  // Backend web: quản trị nền tảng thuộc website (super_admin của web) — KHÔNG mở console nền tảng của Kho, kể cả
+  // theo email cứng (tài khoản trùng email trên database web sẽ được quyền quản trị Kho cũ ngoài ý muốn).
+  const isSuper = CONFIG.BACKEND !== 'web' && Boolean(
     (currentPlatformAdmin && currentPlatformAdmin.status === 'ACTIVE' && currentPlatformAdmin.role === 'SUPER_ADMIN') ||
     (currentSession?.user?.email?.toLowerCase() === 'tungtran2510@gmail.com')
   );
@@ -295,6 +297,9 @@ export async function initAuth() {
  * Register a new user with email and password.
  */
 export async function signUp({ email, password, fullName = '' }) {
+  if (CONFIG.BACKEND === 'web') {
+    throw new Error('Tài khoản QBiz Kho do chủ cửa hàng tạo và mời từ trang quản trị QBiz. Vui lòng đăng nhập bằng tài khoản QBiz.');
+  }
   if (!email || !password) throw new Error('Vui lòng nhập đầy đủ email và mật khẩu.');
   if (password.length < 6) throw new Error('Mật khẩu cần tối thiểu 6 ký tự.');
 
@@ -595,10 +600,40 @@ export async function createShop({ name }) {
 /**
  * Load user's shops and memberships from server.
  */
+// Backend web: vai trò web → vai trò Kho.
+const WEB_ROLE_MAP = { owner: ROLES.OWNER, shop_manager: ROLES.MANAGER, cashier: ROLES.CASHIER, warehouse: ROLES.WAREHOUSE };
+
+/** Backend web: danh sách shop + vai trò qua RPC kho_my_shops (server chỉ trả shop của chính người gọi). */
+async function loadUserShopsWeb() {
+  const rows = await supabaseFetch('/rest/v1/rpc/kho_my_shops', { method: 'POST', body: '{}' });
+  cachedUserShops = (Array.isArray(rows) ? rows : []).map((r) => ({
+    shop: { id: r.shop_id, name: r.name, slug: r.slug, status: 'ACTIVE', kho_entitled: r.kho_entitled !== false,
+      default_warehouse_id: r.default_warehouse_id || null },
+    membership: { id: `${r.shop_id}:${currentSession.user.id}`, shop_id: r.shop_id, user_id: currentSession.user.id,
+      role: WEB_ROLE_MAP[r.role] || ROLES.CASHIER, web_role: r.role, status: 'ACTIVE' },
+  }));
+  let target = null;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_ACTIVE_SHOP_KEY) || 'null');
+    target = cachedUserShops.find((s) => s.shop?.id === parsed?.shop?.id) || null;
+  } catch {}
+  target = target || cachedUserShops[0] || null;
+  currentShop = target?.shop || null;
+  currentMembership = target?.membership || null;
+  if (target) localStorage.setItem(STORAGE_ACTIVE_SHOP_KEY, JSON.stringify(target));
+  else localStorage.removeItem(STORAGE_ACTIVE_SHOP_KEY);
+  emitState();
+  return cachedUserShops;
+}
+
 export async function loadUserShops() {
   if (!currentSession?.user) {
     cachedUserShops = [];
     return [];
+  }
+  if (CONFIG.BACKEND === 'web') {
+    try { return await loadUserShopsWeb(); }
+    catch (err) { console.warn('Lỗi tải danh sách cửa hàng (web):', err); emitState(); return cachedUserShops; }
   }
   const isMockToken = currentSession.access_token?.startsWith('mock_');
   const { url, anonKey } = getSupabaseConfig();
@@ -686,6 +721,15 @@ export async function switchShop(shopId) {
   const target = cachedUserShops.find(s => s.shop?.id === shopId);
   if (!target) {
     throw new Error('Bạn không có quyền truy cập cửa hàng này hoặc cửa hàng không tồn tại.');
+  }
+  // Backend web: dữ liệu cục bộ + outbox thuộc THIẾT BỊ, payload gửi kèm shop ĐANG chọn → đổi shop khi còn thay đổi
+  // chưa đồng bộ sẽ gửi nhầm phiếu sang shop khác. Bắt buộc đồng bộ xong trước khi đổi.
+  if (CONFIG.BACKEND === 'web' && shopId !== currentShop?.id) {
+    const { getAll } = await import('./db.js');
+    const pending = (await getAll('outbox')).filter((r) => String(r.sync_status || '').toUpperCase() !== 'SYNCED').length;
+    if (pending > 0) {
+      throw new Error(`Còn ${pending} thay đổi chưa đồng bộ lên QBiz. Hãy kết nối mạng và đồng bộ xong (hoặc xử lý mục "cần xem") trước khi đổi cửa hàng.`);
+    }
   }
   currentShop = target.shop;
   currentMembership = target.membership;
@@ -787,7 +831,8 @@ export async function resetPassword({ email }) {
  * NEVER trusts client-side storage or user claim.
  */
 export async function checkPlatformAdmin() {
-  if (!currentSession?.user) {
+  // Backend web: không có bảng platform_admins của Kho — quản trị nền tảng làm ở website.
+  if (!currentSession?.user || CONFIG.BACKEND === 'web') {
     currentPlatformAdmin = null;
     return false;
   }

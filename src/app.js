@@ -2,6 +2,7 @@ import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issu
 import { clearAll,getAll,getOne,put,putMany,runTransaction } from './db.js';
 import { syncStatus,flushOutbox,pruneSyncedOutbox } from './sync.js';
 import { CONFIG } from './config.js';
+import { startWebSync, stopWebSync } from './web/bootstrap.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
 import { kickCashDrawer, generateEscPosReceipt, buildDrawerKickCommand } from './hardware/escpos.js';
@@ -9321,7 +9322,8 @@ async function boot(){
     if (demoVer !== 'v20261005_all_in_stock') {
       await loadDemoIndustry(getActiveDemoIndustryKey(), getActiveDemoRole());
     }
-  } else {
+  } else if (CONFIG.BACKEND !== 'web') {
+    // Backend web: KHÔNG gieo dữ liệu mẫu — danh mục/kho/tồn kéo từ website (src/web/catalog.js).
     await ensureSeed();
   }
   await ensureLocalIdentity();
@@ -9335,6 +9337,17 @@ async function boot(){
   if (pageParam) state.page = pageParam;
   history.replaceState(historyState(),'');render();
   subscribeAuthState(() => render());
+  if (CONFIG.BACKEND === 'web') {
+    // Đồng bộ với database web theo shop đang chọn; đổi shop / đăng xuất → dừng vòng cũ, chạy vòng mới.
+    let webShopId = null;
+    subscribeAuthState((auth) => {
+      const shop = auth?.status === AUTH_STATES.AUTHENTICATED_SHOP_READY ? auth.shop : null;
+      if ((shop?.id || null) === webShopId) return;
+      webShopId = shop?.id || null;
+      if (!shop) { stopWebSync(); return; }
+      startWebSync(shop, () => { refresh().catch(() => {}); }).catch((err) => console.warn('[web-sync]', err));
+    });
+  }
   initAiUI(state);
   initScrollHeaderAutoHide();
   pruneSyncedOutbox().catch(() => {});
