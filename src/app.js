@@ -193,7 +193,7 @@ function showPaymentSuccessPopup(sale,grandTotal){
   }
 }
 
-let state={page:'dashboard',data:null,search:'',warehouse:'all',warehouseTab:'operations',warehouseSearch:'',warehouseFilter:'all',warehouseSort:'name',warehouseStockWarehouse:'all',orderSearch:'',orderFilter:'active',orderRange:'all',txSearch:'',customerSearch:'',customerType:'all',supplierSearch:'',productView:'compact',productType:'PRODUCT',productCategory:'all',productSort:'default',productLimit:40,productSelecting:false,productSelected:new Set(),currentProductId:null,currentOrderId:null,currentSaleId:null,displayPrefs:loadDisplayPrefs(),paymentPrefs:loadPaymentPrefs(),installPrompt:null,printTab:'templates',reportTab:'overview',reportRange:'month',reportWarehouse:'all',reportCustomStart:'',reportCustomEnd:'',notificationFilter:'all',notificationRead:new Set(),importStep:1,importType:'products',importSource:'file',saleCart:[],saleSearch:'',saleType:'all',saleShowAll:false,saleStep:'browse',saleTrail:[],saleBusy:false,saleReceipt:null,saleCustomer:null,saleDiscountOpen:new Set(),saleOptionsOpen:false,saleDraft:{discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:''}};
+let state={page:'dashboard',data:null,search:'',warehouse:'all',warehouseTab:'operations',warehouseSearch:'',warehouseFilter:'all',warehouseSort:'name',warehouseStockWarehouse:'all',orderSearch:'',orderFilter:'active',orderRange:'all',txSearch:'',customerSearch:'',customerType:'all',supplierSearch:'',productView:'compact',productType:'PRODUCT',productCategory:'all',productSort:'default',productLimit:40,productSelecting:false,productSelected:new Set(),currentProductId:null,currentOrderId:null,currentSaleId:null,displayPrefs:loadDisplayPrefs(),paymentPrefs:loadPaymentPrefs(),installPrompt:null,printTab:'templates',reportTab:'overview',reportRange:'month',reportWarehouse:'all',reportCustomStart:'',reportCustomEnd:'',notificationFilter:'all',notificationRead:new Set(),importStep:1,importType:'products',importSource:'file',saleCart:[],saleSearch:'',saleType:'all',saleShowAll:false,saleStep:'browse',saleTrail:[],saleBusy:false,saleReceipt:null,saleCustomer:null,saleDiscountOpen:new Set(),saleOptionsOpen:false,saleDraft:{discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:'',channel:'pos'}};
 
 const product=id=>state.data.products.find(x=>x.id===id);
 const warehouse=id=>state.data.warehouses.find(x=>x.id===id);
@@ -319,7 +319,10 @@ function navigate(page,{replace=false,fromHistory=false}={}){
   if(page==='sales'&&(previous!=='sales'||state.saleStep==='success')){state.saleStep='browse';state.saleTrail=[];}
   if(!fromHistory){const method=replace?'replaceState':'pushState';history[method](historyState(),'');}
   render();
-  if(previous!==page)window.scrollTo({top:0,left:0,behavior:'instant'});
+  if(previous!==page){
+    window.scrollTo({top:0,left:0,behavior:'instant'});
+    document.body.classList.remove('topbar-hidden');
+  }
 }
 function setSaleStep(step,{fromHistory=false}={}){
   if(step===state.saleStep){renderSales();headerActions();nav();return;}
@@ -327,17 +330,20 @@ function setSaleStep(step,{fromHistory=false}={}){
   state.page='sales';state.saleStep=step;
   if(!fromHistory)history.pushState(historyState(),'');
   renderSales();headerActions();nav();
+  window.scrollTo({top:0,left:0,behavior:'instant'});
+  document.body.classList.remove('topbar-hidden');
 }
 function goSaleBack(){const previous=state.saleTrail.pop()||'browse';state.saleStep=previous;state.page='sales';history.pushState(historyState(),'');renderSales();headerActions();nav();}
 function headerActions(){
   const top=$('#topActions'); if(!top)return;
+  if(state.page === 'platform-admin') return;
   const showScan=state.page==='sales'?state.saleStep==='browse':['products','transfers'].includes(state.page);
   const scan=showScan?`<button class="icon-btn scan-trigger" data-action="scan" title="Quét mã" aria-label="Quét mã">${icon('scan-line')}</button>`:'';
   const alerts=notificationItems();
   const auth=getAuthState();
   let userBadge='';
   if(auth.isSuperAdmin){
-    userBadge=`<button class="user-badge-btn" data-action="open-user-menu" style="background:#0f172a;color:#38bdf8;border:1px solid #0284c7" title="Super Admin: ${esc(auth.user?.email)}">${icon('shield-alert')}<span>${esc(auth.shop?.name || 'Super Admin')}</span></button>`;
+    userBadge=`<button class="user-badge-btn" data-action="open-user-menu" style="background:#0f172a;color:#f8fafc;border:1px solid #334155" title="Super Admin: ${esc(auth.user?.email)}">${icon('shield-alert')}<span>${esc(auth.shop?.name || 'Super Admin')}</span></button>`;
   } else if(auth.status===AUTH_STATES.AUTHENTICATED_SHOP_READY){
     userBadge=`<button class="user-badge-btn" data-action="open-user-menu" title="${esc(auth.user?.email||'Tài khoản')}">${icon('user')}<span>${esc(auth.shop?.name||'Shop')}</span></button>`;
   } else if(auth.status===AUTH_STATES.AUTHENTICATED_NO_SHOP){
@@ -434,12 +440,15 @@ function nav(){
   const isPlatformAdmin = state.page === 'platform-admin';
   const mobileNav = $('#mobileNav');
   const desktopNav = $('#desktopNav');
+  const topbar = $('header.topbar');
 
   if(isPlatformAdmin){
+    if(topbar) topbar.style.display = 'none';
     if(mobileNav) mobileNav.style.display = 'none';
     if(desktopNav) desktopNav.style.display = 'none';
     return;
   } else {
+    if(topbar) topbar.style.display = '';
     if(mobileNav) mobileNav.style.display = '';
     if(desktopNav) desktopNav.style.display = '';
   }
@@ -455,7 +464,7 @@ function nav(){
     return `<button class="${activePage===id?'active':''} ${isSales?'nav-sales-hero':''}" data-page="${id}">${icon(ico)}<span>${displayLabel}</span></button>`;
   }).join('');
 }
-function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); injectInstallBanner(); updateSyncPill(); updateContextAndChips(); }
+function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); delete document.body.dataset.page; document.body.dataset.appPage=state.page||''; document.body.classList.toggle('on-platform-admin', state.page==='platform-admin'); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); injectInstallBanner(); updateSyncPill(); updateContextAndChips(); }
 
 const levelAvail=l=>Math.max(0,(l?.onHand||0)-(l?.reserved||0)-(l?.damaged||0));
 function warehouseStock(productId){ const p = product(productId); return p ? productTotals(p).available : 0; }
@@ -479,6 +488,65 @@ function openCustomerPicker(){
   const draw=async()=>{const q=$('#customerSearch')?.value||'',rows=(await customerRecords()).filter(c=>c.active!==false&&customerMatches(c,q)&&(type==='all'||(c.customer_type||'retail')===type)).sort((a,b)=>(b.last_used_at||'').localeCompare(a.last_used_at||''));$('#customerResults').innerHTML=`<button class="customer-row" data-customer-id=""><span><strong>Khách lẻ</strong><small>Không lưu thông tin khách</small></span>${icon('chevron-right')}</button>`+rows.map(c=>`<button class="customer-row" data-customer-id="${c.id}"><span><strong>${esc(c.name)}</strong><small>${esc([c.phone,c.customer_code,c.tax_id].filter(Boolean).join(' · ')||'Chưa có thông tin liên hệ')}${c.default_discount?` · Gợi ý CK ${fmt(c.default_discount)}%`:''}</small></span>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có khách phù hợp.</div>';$$('[data-customer-id]',$('#customerResults')).forEach(b=>b.onclick=async()=>{const c=rows.find(x=>x.id===b.dataset.customerId)||{name:'Khách lẻ',phone:'',code:'',id:''};if(c.id){c.last_used_at=new Date().toISOString();await put('customers',c)}state.saleCustomer=c;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();});};$('#customerSearch').oninput=draw;$$('[data-picker-type]').forEach(b=>b.onclick=()=>{type=b.dataset.pickerType;$$('[data-picker-type]').forEach(x=>x.classList.toggle('active',x===b));draw()});draw();
 }
 function openNewCustomer(){openModal({title:'Thêm khách hàng',sub:'Tên là thông tin bắt buộc.',body:`<div class="form-grid"><div class="field full-span"><label>Tên khách hàng</label><input id="customerName" required placeholder="VD: Nguyễn Thị Lan"/></div><div class="field"><label>Số điện thoại</label><input id="customerPhone" inputmode="tel" placeholder="090..."/></div><div class="field"><label>Mã khách</label><input id="customerCode"/></div><div class="field"><label>Loại khách</label><select id="customerType"><option value="retail">Khách lẻ</option><option value="individual">Cá nhân</option><option value="company">Công ty</option><option value="agent">Đại lý</option></select></div><div class="field"><label>Nhóm khách</label><input id="customerGroup" placeholder="Tùy chọn"/></div><div class="field"><label>Hạn mức nợ (₫)</label><input id="customerCreditLimit" type="number" inputmode="decimal" min="0" placeholder="0 = Không giới hạn" value="0"/></div><div class="field"><label>Chiết khấu mặc định (%)</label><input id="customerDiscount" type="number" inputmode="decimal" min="0" max="100" value="0"/></div><div class="field"><label>Mã số thuế</label><input id="customerTax" inputmode="numeric"/></div><div class="field full-span"><label>Ghi chú</label><input id="customerNote"/></div></div>`,submitText:'Lưu khách hàng',onSubmit:async root=>{const name=$('#customerName',root).value.trim(),phone=$('#customerPhone',root).value.trim(),code=$('#customerCode',root).value.trim();if(!name)throw new Error('Hãy nhập tên khách hàng.');const all=await customerRecords(),dup=phone&&all.find(c=>normalizePhone(c.phone)===normalizePhone(phone));if(dup&&confirm('Số điện thoại đã có trong danh bạ. Dùng khách hàng hiện có?')){state.saleCustomer=dup;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();return;}if(dup)throw new Error('Số điện thoại đã tồn tại.');const now=new Date().toISOString(),id=saleUuid(),c={id,customer_id:id,customer_code:code,name,phone,phone_normalized:normalizePhone(phone),customer_type:$('#customerType',root).value,customer_group:$('#customerGroup',root).value.trim(),creditLimit:Math.max(0,Number($('#customerCreditLimit',root)?.value)||0),credit_limit:Math.max(0,Number($('#customerCreditLimit',root)?.value)||0),default_discount:Math.min(100,Math.max(0,Number($('#customerDiscount',root).value)||0)),tax_id:$('#customerTax',root).value.trim(),note:$('#customerNote',root).value,active:true,created_at:now,updated_at:now,last_used_at:now};await put('customers',c);state.saleCustomer=c;$('#modalRoot').innerHTML='';state.page==='sales'?renderSales():render();toast('Đã lưu khách hàng.','ok')}})}
+const POS_CHANNELS = [
+  { id: 'pos', name: 'Tại quầy', tag: 'Mặc định', icon: 'store', desc: 'Bán trực tiếp tại quầy thu ngân' },
+  { id: 'website', name: 'Website', tag: 'Online', icon: 'globe', desc: 'Đơn từ website cửa hàng' },
+  { id: 'social', name: 'Zalo / FB', tag: 'Chat', icon: 'message-circle', desc: 'Chốt đơn qua tin nhắn Zalo, Facebook' },
+  { id: 'shopee', name: 'Shopee', tag: 'Sàn TMĐT', icon: 'shopping-bag', desc: 'Sàn TMĐT Shopee (Đã trừ thuế tại sàn)' },
+  { id: 'tiktok', name: 'TikTok', tag: 'Sàn TMĐT', icon: 'video', desc: 'TikTok Shop (Đã trừ thuế tại sàn)' },
+  { id: 'lazada', name: 'Lazada', tag: 'Sàn TMĐT', icon: 'tag', desc: 'Sàn TMĐT Lazada (Đã trừ thuế tại sàn)' }
+];
+function channelLabel(id){
+  const c = POS_CHANNELS.find(x => x.id === id);
+  return c ? c.name : 'Tại quầy';
+}
+function channelIcon(id){
+  const c = POS_CHANNELS.find(x => x.id === id);
+  return c ? c.icon : 'store';
+}
+function openChannelPicker(){
+  const current = state.saleDraft.channel || 'pos';
+  openModal({
+    title: 'Chọn Kênh bán / Nguồn đơn',
+    sub: 'Mặc định là Tại quầy · Các đơn Sàn TMĐT sẽ tự động miễn tính thuế',
+    hideSubmit: true,
+    body: `
+      <div class="channel-picker-list" style="display:flex;flex-direction:column;gap:6px">
+        ${POS_CHANNELS.map(c => {
+          const active = c.id === current;
+          return `
+            <button type="button" class="channel-option-row ${active ? 'active' : ''}" data-select-channel="${c.id}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:8px;border:1.5px solid ${active ? '#0f172a' : '#e2e8f0'};background:${active ? '#f8fafc' : '#ffffff'};cursor:pointer;text-align:left;width:100%;transition:all 0.15s ease">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:${active ? '#0f172a' : '#f1f5f9'};color:${active ? '#ffffff' : '#334155'}">${icon(c.icon)}</span>
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <strong style="font-size:13.5px;color:#0f172a">${esc(c.name)}</strong>
+                    <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:${c.id === 'pos' ? '#e2e8f0' : ['shopee','tiktok','lazada'].includes(c.id) ? '#ffedd5' : '#e0f2fe'};color:${c.id === 'pos' ? '#334155' : ['shopee','tiktok','lazada'].includes(c.id) ? '#c2410c' : '#0369a1'}">${esc(c.tag)}</span>
+                  </div>
+                  <div style="font-size:11.5px;color:#64748b;margin-top:1px">${esc(c.desc)}</div>
+                </div>
+              </div>
+              <div style="font-size:16px;color:#0f172a;font-weight:800">${active ? '✓' : ''}</div>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `
+  });
+
+  const root = $('#modalRoot');
+  if (root) {
+    $$('[data-select-channel]', root).forEach(btn => {
+      btn.onclick = () => {
+        state.saleDraft.channel = btn.dataset.selectChannel;
+        root.innerHTML = '';
+        renderSales();
+        toast(`Đã chọn kênh: ${channelLabel(state.saleDraft.channel)}`, 'ok');
+      };
+    });
+  }
+}
+
 function addSaleItem(id){const p=product(id);if(!p||p.active===false)return;normalizeSaleCart();const found=state.saleCart.find(x=>x.itemId===id),next=(found?.quantity||0)+1;if(!allowSaleQuantity(id,next))return;if(found)found.quantity=next;else state.saleCart.push({itemId:id,quantity:1,unitPrice:Number(p.price)||0,discount:0});renderSales();}
 function updateSaleLine(id,field,value){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;if(field==='quantity'){const raw=String(value??'').trim();if(raw===''){renderSales();return;}const n=Number(raw);if(isNaN(n)||n<=0){state.saleCart=state.saleCart.filter(x=>x.itemId!==id);renderSales();return;}const next=Math.max(1,Math.floor(n));if(!allowSaleQuantity(id,next)){renderSales();return;}line.quantity=next;}else line[field]=Math.max(0,Number(value)||0);renderSales();}
 function adjustSaleQuantity(id,delta){normalizeSaleCart();const line=state.saleCart.find(x=>x.itemId===id);if(!line)return;const next=line.quantity+delta;if(next<=0){state.saleCart=state.saleCart.filter(x=>x.itemId!==id);renderSales();return;}if(!allowSaleQuantity(id,next))return;line.quantity=next;renderSales();}
@@ -820,7 +888,7 @@ function renderSales(){
       payBtnText = `Thu tiền mặt · ${fmt(totals.total)} ₫`;
     }
 
-    $('#content').innerHTML=`<section class="pos-flow checkout-screen card">${saleStepHeader('Thanh toán','cart')}<button class="customer-chip" data-action="customer-picker">${icon('user')}<span><small>Khách hàng</small>${esc(customerLabel(customer))}</span>${icon('chevron-right')}</button>${customerDiscountHint(customer)}<div class="checkout-total"><span>Tổng thanh toán</span><strong>${fmt(totals.total)} ₫</strong>${totals.roundingDiff?`<small style="color:var(--q-muted);font-size:12px;display:block;margin-top:2px">Đã làm tròn +${fmt(totals.roundingDiff)} ₫ tiền mặt</small>`:''}</div><div class="checkout-discount-card"><div class="discount-box"><div class="discount-box-head"><strong>Giảm giá đơn hàng</strong>${totals.discount?`<span class="discount-val-hint">− ${fmt(totals.discount)} ₫</span>`:''}</div><div class="discount-control"><input id="checkoutDiscount" type="number" inputmode="decimal" min="0" value="${state.saleDraft.discount||''}" placeholder="0" aria-label="Giảm giá đơn hàng"/><button type="button" class="discount-mode ${state.saleDraft.discountMode==='amount'?'active':''}" data-discount-mode="amount">₫</button><button type="button" class="discount-mode ${state.saleDraft.discountMode==='percent'?'active':''}" data-discount-mode="percent">%</button></div></div></div><div class="choice-section"><h3>Phương thức thanh toán</h3>${[['cash','Tiền mặt'],['transfer','Chuyển khoản'],['qr','QR']].map(([v,l])=>`<button class="choice-row ${state.saleDraft.payment===v?'active':''}" data-payment-choice="${v}"><i></i><span>${l}</span></button>`).join('')}</div>${state.saleDraft.payment==='cash'?`<div class="cash-panel"><label>Khách đưa<input id="cashReceived" type="number" inputmode="decimal" value="${esc(state.saleDraft.cashReceived)}" placeholder="0"/></label><div class="cash-quick-pills"><button type="button" class="cash-pill cash-pill-exact ${Number(state.saleDraft.cashReceived)===totals.total?'active':''}" data-cash-amount="${totals.total}">Đủ tiền · ${fmt(totals.total)} ₫</button>${suggestCashAmounts(totals.total).map(amt=>`<button type="button" class="cash-pill ${Number(state.saleDraft.cashReceived)===amt?'active':''}" data-cash-amount="${amt}">${fmt(amt)} ₫</button>`).join('')}</div><div><span>Tiền thừa</span><strong id="cashChange">${fmt(Math.max(0,change))} ₫</strong></div></div>`:''}${qrPanelHtml}<div class="choice-section"><h3>Hình thức nhận hàng</h3><div class="segment"><button class="${!delivery?'active':''}" data-fulfillment="counter">Tại quầy</button><button class="${delivery?'active':''}" data-fulfillment="delivery">Giao hàng</button></div>${delivery?`<div class="delivery-fields"><input id="recipient" value="${esc(state.saleDraft.recipient)}" placeholder="Người nhận"/><input id="deliveryPhone" inputmode="tel" value="${esc(state.saleDraft.phone)}" placeholder="Số điện thoại"/><input id="deliveryAddress" value="${esc(state.saleDraft.address)}" placeholder="Địa chỉ"/><input id="shippingFee" type="number" inputmode="decimal" value="${state.saleDraft.shippingFee||''}" placeholder="Phí giao hàng"/><label class="cod-disabled"><input type="checkbox" disabled/> COD · chưa hỗ trợ lưu an toàn</label><small class="field-limit">Thông tin giao hàng chưa được ghi vào phiếu bán trong data contract hiện tại.</small></div>`:''}</div><label class="cart-note">Ghi chú đơn hàng<input id="saleNote" value="${esc(state.saleDraft.note)}" placeholder="Nhập ghi chú (nếu có)..."/></label><div class="vat-box"><span>Thuế/VAT</span><div class="vat-control"><select id="vatRate">${[[0,'Không VAT'],[5,'5%'],[8,'8%'],[10,'10%'],[-1,'Tùy chỉnh…']].map(([v,l])=>`<option value="${v}" ${(v===-1?state.saleDraft.vatCustom!=='':Number(state.saleDraft.vatRate)===v)?'selected':''}>${l}</option>`).join('')}</select>${state.saleDraft.vatCustom!==''?`<input id="vatCustom" type="number" inputmode="decimal" min="0" max="100" value="${esc(state.saleDraft.vatCustom)}" placeholder="%"/>`:''}<b id="vatAmount">${fmt(totals.vat)} ₫</b></div></div><div class="invoice-box" id="checkoutInvoiceToggle" style="cursor:pointer"><div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span>Hóa đơn điện tử</span><b style="color:${state.saleDraft.requestInvoice?'#16a34a':'#64748b'}">${state.saleDraft.requestInvoice ? '✓ Yêu cầu xuất HĐ' : 'Chưa chọn xuất HĐ'}</b></div></div>${state.saleDraft.requestInvoice ? `<div class="invoice-buyer-fields" style="background:#f8fafc;padding:10px;border-radius:6px;margin:8px 0 12px;border:1px solid #e2e8f0;display:grid;gap:6px"><input id="invTaxCode" placeholder="Mã số thuế doanh nghiệp / hộ KD" value="${esc(state.saleDraft.invoiceBuyer?.taxCode || '')}"/><input id="invCompanyName" placeholder="Tên công ty / tổ chức" value="${esc(state.saleDraft.invoiceBuyer?.companyName || '')}"/><input id="invBuyerEmail" placeholder="Email nhận hóa đơn" value="${esc(state.saleDraft.invoiceBuyer?.email || '')}"/><input id="invBuyerAddress" placeholder="Địa chỉ xuất HĐ" value="${esc(state.saleDraft.invoiceBuyer?.address || '')}"/></div>` : ''}<button class="primary-btn flow-primary ${isQrOrTransfer ? 'qr-verify-pay-btn' : ''}" data-sale-pay ${state.saleBusy?'disabled':''}>${state.saleBusy?'Đang xử lý…':payBtnText}</button></section>`;
+    $('#content').innerHTML=`<section class="pos-flow checkout-screen card">${saleStepHeader('Thanh toán','cart')}<div class="checkout-header-row" style="display:grid;grid-template-columns:1.15fr 1fr;gap:6px;margin:4px 0 8px"><button type="button" class="customer-chip" data-action="customer-picker" style="margin:0;width:100%;text-align:left;overflow:hidden">${icon('user')}<span style="overflow:hidden;text-overflow:ellipsis"><small>Khách hàng</small><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(customerLabel(customer))}</b></span>${icon('chevron-right')}</button><button type="button" class="customer-chip channel-chip" data-action="channel-picker" style="margin:0;width:100%;text-align:left;overflow:hidden">${icon(channelIcon(state.saleDraft.channel || 'pos'))}<span style="overflow:hidden;text-overflow:ellipsis"><small>Kênh bán</small><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(channelLabel(state.saleDraft.channel || 'pos'))}</b></span>${icon('chevron-down')}</button></div>${customerDiscountHint(customer)}<div class="checkout-total"><span>Tổng thanh toán</span><strong>${fmt(totals.total)} ₫</strong>${totals.roundingDiff?`<small style="color:var(--q-muted);font-size:12px;display:block;margin-top:2px">Đã làm tròn +${fmt(totals.roundingDiff)} ₫ tiền mặt</small>`:''}</div><div class="checkout-discount-card"><div class="discount-box"><div class="discount-box-head"><strong>Giảm giá đơn hàng</strong>${totals.discount?`<span class="discount-val-hint">− ${fmt(totals.discount)} ₫</span>`:''}</div><div class="discount-control"><input id="checkoutDiscount" type="number" inputmode="decimal" min="0" value="${state.saleDraft.discount||''}" placeholder="0" aria-label="Giảm giá đơn hàng"/><button type="button" class="discount-mode ${state.saleDraft.discountMode==='amount'?'active':''}" data-discount-mode="amount">₫</button><button type="button" class="discount-mode ${state.saleDraft.discountMode==='percent'?'active':''}" data-discount-mode="percent">%</button></div></div></div><div class="choice-section"><h3>Phương thức thanh toán</h3>${[['cash','Tiền mặt'],['transfer','Chuyển khoản'],['qr','QR']].map(([v,l])=>`<button class="choice-row ${state.saleDraft.payment===v?'active':''}" data-payment-choice="${v}"><i></i><span>${l}</span></button>`).join('')}</div>${state.saleDraft.payment==='cash'?`<div class="cash-panel"><label>Khách đưa<input id="cashReceived" type="number" inputmode="decimal" value="${esc(state.saleDraft.cashReceived)}" placeholder="0"/></label><div class="cash-quick-pills"><button type="button" class="cash-pill cash-pill-exact ${Number(state.saleDraft.cashReceived)===totals.total?'active':''}" data-cash-amount="${totals.total}">Đủ tiền · ${fmt(totals.total)} ₫</button>${suggestCashAmounts(totals.total).map(amt=>`<button type="button" class="cash-pill ${Number(state.saleDraft.cashReceived)===amt?'active':''}" data-cash-amount="${amt}">${fmt(amt)} ₫</button>`).join('')}</div><div><span>Tiền thừa</span><strong id="cashChange">${fmt(Math.max(0,change))} ₫</strong></div></div>`:''}${qrPanelHtml}<div class="choice-section"><h3>Hình thức nhận hàng</h3><div class="segment"><button class="${!delivery?'active':''}" data-fulfillment="counter">Tại quầy</button><button class="${delivery?'active':''}" data-fulfillment="delivery">Giao hàng</button></div>${delivery?`<div class="delivery-fields"><input id="recipient" value="${esc(state.saleDraft.recipient)}" placeholder="Người nhận"/><input id="deliveryPhone" inputmode="tel" value="${esc(state.saleDraft.phone)}" placeholder="Số điện thoại"/><input id="deliveryAddress" value="${esc(state.saleDraft.address)}" placeholder="Địa chỉ"/><input id="shippingFee" type="number" inputmode="decimal" value="${state.saleDraft.shippingFee||''}" placeholder="Phí giao hàng"/><label class="cod-disabled"><input type="checkbox" disabled/> COD · chưa hỗ trợ lưu an toàn</label><small class="field-limit">Thông tin giao hàng chưa được ghi vào phiếu bán trong data contract hiện tại.</small></div>`:''}</div><label class="cart-note">Ghi chú đơn hàng<input id="saleNote" value="${esc(state.saleDraft.note)}" placeholder="Nhập ghi chú (nếu có)..."/></label><div class="vat-box"><span>Thuế/VAT</span><div class="vat-control"><select id="vatRate">${[[0,'Không VAT'],[5,'5%'],[8,'8%'],[10,'10%'],[-1,'Tùy chỉnh…']].map(([v,l])=>`<option value="${v}" ${(v===-1?state.saleDraft.vatCustom!=='':Number(state.saleDraft.vatRate)===v)?'selected':''}>${l}</option>`).join('')}</select>${state.saleDraft.vatCustom!==''?`<input id="vatCustom" type="number" inputmode="decimal" min="0" max="100" value="${esc(state.saleDraft.vatCustom)}" placeholder="%"/>`:''}<b id="vatAmount">${fmt(totals.vat)} ₫</b></div></div><div class="invoice-box" id="checkoutInvoiceToggle" style="cursor:pointer"><div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span>Hóa đơn điện tử</span><b style="color:${state.saleDraft.requestInvoice?'#16a34a':'#64748b'}">${state.saleDraft.requestInvoice ? '✓ Yêu cầu xuất HĐ' : 'Chưa chọn xuất HĐ'}</b></div></div>${state.saleDraft.requestInvoice ? `<div class="invoice-buyer-fields" style="background:#f8fafc;padding:10px;border-radius:6px;margin:8px 0 12px;border:1px solid #e2e8f0;display:grid;gap:6px"><input id="invTaxCode" placeholder="Mã số thuế doanh nghiệp / hộ KD" value="${esc(state.saleDraft.invoiceBuyer?.taxCode || '')}"/><input id="invCompanyName" placeholder="Tên công ty / tổ chức" value="${esc(state.saleDraft.invoiceBuyer?.companyName || '')}"/><input id="invBuyerEmail" placeholder="Email nhận hóa đơn" value="${esc(state.saleDraft.invoiceBuyer?.email || '')}"/><input id="invBuyerAddress" placeholder="Địa chỉ xuất HĐ" value="${esc(state.saleDraft.invoiceBuyer?.address || '')}"/></div>` : ''}<button class="primary-btn flow-primary ${isQrOrTransfer ? 'qr-verify-pay-btn' : ''}" data-sale-pay ${state.saleBusy?'disabled':''}>${state.saleBusy?'Đang xử lý…':payBtnText}</button></section>`;
     $('#checkoutDiscount')?.addEventListener('input',e=>{state.saleDraft.discount=e.target.value;renderSales()});
     $('#cashReceived')?.addEventListener('input',e=>{state.saleDraft.cashReceived=e.target.value;const val=Number(e.target.value)||0;const next=Math.max(0,val-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',Number(b.dataset.cashAmount)===val));});
     $$('[data-cash-amount]').forEach(btn=>{btn.onclick=()=>{const amt=Number(btn.dataset.cashAmount)||0;state.saleDraft.cashReceived=amt;const inp=$('#cashReceived');if(inp)inp.value=amt;const next=Math.max(0,amt-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',b===btn));};});
@@ -913,7 +981,9 @@ async function submitSale(){
       payments,
       discount:totals.discount,
       note:state.saleDraft.note,
-      customerLabel:customerLabel()
+      customerLabel:customerLabel(),
+      channel:state.saleDraft.channel||'pos',
+      source:state.saleDraft.channel||'pos'
     });
 
     if(method==='cash'&&state.saleDraft.cashReceived){
@@ -940,13 +1010,13 @@ async function submitSale(){
       state.saleSearch='';
       state.saleType='all';
       state.saleShowAll=false;
-      state.saleDraft={discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:'',requestInvoice:false,invoiceBuyer:null};
+      state.saleDraft={discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:'',requestInvoice:false,invoiceBuyer:null,channel:'pos'};
       await refresh();
       showPaymentSuccessPopup(sale,totals.total);
       toast('Đã xác thực thanh toán & lưu phiếu bán.','ok');
     }else{
       state.saleStep='success';
-      state.saleDraft={discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:'',requestInvoice:false,invoiceBuyer:null};
+      state.saleDraft={discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:'',requestInvoice:false,invoiceBuyer:null,channel:'pos'};
       await refresh();
       toast('Đã xác thực thanh toán & lưu phiếu bán.','ok');
     }
@@ -1891,9 +1961,19 @@ function renderSettings(){
   const currentModeName = currentMode.name || 'Cửa hàng chung';
   const resolvedUi = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, currentMode.profile_id);
   const currentUiProfileDisplay = resolvedUi.is_auto ? `Tự động (${resolvedUi.effective_name})` : resolvedUi.name;
+  const taxConf = getTaxSettings();
+  let taxDesc = 'Hộ KD · Bán lẻ (1.5%)';
+  if (taxConf.business_type === 'exempt') taxDesc = 'Miễn thuế / Quản lý nội bộ';
+  else if (taxConf.business_type === 'company_direct') taxDesc = `DN Trực tiếp (${(Number(taxConf.vat_rate||0)+Number(taxConf.pit_rate||0)).toFixed(1)}%)`;
+  else if (taxConf.business_type === 'company_deduct') taxDesc = `DN Khấu trừ (TNDN ${Number(taxConf.cit_rate||20)}%)`;
+  else {
+    const totalRate = (Number(taxConf.vat_rate||0) + Number(taxConf.pit_rate||0)).toFixed(1);
+    const indName = taxConf.industry_type === 'service' ? 'Dịch vụ' : (taxConf.industry_type === 'fnb' ? 'F&B/Sản xuất' : 'Bán lẻ');
+    taxDesc = `Hộ KD · ${indName} (${totalRate}%)${taxConf.ecommerce_auto_deduct ? ' · Trừ sàn TMĐT' : ''}`;
+  }
   $('#content').innerHTML=`
   <section class="settings-center">
-    <section class="card section-card settings-section"><div class="section-head"><div><h2>Cửa hàng</h2><p>Thông tin và quy tắc vận hành.</p></div></div><div class="settings-list"><button data-action="business-profile"><span>${icon('store')}<b>Thông tin cửa hàng</b><small>Tên, liên hệ, địa chỉ lấy và hoàn hàng</small></span>${icon('chevron-right')}</button><button data-action="business-mode-selector"><span>${icon('briefcase')}<b>Chế độ kinh doanh</b><small>${esc(currentModeName)}</small></span>${icon('chevron-right')}</button><button data-action="sale-preferences"><span>${icon('shopping-cart')}<b>Bán hàng & thanh toán</b><small>Kho, thanh toán, âm báo Ting ting, popup & làm tròn tiền</small></span>${icon('chevron-right')}</button><button data-action="warehouse-management"><span>${icon('arrow-left-right')}<b>Kho hàng</b><small>${d.warehouses.length} kho đang hoạt động</small></span>${icon('chevron-right')}</button></div></section>
+    <section class="card section-card settings-section"><div class="section-head"><div><h2>Cửa hàng</h2><p>Thông tin và quy tắc vận hành.</p></div></div><div class="settings-list"><button data-action="business-profile"><span>${icon('store')}<b>Thông tin cửa hàng</b><small>Tên, liên hệ, địa chỉ lấy và hoàn hàng</small></span>${icon('chevron-right')}</button><button data-action="business-mode-selector"><span>${icon('briefcase')}<b>Chế độ kinh doanh</b><small>${esc(currentModeName)}</small></span>${icon('chevron-right')}</button><button data-action="sale-preferences"><span>${icon('shopping-cart')}<b>Bán hàng & thanh toán</b><small>Kho, thanh toán, âm báo Ting ting, popup & làm tròn tiền</small></span>${icon('chevron-right')}</button><button data-action="warehouse-management"><span>${icon('arrow-left-right')}<b>Kho hàng</b><small>${d.warehouses.length} kho đang hoạt động</small></span>${icon('chevron-right')}</button><button data-action="tax-preferences"><span>${icon('shield-check')}<b>Thuế & Hộ kinh doanh</b><small>${esc(taxDesc)}</small></span>${icon('chevron-right')}</button></div></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Giao diện & Sử dụng</h2><p>Tùy chỉnh kiểu hiển thị phù hợp thói quen thao tác.</p></div></div><div class="settings-list"><button data-action="ui-profile-selector"><span>${icon('layout-grid')}<b>Kiểu giao diện</b><small>${esc(currentUiProfileDisplay)}</small></span>${icon('chevron-right')}</button></div></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Thiết lập</h2></div></div><div class="settings-list"><button data-page="prints"><span>${icon('printer')}<b>In & thiết bị</b><small>Máy in, mẫu in và nhật ký</small></span>${icon('chevron-right')}</button><button data-action="data-settings"><span>${icon('file-text')}<b>Dữ liệu</b><small>Nhập, xuất, sao lưu và khôi phục</small></span>${icon('chevron-right')}</button><button class="settings-muted" data-page="permissions"><span>${icon('user')}<b>Người dùng & phân quyền</b><small>Vai trò và quyền truy cập · sắp có</small></span>${icon('chevron-right')}</button></div></section>
     <section class="card section-card settings-section"><div class="section-head"><div><h2>Đồng bộ</h2><p>${CONFIG.SYNC_MODE==='api'?'Đang kết nối QBiz':'Dữ liệu đang lưu trên thiết bị này.'}</p></div></div><div class="surface-callout"><span class="surface-status ${CONFIG.SYNC_MODE==='api'?'working':'prepared'}">${CONFIG.SYNC_MODE==='api'?'Đang đồng bộ':'Chưa kết nối'}</span><p>${CONFIG.SYNC_MODE==='api'?'Theo dõi trạng thái đồng bộ tại đây.':'Chưa bật đồng bộ nhiều thiết bị.'}</p></div><button class="secondary-btn" data-action="sync-now">${CONFIG.SYNC_MODE==='api'?'Đồng bộ ngay':'Kiểm tra dữ liệu chờ'}</button></section>
@@ -1909,6 +1989,236 @@ function openDataSettings(){openModal({title:'Dữ liệu',sub:'Nhập, xuất v
 
 const PROFILE_SETTING='business_profile';
 const SALES_SETTING='sales_preferences';
+const TAX_SETTING='tax_settings';
+const DEFAULT_TAX_SETTINGS={
+  business_type:'hkd', // 'hkd' | 'company_direct' | 'company_deduct' | 'exempt'
+  industry_type:'retail', // 'retail' (1.5%) | 'service' (7%) | 'fnb' (4.5%) | 'custom'
+  vat_rate:1.0,
+  pit_rate:0.5,
+  cit_rate:20.0,
+  ecommerce_auto_deduct:true,
+  annual_exemption_threshold:100000000,
+  price_includes_tax:true,
+  tax_code:'',
+  business_reg_name:'',
+  tax_authority:''
+};
+
+function getTaxSettings(){
+  const row=(state.data?.settings||[]).find(s=>s.id===TAX_SETTING);
+  const val=row?.value||{};
+  return {...DEFAULT_TAX_SETTINGS,...val};
+}
+
+async function saveTaxSettings(newSettings){
+  const current=getTaxSettings();
+  const merged={...current,...newSettings,updated_at:new Date().toISOString()};
+  await put('settings',{id:TAX_SETTING,value:merged,updated_at:merged.updated_at});
+  if(merged.tax_code){
+    const prof={...EMPTY_PROFILE,...await settingValue(PROFILE_SETTING,{})};
+    prof.tax_code=merged.tax_code;
+    await saveLocalSetting(PROFILE_SETTING,prof);
+  }
+  await refresh();
+}
+
+async function openTaxPreferencesModal(){
+  const tax = getTaxSettings();
+  const profile = {...EMPTY_PROFILE,...await settingValue(PROFILE_SETTING,{})};
+
+  openModal({
+    title: 'Cấu hình Thuế & Hộ kinh doanh',
+    sub: 'Căn cứ Thông tư 40/2021/TT-BTC & Nghị định 91/2022 về Sàn TMĐT',
+    submitText: 'Lưu cấu hình thuế',
+    body: `
+      <div class="tax-settings-sheet" style="display:flex;flex-direction:column;gap:10px">
+        <!-- 1. Mô hình kinh doanh -->
+        <div class="account-menu-group" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-weight:700;font-size:12.5px;color:#0f172a;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:18px;height:18px;background:#0f172a;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:10px">1</span>
+            Mô hình kinh doanh & Phương pháp thuế
+          </div>
+          <div class="tax-type-options" style="display:grid;grid-template-columns:1fr;gap:6px">
+            <label class="radio-card ${tax.business_type==='hkd'?'active':''}" style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${tax.business_type==='hkd'?'#0284c7':'#cbd5e1'};border-radius:8px;cursor:pointer;background:${tax.business_type==='hkd'?'#f0f9ff':'#ffffff'}">
+              <input type="radio" name="tax_biz_type" value="hkd" ${tax.business_type==='hkd'?'checked':''} style="margin-top:3px"/>
+              <div>
+                <b style="font-size:12px;color:#0f172a">Hộ kinh doanh / Cá nhân kinh doanh</b>
+                <span style="font-size:9.5px;background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px;margin-left:4px;font-weight:700">Khuyên dùng</span>
+                <div style="font-size:11px;color:#64748b;margin-top:2px">Nộp thuế theo tỷ lệ % trên doanh thu (Theo Thông tư 40/2021/TT-BTC)</div>
+              </div>
+            </label>
+            <label class="radio-card ${tax.business_type==='company_direct'?'active':''}" style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${tax.business_type==='company_direct'?'#0284c7':'#cbd5e1'};border-radius:8px;cursor:pointer;background:${tax.business_type==='company_direct'?'#f0f9ff':'#ffffff'}">
+              <input type="radio" name="tax_biz_type" value="company_direct" ${tax.business_type==='company_direct'?'checked':''} style="margin-top:3px"/>
+              <div>
+                <b style="font-size:12px;color:#0f172a">Doanh nghiệp siêu nhỏ — Trực tiếp trên doanh thu</b>
+                <div style="font-size:11px;color:#64748b;margin-top:2px">Nộp thuế GTGT & TNDN theo tỷ lệ % trực tiếp trên doanh thu</div>
+              </div>
+            </label>
+            <label class="radio-card ${tax.business_type==='company_deduct'?'active':''}" style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${tax.business_type==='company_deduct'?'#0284c7':'#cbd5e1'};border-radius:8px;cursor:pointer;background:${tax.business_type==='company_deduct'?'#f0f9ff':'#ffffff'}">
+              <input type="radio" name="tax_biz_type" value="company_deduct" ${tax.business_type==='company_deduct'?'checked':''} style="margin-top:3px"/>
+              <div>
+                <b style="font-size:12px;color:#0f172a">Doanh nghiệp / Công ty — Phương pháp Khấu trừ</b>
+                <div style="font-size:11px;color:#64748b;margin-top:2px">VAT khấu trừ đầu ra - đầu vào, TNDN 20% trên lợi nhuận</div>
+              </div>
+            </label>
+            <label class="radio-card ${tax.business_type==='exempt'?'active':''}" style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid ${tax.business_type==='exempt'?'#0284c7':'#cbd5e1'};border-radius:8px;cursor:pointer;background:${tax.business_type==='exempt'?'#f0f9ff':'#ffffff'}">
+              <input type="radio" name="tax_biz_type" value="exempt" ${tax.business_type==='exempt'?'checked':''} style="margin-top:3px"/>
+              <div>
+                <b style="font-size:12px;color:#0f172a">Miễn thuế / Quản lý nội bộ</b>
+                <div style="font-size:11px;color:#64748b;margin-top:2px">Doanh thu năm ≤ 100 triệu VNĐ hoặc chưa phát sinh nghĩa vụ thuế</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 2. Ngành nghề & Tỷ lệ Thuế -->
+        <div id="taxIndustryGroup" class="account-menu-group" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;${tax.business_type==='exempt'?'display:none;':''}">
+          <div style="font-weight:700;font-size:12.5px;color:#0f172a;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:18px;height:18px;background:#0f172a;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:10px">2</span>
+            Ngành nghề & Tỷ lệ Thuế quy định
+          </div>
+          <div class="field" style="margin-bottom:2px">
+            <label style="font-size:11px;color:#475569;margin-bottom:3px;display:block">Chọn ngành nghề theo Thông tư 40/2021:</label>
+            <select id="taxIndustrySelect" style="width:100%;height:34px;border-radius:6px;border:1px solid #cbd5e1;padding:0 8px;font-size:12px;background:#fff">
+              <option value="retail" ${tax.industry_type==='retail'?'selected':''}>Bán buôn, bán lẻ hàng hóa (Tổng 1.5%: 1% GTGT + 0.5% TNCN)</option>
+              <option value="service" ${tax.industry_type==='service'?'selected':''}>Dịch vụ, Spa, Sửa chữa, Lưu trú (Tổng 7%: 5% GTGT + 2% TNCN)</option>
+              <option value="fnb" ${tax.industry_type==='fnb'?'selected':''}>Nhà hàng, Ăn uống F&B, Sản xuất (Tổng 4.5%: 3% GTGT + 1.5% TNCN)</option>
+              <option value="custom" ${tax.industry_type==='custom'?'selected':''}>Tùy chỉnh tỷ lệ %...</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="field">
+              <label style="font-size:11px;color:#475569;display:block;margin-bottom:2px">% Thuế GTGT (VAT)</label>
+              <input id="taxVatRate" type="number" step="0.1" min="0" max="100" value="${tax.vat_rate}" style="width:100%;height:34px;border-radius:6px;border:1px solid #cbd5e1;padding:0 8px;font-size:12.5px;font-weight:700"/>
+            </div>
+            <div class="field">
+              <label style="font-size:11px;color:#475569;display:block;margin-bottom:2px">% Thuế TNCN / TNDN</label>
+              <input id="taxPitRate" type="number" step="0.1" min="0" max="100" value="${tax.pit_rate}" style="width:100%;height:34px;border-radius:6px;border:1px solid #cbd5e1;padding:0 8px;font-size:12.5px;font-weight:700"/>
+            </div>
+          </div>
+          <div id="taxCompanyDeductWrap" style="${tax.business_type==='company_deduct'?'':'display:none;'}margin-top:2px">
+            <label style="font-size:11px;color:#475569;display:block;margin-bottom:2px">% Thuế TNDN trên Lợi nhuận gộp</label>
+            <input id="taxCitRate" type="number" step="0.5" min="0" max="100" value="${tax.cit_rate||20}" style="width:100%;height:34px;border-radius:6px;border:1px solid #cbd5e1;padding:0 8px;font-size:12.5px;font-weight:700"/>
+          </div>
+        </div>
+
+        <!-- 3. Quy tắc Sàn TMĐT -->
+        <div class="account-menu-group" style="padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-weight:700;font-size:12.5px;color:#0f172a;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:18px;height:18px;background:#0f172a;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:10px">3</span>
+            Quy tắc Sàn TMĐT (Shopee, TikTok Shop, Lazada)
+          </div>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:4px 0">
+            <input id="taxEcomAutoDeduct" type="checkbox" ${tax.ecommerce_auto_deduct?'checked':''} style="margin-top:3px;width:16px;height:16px"/>
+            <div>
+              <b style="font-size:12px;color:#0f172a">Tự động miễn tính thuế cho đơn từ Sàn TMĐT</b>
+              <div style="font-size:11px;color:#64748b;margin-top:2px;line-height:1.35">
+                Theo quy định (NĐ 91/2022/NĐ-CP), các sàn TMĐT tự động kê khai / khấu trừ thuế tại nguồn. Bật tính năng này giúp các đơn hàng Shopee / TikTok Shop / Lazada không bị tính trùng thuế lần hai.
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <!-- 4. Thông tin Pháp lý -->
+        <div class="account-menu-group" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-weight:700;font-size:12.5px;color:#0f172a;display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:18px;height:18px;background:#0f172a;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:10px">4</span>
+            Thông tin Pháp lý & Kê khai
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="field">
+              <label style="font-size:11px;color:#475569;display:block;margin-bottom:2px">Mã số thuế (MST)</label>
+              <input id="taxCodeInput" value="${esc(tax.tax_code||profile.tax_code||'')}" placeholder="MST cửa hàng" style="width:100%;height:34px;border-radius:6px;border:1px solid #cbd5e1;padding:0 8px;font-size:12px"/>
+            </div>
+            <div class="field">
+              <label style="font-size:11px;color:#475569;display:block;margin-bottom:2px">Tên đăng ký kinh doanh</label>
+              <input id="taxBizNameInput" value="${esc(tax.business_reg_name||profile.display_name||profile.store_name||'')}" placeholder="Hộ KD / Tên cty" style="width:100%;height:34px;border-radius:6px;border:1px solid #cbd5e1;padding:0 8px;font-size:12px"/>
+            </div>
+          </div>
+          <div class="field">
+            <label style="font-size:11px;color:#475569;display:block;margin-bottom:2px">Chi cục thuế quản lý (tùy chọn)</label>
+            <input id="taxAuthorityInput" value="${esc(tax.tax_authority||'')}" placeholder="Ví dụ: Chi cục Thuế Quận Thanh Xuân..." style="width:100%;height:34px;border-radius:6px;border:1px solid #cbd5e1;padding:0 8px;font-size:12px"/>
+          </div>
+        </div>
+      </div>
+    `,
+    onSubmit: async r => {
+      const selectedBizType = $('input[name="tax_biz_type"]:checked', r)?.value || 'hkd';
+      const indType = $('#taxIndustrySelect', r)?.value || 'retail';
+      const vat = Number($('#taxVatRate', r)?.value || 0);
+      const pit = Number($('#taxPitRate', r)?.value || 0);
+      const cit = Number($('#taxCitRate', r)?.value || 20);
+      const ecomAuto = Boolean($('#taxEcomAutoDeduct', r)?.checked);
+      const mst = $('#taxCodeInput', r)?.value.trim() || '';
+      const bizName = $('#taxBizNameInput', r)?.value.trim() || '';
+      const authority = $('#taxAuthorityInput', r)?.value.trim() || '';
+
+      await saveTaxSettings({
+        business_type: selectedBizType,
+        industry_type: indType,
+        vat_rate: vat,
+        pit_rate: pit,
+        cit_rate: cit,
+        ecommerce_auto_deduct: ecomAuto,
+        tax_code: mst,
+        business_reg_name: bizName,
+        tax_authority: authority
+      });
+
+      toast('✓ Đã cập nhật cấu hình Thuế & Hộ kinh doanh!', 'ok');
+    }
+  });
+
+  const root = $('#modalRoot');
+  if (!root) return;
+
+  const bizRadios = $$('input[name="tax_biz_type"]', root);
+  const indSelect = $('#taxIndustrySelect', root);
+  const indGroup = $('#taxIndustryGroup', root);
+  const vatInp = $('#taxVatRate', root);
+  const pitInp = $('#taxPitRate', root);
+  const deductWrap = $('#taxCompanyDeductWrap', root);
+
+  const updateBizSelection = () => {
+    const val = $('input[name="tax_biz_type"]:checked', root)?.value || 'hkd';
+    $$('.radio-card', root).forEach(c => {
+      const inp = $('input[type="radio"]', c);
+      const checked = inp && inp.checked;
+      c.style.borderColor = checked ? '#0284c7' : '#cbd5e1';
+      c.style.background = checked ? '#f0f9ff' : '#ffffff';
+    });
+
+    if (val === 'exempt') {
+      if (indGroup) indGroup.style.display = 'none';
+    } else {
+      if (indGroup) indGroup.style.display = 'flex';
+      if (val === 'company_deduct') {
+        if (deductWrap) deductWrap.style.display = 'block';
+      } else {
+        if (deductWrap) deductWrap.style.display = 'none';
+      }
+    }
+  };
+
+  bizRadios.forEach(r => r.addEventListener('change', updateBizSelection));
+
+  if (indSelect) {
+    indSelect.addEventListener('change', () => {
+      const iv = indSelect.value;
+      if (iv === 'retail') {
+        if (vatInp) vatInp.value = 1.0;
+        if (pitInp) pitInp.value = 0.5;
+      } else if (iv === 'service') {
+        if (vatInp) vatInp.value = 5.0;
+        if (pitInp) pitInp.value = 2.0;
+      } else if (iv === 'fnb') {
+        if (vatInp) vatInp.value = 3.0;
+        if (pitInp) pitInp.value = 1.5;
+      }
+    });
+  }
+}
+
 const EMPTY_PROFILE={store_name:'',display_name:'',logo:'',phone:'',hotline:'',email:'',address:'',website:'',tax_code:'',note:'',pickup_address:'',return_address:'',default_warehouse_id:'',contact_name:'',contact_phone:'',bank_name:'',bank_account_name:'',bank_account_number:'',payment_qr:''};
 async function settingValue(id,fallback){return (await getOne('settings',id))?.value??fallback;}
 async function saveLocalSetting(id,value){await put('settings',{id,value,updated_at:new Date().toISOString()});}
@@ -3315,6 +3625,34 @@ function reportSales(range=state.reportRange){
     customStart: state.reportCustomStart,
     customEnd: state.reportCustomEnd
   });
+
+  const taxSettings = (typeof getTaxSettings === 'function') ? getTaxSettings() : DEFAULT_TAX_SETTINGS;
+  const isEcom = (s) => {
+    const ch = String(s.channel || s.source || s.channel_name || '').toLowerCase();
+    return ch === 'shopee' || ch === 'tiktok' || ch === 'lazada' || ch.includes('shopee') || ch.includes('tiktok') || ch.includes('lazada');
+  };
+  const ecomSales = (metrics.sales || []).filter(isEcom);
+  const ecomGross = ecomSales.reduce((n, s) => n + Number(s.subtotal || s.total || 0), 0);
+  const ecomDiscount = ecomSales.reduce((n, s) => n + Number(s.discount_total || 0), 0);
+  const ecommerceNet = Math.max(0, ecomGross - ecomDiscount);
+  const directNet = Math.max(0, metrics.net - ecommerceNet);
+  const taxableRevenue = taxSettings.ecommerce_auto_deduct ? directNet : metrics.net;
+
+  let estimatedVat = 0, estimatedPit = 0, estimatedTax = 0;
+  if (taxSettings.business_type === 'exempt') {
+    estimatedTax = 0;
+  } else if (taxSettings.business_type === 'company_deduct') {
+    const citRate = Number(taxSettings.cit_rate || 20) / 100;
+    estimatedTax = Math.round(Math.max(0, metrics.profit) * citRate);
+  } else {
+    const vatRate = Number(taxSettings.vat_rate || 0) / 100;
+    const pitRate = Number(taxSettings.pit_rate || 0) / 100;
+    estimatedVat = Math.round(taxableRevenue * vatRate);
+    estimatedPit = Math.round(taxableRevenue * pitRate);
+    estimatedTax = estimatedVat + estimatedPit;
+  }
+  const netProfitAfterTax = Math.max(0, metrics.profit - estimatedTax);
+
   return {
     sales: metrics.sales,
     gross: metrics.gross,
@@ -3327,7 +3665,15 @@ function reportSales(range=state.reportRange){
     collected: metrics.collected,
     receivable: metrics.receivable,
     paymentRows: metrics.paymentRows,
-    refundTotal: metrics.refundTotal
+    refundTotal: metrics.refundTotal,
+    taxSettings,
+    ecommerceNet,
+    directNet,
+    taxableRevenue,
+    estimatedVat,
+    estimatedPit,
+    estimatedTax,
+    netProfitAfterTax
   };
 }
 function renderReports(){
@@ -3406,7 +3752,72 @@ function featureReportSales(){
   const payments=allSales.flatMap(s=>(s.payments||[]).map(p=>({...p,sale:s})));
   const collected=Math.max(0, payments.filter(p=>p.status==='PAID').reduce((n,p)=>n+Number(p.amount||0),0) - refundTotal);
 
-  return {sales:allSales,gross,discount,tax,net,cost:costTotal,profit,hasCost,payments,collected,receivable:payments.filter(p=>p.status==='PENDING').reduce((n,p)=>n+Number(p.amount||0),0),refundTotal};
+  const taxSettings = (typeof getTaxSettings === 'function') ? getTaxSettings() : DEFAULT_TAX_SETTINGS;
+  const isEcomSale = (s) => {
+    const ch = String(s.channel || s.source || s.channel_name || '').toLowerCase();
+    return ch === 'shopee' || ch === 'tiktok' || ch === 'lazada' || ch.includes('shopee') || ch.includes('tiktok') || ch.includes('lazada');
+  };
+  const ecomSales = allSales.filter(isEcomSale);
+  const ecomGross = ecomSales.reduce((n, s) => n + Number(s.subtotal || s.total || 0), 0);
+  const ecomDiscount = ecomSales.reduce((n, s) => n + Number(s.discount_total || 0), 0);
+  const ecommerceNet = Math.max(0, ecomGross - ecomDiscount);
+  const directNet = Math.max(0, net - ecommerceNet);
+
+  const taxableRevenue = taxSettings.ecommerce_auto_deduct ? directNet : net;
+
+  let estimatedVat = 0;
+  let estimatedPit = 0;
+  let estimatedTax = 0;
+  let taxRateLabel = '0%';
+  let taxModeLabel = 'Miễn thuế';
+
+  if (taxSettings.business_type === 'exempt') {
+    estimatedTax = 0;
+    taxModeLabel = 'Miễn thuế / Nội bộ';
+    taxRateLabel = '0%';
+  } else if (taxSettings.business_type === 'company_deduct') {
+    const citRate = Number(taxSettings.cit_rate || 20) / 100;
+    estimatedTax = Math.round(Math.max(0, profit) * citRate);
+    taxModeLabel = 'DN Khấu trừ';
+    taxRateLabel = `TNDN ${taxSettings.cit_rate || 20}%`;
+  } else {
+    const vatRate = Number(taxSettings.vat_rate || 0) / 100;
+    const pitRate = Number(taxSettings.pit_rate || 0) / 100;
+    estimatedVat = Math.round(taxableRevenue * vatRate);
+    estimatedPit = Math.round(taxableRevenue * pitRate);
+    estimatedTax = estimatedVat + estimatedPit;
+    taxModeLabel = taxSettings.business_type === 'hkd' ? 'Hộ KD (TT 40)' : 'DN trực tiếp';
+    taxRateLabel = `${((vatRate + pitRate) * 100).toFixed(1)}% (${taxSettings.vat_rate}% GTGT + ${taxSettings.pit_rate}% ${taxSettings.business_type === 'hkd' ? 'TNCN' : 'TNDN'})`;
+  }
+
+  const netProfitAfterTax = Math.max(0, profit - estimatedTax);
+  const profitAfterTaxMargin = net > 0 ? ((netProfitAfterTax / net) * 100).toFixed(1) : '0';
+
+  return {
+    sales:allSales,
+    gross,
+    discount,
+    tax,
+    net,
+    cost:costTotal,
+    profit,
+    hasCost,
+    payments,
+    collected,
+    receivable:payments.filter(p=>p.status==='PENDING').reduce((n,p)=>n+Number(p.amount||0),0),
+    refundTotal,
+    taxSettings,
+    ecommerceNet,
+    directNet,
+    taxableRevenue,
+    estimatedVat,
+    estimatedPit,
+    estimatedTax,
+    taxRateLabel,
+    taxModeLabel,
+    netProfitAfterTax,
+    profitAfterTaxMargin
+  };
 }
 function preparedReport(title,reason){return `<section class="card feature-panel report-prepared"><div class="section-head"><div><h2>${title}</h2><p>${reason}</p></div>${surfaceStatus('prepared','Chưa đủ dữ liệu')}</div><div class="empty"><strong>Không tạo số liệu giả</strong><span>Khi contract và nguồn dữ liệu thật sẵn sàng, báo cáo này sẽ dùng cùng bộ lọc hiện tại.</span></div></section>`}
 function renderFeatureReports(){
@@ -3421,8 +3832,9 @@ function renderFeatureReports(){
   const tabs=[['overview','Tổng quan'],['revenue','Doanh thu'],['orders','Đơn hàng'],['products','Sản phẩm'],['inventory','Kho'],['payments','Thanh toán'],['returns','Trả hàng'],['debt','Công nợ'],['customers','Khách hàng'],['staff','Nhân viên / Ca'],['shipping','Vận chuyển']];
   const ranges=[['today','Hôm nay'],['yesterday','Hôm qua'],['7d','7 ngày'],['month','Tháng này'],['lastmonth','Tháng trước'],['custom','Tùy chọn']];
   const sourceRows=r.sales.map(s=>`<button class="transaction-row" data-sale-id="${s.id}"><span><strong>${esc(s.code||'Phiếu bán')}</strong><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at||s.createdAt)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch trong khoảng đã chọn.</div>';
+  const taxProfitSection=`<section class="card feature-panel tax-profit-panel" style="margin-top:16px"><div class="section-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><div><h2>Nghĩa vụ thuế & Lợi nhuận sau thuế</h2><p>${esc(r.taxModeLabel)} · ${esc(r.taxRateLabel)}${r.taxSettings?.ecommerce_auto_deduct?' · Miễn tính thuế đơn sàn TMĐT':''}</p></div><button type="button" class="secondary-btn tiny" data-action="tax-preferences" style="font-size:11.5px;padding:4px 10px;border-radius:6px;gap:4px">${icon('shield-check')} Cài đặt thuế</button></div><div class="tax-hero-card" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div style="font-size:11.5px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px"><span>🌿 Lợi nhuận thực sau thuế</span><span style="font-size:10px;background:#bbf7d0;color:#14532d;padding:1px 6px;border-radius:4px;font-weight:700">Tỷ suất ${r.profitAfterTaxMargin}%</span></div><div style="font-size:22px;font-weight:900;color:#15803d;margin-top:2px;line-height:1.2">${r.hasCost?`${fmt(r.netProfitAfterTax)} ₫`:'Chưa có giá vốn'}</div></div>${r.hasCost?`<div style="text-align:right"><small style="font-size:11px;color:#166534;display:block">Lợi nhuận gộp ban đầu</small><strong style="font-size:13.5px;color:#166534">${fmt(r.profit)} ₫</strong></div>`:''}</div><div class="tax-statement-list" style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:10px"><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:12.5px"><div><strong style="color:#0f172a;display:block">1. Doanh thu ngoài sàn</strong><small style="color:#64748b;font-size:11px">Tại quầy, Website, FB/Zalo (Chịu thuế)</small></div><b style="font-size:13.5px;color:#0f172a">${fmt(r.directNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:12.5px;background:#f8fafc"><div><div style="display:flex;align-items:center;gap:6px"><strong style="color:#0f172a">2. Doanh thu Sàn TMĐT</strong><span style="font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:4px;background:#e0f2fe;color:#0369a1">${r.taxSettings?.ecommerce_auto_deduct?'Đã khấu trừ tại sàn':'Chưa trừ'}</span></div><small style="color:#64748b;font-size:11px">Shopee, TikTok Shop, Lazada</small></div><b style="font-size:13.5px;color:#0284c7">${fmt(r.ecommerceNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-size:12.5px;background:#fff"><div><strong style="color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};display:block">3. Thuế ước tính phải nộp</strong><small style="color:#64748b;font-size:11px">${esc(r.taxRateLabel)}</small></div><b style="font-size:14.5px;font-weight:800;color:${r.estimatedTax>0?'#b91c1c':'#0f172a'}">− ${fmt(r.estimatedTax)} ₫</b></div></div><div style="font-size:11px;color:#64748b;background:#f8fafc;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;display:flex;align-items:flex-start;gap:6px;line-height:1.4"><span style="font-size:13px;flex-shrink:0;margin-top:1px">⚖️</span><span>${r.taxSettings?.business_type==='exempt'?'Chế độ miễn thuế hoặc quản lý nội bộ. Không phát sinh nghĩa vụ thuế ước tính.':r.taxSettings?.business_type==='company_deduct'?`Doanh nghiệp phương pháp khấu trừ: TNDN ước tính ${r.taxSettings.cit_rate||20}% trên Lợi nhuận gộp (${fmt(r.profit)} ₫). GTGT kê khai theo hóa đơn VAT đầu ra/đầu vào riêng.`:`Căn cứ Thông tư 40/2021/TT-BTC: Hộ KD nộp ${r.taxSettings.vat_rate}% thuế GTGT (${fmt(r.estimatedVat)} ₫) và ${r.taxSettings.pit_rate}% thuế TNCN (${fmt(r.estimatedPit)} ₫) trên doanh thu ngoài sàn chịu thuế (${fmt(r.taxableRevenue)} ₫). Đơn hàng Shopee, TikTok Shop, Lazada đã được sàn khấu trừ thuế tự động.`}</span></div></section>`;
   let body='';
-  if(['overview','revenue'].includes(state.reportTab))body=`<section class="report-metrics"><div><span>Doanh thu trước giảm</span><b>${fmt(r.gross)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(r.discount)} ₫</b></div><div><span>Doanh thu thuần</span><b>${fmt(r.net)} ₫</b></div><div><span>Thuế</span><b>${fmt(r.tax)} ₫</b></div><div><span>Đã thu</span><b>${fmt(r.collected)} ₫</b></div><div><span>Còn phải thu theo payment</span><b>${fmt(r.receivable)} ₫</b></div></section><section class="card feature-panel"><div class="section-head"><div><h2>Giao dịch nguồn</h2><p>${r.sales.length} phiếu hoàn tất trong bộ lọc.</p></div></div>${sourceRows}</section>${state.reportTab==='overview'?(userCan('VIEW_COST') && r.hasCost?`<section class="card feature-panel"><div class="section-head"><div><h2>Lợi nhuận gộp</h2><p>Tính toán tự động từ doanh thu thuần trừ giá vốn và hoàn tiền.</p></div></div><div class="report-metrics" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:0"><div><span>Tổng giá vốn</span><b>${fmt(r.cost)} ₫</b></div><div><span>Lợi nhuận gộp</span><b style="color:#16a34a">${fmt(r.profit)} ₫</b></div><div><span>Tỷ suất lợi nhuận</span><b>${r.net>0?((r.profit/r.net)*100).toFixed(1):0}%</b></div></div></section>`:(userCan('VIEW_COST')?preparedReport('Lợi nhuận','Phiếu bán chưa có cost snapshot/expense ledger đủ để tính lợi nhuận an toàn.'):'')):''}`;
+  if(['overview','revenue'].includes(state.reportTab))body=`<section class="report-metrics"><div><span>Doanh thu trước giảm</span><b>${fmt(r.gross)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(r.discount)} ₫</b></div><div><span>Doanh thu thuần</span><b>${fmt(r.net)} ₫</b></div><div><span>Thuế</span><b>${fmt(r.tax)} ₫</b></div><div><span>Đã thu</span><b>${fmt(r.collected)} ₫</b></div><div><span>Còn phải thu theo payment</span><b>${fmt(r.receivable)} ₫</b></div></section><section class="card feature-panel"><div class="section-head"><div><h2>Giao dịch nguồn</h2><p>${r.sales.length} phiếu hoàn tất trong bộ lọc.</p></div></div>${sourceRows}</section>${state.reportTab==='overview'?(userCan('VIEW_COST') && r.hasCost?`<section class="card feature-panel"><div class="section-head"><div><h2>Lợi nhuận gộp</h2><p>Tính toán tự động từ doanh thu thuần trừ giá vốn và hoàn tiền.</p></div></div><div class="report-metrics" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:0"><div><span>Tổng giá vốn</span><b>${fmt(r.cost)} ₫</b></div><div><span>Lợi nhuận gộp</span><b style="color:#16a34a">${fmt(r.profit)} ₫</b></div><div><span>Tỷ suất lợi nhuận</span><b>${r.net>0?((r.profit/r.net)*100).toFixed(1):0}%</b></div></div></section>`:(userCan('VIEW_COST')?preparedReport('Lợi nhuận','Phiếu bán chưa có cost snapshot/expense ledger đủ để tính lợi nhuận an toàn.'):'')):''}${taxProfitSection}`;
   else if(state.reportTab==='orders')body=`<section class="card feature-panel"><div class="section-head"><div><h2>Đơn hàng</h2><p>Dữ liệu đơn hiện có; tap để xem chi tiết.</p></div></div>${(state.data.orders||[]).map(o=>`<button class="transaction-row" data-order-open="${o.id}"><span><strong>${esc(o.code||'Đơn hàng')}</strong><small>${esc(o.customer_label||'Khách lẻ')} · ${orderStatusLabel(o.status)}</small></span><b>${fmt(o.grand_total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có đơn hàng.</div>'}</section>`;
   else if(state.reportTab==='products')body=`<section class="card feature-panel"><div class="section-head"><div><h2>Top sản phẩm theo doanh thu</h2><p>Từ item snapshot của phiếu bán.</p></div></div>${products.map(x=>`<button class="transaction-row" ${x.id?`data-product="${x.id}"`:''}><span><strong>${esc(x.name)}</strong><small>${fmt(x.qty)} đã bán</small></span><b>${fmt(x.revenue)} ₫</b>${x.id?icon('chevron-right'):''}</button>`).join('')||'<div class="empty">Chưa có dữ liệu bán hàng.</div>'}</section>`;
   else if(state.reportTab==='inventory')body=`<section class="report-metrics"><div><span>Sản phẩm theo dõi tồn</span><b>${fmt(inventory.length)}</b></div><div><span>Sắp hết / hết</span><b>${fmt(low.length)}</b></div><div><span>Kho đang lọc</span><b>${esc(warehouse(state.reportWarehouse)?.name||'Tất cả')}</b></div></section><section class="card feature-panel">${inventory.map(({p,t})=>`<button class="transaction-row" data-product="${p.id}"><span><strong>${esc(p.name)}</strong><small>Thực ${fmt(t.onHand)} · Giữ ${fmt(t.reserved)}</small></span><b>Có thể bán ${fmt(t.available)}</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có dữ liệu tồn.</div>'}</section>`;
@@ -6414,24 +6826,111 @@ function openTransaction(s){
   updateContextAndChips();
   const payments=s.payments||[];
   const unpaid=(s.payment_status||(s.payments?.[0]?.status))!=='PAID';
+  const grandTotal = Number(s.grand_total ?? s.total ?? 0);
+  const paymentMethodName = payments.map(p=>paymentLabel(p.method)).join(', ') || paymentLabel(s.payment_method || 'cash');
+  const paymentStatusHtml = unpaid 
+    ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:#fef3c7;color:#b45309">Chờ thu</span>` 
+    : `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:#dcfce7;color:#15803d">✓ Đã thu</span>`;
+
+  const discountVal = Number(s.discount_total || 0);
+  const taxVal = Number(s.tax_total || 0);
+  const hasExtraTotals = discountVal > 0 || taxVal > 0;
+
   const carrierInfo = s.shipping_tracking_code ? `
-    <div style="margin:10px 0;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+    <div style="padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12px;color:#166534">Vận chuyển: <b>${esc(VN_CARRIERS[s.shipping_carrier]?.shortName || s.shipping_carrier || 'DVVC')}</b></span>
-        <span class="badge ok">${esc(s.shipping_status || 'Đang giao')}</span>
+        <span style="font-size:11.5px;color:#166534">Vận chuyển: <b>${esc(VN_CARRIERS[s.shipping_carrier]?.shortName || s.shipping_carrier || 'DVVC')}</b></span>
+        <span class="badge ok" style="font-size:10px">${esc(s.shipping_status || 'Đang giao')}</span>
       </div>
-      <div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span style="font-family:monospace;font-weight:700;color:#15803d">${esc(s.shipping_tracking_code)}</span>
-        <a href="${VN_CARRIERS[s.shipping_carrier]?.trackUrl ? VN_CARRIERS[s.shipping_carrier].trackUrl(s.shipping_tracking_code) : '#'}" target="_blank" class="primary-btn" style="padding:2px 8px;font-size:11px;text-decoration:none">Tra cứu ↗</a>
+      <div style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="font-family:monospace;font-weight:700;color:#15803d;font-size:12px">${esc(s.shipping_tracking_code)}</span>
+        <a href="${VN_CARRIERS[s.shipping_carrier]?.trackUrl ? VN_CARRIERS[s.shipping_carrier].trackUrl(s.shipping_tracking_code) : '#'}" target="_blank" class="primary-btn tiny" style="padding:2px 8px;font-size:11px;text-decoration:none">Tra cứu ↗</a>
       </div>
     </div>
   ` : '';
 
   openModal({
-    title:s.code||'Phiếu bán',
-    sub:customerLabel({name:s.customer_label||'Khách lẻ'}),
-    hideSubmit:true,
-    body:`<div class="transaction-detail"><div class="transaction-total">${fmt(s.grand_total??s.total)} ₫</div><div class="detail-list">${(s.items||[]).map(i=>`<div><span><b>${esc(i.name||i.item_name||'Sản phẩm')}</b><small>${esc(i.sku||'')} · ${fmt(i.quantity)} × ${fmt(i.unit_price||0)} ₫</small></span><strong>${fmt(i.line_total??i.lineTotal??0)} ₫</strong></div>`).join('')}</div><div class="order-totals"><div><span>Tạm tính</span><b>${fmt(s.subtotal||0)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(s.discount_total||0)} ₫</b></div><div><span>Thuế</span><b>${fmt(s.tax_total||0)} ₫</b></div><div class="grand"><span>Tổng cộng</span><b>${fmt(s.grand_total??s.total)} ₫</b></div></div><section class="order-facts"><div><span>Thanh toán</span><b>${payments.map(p=>`${paymentLabel(p.method)} · ${p.status==='PAID'?'Đã thu':'Chờ xác nhận'}`).join(', ')||paymentLabel(s.payment_method)}</b></div><div><span>Nguồn</span><b>${esc(s.channel||s.source||'POS trên thiết bị')}</b></div><div><span>Kho</span><b>${esc(warehouse(s.warehouseId||s.warehouse_id)?.name||'Chưa ghi nhận')}</b></div><div><span>Thiết bị / quầy</span><b>${esc(s.device_id||s.register_id||'Thiết bị local')}</b></div><div><span>Thời gian</span><b>${dt(s.created_at||s.createdAt)}</b></div></section>${carrierInfo}${s.note?`<p class="order-note">${esc(s.note)}</p>`:''}<div class="transaction-actions">${unpaid?`<button class="primary-btn" data-action="mark-sale-paid" data-sale-id="${s.id}">Xác nhận đã thu tiền</button>`:''}<button class="secondary-btn" data-action="ship-sale" data-sale-id="${s.id}">🚚 ${s.shipping_tracking_code ? 'Cập nhật vận đơn' : 'Đẩy đơn sang DVVC'}</button><button class="secondary-btn" data-action="print-receipt" data-id="${s.id}" data-type="sale">In phiếu</button><button class="secondary-btn" data-action="share-receipt">Chia sẻ</button><button class="ghost-btn" data-action="invoice-info" data-sale-id="${s.id}">Hóa đơn điện tử</button></div><p class="muted">${CONFIG.FEATURE_FLAGS?.e_invoice?'Hóa đơn điện tử: Nhấn để xem bản nháp, ký phát hành hoặc tra cứu. In lại không tạo Sale/Payment/Movement mới.':'Hóa đơn điện tử chưa kết nối nhà cung cấp. In lại không tạo Sale/Payment/Movement mới.'}</p></div>`
+    title: s.code || s.sale_uuid || 'Phiếu bán',
+    sub: `${customerLabel({name:s.customer_label||'Khách lẻ'})} · ${dt(s.created_at||s.createdAt)}`,
+    hideSubmit: true,
+    body: `
+      <div class="transaction-detail" style="display:flex;flex-direction:column;gap:10px">
+        <!-- 1. Hero Total & Payment Status (Đỉnh modal) -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0 4px">
+          <div>
+            <span style="font-size:11.5px;color:#64748b;font-weight:600;display:block">Tổng thanh toán</span>
+            <strong style="font-size:24px;font-weight:900;color:#0f172a;line-height:1.2">${fmt(grandTotal)} ₫</strong>
+          </div>
+          <div style="text-align:right">
+            ${paymentStatusHtml}
+            <small style="display:block;font-size:11px;color:#64748b;margin-top:2px">${esc(paymentMethodName)}</small>
+          </div>
+        </div>
+
+        ${unpaid ? `
+          <button type="button" class="primary-btn" data-action="mark-sale-paid" data-sale-id="${s.id}" style="width:100%;padding:9px;background:#15803d;color:#fff;font-size:13px;font-weight:700;border-radius:8px">
+            ✓ Xác nhận đã thu tiền
+          </button>
+        ` : ''}
+
+        <!-- 2. BỘ NÚT THAO TÁC GỌN GÀNG ĐƯỢC ĐƯA LÊN TRÊN (In phiếu, Hóa đơn điện tử, Đẩy đơn, Chia sẻ) -->
+        <div class="tx-action-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <button type="button" class="primary-btn tx-act-btn" data-action="print-receipt" data-id="${s.id}" data-type="sale" style="background:#0f172a;color:#fff;border:1px solid #0f172a;padding:8px 10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px">
+            ${icon('printer')} In phiếu
+          </button>
+          <button type="button" class="secondary-btn tx-act-btn" data-action="invoice-info" data-sale-id="${s.id}" style="background:#fff;border:1px solid #cbd5e1;color:#0f172a;padding:8px 10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px">
+            ${icon('file-text')} Hóa đơn điện tử
+          </button>
+          <button type="button" class="secondary-btn tx-act-btn" data-action="ship-sale" data-sale-id="${s.id}" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155;padding:7px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:8px">
+            ${icon('truck')} ${s.shipping_tracking_code ? 'Cập nhật vận đơn' : 'Đẩy đơn sang DVVC'}
+          </button>
+          <button type="button" class="secondary-btn tx-act-btn" data-action="share-receipt" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155;padding:7px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:8px">
+            ${icon('share-2')} Chia sẻ phiếu
+          </button>
+        </div>
+
+        ${carrierInfo}
+
+        <!-- 3. Thông tin Nguồn & Kho gọn gàng (Gộp 5 dòng thừa thãi thành 1 thẻ mini) -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:7px 10px;font-size:11.5px;color:#475569;display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span>Kênh: <b style="color:#0f172a">${esc(channelLabel(s.channel||s.source||'pos'))}</b></span>
+            <span>Kho: <b style="color:#0f172a">${esc(warehouse(s.warehouseId||s.warehouse_id)?.name||'Kho chính')}</b></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;color:#94a3b8;font-size:10.5px">
+            <span>Thiết bị: ${esc(s.device_id||s.register_id||'dev_local')}</span>
+            <span>Tạo lúc: ${dt(s.created_at||s.createdAt)}</span>
+          </div>
+        </div>
+
+        <!-- 4. Danh sách Mặt hàng (Gọn gàng, thanh lịch) -->
+        <div class="detail-list" style="border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;background:#fff">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between">
+            <span>Mặt hàng (${(s.items||[]).length})</span>
+            <span>Thành tiền</span>
+          </div>
+          ${(s.items||[]).map(i=>`
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f8fafc;font-size:12px">
+              <div style="min-width:0;flex:1">
+                <strong style="color:#0f172a;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.name||i.item_name||'Sản phẩm')}</strong>
+                <small style="color:#64748b;font-size:11px">${esc(i.sku ? `${i.sku} · ` : '')}${fmt(i.quantity)} × ${fmt(i.unit_price||0)} ₫</small>
+              </div>
+              <b style="color:#0f172a;font-size:13px;white-space:nowrap;margin-left:6px">${fmt(i.line_total??i.lineTotal??0)} ₫</b>
+            </div>
+          `).join('')}
+        </div>
+
+        ${hasExtraTotals ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:11.5px;color:#64748b">
+            <span>Tạm tính: ${fmt(s.subtotal||0)} ₫</span>
+            ${discountVal > 0 ? `<span style="color:#b45309;font-weight:600">Giảm: −${fmt(discountVal)} ₫</span>` : ''}
+            ${taxVal > 0 ? `<span>Thuế: +${fmt(taxVal)} ₫</span>` : ''}
+          </div>
+        ` : ''}
+
+        ${s.note ? `<p class="order-note" style="margin:0;padding:6px 10px;font-size:11.5px;border-radius:6px">${esc(s.note)}</p>` : ''}
+      </div>
+    `
   });
   if(CONFIG.FEATURE_FLAGS?.e_invoice){
     $('[data-action="invoice-info"]', $('#modalRoot'))?.addEventListener('click',()=>openInvoiceModalForSale(s));
@@ -7453,51 +7952,99 @@ function openUserMenuModal() {
   const role = getCurrentRole();
   const roleLabel = getRoleLabel(role);
 
+  const displayName = user?.fullName || (user?.email ? user.email.split('@')[0] : 'Người dùng');
+  const userEmail = user?.email || '';
+  const initials = (displayName || 'QB').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'QB';
+
   openModal({
     title: 'Tài khoản & Cửa hàng',
-    sub: user?.email || '',
+    sub: 'Không gian làm việc & phân quyền hệ thống',
     hideSubmit: true,
     body: `
-      <div class="user-menu-box" style="display:flex;flex-direction:column;gap:16px">
-        <div style="background:var(--bg-subtle,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="font-size:12px;color:var(--text-muted,#64748b)">CỬA HÀNG ĐANG CHỌN</span>
-            <span class="role-badge role-${(role||'').toLowerCase()}" style="font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px">${esc(roleLabel)}</span>
+      <div class="account-sheet">
+        <!-- 1. Profile Summary Card -->
+        <div class="account-profile-card">
+          <div class="account-avatar">${esc(initials)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px">
+              <strong style="font-size:13.5px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(displayName)}</strong>
+              ${auth.isSuperAdmin ? `
+                <span class="badge" style="background:#0f172a;color:#f8fafc;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px">ROOT</span>
+              ` : ''}
+            </div>
+            <div style="font-size:11.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">${esc(userEmail)}</div>
           </div>
-          <div style="font-weight:700;font-size:16px">${esc(shop?.name || (auth.isSuperAdmin ? 'Quản lý toàn bộ Shop hệ thống' : 'Chưa có Shop'))}</div>
-          <div style="font-size:12px;color:var(--text-muted,#64748b);margin-top:2px">ID: ${esc(shop?.id || '---')}</div>
+          <span class="role-badge role-${(role||'').toLowerCase()}" style="font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;flex-shrink:0">${esc(roleLabel)}</span>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:8px">
+        <!-- 2. Active Shop / Workspace Card with Compact Inline Actions -->
+        <div class="account-store-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:10.5px;font-weight:700;color:#64748b;letter-spacing:0.04em">CỬA HÀNG ĐANG CHỌN</span>
+            <span style="font-size:10.5px;color:#94a3b8">ID: ${esc(shop?.id?.slice(0, 8) || '---')}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:30px;height:30px;border-radius:6px;background:#f1f5f9;color:#0f172a;display:grid;place-items:center;flex-shrink:0">
+              ${icon('store')}
+            </div>
+            <strong style="font-size:14px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(shop?.name || (auth.isSuperAdmin ? 'Tất cả Cửa hàng hệ thống' : 'Chưa có Shop'))}</strong>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button type="button" id="menuBtnSwitchShop" class="secondary-btn tiny" style="flex:1;justify-content:center;gap:4px;font-size:11.5px;font-weight:600;padding:5px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff">
+              ${icon('arrow-left-right')} Đổi Cửa hàng
+            </button>
+            <button type="button" id="menuBtnCreateShop" class="secondary-btn tiny" style="flex:1;justify-content:center;gap:4px;font-size:11.5px;font-weight:600;padding:5px 8px;border-radius:6px;border:1px solid #cbd5e1;background:#fff">
+              ${icon('plus')} Tạo Shop mới
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Navigation & Privileges Grouped Menu -->
+        <div class="account-menu-group">
           ${auth.isSuperAdmin ? `
-          <button class="primary-btn" id="menuBtnPlatformAdmin" style="text-align:left;justify-content:flex-start;gap:8px;background:#0284c7;color:#fff;font-weight:700">
-            ${icon('shield-alert')} Platform Admin Console (Quản trị Nền tảng)
+          <button type="button" id="menuBtnPlatformAdmin" class="account-menu-item">
+            <div class="item-icon navy">${icon('shield-alert')}</div>
+            <div class="item-content">
+              <div class="item-title">
+                Platform Admin Console
+                <span class="badge" style="background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px">ROOT</span>
+              </div>
+              <div class="item-sub">Quản trị toàn bộ người dùng, thuê bao & VietQR</div>
+            </div>
+            <div class="item-arrow">${icon('chevron-right')}</div>
           </button>
           ` : ''}
-          <button class="secondary-btn" id="menuBtnCreateShop" style="text-align:left;justify-content:flex-start;gap:8px">
-            ${icon('store')} Tạo thêm Cửa hàng mới
-          </button>
-          <button class="secondary-btn" id="menuBtnSwitchShop" style="text-align:left;justify-content:flex-start;gap:8px">
-            ${icon('arrow-left-right')} Đổi cửa hàng (Switch Shop)
-          </button>
-          <button class="secondary-btn" id="menuBtnClearDemoFresh" style="text-align:left;justify-content:flex-start;gap:8px;border-color:#f59e0b;color:#b45309;background:#fffbeb;font-weight:600">
-            ${icon('trash-2')} Xóa sạch dữ liệu mẫu Demo (Bắt đầu cửa hàng trắng)
-          </button>
+
           ${userCan('MANAGE_USERS') ? `
-          <button class="secondary-btn" id="menuBtnAddMember" style="text-align:left;justify-content:flex-start;gap:8px">
-            ${icon('users')} Quản lý / Mời nhân viên
+          <button type="button" id="menuBtnAddMember" class="account-menu-item">
+            <div class="item-icon slate">${icon('users')}</div>
+            <div class="item-content">
+              <div class="item-title">Quản lý / Mời nhân viên</div>
+              <div class="item-sub">Phân quyền thu ngân, kho vận & trợ lý</div>
+            </div>
+            <div class="item-arrow">${icon('chevron-right')}</div>
           </button>
           ` : ''}
-          <button class="secondary-btn" id="menuBtnPermissions" style="text-align:left;justify-content:flex-start;gap:8px">
-            ${icon('shield-check')} Xem bảng phân quyền & tính năng
+
+          <button type="button" id="menuBtnPermissions" class="account-menu-item">
+            <div class="item-icon slate">${icon('shield-check')}</div>
+            <div class="item-content">
+              <div class="item-title">Bảng phân quyền & Tính năng</div>
+              <div class="item-sub">Xem chi tiết ma trận quyền hạn từng vai trò</div>
+            </div>
+            <div class="item-arrow">${icon('chevron-right')}</div>
           </button>
         </div>
 
-        <hr style="border:none;border-top:1px solid var(--border,#e2e8f0);margin:4px 0" />
-
-        <button class="secondary-btn" id="menuBtnSignOut" style="color:var(--danger,#ef4444);border-color:var(--danger,#ef4444);width:100%;justify-content:center">
-          ${icon('log-out')} Đăng xuất
-        </button>
+        <!-- 4. Subtle Maintenance & Sign Out -->
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
+          <button type="button" id="menuBtnClearDemoFresh" style="background:none;border:none;color:#64748b;font-size:11.5px;padding:4px 0;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer">
+            ${icon('trash-2')} Xóa dữ liệu mẫu Demo (bắt đầu shop trắng)
+          </button>
+          <button type="button" id="menuBtnSignOut" style="width:100%;height:38px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:12.5px;font-weight:600;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">
+            ${icon('log-out')} Đăng xuất
+          </button>
+        </div>
       </div>
     `
   });
@@ -7564,14 +8111,14 @@ function openExtendSubscriptionModal(user) {
     sub: `Tài khoản: ${esc(user.email)} · ${esc(user.fullName || '')}`,
     body: `
       <div style="display:flex;flex-direction:column;gap:12px;font-size:13.5px">
-        <div style="background:#f0f9ff;border:1px solid #bae6fd;padding:10px 12px;border-radius:8px">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:10px 12px;border-radius:8px">
           <div style="display:flex;justify-content:space-between">
-            <span style="color:#0369a1;font-weight:600">Gói hiện tại:</span>
-            <strong style="color:#0284c7">${esc(user.planName || user.plan || 'Chưa có')}</strong>
+            <span style="color:#64748b;font-weight:600">Gói hiện tại:</span>
+            <strong style="color:#0f172a">${esc(user.planName || user.plan || 'Chưa có')}</strong>
           </div>
           <div style="display:flex;justify-content:space-between;margin-top:4px">
-            <span style="color:#0369a1;font-weight:600">Hạn sử dụng hiện tại:</span>
-            <strong>${esc(currentExpFormatted)}</strong>
+            <span style="color:#64748b;font-weight:600">Hạn sử dụng hiện tại:</span>
+            <strong style="color:#0f172a">${esc(currentExpFormatted)}</strong>
           </div>
         </div>
 
@@ -7646,38 +8193,37 @@ async function renderPlatformAdmin() {
   $('#content').innerHTML = `
     <section class="platform-admin-screen" style="display:flex;flex-direction:column;gap:8px;padding:2px 4px">
       <!-- Dark Navy Command Header: Ultra-compact 40px topbar -->
-      <div style="background:#0f172a;color:#fff;padding:6px 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 1px 4px rgba(0,0,0,0.12)">
-        <div style="display:flex;align-items:center;gap:6px;min-width:0">
+      <div style="background:#0f172a;color:#fff;padding:6px 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 1px 4px rgba(0,0,0,0.12);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1">
           <button type="button" id="exitPlatformAdminBtn" style="background:#1e293b;border:1px solid #334155;color:#f8fafc;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:3px;flex-shrink:0">
             ← Về Shop
           </button>
-          <div style="display:flex;align-items:center;gap:5px;min-width:0">
-            <h2 style="margin:0;font-size:12.5px;font-weight:700;color:#f8fafc;white-space:nowrap;line-height:1.2">⚡ Platform Super Admin Console</h2>
-            <span class="badge" style="background:#ef4444;color:#fff;font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;flex-shrink:0">ROOT</span>
+          <div style="display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden">
+            <h2 style="margin:0;font-size:12.5px;font-weight:700;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">Platform Admin</h2>
+            <span class="badge" style="background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;flex-shrink:0">ROOT</span>
           </div>
         </div>
-        <div style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right" title="${esc(auth.user?.email || 'tungtran2510@gmail.com')}">
+        <div style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;flex-shrink:0;max-width:110px" title="${esc(auth.user?.email || 'tungtran2510@gmail.com')}">
           ${esc(auth.user?.email ? auth.user.email.split('@')[0] : 'admin')}
         </div>
       </div>
 
       <!-- Navigation Tabs: Horizontal Swipeable Bar (Single Line) -->
-      <div class="pos-chips" style="display:flex;gap:4px;overflow-x:auto;white-space:nowrap;padding:2px 0 4px;border-bottom:1px solid var(--border,#e2e8f0);scrollbar-width:none;-webkit-overflow-scrolling:touch">
-        <button class="filter-pill ${currentTab === 'users' ? 'active' : ''}" data-admin-tab="users" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'users' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'users' ? '#0284c7' : '#fff'};color:${currentTab === 'users' ? '#fff' : '#334155'}">
-          👥 Người dùng & Thuê bao
-        </button>
-        <button class="filter-pill ${currentTab === 'commercial' ? 'active' : ''}" data-admin-tab="commercial" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'commercial' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'commercial' ? '#0284c7' : '#fff'};color:${currentTab === 'commercial' ? '#fff' : '#334155'}">
-          💳 Gói cước & VietQR
-        </button>
-        <button class="filter-pill ${currentTab === 'shops' ? 'active' : ''}" data-admin-tab="shops" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'shops' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'shops' ? '#0284c7' : '#fff'};color:${currentTab === 'shops' ? '#fff' : '#334155'}">
-          🏪 Cửa hàng
-        </button>
-        <button class="filter-pill ${currentTab === 'metrics' ? 'active' : ''}" data-admin-tab="metrics" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'metrics' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'metrics' ? '#0284c7' : '#fff'};color:${currentTab === 'metrics' ? '#fff' : '#334155'}">
-          📊 Thống kê Nền tảng
-        </button>
-        <button class="filter-pill ${currentTab === 'audit' ? 'active' : ''}" data-admin-tab="audit" style="padding:4px 10px;font-size:11.5px;font-weight:600;border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${currentTab === 'audit' ? '#0284c7' : '#cbd5e1'};background:${currentTab === 'audit' ? '#0284c7' : '#fff'};color:${currentTab === 'audit' ? '#fff' : '#334155'}">
-          📜 Nhật ký (Audit)
-        </button>
+      <div class="admin-nav-tabs">
+        ${[
+          ['users', '👥 Người dùng & Thuê bao'],
+          ['commercial', '💳 Gói cước & VietQR'],
+          ['shops', '🏪 Cửa hàng'],
+          ['metrics', '📊 Thống kê'],
+          ['audit', '📜 Nhật ký']
+        ].map(([tabKey, tabTitle]) => {
+          const isActive = currentTab === tabKey;
+          return `
+            <button class="filter-pill ${isActive ? 'active' : ''}" data-admin-tab="${tabKey}" style="padding:4px 10px;font-size:11.5px;font-weight:${isActive ? '700' : '600'};border-radius:6px;flex-shrink:0;cursor:pointer;border:1px solid ${isActive ? '#0f172a' : 'transparent'};background:${isActive ? '#0f172a' : 'transparent'};color:${isActive ? '#ffffff' : '#475569'};${isActive ? 'box-shadow:0 1px 3px rgba(15,23,42,0.18)' : ''}">
+              ${tabTitle}
+            </button>
+          `;
+        }).join('')}
       </div>
 
       <!-- Tab Content Area -->
@@ -7738,21 +8284,21 @@ async function renderPlatformAdmin() {
 
       tabContainer.innerHTML = `
         <!-- Metric Strip (Single 4-Col Row) -->
-        <div class="admin-metric-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#f8fafc;padding:5px 6px;border-radius:7px;border:1px solid #e2e8f0;text-align:center">
+        <div class="admin-metric-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#ffffff;padding:6px 6px;border-radius:8px;border:1px solid #e2e8f0;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,0.02)">
           <div style="min-width:0">
-            <div style="font-size:15px;font-weight:800;color:#0284c7;line-height:1.2">${fmt(totalCount)}</div>
+            <div style="font-size:15px;font-weight:800;color:#0f172a;line-height:1.2">${fmt(totalCount)}</div>
             <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Tổng User</div>
           </div>
           <div style="min-width:0;border-left:1px solid #e2e8f0">
-            <div style="font-size:15px;font-weight:800;color:#16a34a;line-height:1.2">${fmt(activeCount)}</div>
+            <div style="font-size:15px;font-weight:800;color:#15803d;line-height:1.2">${fmt(activeCount)}</div>
             <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Hoạt động</div>
           </div>
           <div style="min-width:0;border-left:1px solid #e2e8f0">
-            <div style="font-size:15px;font-weight:800;color:${expiringCount>0?'#d97706':'#64748b'};line-height:1.2">${fmt(expiringCount)}</div>
+            <div style="font-size:15px;font-weight:800;color:${expiringCount>0?'#b45309':'#64748b'};line-height:1.2">${fmt(expiringCount)}</div>
             <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Sắp hết</div>
           </div>
           <div style="min-width:0;border-left:1px solid #e2e8f0">
-            <div style="font-size:15px;font-weight:800;color:${expiredOrLockedCount>0?'#dc2626':'#64748b'};line-height:1.2">${fmt(expiredOrLockedCount)}</div>
+            <div style="font-size:15px;font-weight:800;color:${expiredOrLockedCount>0?'#b91c1c':'#64748b'};line-height:1.2">${fmt(expiredOrLockedCount)}</div>
             <div style="font-size:9.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Khóa/Hạn</div>
           </div>
         </div>
@@ -7771,7 +8317,7 @@ async function renderPlatformAdmin() {
               ['expired', 'Quá hạn'],
               ['suspended', 'Tạm khóa']
             ].map(([k, label]) => `
-              <button type="button" class="filter-pill ${filter === k ? 'active' : ''}" data-user-filter="${k}" style="padding:3px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1px solid ${filter === k ? '#0284c7' : '#e2e8f0'};background:${filter === k ? '#0284c7' : '#fff'};color:${filter === k ? '#fff' : '#64748b'};cursor:pointer;flex-shrink:0">
+              <button type="button" class="filter-pill ${filter === k ? 'active' : ''}" data-user-filter="${k}" style="padding:3px 8px;font-size:11px;font-weight:${filter === k ? '700' : '500'};border-radius:5px;border:1px solid ${filter === k ? '#0f172a' : '#e2e8f0'};background:${filter === k ? '#0f172a' : '#fff'};color:${filter === k ? '#fff' : '#475569'};cursor:pointer;flex-shrink:0">
                 ${label}
               </button>
             `).join('')}
@@ -7802,7 +8348,7 @@ async function renderPlatformAdmin() {
                   
                   let expiryBadge = '';
                   if (isForever) {
-                    expiryBadge = `<span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:11px">Vĩnh viễn</span>`;
+                    expiryBadge = `<span class="badge" style="background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;font-size:11px">Vĩnh viễn</span>`;
                   } else if (diffDays < 0) {
                     expiryBadge = `<span class="badge danger" style="font-size:11px">Quá hạn ${Math.abs(diffDays)} ngày</span>`;
                   } else if (diffDays <= 15) {
@@ -7832,7 +8378,7 @@ async function renderPlatformAdmin() {
                         <span class="role-badge" style="font-size:10.5px;margin-top:2px;display:inline-block">${esc(u.role)}</span>
                       </td>
                       <td style="padding:10px">
-                        <span class="badge" style="font-size:11px;font-weight:700;background:#f1f5f9;border:1px solid #cbd5e1;color:#1e293b">
+                        <span class="badge" style="font-size:11px;font-weight:700;background:#f8fafc;border:1px solid #cbd5e1;color:#1e293b">
                           ${esc(u.planName || u.plan?.toUpperCase() || 'STANDARD')}
                         </span>
                       </td>
@@ -7847,17 +8393,17 @@ async function renderPlatformAdmin() {
                       </td>
                       <td style="padding:10px;text-align:right">
                         <div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">
-                          <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="font-size:11px;padding:3px 7px;gap:3px;border-radius:5px">
+                          <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="background:#0f172a;color:#fff;border:1px solid #0f172a;font-size:11px;padding:3px 8px;gap:3px;border-radius:5px;font-weight:600">
                             ⚡ Gia hạn
                           </button>
-                          <button type="button" class="secondary-btn tiny" data-user-zalo="${esc(u.id)}" title="Sao chép tin nhắn nhắc cước Zalo kèm VietQR" style="font-size:11px;padding:3px 6px;border-radius:5px;background:#eff6ff;color:#0284c7;border:1px solid #bfdbfe">
+                          <button type="button" class="secondary-btn tiny" data-user-zalo="${esc(u.id)}" title="Sao chép tin nhắn nhắc cước Zalo kèm VietQR" style="font-size:11px;padding:3px 7px;border-radius:5px;background:#f8fafc;color:#1e293b;border:1px solid #cbd5e1;font-weight:600">
                             📋 Zalo
                           </button>
                           ${!isSuper ? `
-                            <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:3px 6px;border-radius:5px;color:${isSuspended ? '#16a34a' : '#ea580c'}">
+                            <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid ${isSuspended ? '#bbf7d0' : '#fed7aa'};background:${isSuspended ? '#f0fdf4' : '#fff7ed'};color:${isSuspended ? '#166534' : '#c2410c'};font-weight:600">
                               ${isSuspended ? 'Mở' : 'Khóa'}
                             </button>
-                            <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:3px 6px;border-radius:5px;color:#dc2626;border:1px solid #fecaca;background:#fff5f5">
+                            <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:3px 7px;border-radius:5px;color:#b91c1c;border:1px solid #fecaca;background:#fef2f2">
                               ${icon('trash-2')}
                             </button>
                           ` : `
@@ -7891,22 +8437,22 @@ async function renderPlatformAdmin() {
             let expiryBadge = '';
             let expDateFormatted = isForever ? 'Vĩnh viễn' : (expDate ? dt(expDate).split(' ')[0] : '---');
             if (isForever) {
-              expiryBadge = `<span class="badge" style="background:#dbeafe;color:#1d4ed8;font-size:10px">Vĩnh viễn</span>`;
+              expiryBadge = `<span class="badge" style="background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;font-size:10px">Vĩnh viễn</span>`;
             } else if (diffDays < 0) {
-              expiryBadge = `<span class="badge danger" style="font-size:10px">Quá hạn ${Math.abs(diffDays)}d</span>`;
+              expiryBadge = `<span class="badge" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;font-size:10px">Quá hạn ${Math.abs(diffDays)}d</span>`;
             } else if (diffDays <= 15) {
-              expiryBadge = `<span class="badge warn" style="font-size:10px">Còn ${diffDays}d</span>`;
+              expiryBadge = `<span class="badge" style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-size:10px">Còn ${diffDays}d</span>`;
             } else {
-              expiryBadge = `<span class="badge ok" style="font-size:10px">Còn ${diffDays}d</span>`;
+              expiryBadge = `<span class="badge" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-size:10px">Còn ${diffDays}d</span>`;
             }
 
             let statusBadge = '';
             if (isSuspended) {
-              statusBadge = `<span class="badge danger" style="font-size:10px">Khóa</span>`;
+              statusBadge = `<span class="badge" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;font-size:10px">Khóa</span>`;
             } else if (diffDays < 0 && !isForever) {
-              statusBadge = `<span class="badge warn" style="font-size:10px">Hết hạn</span>`;
+              statusBadge = `<span class="badge" style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;font-size:10px">Hết hạn</span>`;
             } else {
-              statusBadge = `<span class="badge ok" style="font-size:10px">Hoạt động</span>`;
+              statusBadge = `<span class="badge" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;font-size:10px">Hoạt động</span>`;
             }
 
             return `
@@ -7915,10 +8461,10 @@ async function renderPlatformAdmin() {
                   <div style="min-width:0;flex:1">
                     <div style="display:flex;align-items:center;gap:5px">
                       <strong style="font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.fullName || u.email.split('@')[0])}</strong>
-                      <span class="badge" style="font-size:9.5px;font-weight:700;background:#f1f5f9;border:1px solid #cbd5e1;color:#1e293b;padding:1px 4px">${esc(u.planName || u.plan?.toUpperCase() || 'STANDARD')}</span>
+                      <span class="badge" style="font-size:9.5px;font-weight:700;background:#f8fafc;border:1px solid #cbd5e1;color:#1e293b;padding:1px 5px;border-radius:4px">${esc(u.planName || u.plan?.toUpperCase() || 'STANDARD')}</span>
                     </div>
                     <div style="font-size:11px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">${esc(u.email)}${u.phone ? ` · ${esc(u.phone)}` : ''}</div>
-                    <div style="font-size:11px;color:#0284c7;margin-top:2px">🏪 <b>${esc(u.shopName || 'Chưa gắn shop')}</b> · <span style="color:#64748b">${esc(u.role || 'OWNER')}</span></div>
+                    <div style="font-size:11px;color:#334155;margin-top:2px">🏪 <b style="color:#0f172a">${esc(u.shopName || 'Chưa gắn shop')}</b> · <span style="color:#64748b">${esc(u.role || 'OWNER')}</span></div>
                   </div>
                   <div style="text-align:right;flex-shrink:0">
                     <div>${statusBadge}</div>
@@ -7928,20 +8474,20 @@ async function renderPlatformAdmin() {
 
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px dashed #e2e8f0">
                   <div style="font-size:10.5px;color:#64748b">
-                    Hạn: <b style="color:#334155">${expDateFormatted}</b>
+                    Hạn: <b style="color:#0f172a">${expDateFormatted}</b>
                   </div>
                   <div style="display:flex;gap:4px;flex-wrap:nowrap">
-                    <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="font-size:11px;padding:3px 7px;border-radius:5px">
+                    <button type="button" class="primary-btn tiny" data-user-extend="${esc(u.id)}" title="Gia hạn thời gian sử dụng & đổi gói" style="background:#0f172a;color:#fff;border:1px solid #0f172a;font-size:11px;padding:3px 8px;border-radius:5px;font-weight:600">
                       ⚡ Gia hạn
                     </button>
-                    <button type="button" class="secondary-btn tiny" data-user-zalo="${esc(u.id)}" title="Sao chép tin nhắn nhắc cước Zalo kèm VietQR" style="font-size:11px;padding:3px 6px;border-radius:5px;background:#eff6ff;color:#0284c7;border:1px solid #bfdbfe">
+                    <button type="button" class="secondary-btn tiny" data-user-zalo="${esc(u.id)}" title="Sao chép tin nhắn nhắc cước Zalo kèm VietQR" style="font-size:11px;padding:3px 6px;border-radius:5px;background:#f8fafc;color:#1e293b;border:1px solid #cbd5e1;font-weight:600">
                       📋 Zalo
                     </button>
                     ${!isSuper ? `
-                      <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:3px 6px;border-radius:5px;color:${isSuspended ? '#16a34a' : '#ea580c'}">
+                      <button type="button" class="secondary-btn tiny" data-user-toggle="${esc(u.id)}" data-user-status="${esc(u.status)}" title="${isSuspended ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}" style="font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid ${isSuspended ? '#bbf7d0' : '#fed7aa'};background:${isSuspended ? '#f0fdf4' : '#fff7ed'};color:${isSuspended ? '#166534' : '#c2410c'};font-weight:600">
                         ${isSuspended ? 'Mở' : 'Khóa'}
                       </button>
-                      <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:3px 6px;border-radius:5px;color:#dc2626;border:1px solid #fecaca;background:#fff5f5">
+                      <button type="button" class="ghost-btn tiny" data-user-delete="${esc(u.id)}" title="Xóa người dùng khỏi hệ thống" style="font-size:11px;padding:3px 6px;border-radius:5px;color:#b91c1c;border:1px solid #fecaca;background:#fef2f2">
                         ${icon('trash-2')}
                       </button>
                     ` : '<span style="font-size:10.5px;color:#94a3b8;padding:2px 4px">Owner</span>'}
@@ -8037,10 +8583,10 @@ async function renderPlatformAdmin() {
           <h3 style="margin:0 0 10px;font-size:16px;font-weight:700;color:#0f172a">1. Bảng Gói Cước & Hạn Mức Thương Mại Nền Tảng</h3>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
             ${comm.plans.map(p => `
-              <div class="card" style="padding:14px;border:1.5px solid ${p.popular ? '#0284c7' : '#e2e8f0'};background:${p.popular ? '#f0f9ff' : '#fff'};border-radius:10px;display:flex;flex-direction:column;position:relative">
-                ${p.popular ? `<span style="position:absolute;top:-10px;right:12px;background:#0284c7;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase">Khuyên Dùng</span>` : ''}
+              <div class="card" style="padding:14px;border:1.5px solid ${p.popular ? '#0f172a' : '#e2e8f0'};background:${p.popular ? '#f8fafc' : '#fff'};border-radius:10px;display:flex;flex-direction:column;position:relative">
+                ${p.popular ? `<span style="position:absolute;top:-10px;right:12px;background:#0f172a;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase">Khuyên Dùng</span>` : ''}
                 <strong style="font-size:15px;color:#0f172a">${esc(p.name)}</strong>
-                <div style="margin:6px 0 10px;font-size:20px;font-weight:800;color:${p.popular ? '#0284c7' : '#0f172a'}">
+                <div style="margin:6px 0 10px;font-size:20px;font-weight:800;color:#0f172a">
                   ${p.price > 0 ? `${fmt(p.price)} ₫` : 'Miễn phí'}
                   <span style="font-size:12px;font-weight:400;color:#64748b">/${p.period}</span>
                 </div>
@@ -8103,7 +8649,7 @@ async function renderPlatformAdmin() {
           </div>
 
           <div style="margin-top:16px;display:flex;justify-content:flex-end">
-            <button type="button" class="primary-btn" id="btnSaveCommercialSettings" style="gap:6px;padding:10px 20px">
+            <button type="button" class="primary-btn" id="btnSaveCommercialSettings" style="background:#0f172a;color:#fff;border:1px solid #0f172a;gap:6px;padding:10px 20px;font-weight:700">
               ${icon('check')} Lưu Cấu Hình Thương Mại
             </button>
           </div>
@@ -8548,6 +9094,7 @@ document.addEventListener('click', async e=>{
   if(action==='quick-action') return openQuick(kind||'receive');
   if(action==='notifications') return navigate('notifications');
   if(action==='customer-picker') return openCustomerPicker();
+  if(action==='channel-picker') return openChannelPicker();
   if(action==='new-customer') return openNewCustomer();
   if(action==='new-supplier') return openSupplierDraft();
   if(action==='customer-directory'){state.page='customers';return render();}
@@ -8556,6 +9103,7 @@ document.addEventListener('click', async e=>{
   if(action==='business-mode-selector') return openBusinessModeModal();
   if(action==='ui-profile-selector') return openUiProfileModal();
   if(action==='sale-preferences') return openSalePreferences();
+  if(action==='tax-preferences') return openTaxPreferencesModal();
   if(action==='connections-settings') return openConnectionSettings();
   if(action==='data-settings') return openDataSettings();
   if(action==='price-new') return openPriceForm();
@@ -8707,6 +9255,57 @@ document.addEventListener('click', async e=>{
   }
 });
 
+function initScrollHeaderAutoHide() {
+  if (typeof window === 'undefined') return;
+  let lastScrollY = window.scrollY || 0;
+  let isTicking = false;
+  const SCROLL_THRESHOLD = 6;
+
+  window.addEventListener('scroll', () => {
+    if (!isTicking) {
+      window.requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY || 0;
+
+        // 1. Luôn hiện thanh header khi ở sát đỉnh trang (scrollY <= 20px)
+        if (currentScrollY <= 20) {
+          if (document.body.classList.contains('topbar-hidden')) {
+            document.body.classList.remove('topbar-hidden');
+          }
+          lastScrollY = currentScrollY;
+          isTicking = false;
+          return;
+        }
+
+        // 2. Không ẩn nếu đang mở modal hoặc đang ở chuyên trang Platform Admin
+        const isModalOpen = Boolean($('#modalRoot')?.innerHTML?.trim()) || document.body.classList.contains('modal-open');
+        if (isModalOpen || state.page === 'platform-admin') {
+          isTicking = false;
+          return;
+        }
+
+        const diff = currentScrollY - lastScrollY;
+
+        // 3. Vuốt xuống (scroll down) -> Tự động ẩn thanh trên cùng để tối ưu diện tích
+        if (diff > SCROLL_THRESHOLD && currentScrollY > 50) {
+          if (!document.body.classList.contains('topbar-hidden')) {
+            document.body.classList.add('topbar-hidden');
+          }
+        } 
+        // 4. Vuốt lên (scroll up) -> Tự động trượt hiện thanh header lại ngay lập tức
+        else if (diff < -SCROLL_THRESHOLD) {
+          if (document.body.classList.contains('topbar-hidden')) {
+            document.body.classList.remove('topbar-hidden');
+          }
+        }
+
+        lastScrollY = currentScrollY;
+        isTicking = false;
+      });
+      isTicking = true;
+    }
+  }, { passive: true });
+}
+
 async function boot(){
   if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
     navigator.storage.persist().then(persisted => {
@@ -8737,6 +9336,7 @@ async function boot(){
   history.replaceState(historyState(),'');render();
   subscribeAuthState(() => render());
   initAiUI(state);
+  initScrollHeaderAutoHide();
   pruneSyncedOutbox().catch(() => {});
   window.__QBIZ_BUILD_INFO__ = {
     baseGitSha: '9837b84a8b40126536874dfe53b613b46fff52f5',
@@ -8899,7 +9499,11 @@ async function boot(){
   };
   window.openQuick = openQuick;
   window.openSalePreferences = openSalePreferences;
+  window.openChannelPicker = openChannelPicker;
   window.openBusinessProfile = openBusinessProfile;
+  window.openTaxPreferencesModal = openTaxPreferencesModal;
+  window.getTaxSettings = getTaxSettings;
+  window.saveTaxSettings = saveTaxSettings;
   window.__qbiz_simulate_payment__ = (detail) => window.dispatchEvent(new CustomEvent('qbiz:payment_received', { detail }));
   window.openCashForm = openCashForm;
   window.openSupplierReturnModal = openSupplierReturnModal;
@@ -8917,10 +9521,13 @@ async function boot(){
   window.downloadText = downloadText;
   window.navigate = navigate;
   window.refresh = refresh;
+  window.render = render;
   window.state = state;
   window.toast = toast;
   window.triggerManualBackup = triggerManualBackup;
   window.openInvoiceModalForSale = openInvoiceModalForSale;
+  window.openTransaction = openTransaction;
+  window.openOrderDetail = openOrderDetail;
   window.createReturnAdjustmentProposal = createReturnAdjustmentProposal;
   if('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {

@@ -6394,3 +6394,418 @@ body:has(#firstVisitInstallBanner) .topbar {
   .platform-user-table-wrap { display: block !important; }
 }
 
+/* Platform Admin Standalone Isolation */
+body[data-page="platform-admin"] .topbar {
+  display: none !important;
+}
+body[data-page="platform-admin"] #mobileNav {
+  display: none !important;
+}
+body[data-page="platform-admin"] .content {
+  padding: 6px 8px calc(24px + env(safe-area-inset-bottom)) !important;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Account & Store Modal (Refined Apple/Stripe-like Sheet) */
+.account-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.account-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.account-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(15,23,42,0.15);
+}
+.account-store-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.account-menu-group {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+.account-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  min-height: unset !important;
+}
+.account-menu-item:last-child {
+  border-bottom: none;
+}
+.account-menu-item:hover,
+.account-menu-item:active {
+  background: #f8fafc;
+}
+.account-menu-item .item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.account-menu-item .item-icon.navy {
+  background: #0f172a;
+  color: #ffffff;
+}
+.account-menu-item .item-icon.slate {
+  background: #f1f5f9;
+  color: #334155;
+}
+.account-menu-item .item-content {
+  flex: 1;
+  min-width: 0;
+}
+.account-menu-item .item-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.account-menu-item .item-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+.account-menu-item .item-arrow {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+/* Dedicated Admin Navigation Tabs: Deep Navy & Slate */
+.admin-nav-tabs {
+  display: flex !important;
+  gap: 4px !important;
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  padding: 3px !important;
+  background: #f1f5f9 !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+.admin-nav-tabs button {
+  padding: 5px 12px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #475569 !important;
+  transition: all 0.15s ease !important;
+}
+.admin-nav-tabs button:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+.admin-nav-tabs button.active {
+  background: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #0f172a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25) !important;
+}
+
+/* ==========================================================================
+   MOBILE ULTRA-COMPACT HEADER & AUTO-HIDE ON SCROLL DOWN (CHỈ ĐẾN VẠCH ĐỎ)
+   ========================================================================== */
+.topbar {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease !important;
+}
+.install-subtle-tip {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Tự động trượt ẩn toàn bộ thanh đỉnh khi vuốt xuống */
+body.topbar-hidden .topbar {
+  transform: translateY(-160%) !important;
+}
+body.topbar-hidden .install-subtle-tip {
+  transform: translateY(-160%) !important;
+}
+
+@media (max-width: 640px) {
+  /* Thu gọn chiều cao thanh header đến đúng vạch đỏ (tiết kiệm ~32px diện tích) */
+  .topbar {
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 10px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  }
+
+  .topbar h1,
+  #pageTitle {
+    font-size: 19px !important;
+    font-weight: 750 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    color: #0f172a !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .top-actions {
+    gap: 6px !important;
+  }
+
+  /* Nút Đơn hàng siêu gọn */
+  .header-shortcut {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 11.5px !important;
+    font-weight: 650 !important;
+    border-radius: 7px !important;
+    gap: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  }
+  .header-shortcut .ui-icon {
+    width: 15px !important;
+    height: 15px !important;
+  }
+
+  /* Chuông thông báo siêu gọn */
+  .header-bell {
+    min-height: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    border-radius: 7px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  }
+  .header-bell .ui-icon {
+    width: 17px !important;
+    height: 17px !important;
+  }
+  .header-bell b {
+    top: 1px !important;
+    right: 1px !important;
+    min-width: 14px !important;
+    height: 14px !important;
+    font-size: 9px !important;
+    line-height: 14px !important;
+  }
+
+  /* Huy hiệu người dùng / shop siêu gọn */
+  .user-badge-btn {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 0 7px !important;
+    font-size: 11.5px !important;
+    font-weight: 650 !important;
+    border-radius: 7px !important;
+    gap: 4px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  }
+  .user-badge-btn .ui-icon {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Thu gọn Install banner bám đỉnh */
+  body:has(#firstVisitInstallBanner) .topbar {
+    top: 40px !important;
+  }
+  .install-subtle-tip {
+    top: 0 !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 10px !important;
+  }
+  .install-subtle-tip .tip-title {
+    font-size: 12.5px !important;
+  }
+  .install-subtle-tip .tip-action-pill {
+    height: 26px !important;
+    max-height: 26px !important;
+    line-height: 24px !important;
+    padding: 0 10px !important;
+    font-size: 11.5px !important;
+  }
+  .install-subtle-tip .tip-dismiss-btn {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Tối ưu mép đỉnh nội dung: Đưa thẻ xanh và các khối thao tác lên sát vạch đỏ */
+  .auth-user-bar-compact {
+    display: none !important;
+  }
+  .content {
+    padding-top: 6px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .dashboard-sales-hero {
+    margin-top: 0 !important;
+  }
+}
+
+/* --- Phân hệ Cấu hình Thuế & Báo cáo Lợi nhuận sau thuế (Append-Only) --- */
+.tax-settings-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tax-settings-sheet .radio-card {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.tax-settings-sheet .radio-card:hover {
+  border-color: #0284c7;
+}
+.tax-profit-panel {
+  border-top: 2px solid #0f172a;
+}
+.tax-profit-panel .section-head h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.pos-chips .pos-chip-btn {
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.pos-chips .pos-chip-btn:hover {
+  border-color: #0f172a;
+}
+/* Channel Chip and Checkout Header Row */
+.checkout-header-row {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.checkout-header-row .customer-chip {
+  margin: 0 !important;
+  width: 100% !important;
+  text-align: left;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.checkout-header-row .channel-chip {
+  border-color: #cbd5e1;
+}
+.checkout-header-row .channel-chip:hover {
+  border-color: #0f172a;
+}
+.channel-option-row:hover {
+  border-color: #0f172a !important;
+  background: #f8fafc !important;
+}
+
+/* Streamlined Tax & Profit Statement */
+.tax-profit-panel {
+  border-top: 2px solid #0f172a;
+}
+.tax-profit-panel .section-head h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.tax-hero-card {
+  transition: transform 0.15s ease;
+}
+.tax-statement-row {
+  transition: background-color 0.15s ease;
+}
+.tax-statement-row:hover {
+  background-color: #f1f5f9 !important;
+}
+@media (max-width: 640px) {
+  .checkout-header-row {
+    grid-template-columns: 1.1fr 1fr;
+    gap: 6px;
+    margin: 4px 0 6px;
+  }
+  .tax-profit-panel {
+    margin-top: 12px;
+  }
+  .tax-hero-card {
+    padding: 10px 12px !important;
+  }
+  .tax-statement-row {
+    padding: 8px 10px !important;
+  }
+}
+
+/* Compact Transaction Modal Action Grid */
+.tx-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+.tx-action-grid .tx-act-btn {
+  min-height: 40px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+.tx-action-grid .tx-act-btn:active {
+  transform: scale(0.98);
+}
+@media (max-width: 480px) {
+  .tx-action-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .tx-action-grid .tx-act-btn {
+    padding: 7px 6px !important;
+    font-size: 11.5px !important;
+  }
+}
+
+
