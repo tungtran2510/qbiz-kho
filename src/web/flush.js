@@ -14,7 +14,7 @@
 // ==============================================================================
 
 import { getAll, getOne, put } from '../db.js';
-import { getActiveShop } from '../auth.js';
+import { getActiveShop, supabaseFetch } from '../auth.js';
 import { rpc, classifyError, errorCode } from './api.js';
 import { splitWebItemId } from './catalog.js';
 
@@ -102,7 +102,76 @@ const BUILDERS = {
   },
 };
 
+// ---- Lát 2: khách hàng, trả hàng, thu nợ -----------------------------------------------------------------
+const RETURN_METHODS = new Set(['cash', 'transfer', 'qr', 'debt']);
+const localCashPaid = (sale) => (sale?.payments || [])
+  .filter((p) => String(p.status || '').toUpperCase() === 'PAID' && (p.method || sale.payment_method) === 'cash')
+  .reduce((n, p) => n + Number(p.amount || 0), 0);
+
+async function collectBuilder(row) {
+  const s = row.payload?.sale || {};
+  // Khoản thu của lần này: dòng PAID có paid_at = thời điểm cập nhật phiếu (engine.markSalePaid).
+  const pay = (s.payments || []).find((p) => String(p.status || '').toUpperCase() === 'PAID' && p.paid_at && p.paid_at === s.updated_at)
+    || { method: s.payment_method || 'cash', shift_id: s.shift_id };
+  const method = ['cash', 'transfer', 'qr'].includes(pay.method) ? pay.method : 'transfer';
+  return {
+    fn: 'kho_collect_debt',
+    args: { p_payment: { id: row.operation_id, operation_id: row.operation_id, sale_id: s.id, method,
+      amount: Math.round(Number(row.payload?.collected_amount || 0)), paid_at: nn(pay.paid_at),
+      shift_id: shiftRef(pay.shift_id) || shiftRef(s.shift_id), reference: nn(pay.reference) } },
+  };
+}
+
+Object.assign(BUILDERS, {
+  // Khách tạo offline → bảng kho_customers (RLS: owner/manager/cashier khi shop còn quyền Kho). Gửi lại khi đã có
+  // (23505) = đã xong. Sau khi lên web, phiếu bán dựng SAU đó gửi kèm customer_id (thứ tự tạo được giữ).
+  async 'customer.create'(row) {
+    const c = row.payload?.customer || {};
+    return { rest: 'kho_customers', row: { id: c.id, code: nn(c.code), name: c.name, phone: nn(c.phone), email: nn(c.email),
+      address: nn(c.address), credit_limit: Number(c.credit_limit ?? c.creditLimit ?? 0) || null, note: nn(c.note) },
+      after: { store: 'customers', id: c.id, patch: { web_synced: true } } };
+  },
+  async 'return.create'(row) {
+    const d = row.payload?.return || {};
+    const sale = (await getAll('sales')).find((s) => s.id === d.sale_id);
+    let method = String(d.refund_method || '').toLowerCase();
+    if (!RETURN_METHODS.has(method)) {
+      // 'split' / 'original' / phương thức lạ: tiền mặt nếu không vượt tiền mặt đã thu của phiếu, ngược lại chuyển khoản.
+      method = Number(d.cash_refund || 0) <= localCashPaid(sale) ? 'cash' : 'transfer';
+    }
+    return {
+      fn: 'kho_record_return',
+      args: { p_return: { id: d.id, operation_id: row.operation_id, sale_id: d.sale_id, shift_id: shiftRef(d.shift_id),
+        reason: nn(d.reason), returned_at: d.created_at || row.created_at, refund_method: method,
+        refund_amount: Math.round(Number(d.refund_amount || 0)), debt_deduction: Math.round(Number(d.debt_deduction || 0)),
+        cash_refund: method === 'debt' ? 0 : Math.round(Number(d.cash_refund || 0)),
+        lines: (d.lines || []).map((l) => {
+          const ref = splitWebItemId(l.item_id || l.itemId);
+          return { product_id: ref.product_id, variant_id: ref.variant_id, quantity: Number(l.quantity),
+            condition: String(l.condition || 'SELLABLE').toLowerCase(), refund_amount: Math.round(Number(l.refund_amount || 0)) };
+        }) } },
+    };
+  },
+  'sale.mark_paid': collectBuilder,
+  'sale.partial_paid': collectBuilder,
+});
+
 export function isWebSupported(type) { return Object.prototype.hasOwnProperty.call(BUILDERS, type); }
+
+/** Gửi 1 payload đã đóng băng: RPC, hoặc ghi REST trực tiếp (bảng client được RLS cho ghi). */
+async function sendFrozen(frozen) {
+  if (frozen.rest) {
+    try {
+      await supabaseFetch(`/rest/v1/${frozen.rest}`, { method: 'POST', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ ...frozen.row, shop_id: frozen.args.p_shop_id }) });
+      return { id: frozen.row.id, duplicate: false };
+    } catch (err) {
+      if (errorCode(err) === 'PG_23505') return { id: frozen.row.id, duplicate: true };   // đã có (lần gửi trước)
+      throw err;
+    }
+  }
+  return rpc(frozen.fn, frozen.args);
+}
 
 // ---- Đăng ký thiết bị + quầy (server yêu cầu tồn tại + đang bật trước khi mở ca) ------------------------------
 export async function ensureDevice(shopId, identity, defaultWarehouseId) {
@@ -144,11 +213,15 @@ async function doFlush() {
     let frozen = row.rpc_payload;
     if (!frozen) {
       frozen = await BUILDERS[row.type](row);
-      frozen.args = { p_shop_id: shop.id, ...frozen.args };
+      frozen.args = { p_shop_id: shop.id, ...(frozen.args || {}) };
       await put('outbox', { ...row, rpc_payload: frozen, rpc_frozen_at: nowIso() });
     }
     try {
-      const ack = await rpc(frozen.fn, frozen.args);
+      const ack = await sendFrozen(frozen);
+      if (frozen.after) {
+        const cur = await getOne(frozen.after.store, frozen.after.id);
+        if (cur) await put(frozen.after.store, { ...cur, ...frozen.after.patch });
+      }
       await put('outbox', { ...row, rpc_payload: frozen, sync_status: 'SYNCED', web_status: 'SYNCED',
         synced_at: nowIso(), ack, last_error: null, updated_at: nowIso() });
       sent++;
