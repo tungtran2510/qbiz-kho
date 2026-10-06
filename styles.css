@@ -6797,6 +6797,24 @@ body.topbar-hidden .install-subtle-tip {
 .tx-action-grid .tx-act-btn:active {
   transform: scale(0.98);
 }
+.tx-action-grid .btn-print-blue {
+  background: #1485ee !important;
+  color: #fff !important;
+  border: 1.5px solid #0868c6 !important;
+  box-shadow: 0 2px 6px rgba(20, 133, 238, 0.25) !important;
+}
+.tx-action-grid .btn-print-blue:hover {
+  background: #0868c6 !important;
+}
+.tx-action-grid .btn-invoice-blue {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border: 1.5px solid #93c5fd !important;
+}
+.tx-action-grid .btn-invoice-blue:hover {
+  background: #dbeafe !important;
+  border-color: #60a5fa !important;
+}
 @media (max-width: 480px) {
   .tx-action-grid {
     grid-template-columns: 1fr 1fr;

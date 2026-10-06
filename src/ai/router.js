@@ -75,6 +75,11 @@ import {
   parseSystemOrDataQuery,
   parseVietnameseCurrency
 } from './vietnamese-nlp.js';
+import {
+  classifyTaxIntent,
+  buildTaxAssistantResponse,
+  calculateLiveTaxSummary
+} from './tax-intelligence.js';
 
 function norm(str) {
   return canonicalizeVietnamese(str);
@@ -2632,7 +2637,7 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   }
 
   // 7.F) Warranty & Repair Tracking SOP (Q070)
-  if (pNorm.includes('bao hanh') || pNorm.includes('sua chua')) {
+  if ((pNorm.includes('bao hanh') || pNorm.includes('sua chua')) && !pNorm.includes('thue') && !pNorm.includes('nop thue')) {
     return {
       text: `🛠️ **Theo dõi Hàng Bảo hành & Sửa chữa:**\n\n` +
             `• **Vị trí theo dõi:** Bạn vào mục **Hàng hóa → Bảo hành & Dịch vụ** hoặc tra cứu theo số điện thoại khách hàng trên thanh tìm kiếm POS.\n` +
@@ -2905,23 +2910,30 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   if (
     (pNorm.includes('tong ket') || pNorm.includes('tinh hinh kinh doanh') || pNorm.includes('doanh thu') || pNorm.includes('doanh so')) &&
     (pNorm.includes('tuan nay') || pNorm.includes('thang nay') || pNorm.includes('hom nay')) &&
-    !pNorm.includes('nhap') && !/\b(?:ton|ton kho)\b/.test(pNorm) && !pNorm.includes('top') && !pNorm.includes('ban chay') && !pNorm.includes('cham')
+    !pNorm.includes('nhap') && !/\b(?:ton|ton kho)\b/.test(pNorm) && !pNorm.includes('top') && !pNorm.includes('ban chay') && !pNorm.includes('cham') &&
+    !pNorm.includes('thue') && !pNorm.includes('nop thue')
   ) {
     const period = pNorm.includes('thang nay') ? 'month' : (pNorm.includes('tuan nay') ? 'this_week' : 'today');
     const res = await executeSkill('sales-summary', { period }, context, state);
     return { ...res, intent: 'SALES_SUMMARY', skillId: 'sales-summary', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
   }
 
-  // 11) Circular 88 Tax Report Export Fast-Path
-  const asksTaxReport = (
-    pNorm.includes('bang ke thue') || pNorm.includes('to khai thue') || pNorm.includes('thong tu 88') ||
-    pNorm.includes('tt88') || pNorm.includes('s2b') || pNorm.includes('bao cao thue') ||
-    pNorm.includes('thue gtgt') || pNorm.includes('thue hkd') ||
-    (pNorm.includes('doanh thu') && (pNorm.includes('thue') || pNorm.includes('thong tu 88') || pNorm.includes('ke khai')))
-  ) && !pNorm.includes('xuat hoa don') && !pNorm.includes('lap hoa don');
-  if (asksTaxReport) {
+  // 11) QBiz Comprehensive Tax Intelligence & Regulations Fast-Path
+  // Circular 40/2021/TT-BTC, Decree 91/2022/ND-CP (Ecom), 100M Exemption, Live Tax Calculations, TT88 Export
+  const taxIntentType = classifyTaxIntent(pNorm, rawPrompt);
+  if (taxIntentType === 'EXPORT_REPORT') {
     const res = await executeSkill('export-report', { reportType: 'tt88' }, context, state);
     return { ...res, intent: 'EXPORT_REPORT', skillId: 'export-report', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  } else if (taxIntentType) {
+    const taxRes = buildTaxAssistantResponse(taxIntentType, state, pNorm, rawPrompt);
+    if (taxRes) {
+      return {
+        ...taxRes,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        authority_path: 'TAX_INTELLIGENCE_ENGINE',
+        final_answer_source: 'DETERMINISTIC_TAX_REGULATION'
+      };
+    }
   }
 
   // 12) Out-of-Window Return/Exchange Policy SOP (3 tháng / quá hạn đổi trả / đòi tiền mặt)

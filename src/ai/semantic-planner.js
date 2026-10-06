@@ -582,15 +582,14 @@ export function generateDeterministicSemanticPlan(capsule) {
   }
 
   // Tax / Circular 88 Report (Mẫu 01-1/GTGT / S2b-HKD)
-  const asksTaxReport = (
+  const hasTaxExportAction = p.includes('xuat') || p.includes('tai') || p.includes('download') || p.includes('in file') || p.includes('lay file') || p.includes('export');
+  const asksTaxReport = hasTaxExportAction && (
     p.includes('bang ke thue') ||
     p.includes('to khai thue') ||
     p.includes('thong tu 88') ||
     p.includes('tt88') ||
     p.includes('s2b') ||
     p.includes('bao cao thue') ||
-    p.includes('thue gtgt') ||
-    p.includes('thue hkd') ||
     (p.includes('bang ke') && (p.includes('thue') || p.includes('dau ra') || p.includes('doanh thu')))
   ) && !p.includes('xuat hoa don') && !p.includes('lap hoa don') && !p.includes('hoa don do');
 
@@ -1279,7 +1278,11 @@ ${capsule.raw_prompt}`;
         }
 
         // 7. Electronic Invoice Proposal: If user asks for VAT / HĐĐT / MST / hóa đơn doanh nghiệp (NOT tax statements)
-        const isTaxStatement = (
+        const hasTaxExportActionCurated = (
+          p.includes('xuat') || p.includes('tai') || p.includes('download') ||
+          p.includes('in file') || p.includes('lay file') || p.includes('export')
+        );
+        const isTaxStatement = hasTaxExportActionCurated && (
           p.includes('bang ke thue') ||
           p.includes('to khai thue') ||
           p.includes('thong tu 88') ||

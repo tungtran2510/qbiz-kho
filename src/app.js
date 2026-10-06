@@ -6873,18 +6873,18 @@ function openTransaction(s){
           </button>
         ` : ''}
 
-        <!-- 2. BỘ NÚT THAO TÁC GỌN GÀNG ĐƯỢC ĐƯA LÊN TRÊN (In phiếu, Hóa đơn điện tử, Đẩy đơn, Chia sẻ) -->
+        <!-- 2. BỘ NÚT THAO TÁC XANH NỔI BẬT ĐƯA LÊN TRÊN (In phiếu, Hóa đơn điện tử, Đẩy đơn, Chia sẻ) -->
         <div class="tx-action-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <button type="button" class="primary-btn tx-act-btn" data-action="print-receipt" data-id="${s.id}" data-type="sale" style="background:#0f172a;color:#fff;border:1px solid #0f172a;padding:8px 10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px">
+          <button type="button" class="primary-btn tx-act-btn btn-print-blue" data-action="print-receipt" data-id="${s.id}" data-type="sale" style="background:#1485ee;color:#fff;border:1.5px solid #0868c6;padding:8px 10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px;box-shadow:0 2px 6px rgba(20,133,238,0.25)">
             ${icon('printer')} In phiếu
           </button>
-          <button type="button" class="secondary-btn tx-act-btn" data-action="invoice-info" data-sale-id="${s.id}" style="background:#fff;border:1px solid #cbd5e1;color:#0f172a;padding:8px 10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px">
+          <button type="button" class="secondary-btn tx-act-btn btn-invoice-blue" data-action="invoice-info" data-sale-id="${s.id}" style="background:#eff6ff;border:1.5px solid #93c5fd;color:#1d4ed8;padding:8px 10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px">
             ${icon('file-text')} Hóa đơn điện tử
           </button>
-          <button type="button" class="secondary-btn tx-act-btn" data-action="ship-sale" data-sale-id="${s.id}" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155;padding:7px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:8px">
+          <button type="button" class="secondary-btn tx-act-btn" data-action="ship-sale" data-sale-id="${s.id}" style="background:#f8fafc;border:1px solid #cbd5e1;color:#334155;padding:7px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:8px">
             ${icon('truck')} ${s.shipping_tracking_code ? 'Cập nhật vận đơn' : 'Đẩy đơn sang DVVC'}
           </button>
-          <button type="button" class="secondary-btn tx-act-btn" data-action="share-receipt" style="background:#f8fafc;border:1px solid #e2e8f0;color:#334155;padding:7px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:8px">
+          <button type="button" class="secondary-btn tx-act-btn" data-action="share-receipt" style="background:#f8fafc;border:1px solid #cbd5e1;color:#334155;padding:7px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:8px">
             ${icon('share-2')} Chia sẻ phiếu
           </button>
         </div>
@@ -9390,6 +9390,9 @@ async function boot(){
     openBusinessModeModal,
     openUiProfileModal,
     openSalePreferences,
+    getTaxSettings,
+    saveTaxSettings,
+    openTaxPreferencesModal,
     openConnectionSettings,
     openDataSettings,
     openPriceForm,
