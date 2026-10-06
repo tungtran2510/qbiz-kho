@@ -156,6 +156,74 @@ Object.assign(BUILDERS, {
   'sale.partial_paid': collectBuilder,
 });
 
+// ---- Lát 3: nhà cung cấp, phiếu kho (nhập / xuất / kiểm / trả NCC), chuyển kho -------------------------------
+async function syncedRef(store, id) {
+  if (!id) return null;
+  const x = await getOne(store, id);
+  return x?.web_synced ? id : null;   // chưa lên web → không gửi mã (tránh *_NOT_FOUND chặn hàng đợi mãi)
+}
+
+async function stockDocBuilder(row, { kind, subType } = {}) {
+  const d = row.payload?.document || row.payload?.purchase_return || {};
+  const k = kind || d.kind;
+  // Kiểm kho: tồn MÁY THẤY lúc kiểm = số đếm − chênh lệch đã ghi (movement của phiếu; không có movement = khớp).
+  const moved = new Map();
+  for (const m of row.payload?.inventory_movements || []) moved.set(m.productId, Number(m.qty || 0));
+  return {
+    fn: 'kho_record_stock_document',
+    args: { p_doc: { id: d.id || d.document_id, operation_id: row.operation_id, kind: k, sub_type: nn(subType || d.sub_type),
+      warehouse_id: d.warehouse_id, supplier_id: k === 'receive' ? await syncedRef('suppliers', d.supplier_id) : null,
+      reference: nn(d.reference), receiver_name: nn(d.receiver_name), deliverer_name: nn(d.deliverer_name),
+      note: nn(d.note || d.reason), document_at: d.created_at || row.created_at,
+      lines: (d.lines || []).map((l) => {
+        const ref = splitWebItemId(l.productId || l.item_id);
+        const qty = Math.round(Number(l.qty ?? l.quantity ?? 0));
+        return { product_id: ref.product_id, variant_id: ref.variant_id, quantity: qty,
+          client_on_hand: k === 'count' ? qty - (moved.get(l.productId) || 0) : null,
+          unit_cost: k === 'receive' && l.price != null && l.price !== '' ? Number(l.price) : null };
+      }) } },
+  };
+}
+
+const transferStep = (fn, atField) => async (row) => {
+  const t = row.payload?.transfer || {};
+  return { fn, args: { p_transfer_id: t.id || row.entity_id, p_operation_id: row.operation_id, [atField]: nn(t.receivedAt || t.updatedAt) || row.created_at } };
+};
+
+Object.assign(BUILDERS, {
+  async 'supplier.create'(row) {
+    const s = row.payload?.supplier || {};
+    return { rest: 'kho_suppliers', row: { id: s.id, code: nn(s.code), name: s.name, phone: nn(s.phone), email: nn(s.email),
+      address: nn(s.address), tax_code: nn(s.tax_code), note: nn(s.note) },
+      after: { store: 'suppliers', id: s.id, patch: { web_synced: true } } };
+  },
+  'inventory_document.receive': (row) => stockDocBuilder(row, { kind: 'receive' }),
+  'inventory_document.issue': (row) => stockDocBuilder(row, { kind: 'issue' }),
+  'inventory_document.count': (row) => stockDocBuilder(row, { kind: 'count' }),
+  'purchase_return.create': (row) => stockDocBuilder(row, { kind: 'issue', subType: 'PURCHASE_RETURN_OUT' }),
+  async 'transfer.create'(row) {
+    const t = row.payload?.transfer || {};
+    const lines = Array.isArray(t.lines) && t.lines.length ? t.lines : [{ productId: t.productId, qty: t.qty }];
+    return { fn: 'kho_create_transfer', args: { p_transfer: { id: t.id, operation_id: row.operation_id,
+      from_warehouse_id: t.fromWarehouseId, to_warehouse_id: t.toWarehouseId, note: nn(t.note), sent_at: t.createdAt || row.created_at,
+      lines: lines.map((l) => { const ref = splitWebItemId(l.productId); return { product_id: ref.product_id, variant_id: ref.variant_id, quantity: Number(l.qty) }; }) } } };
+  },
+  'transfer.receive': transferStep('kho_receive_transfer', 'p_received_at'),
+  'transfer.cancel': transferStep('kho_cancel_transfer', 'p_cancelled_at'),
+});
+
+// ---- Mốc xác nhận kiểm kho: device_seq LIÊN TỤC lớn nhất đã đồng bộ (lưu bền — outbox cũ có thể bị dọn) ------
+export async function contiguousSyncedSeq(deviceId) {
+  const key = `web_sale_seq_synced:${deviceId}`;
+  let w = Number((await getOne('settings', key))?.value || 0);
+  const synced = new Set((await getAll('outbox'))
+    .filter((r) => r.type === 'sale.create' && r.sync_status === 'SYNCED' && r.rpc_payload?.args?.p_sale?.device_id === deviceId)
+    .map((r) => Number(r.rpc_payload.args.p_sale.device_seq)));
+  while (synced.has(w + 1)) w++;
+  await put('settings', { id: key, value: w });
+  return w;
+}
+
 export function isWebSupported(type) { return Object.prototype.hasOwnProperty.call(BUILDERS, type); }
 
 /** Gửi 1 payload đã đóng băng: RPC, hoặc ghi REST trực tiếp (bảng client được RLS cho ghi). */

@@ -32,8 +32,11 @@ export function splitWebItemId(itemId) {
 const enc = encodeURIComponent;
 const listPrice = (p) => (p.sale_price && Number(p.sale_price) > 0 ? Number(p.sale_price) : (p.price == null ? null : Number(p.price)));
 
+// Chỉ tính sự kiện CÒN SẼ GỬI (chờ / đang gửi / lỗi chờ). Mục "cần xem" (NEEDS_REVIEW) và loại chưa hỗ trợ
+// (DEFERRED) không bao giờ tự lên server → nếu tính vào thì tồn không bao giờ được làm mới nữa.
 export async function hasPendingStockEvents() {
-  return (await getAll('outbox')).some((r) => r.sync_status !== 'SYNCED' && STOCK_EVENT_TYPES.test(String(r.type || '')));
+  return (await getAll('outbox')).some((r) => ['PENDING', 'SYNCING', 'ERROR'].includes(String(r.sync_status || 'PENDING').toUpperCase())
+    && r.web_status !== 'DEFERRED' && STOCK_EVENT_TYPES.test(String(r.type || '')));
 }
 
 /** Thay toàn bộ nội dung 1 store bằng `rows` (xoá dòng không còn trên web). */

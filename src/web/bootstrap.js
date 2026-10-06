@@ -9,6 +9,7 @@
 import { ensureLocalIdentity } from '../engine.js';
 import { pullCatalog } from './catalog.js';
 import { ensureDevice, webFlushOutbox } from './flush.js';
+import { autoAckOpenSessions } from './count.js';
 
 const FLUSH_EVERY_MS = 20000;
 const CATALOG_EVERY_MS = 5 * 60000;
@@ -55,6 +56,8 @@ export async function startWebSync(shop, onChange = () => {}) {
       } else {
         await webFlushOutbox();
       }
+      // Kho đang kiểm: tự xác nhận thiết bị đã đồng bộ (mốc device_seq) để quản lý chốt được phiên.
+      lastState.countSessions = await autoAckOpenSessions(shop.id, identity.device_id);
       lastState.error = null;
     } catch (err) {
       lastState.error = String(err?.message || err);

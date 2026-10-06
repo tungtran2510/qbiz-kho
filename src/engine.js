@@ -726,8 +726,12 @@ export const STOCK_OUT_TYPES = {
 // One warehouse document is one local business operation.  Its level changes,
 // movements and outbox record commit together so a multi-line receipt cannot
 // leave inventory half-applied when a line fails.
+// Backend web: xuất kho THỦ CÔNG không được vượt tồn khả dụng (server kiểm) → chỉ lập khi có mạng, không lập
+// "đã xuất" offline rồi bị từ chối sau (quyết định nghiệp vụ 10/2026).
+function requireOnlineForManualIssue(){ if(CONFIG.BACKEND==='web'&&globalThis.navigator&&globalThis.navigator.onLine===false) throw new Error('Phiếu xuất / chuyển kho / trả NCC cần kết nối mạng để kiểm tra tồn trên QBiz. Vui lòng thử lại khi có mạng.'); }
 export async function applyWarehouseBatch({kind,warehouseId,lines,reference='',operationId='',documentId='',supplierId='',subType='',receiverName='',delivererName='',note=''}){
   if(!['receive','issue','count'].includes(kind)) throw new Error('Loại phiếu kho không hợp lệ.');
+  if(kind==='issue') requireOnlineForManualIssue();
   if(!warehouseId) throw new Error('Hãy chọn kho.');
   if(!Array.isArray(lines)||!lines.length) throw new Error('Phiếu cần ít nhất một dòng hàng.');
   const normalized=new Map();
@@ -804,6 +808,7 @@ export async function createPurchaseReturn({
   operationId = '',
   reference = ''
 } = {}) {
+  requireOnlineForManualIssue();
   if (!warehouseId) throw new Error('Hãy chọn kho xuất trả hàng.');
   if (!Array.isArray(lines) || !lines.length) throw new Error('Phiếu trả cần ít nhất một dòng hàng.');
 
@@ -971,6 +976,7 @@ export async function createPurchaseReturn({
 export { createPurchaseReturn as returnToSupplier };
 
 export async function createTransfer({productId,fromWarehouseId,toWarehouseId,qty,lines,note='',transferId='',operationId=''}){
+  requireOnlineForManualIssue();
   if(!fromWarehouseId||!toWarehouseId) throw new Error('Hãy chọn kho đi và kho nhận.');
   if(fromWarehouseId===toWarehouseId) throw new Error('Kho đi và kho nhận phải khác nhau.');
   const rawLines=Array.isArray(lines)&&lines.length?lines:[{productId,qty:Number(qty)}];
@@ -1362,7 +1368,7 @@ export async function createReturn({saleId,lines,reason='Khách trả hàng',ref
                   levelReq.onerror=()=>context.abort(levelReq.error);
                   levelReq.onsuccess=()=>{
                     const current=levelReq.result||{id:levelId,productId:itemId,warehouseId,onHand:0,reserved:0,damaged:0,version:0};
-                    const next={...current,onHand:Number(current.onHand||0)+qty,damaged:Number(current.damaged||0)+(condition==='DAMAGED'?qty:0),version:Number(current.version||0)+1,updatedAt:now()};
+                    const next={...current,onHand:Number(current.onHand||0)+(CONFIG.BACKEND==='web'&&condition==='DAMAGED'?0:qty),damaged:Number(current.damaged||0)+(condition==='DAMAGED'?qty:0),version:Number(current.version||0)+1,updatedAt:now()};
                     const eventId=uuid(); const movement={id:`${operation}:movement:${itemId}`,groupId:id,type:'return',productId:itemId,warehouseId,qty,reason:condition==='DAMAGED'?'Trả hàng lỗi':condition==='SELLABLE'?'Trả hàng bán lại được':'Trả hàng không nhập lại',reference:id,reference_type:'return',reference_id:id,sale_uuid:sale.sale_uuid||sale.id,operation_id:operation,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:now(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};
                     levelOps.push({next,movement}); completedInventory++; if(completedInventory===expectedInventory) finish();
                   };
