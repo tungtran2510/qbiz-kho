@@ -31,8 +31,12 @@ export function stopWebSync() {
   currentShopId = null;
 }
 
-/** shop: { id, kho_entitled, default_warehouse_id }. onChange(): gọi để app vẽ lại sau khi dữ liệu đổi. */
-export async function startWebSync(shop, onChange = () => {}) {
+/**
+ * shop: { id, kho_entitled, default_warehouse_id }. onChange(): gọi để app vẽ lại sau khi dữ liệu đổi.
+ * recheckEntitlement(): đọc lại quyền Kho của shop (online) ở mỗi vòng làm mới danh mục — hết dùng thử / vừa gia hạn
+ * trong lúc đang mở app được phát hiện trong vài phút, không cần tải lại trang (app tự khoá / mở lại).
+ */
+export async function startWebSync(shop, onChange = () => {}, { recheckEntitlement } = {}) {
   stopWebSync();
   if (!shop?.id) return lastState;
   currentShopId = shop.id;
@@ -49,8 +53,12 @@ export async function startWebSync(shop, onChange = () => {}) {
     registered = true;
   };
 
-  const cycle = async ({ catalog = false } = {}) => {
+  const cycle = async ({ catalog = false, recheck = false } = {}) => {
     if (currentShopId !== shop.id) return;
+    if (recheck && recheckEntitlement) {
+      try { await recheckEntitlement(); } catch (_) { /* offline → giữ trạng thái cũ */ }
+      if (currentShopId !== shop.id) return;   // quyền đổi → app đã dừng vòng này, chạy vòng mới
+    }
     try {
       // Thiết bị + quầy PHẢI có trên server trước khi đẩy mở ca (nếu không: DEVICE_INACTIVE → "cần xem" oan).
       await register();
@@ -73,9 +81,9 @@ export async function startWebSync(shop, onChange = () => {}) {
   await cycle({ catalog: true });   // offline lúc mở app → register/đẩy/kéo thử lại ở vòng sau
 
   timers.push(setInterval(() => cycle(), FLUSH_EVERY_MS));
-  timers.push(setInterval(() => cycle({ catalog: true }), CATALOG_EVERY_MS));
+  timers.push(setInterval(() => cycle({ catalog: true, recheck: true }), CATALOG_EVERY_MS));
   if (typeof window !== 'undefined') {
-    onlineHandler = () => cycle({ catalog: true });
+    onlineHandler = () => cycle({ catalog: true, recheck: true });
     window.addEventListener('online', onlineHandler);
   }
   return lastState;

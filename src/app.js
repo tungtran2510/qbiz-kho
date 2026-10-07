@@ -9498,7 +9498,8 @@ async function boot(){
       // mở đúng DB (dữ liệu, outbox, danh tính thiết bị của shop này).
       if (openedDbName() && openedDbName() !== currentDbName()) { stopWebSync(); location.reload(); return; }
       if (openedDbName() === demoDbName()) { stopWebSync(); clearDemoSession(); location.reload(); return; }
-      startWebSync(shop, () => { webSyncStatus().then((s) => { state.webSync = s; }).catch(() => {}).finally(() => { refresh().catch(() => {}); }); }).catch((err) => console.warn('[web-sync]', err));
+      startWebSync(shop, () => { webSyncStatus().then((s) => { state.webSync = s; }).catch(() => {}).finally(() => { refresh().catch(() => {}); }); },
+        { recheckEntitlement: () => loadUserShops() }).catch((err) => console.warn('[web-sync]', err));
     });
   }
   initAiUI(state);
