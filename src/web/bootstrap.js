@@ -11,6 +11,7 @@ import { pullCatalog } from './catalog.js';
 import { ensureDevice, webFlushOutbox } from './flush.js';
 import { autoAckOpenSessions } from './count.js';
 import { getCurrentRole } from '../auth.js';
+import { rpc } from './api.js';
 
 const FLUSH_EVERY_MS = 20000;
 const CATALOG_EVERY_MS = 5 * 60000;
@@ -40,7 +41,10 @@ export async function startWebSync(shop, onChange = () => {}) {
   let registered = false;
   const register = async () => {
     if (registered || shop.kho_entitled === false) return;
-    const dev = await ensureDevice(shop.id, identity, shop.default_warehouse_id, getCurrentRole());
+    // Shop có Kho bằng đường không tạo kho (quà gói Business, license cấp tay) → server tạo/trả kho mặc định (0100)
+    // trước khi gắn quầy; kéo danh mục ngay sau đó sẽ có kho này.
+    const warehouseId = shop.default_warehouse_id || await rpc('kho_ensure_default_warehouse', { p_shop_id: shop.id });
+    const dev = await ensureDevice(shop.id, identity, warehouseId || null, getCurrentRole());
     lastState.deviceActive = dev?.active !== false;
     registered = true;
   };
