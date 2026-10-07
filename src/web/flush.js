@@ -136,15 +136,18 @@ Object.assign(BUILDERS, {
       // Tiền mặt ĐÃ hoàn trước theo phương thức THỰC TẾ đã gửi server — engine lưu 'split'/'original' nên không dựa
       // vào phương thức cục bộ. Nguồn BỀN: bản ghi refunds cục bộ được đánh dấu web_method/web_cash_refund khi phiếu
       // trả lên server (outbox đã gửi bị dọn sau 30 ngày); cộng thêm phiếu trả đã đóng băng nhưng chưa lên.
-      const sentCash = (await getAll('refunds'))
-        .filter((f) => f.sale_id === d.sale_id && f.return_id !== d.id && f.web_method === 'cash')
-        .reduce((n, f) => n + Number(f.web_cash_refund || 0), 0);
-      const frozenCash = (await getAll('outbox'))
-        .filter((o) => o.type === 'return.create' && o.id !== row.id && o.payload?.return?.sale_id === d.sale_id
-          && ['PENDING', 'ERROR', 'SYNCING'].includes(String(o.sync_status || '').toUpperCase())
-          && o.rpc_payload?.args?.p_return?.refund_method === 'cash')
-        .reduce((n, o) => n + Number(o.rpc_payload.args.p_return.cash_refund || 0), 0);
-      const priorCash = sentCash + frozenCash;
+      // Khử trùng theo mã phiếu trả: refunds bền (web_method) + payload đóng băng trong outbox (mọi trạng thái trừ
+      // "cần xem"/đã bỏ — gồm cả dòng đã gửi chưa bị dọn, kể cả dòng tạo trước khi có web_method).
+      const cashByReturn = new Map();
+      for (const f of await getAll('refunds')) {
+        if (f.sale_id === d.sale_id && f.return_id && f.return_id !== d.id && f.web_method === 'cash') cashByReturn.set(f.return_id, Number(f.web_cash_refund || 0));
+      }
+      for (const o of await getAll('outbox')) {
+        const pr = o.rpc_payload?.args?.p_return;
+        if (o.type === 'return.create' && o.id !== row.id && pr?.sale_id === d.sale_id && pr.refund_method === 'cash'
+          && !['NEEDS_REVIEW', 'DISCARDED'].includes(String(o.sync_status || '').toUpperCase())) cashByReturn.set(pr.id, Number(pr.cash_refund || 0));
+      }
+      const priorCash = [...cashByReturn.values()].reduce((n, v) => n + v, 0);
       method = Number(d.cash_refund || 0) <= localCashPaid(sale) - priorCash ? 'cash' : 'transfer';
     }
     const cashRefund = method === 'debt' ? 0 : Math.round(Number(d.cash_refund || 0));
