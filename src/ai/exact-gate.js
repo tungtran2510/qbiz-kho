@@ -264,8 +264,11 @@ export async function evaluateExactDeterministicGate(prompt, context = {}, state
       'open_reports',
       'open_warehouse',
       'open_customers',
-      'open_suppliers'
+      'open_suppliers',
+      'open_business_mode',
+      'open_ui_profile'
     ];
+
     if (ALLOWED_EXACT_NAV.includes(navAction.actionId)) {
       return {
         matched: true,

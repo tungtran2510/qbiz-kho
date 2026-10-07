@@ -75,7 +75,7 @@ export async function closeShift({shiftId,countedCash=0,operationId=''}={}){
                   const allSales=salesReq.result||[];
                   const shiftSales=allSales.filter(s=>s.shift_id===shiftId||(s.payments||[]).some(p=>p.shift_id===shiftId));
                   const saleById=new Map(allSales.map(s=>[s.id,s]));
-                  const summary={sales_count:allSales.filter(s=>s.shift_id===shiftId).length,sales_total:0,cash_sales:0,transfer_sales:0,qr_sales:0,refund_total:0,cash_refunds:0,cash_expenses:0,expense_total:0,manual_cash_in:0};
+                  const summary={sales_count:allSales.filter(s=>s.shift_id===shiftId).length,sales_total:0,cash_sales:0,transfer_sales:0,qr_sales:0,refund_total:0,cash_refunds:0,cash_expenses:0,expense_total:0,manual_cash_in:0,manual_cash_out:0};
                   for(const sale of shiftSales){
                     const payments=Array.isArray(sale.payments)&&sale.payments.length?sale.payments:[{method:sale.payment_method||'cash',amount:sale.grand_total??sale.total??0,status:sale.payment_status||'PAID',shift_id:sale.shift_id}];
                     for(const payment of payments){
@@ -101,13 +101,16 @@ export async function closeShift({shiftId,countedCash=0,operationId=''}={}){
                   const allCashEntries=Array.isArray(cashInReq.result?.value)?cashInReq.result.value:[];
                   for(const entry of allCashEntries){
                     const isMatchShift=entry.shift_id===shiftId||(!entry.shift_id&&entry.created_at&&entry.created_at>=shift.opened_at&&(!shift.closed_at||entry.created_at<=shift.closed_at));
-                    const isCash=String(entry.method||'').toLowerCase().includes('tiền mặt')||entry.method==='cash';
+                    const isCash=String(entry.method||'').toLowerCase().includes('tiền mặt')||entry.method==='cash'||!entry.method;
                     if(entry.kind==='in'&&isMatchShift&&isCash){
                       const amount=Math.max(0,Number(entry.amount)||0);
                       summary.manual_cash_in+=amount;
+                    } else if(entry.kind==='out'&&isMatchShift&&isCash){
+                      const amount=Math.max(0,Number(entry.amount)||0);
+                      summary.manual_cash_out+=amount;
                     }
                   }
-                  const expected=Math.max(0,Number(shift.opening_cash||0)+summary.cash_sales+summary.manual_cash_in-summary.cash_refunds-summary.cash_expenses);
+                  const expected=Math.max(0,Number(shift.opening_cash||0)+summary.cash_sales+summary.manual_cash_in-summary.cash_refunds-summary.cash_expenses-summary.manual_cash_out);
                   const stamp=now();
                   const closed={...shift,status:'CLOSED',closed_at:stamp,expected_cash:expected,counted_cash:counted,difference:counted-expected,summary,version:Number(shift.version||1)+1,operation_id:operation,updated_at:stamp};
                   const outbox=makeOutbox({operationId:operation,entityType:'shift',entityId:shiftId,action:'close',version:closed.version,deviceId:identity.device_id,registerId:identity.register_id,type:'shift.close',createdAt:stamp,payload:{shift:closed}});
@@ -635,8 +638,8 @@ export async function getCustomerProfileHistory(dataOrId, customerIdQuery) {
 }
 
 export async function snapshot(){
-  const [products,warehouses,levels,movements,transfers,sales,orders,customers,suppliers,purchase_receipts,returns,refunds,shifts,categories,settings,outbox,devices,registers,print_templates,print_jobs]=await Promise.all(['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs'].map(getAll));
-  return {products,warehouses,levels,customers,suppliers,purchase_receipts,returns,refunds,shifts:shifts.sort((a,b)=>(b.opened_at||'').localeCompare(a.opened_at||'')),categories,settings,devices,registers,print_templates,print_jobs,movements:movements.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')),transfers:transfers.sort((a,b)=>(b.created_at||b.createdAt||'').localeCompare(a.created_at||a.createdAt||'')),purchase_receipts:purchase_receipts.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),returns:returns.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),refunds:refunds.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),sales:sales.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),orders:orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),outbox};
+  const [products,warehouses,levels,movements,transfers,sales,orders,customers,suppliers,purchase_receipts,returns,refunds,shifts,categories,settings,outbox,devices,registers,print_templates,print_jobs,electronic_invoices,invoice_audit_logs]=await Promise.all(['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs','electronic_invoices','invoice_audit_logs'].map(getAll));
+  return {products,warehouses,levels,customers,suppliers,purchase_receipts,returns,refunds,shifts:shifts.sort((a,b)=>(b.opened_at||'').localeCompare(a.opened_at||'')),categories,settings,devices,registers,print_templates,print_jobs,electronic_invoices:(electronic_invoices||[]).sort((a,b)=>(b.issued_at||b.created_at||'').localeCompare(a.issued_at||a.created_at||'')),invoice_audit_logs:(invoice_audit_logs||[]).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),movements:movements.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')),transfers:transfers.sort((a,b)=>(b.created_at||b.createdAt||'').localeCompare(a.created_at||a.createdAt||'')),purchase_receipts:purchase_receipts.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),returns:returns.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),refunds:refunds.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),sales:sales.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),orders:orders.sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')),outbox};
 }
 export function available(level){ return Math.max(0,(level?.onHand||0)-(level?.reserved||0)-(level?.damaged||0)); }
 export function levelFor(data,productId,warehouseId,variantId=''){
@@ -744,7 +747,7 @@ export async function applyWarehouseBatch({kind,warehouseId,lines,reference='',o
   const defaultReason = reference ? `${typeLabel} (${reference})` : typeLabel;
 
   let result;
-  await runTransaction(['products','levels','movements','outbox','purchase_receipts'],(stores,tx,context)=>{
+  await runTransaction(['products','levels','movements','outbox','purchase_receipts','suppliers'],(stores,tx,context)=>{
     const existingReq=stores.outbox.get(operation);
     existingReq.onerror=()=>context.abort(existingReq.error);
     existingReq.onsuccess=()=>{
@@ -784,7 +787,26 @@ export async function applyWarehouseBatch({kind,warehouseId,lines,reference='',o
             const totalCost=receiptLines.some(line=>line.line_total===null)?null:receiptLines.reduce((sum,line)=>sum+Number(line.line_total||0),0);
             const document={id:docId,document_id:docId,kind,sub_type:resolvedSubType,sub_type_label:typeLabel,warehouse_id:warehouseId,supplier_id:kind==='receive'?(supplierId||''):'',receiver_name:receiverName||'',deliverer_name:delivererName||'',note:note||'',reference,operation_id:operation,status:'COMMITTED',created_at:stamp,updated_at:stamp,total_cost:totalCost,lines:receiptLines};
             const outbox=makeOutbox({operationId:operation,eventId:uuid(),entityType:'inventory_document',entityId:docId,action:kind,version:1,deviceId:identity.device_id,registerId:identity.register_id,type:`inventory_document.${kind}`,createdAt:stamp,payload:{document,inventory_movements:movements}});
-            nextProducts.forEach(row=>stores.products.put(row)); nextLevels.forEach(row=>stores.levels.put(row)); movements.forEach(row=>stores.movements.put(row)); stores.purchase_receipts.put(document); stores.outbox.put(outbox); result=document;
+            nextProducts.forEach(row=>stores.products.put(row)); nextLevels.forEach(row=>stores.levels.put(row)); movements.forEach(row=>stores.movements.put(row)); stores.purchase_receipts.put(document); stores.outbox.put(outbox);
+            if(kind==='receive' && supplierId && totalCost > 0 && stores.suppliers){
+              const supReq = stores.suppliers.get(supplierId);
+              supReq.onsuccess = () => {
+                const sup = supReq.result;
+                if(sup){
+                  const nextDebt = Number(sup.debt || 0) + totalCost;
+                  const nextSpent = Number(sup.total_spent || sup.totalSpent || 0) + totalCost;
+                  stores.suppliers.put({
+                    ...sup,
+                    debt: nextDebt,
+                    total_spent: nextSpent,
+                    totalSpent: nextSpent,
+                    version: Number(sup.version || 1) + 1,
+                    updated_at: stamp
+                  });
+                }
+              };
+            }
+            result=document;
           }catch(error){context.abort(error);}
         };
       };
@@ -1161,7 +1183,7 @@ export async function createSale({items,warehouseId,paymentMethod='cash',payment
     }
   } else {
     const method = ['cash', 'transfer', 'qr', 'debt'].includes(paymentMethod) ? paymentMethod : 'cash';
-    const paymentStatus = method === 'cash' ? 'PAID' : 'PENDING';
+    const paymentStatus = method === 'debt' ? 'PENDING' : 'PAID';
     totalPaidAmount = paymentStatus === 'PAID' ? grandTotal : 0;
     totalDebtAmount = paymentStatus === 'PAID' ? 0 : grandTotal;
     finalPayments = [{
@@ -1313,7 +1335,7 @@ export async function createReturn({saleId,lines,reason='Khách trả hàng',ref
     throw new Error('Chưa mở ca. Hãy mở ca trước khi nhận trả hàng và hoàn tiền.');
   }
   let result;
-  await runTransaction(['sales','levels','movements','returns','refunds','outbox','shifts','customers'],(stores,tx,context)=>{
+  await runTransaction(['sales','orders','levels','movements','returns','refunds','outbox','shifts','customers'],(stores,tx,context)=>{
     const existingReq=stores.outbox.get(operation);
     existingReq.onerror=()=>context.abort(existingReq.error);
     existingReq.onsuccess=()=>{
@@ -1330,134 +1352,180 @@ export async function createReturn({saleId,lines,reason='Khách trả hàng',ref
         const saleReq=stores.sales.get(saleId);
         saleReq.onerror=()=>context.abort(saleReq.error);
         saleReq.onsuccess=()=>{
-          const returnsReq=stores.returns.getAll();
-          returnsReq.onerror=()=>context.abort(returnsReq.error);
-          returnsReq.onsuccess=()=>{
-            const refundsReq=stores.refunds.getAll();
-            refundsReq.onerror=()=>context.abort(refundsReq.error);
-            refundsReq.onsuccess=()=>{
-              try{
-                const sale=saleReq.result;
-                if(!sale) throw new Error('Không tìm thấy giao dịch gốc.');
-                const prior=new Map();
-                for(const row of returnsReq.result||[]) if(row.sale_id===saleId) for(const line of row.lines||[]) prior.set(line.item_id,(prior.get(line.item_id)||0)+Number(line.quantity||0));
-                const priorRefundTotal=(refundsReq.result||[]).filter(r=>r.sale_id===saleId).reduce((n,r)=>n+Number(r.amount||0),0);
-                const maxRefundable=Math.max(0,Number(sale.grand_total??sale.total??0)-priorRefundTotal);
-                const saleLines=new Map((sale.items||[]).map(line=>[line.item_id||line.itemId,line]));
-                const discountRatio=Math.max(0,1-Math.min(1,Number(sale.discount_total||sale.discount||0)/Math.max(1,Number(sale.subtotal||1))));
-                const normalized=[]; const levelOps=[]; const movements=[]; let computedRefund=0; let expectedInventory=0; let completedInventory=0;
-                for(const raw of lines){
-                  const itemId=String(raw?.item_id||raw?.itemId||''); const qty=Math.floor(Number(raw?.quantity||0)); const condition=String(raw?.condition||'SELLABLE').toUpperCase();
-                  if(!itemId||!(qty>0)||!['SELLABLE','DAMAGED','NO_RESTOCK'].includes(condition)) throw new Error('Dòng trả hàng không hợp lệ.');
-                  const sold=saleLines.get(itemId); if(!sold) throw new Error('Sản phẩm không thuộc giao dịch gốc.');
-                  const remaining=Math.max(0,Number(sold.quantity||0)-(prior.get(itemId)||0)); if(qty>remaining) throw new Error(`Số lượng trả vượt quá số đã bán của ${sold.name||'sản phẩm'}.`);
-                  const defaultUnitPaid=(Number(sold.line_total||sold.lineTotal||0)/Math.max(1,Number(sold.quantity||1)))*discountRatio;
-                  const lineRefund=Math.max(0,Number(raw.refund_amount??(defaultUnitPaid*qty))||0); computedRefund+=lineRefund;
-                  const warehouseId=raw.warehouse_id||sold.warehouse_id||sale.warehouseId||sale.warehouse_id||'';
-                  normalized.push({item_id:itemId,quantity:qty,condition,reason:raw.reason||reason,warehouse_id:warehouseId,refund_amount:lineRefund});
-                  if(condition==='NO_RESTOCK'||sold.type==='SERVICE'||sold.track_inventory===false) continue;
-                  expectedInventory++;
-                  if(!warehouseId) throw new Error(`Thiếu kho cho ${sold.name||'sản phẩm'}.`);
-                  const levelId=`${itemId}:${warehouseId}`; const levelReq=stores.levels.get(levelId);
-                  levelReq.onerror=()=>context.abort(levelReq.error);
-                  levelReq.onsuccess=()=>{
-                    const current=levelReq.result||{id:levelId,productId:itemId,warehouseId,onHand:0,reserved:0,damaged:0,version:0};
-                    const next={...current,onHand:Number(current.onHand||0)+qty,damaged:Number(current.damaged||0)+(condition==='DAMAGED'?qty:0),version:Number(current.version||0)+1,updatedAt:now()};
-                    const eventId=uuid(); const movement={id:`${operation}:movement:${itemId}`,groupId:id,type:'return',productId:itemId,warehouseId,qty,reason:condition==='DAMAGED'?'Trả hàng lỗi':condition==='SELLABLE'?'Trả hàng bán lại được':'Trả hàng không nhập lại',reference:id,reference_type:'return',reference_id:id,sale_uuid:sale.sale_uuid||sale.id,operation_id:operation,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:now(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};
-                    levelOps.push({next,movement}); completedInventory++; if(completedInventory===expectedInventory) finish();
-                  };
-                }
-                const finish=()=>{
-                  const stamp=now();
-                  const actualRefundAmount=Math.round(Math.min(maxRefundable,refundAmount==null?computedRefund:Number(refundAmount||0)));
-
-                  // Calculate current outstanding debt on this sale
-                  const curDebt = sale.debt_amount != null
-                    ? Number(sale.debt_amount)
-                    : Math.max(0, Number(sale.grand_total ?? sale.total ?? 0) - Number(sale.paid_amount || 0));
-
-                  // If sale has outstanding debt, returns must prioritize reducing debt first
-                  const debtDeduction = curDebt > 0 ? Math.min(curDebt, actualRefundAmount) : (refundMethod === 'debt' ? actualRefundAmount : 0);
-                  const remainingRefund = Math.max(0, actualRefundAmount - debtDeduction);
-
-                  // Calculate maximum cash refundable based on actual cash paid for this sale minus prior cash refunds
-                  const cashPayments = (sale.payments || []).filter(p => p.status === 'PAID' && (p.method === 'cash' || (!p.method && sale.payment_method === 'cash')));
-                  const totalCashPaid = cashPayments.length > 0
-                    ? cashPayments.reduce((s, p) => s + Number(p.amount || 0), 0)
-                    : (sale.payment_method === 'cash' ? Number(sale.paid_amount ?? sale.grand_total ?? sale.total ?? 0) : 0);
-                  const priorCashRefundTotal = (refundsReq.result || [])
-                    .filter(r => r.sale_id === saleId && (r.method === 'cash' || r.refund_method === 'cash'))
-                    .reduce((n, r) => n + Number(r.amount || 0), 0);
-                  const maxCashRefundable = Math.max(0, totalCashPaid - priorCashRefundTotal);
-
-                  let effectiveMethod = refundMethod;
-                  if (debtDeduction > 0 && remainingRefund === 0) {
-                    effectiveMethod = 'debt';
-                  } else if (effectiveMethod === 'original') {
-                    effectiveMethod = sale.payment_method || 'cash';
-                  }
-
-                  let cashRefundAmount = 0;
-                  if (effectiveMethod === 'cash') {
-                    cashRefundAmount = Math.min(maxCashRefundable, remainingRefund);
-                  } else if (effectiveMethod !== 'debt') {
-                    cashRefundAmount = remainingRefund;
-                  }
-
-                  const primaryMethod = debtDeduction > 0 && cashRefundAmount === 0 ? 'debt' : (cashRefundAmount > 0 ? effectiveMethod : (debtDeduction > 0 ? 'debt' : effectiveMethod));
-                  const primaryAmount = primaryMethod === 'debt' ? (debtDeduction > 0 ? debtDeduction : actualRefundAmount) : cashRefundAmount;
-
-                  const refund={id:`${id}:refund`,return_id:id,sale_id:saleId,shift_id:activeShift.id,method:primaryMethod,amount:primaryAmount,status:'RECORDED',created_at:stamp,operation_id:operation};
-                  const doc={id,return_id:id,sale_id:saleId,shift_id:activeShift.id,warehouse_id:sale.warehouseId||sale.warehouse_id||'',reason,status:'CONFIRMED',refund_method:primaryMethod,refund_amount:actualRefundAmount,debt_deduction:debtDeduction,cash_refund:cashRefundAmount,created_at:stamp,updated_at:stamp,operation_id:operation,lines:normalized};
-
-                  if(debtDeduction > 0){
-                    sale.debt_amount = Math.max(0, curDebt - debtDeduction);
-                    if(sale.debt_amount === 0){
-                      sale.payment_status = 'PAID';
-                    }
-                    sale.updated_at = stamp;
-                    stores.sales.put(sale);
-
-                    const custId = sale.customer_id || sale.customerId;
-                    if(stores.customers && custId){
-                      const custReq = stores.customers.get(custId);
-                      custReq.onsuccess = () => {
-                        if(custReq.result){
-                          const cust = custReq.result;
-                          const nextDebt = Math.max(0, Number(cust.debt || 0) - debtDeduction);
-                          stores.customers.put({
-                            ...cust,
-                            debt: nextDebt,
-                            version: Number(cust.version || 1) + 1,
-                            updated_at: stamp
-                          });
-                        }
-                      };
-                    }
-                  }
-
-                  if(cashRefundAmount > 0 && debtDeduction > 0){
-                    const debtRefund = {
-                      id: `${id}:refund:debt`,
-                      return_id: id,
-                      sale_id: saleId,
-                      shift_id: activeShift.id,
-                      method: 'debt',
-                      amount: debtDeduction,
-                      status: 'RECORDED',
-                      created_at: stamp,
-                      operation_id: operation
+          let sale=saleReq.result;
+          const proceedWithSale=(sale)=>{
+            const returnsReq=stores.returns.getAll();
+            returnsReq.onerror=()=>context.abort(returnsReq.error);
+            returnsReq.onsuccess=()=>{
+              const refundsReq=stores.refunds.getAll();
+              refundsReq.onerror=()=>context.abort(refundsReq.error);
+              refundsReq.onsuccess=()=>{
+                try{
+                  if(!sale) throw new Error('Không tìm thấy giao dịch gốc.');
+                  const prior=new Map();
+                  for(const row of returnsReq.result||[]) if(row.sale_id===saleId) for(const line of row.lines||[]) prior.set(line.item_id,(prior.get(line.item_id)||0)+Number(line.quantity||0));
+                  const priorRefundTotal=(refundsReq.result||[]).filter(r=>r.sale_id===saleId).reduce((n,r)=>n+Number(r.amount||0),0);
+                  const maxRefundable=Math.max(0,Number(sale.grand_total??sale.total??0)-priorRefundTotal);
+                  const saleLines=new Map((sale.items||[]).map(line=>[line.item_id||line.itemId,line]));
+                  const discountRatio=Math.max(0,1-Math.min(1,Number(sale.discount_total||sale.discount||0)/Math.max(1,Number(sale.subtotal||1))));
+                  const normalized=[]; const levelOps=[]; const movements=[]; let computedRefund=0; let expectedInventory=0; let completedInventory=0;
+                  for(const raw of lines){
+                    const itemId=String(raw?.item_id||raw?.itemId||''); const qty=Math.floor(Number(raw?.quantity||0)); const condition=String(raw?.condition||'SELLABLE').toUpperCase();
+                    if(!itemId||!(qty>0)||!['SELLABLE','DAMAGED','NO_RESTOCK'].includes(condition)) throw new Error('Dòng trả hàng không hợp lệ.');
+                    const sold=saleLines.get(itemId); if(!sold) throw new Error('Sản phẩm không thuộc giao dịch gốc.');
+                    const remaining=Math.max(0,Number(sold.quantity||0)-(prior.get(itemId)||0)); if(qty>remaining) throw new Error(`Số lượng trả vượt quá số đã bán của ${sold.name||'sản phẩm'}.`);
+                    const defaultUnitPaid=(Number(sold.line_total||sold.lineTotal||0)/Math.max(1,Number(sold.quantity||1)))*discountRatio;
+                    const lineRefund=Math.max(0,Number(raw.refund_amount??(defaultUnitPaid*qty))||0); computedRefund+=lineRefund;
+                    const warehouseId=raw.warehouse_id||sold.warehouse_id||sale.warehouseId||sale.warehouse_id||'';
+                    normalized.push({item_id:itemId,quantity:qty,condition,reason:raw.reason||reason,warehouse_id:warehouseId,refund_amount:lineRefund});
+                    if(condition==='NO_RESTOCK'||sold.type==='SERVICE'||sold.track_inventory===false) continue;
+                    expectedInventory++;
+                    if(!warehouseId) throw new Error(`Thiếu kho cho ${sold.name||'sản phẩm'}.`);
+                    const levelId=`${itemId}:${warehouseId}`; const levelReq=stores.levels.get(levelId);
+                    levelReq.onerror=()=>context.abort(levelReq.error);
+                    levelReq.onsuccess=()=>{
+                      const current=levelReq.result||{id:levelId,productId:itemId,warehouseId,onHand:0,reserved:0,damaged:0,version:0};
+                      const next={...current,onHand:Number(current.onHand||0)+qty,damaged:Number(current.damaged||0)+(condition==='DAMAGED'?qty:0),version:Number(current.version||0)+1,updatedAt:now()};
+                      const eventId=uuid(); const movement={id:`${operation}:movement:${itemId}`,groupId:id,type:'return',productId:itemId,warehouseId,qty,reason:condition==='DAMAGED'?'Trả hàng lỗi':condition==='SELLABLE'?'Trả hàng bán lại được':'Trả hàng không nhập lại',reference:id,reference_type:'return',reference_id:id,sale_uuid:sale.sale_uuid||sale.id,operation_id:operation,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:now(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};
+                      levelOps.push({next,movement}); completedInventory++; if(completedInventory===expectedInventory) finish();
                     };
-                    stores.refunds.put(debtRefund);
                   }
+                  const finish=()=>{
+                    const stamp=now();
+                    const actualRefundAmount=Math.round(Math.min(maxRefundable,refundAmount==null?computedRefund:Number(refundAmount||0)));
 
-                  const movementRows=levelOps.map(x=>x.movement); const outbox=makeOutbox({operationId:operation,eventId:uuid(),entityType:'return',entityId:id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'return.create',createdAt:stamp,payload:{return:doc,refund,inventory_movements:movementRows}});
-                  levelOps.forEach(x=>stores.levels.put(x.next)); movementRows.forEach(x=>stores.movements.put(x)); stores.returns.put(doc); stores.refunds.put(refund); stores.outbox.put(outbox); result=doc;
-                };
-                if(expectedInventory===0) finish();
-              }catch(error){context.abort(error);}
+                    // Calculate current outstanding debt on this sale
+                    const curDebt = sale.debt_amount != null
+                      ? Number(sale.debt_amount)
+                      : Math.max(0, Number(sale.grand_total ?? sale.total ?? 0) - Number(sale.paid_amount || 0));
+
+                    // If sale has outstanding debt, returns must prioritize reducing debt first
+                    const debtDeduction = curDebt > 0 ? Math.min(curDebt, actualRefundAmount) : (refundMethod === 'debt' ? actualRefundAmount : 0);
+                    const remainingRefund = Math.max(0, actualRefundAmount - debtDeduction);
+
+                    // Calculate maximum cash refundable based on actual cash paid for this sale minus prior cash refunds
+                    const cashPayments = (sale.payments || []).filter(p => p.status === 'PAID' && (p.method === 'cash' || (!p.method && sale.payment_method === 'cash')));
+                    const totalCashPaid = cashPayments.length > 0
+                      ? cashPayments.reduce((s, p) => s + Number(p.amount || 0), 0)
+                      : (sale.payment_method === 'cash' ? Number(sale.paid_amount ?? sale.grand_total ?? sale.total ?? 0) : 0);
+                    const priorCashRefundTotal = (refundsReq.result || [])
+                      .filter(r => r.sale_id === saleId && (r.method === 'cash' || r.refund_method === 'cash'))
+                      .reduce((n, r) => n + Number(r.amount || 0), 0);
+                    const maxCashRefundable = Math.max(0, totalCashPaid - priorCashRefundTotal);
+
+                    let effectiveMethod = refundMethod;
+                    if (debtDeduction > 0 && remainingRefund === 0) {
+                      effectiveMethod = 'debt';
+                    } else if (effectiveMethod === 'original') {
+                      effectiveMethod = sale.payment_method || 'cash';
+                    }
+
+                    let cashRefundAmount = 0;
+                    if (effectiveMethod === 'cash') {
+                      cashRefundAmount = Math.min(maxCashRefundable, remainingRefund);
+                    } else if (effectiveMethod !== 'debt') {
+                      cashRefundAmount = remainingRefund;
+                    }
+
+                    const primaryMethod = debtDeduction > 0 && cashRefundAmount === 0 ? 'debt' : (cashRefundAmount > 0 ? effectiveMethod : (debtDeduction > 0 ? 'debt' : effectiveMethod));
+                    const primaryAmount = primaryMethod === 'debt' ? (debtDeduction > 0 ? debtDeduction : actualRefundAmount) : cashRefundAmount;
+
+                    const refund={id:`${id}:refund`,return_id:id,sale_id:saleId,shift_id:activeShift.id,method:primaryMethod,amount:primaryAmount,status:'RECORDED',created_at:stamp,operation_id:operation};
+                    const doc={id,return_id:id,sale_id:saleId,shift_id:activeShift.id,warehouse_id:sale.warehouseId||sale.warehouse_id||'',reason,status:'CONFIRMED',refund_method:primaryMethod,refund_amount:actualRefundAmount,debt_deduction:debtDeduction,cash_refund:cashRefundAmount,created_at:stamp,updated_at:stamp,operation_id:operation,lines:normalized};
+
+                    if(debtDeduction > 0){
+                      sale.debt_amount = Math.max(0, curDebt - debtDeduction);
+                      if(sale.debt_amount === 0){
+                        sale.payment_status = 'PAID';
+                      }
+                      sale.updated_at = stamp;
+                      if(sale.is_order && stores.orders){
+                        stores.orders.put(sale._rawOrder ? { ...sale._rawOrder, debt_amount: sale.debt_amount, payment_status: sale.payment_status, return_status: 'RETURNED', updated_at: stamp } : sale);
+                      } else {
+                        stores.sales.put(sale);
+                      }
+
+                      const custId = sale.customer_id || sale.customerId;
+                      if(stores.customers && custId){
+                        const custReq = stores.customers.get(custId);
+                        custReq.onsuccess = () => {
+                          if(custReq.result){
+                            const cust = custReq.result;
+                            const nextDebt = Math.max(0, Number(cust.debt || 0) - debtDeduction);
+                            stores.customers.put({
+                              ...cust,
+                              debt: nextDebt,
+                              version: Number(cust.version || 1) + 1,
+                              updated_at: stamp
+                            });
+                          }
+                        };
+                      }
+                    } else {
+                      if(sale.is_order && stores.orders && sale._rawOrder){
+                        stores.orders.put({ ...sale._rawOrder, return_status: 'RETURNED', updated_at: stamp });
+                      }
+                    }
+
+                    if(cashRefundAmount > 0 && debtDeduction > 0){
+                      const debtRefund = {
+                        id: `${id}:refund:debt`,
+                        return_id: id,
+                        sale_id: saleId,
+                        shift_id: activeShift.id,
+                        method: 'debt',
+                        amount: debtDeduction,
+                        status: 'RECORDED',
+                        created_at: stamp,
+                        operation_id: operation
+                      };
+                      stores.refunds.put(debtRefund);
+                    }
+
+                    const movementRows=levelOps.map(x=>x.movement); const outbox=makeOutbox({operationId:operation,eventId:uuid(),entityType:'return',entityId:id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'return.create',createdAt:stamp,payload:{return:doc,refund,inventory_movements:movementRows}});
+                    levelOps.forEach(x=>stores.levels.put(x.next)); movementRows.forEach(x=>stores.movements.put(x)); stores.returns.put(doc); stores.refunds.put(refund); stores.outbox.put(outbox); result=doc;
+                  };
+                  if(expectedInventory===0) finish();
+                }catch(error){context.abort(error);}
+              };
             };
           };
+
+          if(!sale && stores.orders){
+            const orderReq=stores.orders.get(saleId);
+            orderReq.onerror=()=>context.abort(orderReq.error);
+            orderReq.onsuccess=()=>{
+              const order=orderReq.result;
+              if(order && (order.status==='COMPLETED' || order.status==='SHIPPED')){
+                sale={
+                  id: order.id,
+                  sale_uuid: order.order_uuid || order.id,
+                  code: order.code || order.id,
+                  grand_total: order.grand_total ?? order.total ?? 0,
+                  total: order.grand_total ?? order.total ?? 0,
+                  subtotal: order.subtotal ?? (order.grand_total ?? order.total ?? 0),
+                  discount_total: order.discount_total || 0,
+                  paid_amount: order.paid_amount ?? (order.grand_total ?? order.total ?? 0),
+                  payment_method: order.payment_method || 'transfer',
+                  payment_status: order.payment_status || 'PAID',
+                  customer_id: order.customer_id || order.customerId || '',
+                  customer_label: order.customer_label || order.customer_name || 'Khách online',
+                  warehouseId: order.warehouseId || order.warehouse_id || 'wh_default',
+                  warehouse_id: order.warehouseId || order.warehouse_id || 'wh_default',
+                  items: order.items || [],
+                  is_order: true,
+                  _rawOrder: order
+                };
+                proceedWithSale(sale);
+              } else {
+                context.abort(new Error('Không tìm thấy giao dịch gốc hoặc đơn hàng chưa hoàn tất.'));
+              }
+            };
+          } else if(!sale){
+            context.abort(new Error('Không tìm thấy giao dịch gốc.'));
+          } else {
+            proceedWithSale(sale);
+          }
         };
       };
     };
@@ -2145,7 +2213,7 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
 
   let exchangeResult;
 
-  await runTransaction(['sales','levels','movements','returns','refunds','outbox','settings','shifts'],(stores,tx,context)=>{
+  await runTransaction(['sales','orders','levels','movements','returns','refunds','outbox','settings','shifts'],(stores,tx,context)=>{
     const opReq=stores.outbox.get(op);
     opReq.onerror=()=>context.abort(opReq.error);
     opReq.onsuccess=()=>{
@@ -2156,25 +2224,24 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
       const origSaleReq=stores.sales.get(saleId);
       origSaleReq.onerror=()=>context.abort(origSaleReq.error);
       origSaleReq.onsuccess=()=>{
-        const origSale=origSaleReq.result;
-        if(!origSale){context.abort(new Error('Không tìm thấy giao dịch gốc.'));return;}
+        let origSale=origSaleReq.result;
+        const proceedWithOrigSale=(origSale)=>{
+          const targetWarehouse=warehouseId||origSale.warehouseId||origSale.warehouse_id;
+          if(!targetWarehouse){context.abort(new Error('Hãy chọn kho xử lý.'));return;}
 
-        const targetWarehouse=warehouseId||origSale.warehouseId||origSale.warehouse_id;
-        if(!targetWarehouse){context.abort(new Error('Hãy chọn kho xử lý.'));return;}
-
-        const returnsReq=stores.returns.getAll();
-        returnsReq.onerror=()=>context.abort(returnsReq.error);
-        returnsReq.onsuccess=()=>{
-          const refundsReq=stores.refunds.getAll();
-          refundsReq.onerror=()=>context.abort(refundsReq.error);
-          refundsReq.onsuccess=()=>{
-            const shiftsReq=stores.shifts.getAll();
-            shiftsReq.onerror=()=>context.abort(shiftsReq.error);
-            shiftsReq.onsuccess=()=>{
-              const levelsReq=stores.levels.getAll();
-              levelsReq.onerror=()=>context.abort(levelsReq.error);
-              levelsReq.onsuccess=()=>{
-                try{
+          const returnsReq=stores.returns.getAll();
+          returnsReq.onerror=()=>context.abort(returnsReq.error);
+          returnsReq.onsuccess=()=>{
+            const refundsReq=stores.refunds.getAll();
+            refundsReq.onerror=()=>context.abort(refundsReq.error);
+            refundsReq.onsuccess=()=>{
+              const shiftsReq=stores.shifts.getAll();
+              shiftsReq.onerror=()=>context.abort(shiftsReq.error);
+              shiftsReq.onsuccess=()=>{
+                const levelsReq=stores.levels.getAll();
+                levelsReq.onerror=()=>context.abort(levelsReq.error);
+                levelsReq.onsuccess=()=>{
+                  try{
                   const isShiftRequired = CONFIG.FEATURE_FLAGS?.shift !== false;
                   let activeShift=openShiftFor(shiftsReq.result,{device_id:deviceId,register_id:registerId});
                   if(isShiftRequired && (!activeShift || activeShift.status !== 'OPEN')){
@@ -2463,6 +2530,9 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
                   stores.returns.put(returnDoc);
                   stores.refunds.put(refundRecord);
                   stores.sales.put(newSale);
+                  if(origSale.is_order && origSale._rawOrder && stores.orders){
+                    stores.orders.put({ ...origSale._rawOrder, return_status: 'EXCHANGED', updated_at: stamp });
+                  }
                   stores.outbox.put(returnOutbox);
                   stores.outbox.put(saleOutbox);
                   stores.outbox.put(exchangeOutbox);
@@ -2478,8 +2548,45 @@ export async function createExchange({saleId,returnLines,returnReason='Đổi h�
           };
         };
       };
+
+      if(!origSale && stores.orders){
+        const orderReq=stores.orders.get(saleId);
+        orderReq.onerror=()=>context.abort(orderReq.error);
+        orderReq.onsuccess=()=>{
+          const order=orderReq.result;
+          if(order && (order.status==='COMPLETED' || order.status==='SHIPPED')){
+            origSale={
+              id: order.id,
+              sale_uuid: order.order_uuid || order.id,
+              code: order.code || order.id,
+              grand_total: order.grand_total ?? order.total ?? 0,
+              total: order.grand_total ?? order.total ?? 0,
+              subtotal: order.subtotal ?? (order.grand_total ?? order.total ?? 0),
+              discount_total: order.discount_total || 0,
+              paid_amount: order.paid_amount ?? (order.grand_total ?? order.total ?? 0),
+              payment_method: order.payment_method || 'transfer',
+              payment_status: order.payment_status || 'PAID',
+              customer_id: order.customer_id || order.customerId || '',
+              customer_label: order.customer_label || order.customer_name || 'Khách online',
+              warehouseId: order.warehouseId || order.warehouse_id || 'wh_default',
+              warehouse_id: order.warehouseId || order.warehouse_id || 'wh_default',
+              items: order.items || [],
+              is_order: true,
+              _rawOrder: order
+            };
+            proceedWithOrigSale(origSale);
+          } else {
+            context.abort(new Error('Không tìm thấy giao dịch gốc hoặc đơn hàng chưa hoàn tất.'));
+          }
+        };
+      } else if(!origSale){
+        context.abort(new Error('Không tìm thấy giao dịch gốc.'));
+      } else {
+        proceedWithOrigSale(origSale);
+      }
     };
-  });
+  };
+});
 
   return exchangeResult;
 }

@@ -9,6 +9,9 @@ import * as aiModule from './ai/index.js';
 const { initAiUI, updateContextAndChips } = aiModule;
 import * as businessProfileModule from './business-profile.js';
 import * as uiProfileModule from './ui-profile.js';
+import { scheduleIdlePrefetch, runIdlePrefetch, getPrefetchStatus } from './prefetcher.js';
+import { optimizeImageFile, optimizeDataUrl, batchOptimizeStoreImages } from './image-optimizer.js';
+import { checkStorageQuota, performAutoMaintenance, scheduleAutoMaintenance } from './storage-monitor.js';
 import {
   initAuth,
   getAuthState,
@@ -1142,9 +1145,12 @@ async function submitSale(){
     state.saleBusy=false;
     state.saleCustomer=null;
 
-    // Trigger chime and voice ONLY when explicitly verified and completed
+    // Trigger chime, voice, and hardware cash drawer kick ONLY when explicitly verified and completed
     playPaymentChime();
     speakPaymentAmount(totals.total);
+    if(method === 'cash'){
+      kickCashDrawer().catch(err => console.warn('[CashDrawer AutoKick]', err));
+    }
 
     const isPopupOn=state.paymentPrefs?.popupEnabled!==false;
     if(isPopupOn){
@@ -3227,7 +3233,101 @@ function renderSettings(){
 function openConnectionSettings(){
   openModal({title:'Kết nối',sub:'Các dịch vụ mở rộng đang được chuẩn bị.',hideSubmit:true,body:`<div class="action-sheet-list"><button data-page="shipping">Vận chuyển <small>Chưa kết nối</small>${icon('chevron-right')}</button><button data-page="channels">Kênh bán <small>Chưa kết nối</small>${icon('chevron-right')}</button></div>`});
 }
-function openDataSettings(){openModal({title:'Dữ liệu',sub:'Nhập, xuất và bảo vệ dữ liệu trên thiết bị.',hideSubmit:true,body:`<div class="action-sheet-list"><button data-page="imports">Nhập dữ liệu <small>Excel/CSV · kiểm tra trước</small>${icon('chevron-right')}</button><button data-action="export-csv">Xuất dữ liệu <small>Hàng hóa CSV</small>${icon('chevron-right')}</button><button data-page="backup">Sao lưu / khôi phục <small>Tệp JSON có kiểm tra</small>${icon('chevron-right')}</button></div>`});}
+function openDataSettings(){openModal({title:'Dữ liệu & Ngoại tuyến',sub:'Nhập, xuất, dung lượng và bảo vệ dữ liệu trên thiết bị.',hideSubmit:true,body:`<div class="action-sheet-list"><button data-page="imports">Nhập dữ liệu <small>Excel/CSV · kiểm tra trước</small>${icon('chevron-right')}</button><button data-action="export-csv">Xuất dữ liệu <small>Hàng hóa CSV</small>${icon('chevron-right')}</button><button data-page="backup">Sao lưu / khôi phục <small>Tệp JSON có kiểm tra</small>${icon('chevron-right')}</button><button data-action="storage-status">Bộ nhớ & Tải ngầm ngoại tuyến <small>Kiểm tra dung lượng, tải ảnh về máy</small>${icon('chevron-right')}</button></div>`});}
+
+async function openStorageStatusModal() {
+  const quota = await checkStorageQuota();
+  const prefetch = getPrefetchStatus();
+  
+  openModal({
+    title: 'Bộ nhớ & Tải ngầm ngoại tuyến',
+    sub: 'Đảm bảo hoạt động siêu tốc & 100% không phụ thuộc Internet',
+    hideSubmit: true,
+    body: `
+      <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
+        <!-- 1. Storage Status Card -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong style="color:#0f172a;font-size:13.5px">Dung lượng bộ nhớ thiết bị</strong>
+            <span class="badge" style="background:#ecfdf5;color:#059669;font-weight:700;font-size:10.5px;padding:2px 7px;border-radius:5px">${quota.statusLabel}</span>
+          </div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:8px">
+            Đã dùng: <b>${quota.usageFormatted}</b> / Khả dụng: <b>${quota.quotaFormatted}</b> (${quota.percentUsed}% đã dùng)
+          </div>
+          <div style="width:100%;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden">
+            <div style="width:${Math.max(2, quota.percentUsed)}%;height:100%;background:${quota.isLowStorage ? '#ef4444' : '#10b981'};border-radius:3px"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <span style="font-size:11.5px;color:#64748b">${quota.isPersisted ? '✓ Chế độ bảo vệ vĩnh viễn (Persistent)' : '✓ Đã kích hoạt bảo toàn dữ liệu'}</span>
+            <button type="button" id="btnStorageMaintenance" class="ghost-btn btn-sm" style="font-size:11.5px;padding:3px 8px;border:1px solid #cbd5e1;border-radius:6px;background:#fff">Dọn dẹp log cũ</button>
+          </div>
+        </div>
+
+        <!-- 2. Offline Prefetch Card -->
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong style="color:#1e40af;font-size:13.5px">Tải ngầm dữ liệu & Ảnh SP</strong>
+            <span class="badge" style="background:#dbeafe;color:#1e40af;font-weight:700;font-size:10.5px;padding:2px 7px;border-radius:5px">${prefetch.isComplete ? 'Sẵn sàng 100%' : (prefetch.isRunning ? 'Đang tải...' : 'Tự động')}</span>
+          </div>
+          <p style="margin:0 0 8px 0;font-size:12px;color:#3b82f6;line-height:1.4">
+            Toàn bộ ảnh sản phẩm và module cốt lõi tự động lưu vào bộ nhớ đệm. Khi mất mạng Internet, ứng dụng vẫn mở lên tức thì và hiển thị đầy đủ hình ảnh.
+          </p>
+          <div style="font-size:11.5px;color:#1e40af;margin-bottom:8px">
+            Đã lưu đệm: <b>${prefetch.cachedItems}</b> / <b>${prefetch.totalItems || (state.data?.products?.length || 0)}</b> tài nguyên
+          </div>
+          <button type="button" id="btnRunPrefetchNow" class="secondary-btn btn-sm" style="width:100%;justify-content:center;gap:6px;font-size:12px;font-weight:600;padding:8px 0">
+            ${icon('download')} ${prefetch.isRunning ? 'Đang tải ngầm...' : 'Tải ngầm toàn bộ dữ liệu ngay'}
+          </button>
+        </div>
+
+        <!-- 3. Batch Image Optimizer Card -->
+        <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:12px;padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong style="color:#6b21a8;font-size:13.5px">Tối ưu kho ảnh cũ</strong>
+            <span class="badge" style="background:#f3e8ff;color:#6b21a8;font-weight:700;font-size:10.5px;padding:2px 7px;border-radius:5px">WebP 800px</span>
+          </div>
+          <p style="margin:0 0 8px 0;font-size:12px;color:#7e22ce;line-height:1.4">
+            Quét và nén lại các ảnh sản phẩm cũ chưa tối ưu sang chuẩn WebP siêu nhẹ (~40KB) để giải phóng 80–90% bộ nhớ máy.
+          </p>
+          <button type="button" id="btnBatchOptimizeImages" class="secondary-btn btn-sm" style="width:100%;justify-content:center;gap:6px;font-size:12px;font-weight:600;padding:8px 0;background:#fff;border-color:#d8b4fe;color:#6b21a8">
+            ${icon('sparkles')} Nén lại toàn bộ ảnh trong kho ngay
+          </button>
+        </div>
+      </div>
+    `
+  });
+
+  const root = $('#modalRoot');
+  if ($('#btnStorageMaintenance', root)) {
+    $('#btnStorageMaintenance', root).onclick = async () => {
+      const res = await performAutoMaintenance();
+      toast(`Đã dọn dẹp ${res.cleanedPrintJobs} bản in cũ & ${res.prunedOutboxCount} chứng từ outbox.`, 'ok');
+      root.innerHTML = '';
+    };
+  }
+  if ($('#btnRunPrefetchNow', root)) {
+    $('#btnRunPrefetchNow', root).onclick = async () => {
+      const btn = $('#btnRunPrefetchNow', root);
+      btn.disabled = true;
+      btn.innerText = 'Đang tải ngầm dữ liệu...';
+      const res = await runIdlePrefetch(state.data?.products || []);
+      toast(`Đã tải ngầm hoàn tất ${res.cachedItems} tài nguyên về máy!`, 'ok');
+      root.innerHTML = '';
+    };
+  }
+  if ($('#btnBatchOptimizeImages', root)) {
+    $('#btnBatchOptimizeImages', root).onclick = async () => {
+      const btn = $('#btnBatchOptimizeImages', root);
+      btn.disabled = true;
+      btn.innerText = 'Đang quét và nén ảnh...';
+      const res = await batchOptimizeStoreImages();
+      await refresh();
+      toast(res.optimizedImages ? `Đã tối ưu ${res.optimizedImages} ảnh, giải phóng ${res.savedFormatted} bộ nhớ!` : 'Tất cả ảnh trong kho đã ở chuẩn tối ưu siêu nhẹ.', 'ok');
+      root.innerHTML = '';
+    };
+  }
+}
+
 
 const PROFILE_SETTING='business_profile';
 const SALES_SETTING='sales_preferences';
@@ -3473,9 +3573,9 @@ async function openBusinessProfile(){
   $('#profileLogoFile',root).addEventListener('change',async e=>{const file=e.target.files?.[0];if(file?.type.startsWith('image/')){urlInput.value=await optimizeImage(file);draw();}});
 }
 
-function openBusinessModeModal(){
+function openBusinessModeModal(preselectedModeId = null){
   const currentProfile = businessProfileModule.getBusinessProfile() || {};
-  let selectedId = currentProfile.profile_id || 'general';
+  let selectedId = (typeof preselectedModeId === 'string' && preselectedModeId) ? preselectedModeId : (currentProfile.profile_id || 'general');
   const options = businessProfileModule.BUSINESS_MODE_OPTIONS || [];
   const capLabels = businessProfileModule.CAPABILITY_LABELS || {};
 
@@ -5091,7 +5191,7 @@ async function renderCustomers(){
   const all=(await customerRecords()).filter(c=>c.active!==false),q=state.customerSearch.toLowerCase().trim();
   if(state.page!=='customers')return;
   const rows=all.filter(c=>(state.customerType==='all'||(c.customer_type||'retail')===state.customerType)&&(!q||[c.name,c.phone,c.customer_code,c.tax_id].some(v=>String(v||'').toLowerCase().includes(q)||norm(v).includes(norm(q)))));
-  $('#content').innerHTML=`<section class="directory-screen"><div class="directory-toolbar"><input id="customerDirectorySearch" value="${esc(state.customerSearch)}" placeholder="Tìm tên, SĐT, mã khách, MST..."/><button class="primary-btn" data-action="new-customer">+ Thêm</button></div><div class="directory-filters">${[['all','Tất cả'],['retail','Khách lẻ'],['individual','Cá nhân'],['company','Công ty'],['agent','Đại lý']].map(([v,l])=>`<button class="${state.customerType===v?'active':''}" data-customer-type="${v}">${l}</button>`).join('')}</div><div class="directory-list">${rows.map(c=>`<button class="directory-row" data-customer-open="${c.id}"><span class="directory-avatar">${esc((c.name||'K').slice(0,1))}</span><span><strong>${esc(c.customer_code||'KH')} · ${esc(c.name)}</strong><small>${esc(c.phone||'Chưa có số điện thoại')} ${c.customer_group?`· ${esc(c.customer_group)}`:''}</small></span>${Number(c.debt||0)>0?`<span style="margin-left:auto;margin-right:8px;font-size:12px;font-weight:700;color:var(--danger,#dc2626)">Nợ ${fmt(c.debt)} ₫</span>`:''}<em>${({retail:'Khách lẻ',individual:'Cá nhân',company:'Công ty',agent:'Đại lý'})[c.customer_type||'retail']}</em>${icon('chevron-right')}</button>`).join('')||'<div class="empty"><strong>Chưa có khách phù hợp</strong></div>'}</div></section>`;
+  $('#content').innerHTML=`<section class="directory-screen"><div class="directory-toolbar"><input id="customerDirectorySearch" value="${esc(state.customerSearch)}" placeholder="Tìm tên, SĐT, mã khách, MST..."/><button class="primary-btn" data-action="new-customer">+ Thêm</button></div><div class="directory-filters">${[['all','Tất cả'],['retail','Khách lẻ'],['individual','Cá nhân'],['company','Công ty'],['agent','Đại lý'],['vip','VIP']].map(([v,l])=>`<button class="${state.customerType===v?'active':''}" data-customer-type="${v}">${l}</button>`).join('')}</div><div class="directory-list">${rows.map(c=>`<button class="directory-row" data-customer-open="${c.id}"><span class="directory-avatar">${esc((c.name||'K').slice(0,1))}</span><span><strong>${esc(c.customer_code||'KH')} · ${esc(c.name)}</strong><small>${esc(c.phone||'Chưa có số điện thoại')} ${c.customer_group?`· ${esc(c.customer_group)}`:''}</small></span>${Number(c.debt||0)>0?`<span style="margin-left:auto;margin-right:8px;font-size:12px;font-weight:700;color:var(--danger,#dc2626)">Nợ ${fmt(c.debt)} ₫</span>`:''}<em>${({retail:'Khách lẻ',individual:'Cá nhân',company:'Công ty',agent:'Đại lý',vip:'VIP',wholesale:'Khách sỉ'})[c.customer_type||'retail']||c.customer_type||'Khách lẻ'}</em>${icon('chevron-right')}</button>`).join('')||'<div class="empty"><strong>Chưa có khách phù hợp</strong></div>'}</div></section>`;
   $('#customerDirectorySearch').oninput=e=>{state.customerSearch=e.target.value;renderCustomers()};$$('[data-customer-type]').forEach(b=>b.onclick=()=>{state.customerType=b.dataset.customerType;renderCustomers()});$$('[data-customer-open]').forEach(b=>b.onclick=()=>openCustomerDetail(all.find(c=>c.id===b.dataset.customerOpen)));
 }
 
@@ -5160,6 +5260,10 @@ async function openDebtCollectionModal(c, defaultSaleId = null, initialAmount = 
           await markSalePaid(u.saleId, { amount: payThis, paymentMethod: method, reference: note });
           remaining -= payThis;
         }
+      }
+
+      if (method === 'cash') {
+        kickCashDrawer().catch(err => console.warn('[CashDrawer DebtKick]', err));
       }
 
       await refresh();
@@ -5571,18 +5675,31 @@ ${modNote('Sổ quỹ thống nhất: Tự động cộng tiền bán hàng, ti�
 async function renderDebts(){
   const sales=state.data.sales||[];
   const owed=new Map();
-  for(const s of sales){const status=s.payment_status||s.payments?.[0]?.status||'PAID';if(status==='PAID')continue;const key=s.customer_label||'Khách lẻ';const row=owed.get(key)||{label:key,total:0,count:0};row.total+=Number(s.grand_total??s.total??0);row.count++;owed.set(key,row);}
+  for(const s of sales){
+    const status=s.payment_status||s.payments?.[0]?.status||'PAID';
+    if(status==='PAID')continue;
+    const debt = s.debt_amount != null
+      ? Number(s.debt_amount)
+      : Math.max(0, Number(s.grand_total ?? s.total ?? 0) - Number(s.paid_amount || 0));
+    if(debt <= 0) continue;
+    const key=s.customer_label||'Khách lẻ';
+    const row=owed.get(key)||{label:key,total:0,count:0};
+    row.total+=debt;
+    row.count++;
+    owed.set(key,row);
+  }
   const recv=[...owed.values()].sort((a,b)=>b.total-a.total);
   const recvTotal=recv.reduce((n,r)=>n+r.total,0);
   const manual=await modList('debt_entries');
   const custManual=manual.filter(d=>d.kind==='receivable');
   const supManual=manual.filter(d=>d.kind==='payable');
-  const supTotal=supManual.reduce((n,d)=>n+Number(d.amount||0),0);
+  const supDebtFromSuppliers=(state.data.suppliers||[]).reduce((n,s)=>n+Number(s.debt||0),0);
+  const supTotal=supManual.reduce((n,d)=>n+Number(d.amount||0),0) + supDebtFromSuppliers;
   const body=`<div class="mod-summary"><div><span>Phải thu khách hàng (từ phiếu chờ thu)</span><b>${fmt(recvTotal)} ₫</b></div><div><span>Phải thu ghi tay</span><b>${fmt(custManual.reduce((n,d)=>n+Number(d.amount||0),0))} ₫</b></div><div><span>Phải trả nhà cung cấp</span><b>${fmt(supTotal)} ₫</b></div><div class="grand"><span>Chênh lệch</span><b>${fmt(recvTotal+custManual.reduce((n,d)=>n+Number(d.amount||0),0)-supTotal)} ₫</b></div></div>
 <div class="mod-actions"><button class="primary-btn" data-action="debt-new" data-kind="receivable">Ghi nợ phải thu</button><button class="secondary-btn" data-action="debt-new" data-kind="payable">Ghi nợ phải trả</button></div>
 <div class="mod-block"><label class="mod-label">Phải thu theo khách (${recv.length})</label><div class="mod-list">${recv.length?recv.map(r=>modRow(esc(r.label),`${fmt(r.count)} phiếu chờ thu`,`<b>${fmt(r.total)} ₫</b>`)).join(''):modEmpty('Không có phải thu','Mọi phiếu bán đã được thu tiền.')}</div></div>
 <div class="mod-block"><label class="mod-label">Ghi tay (${manual.length})</label><div class="mod-list">${manual.length?manual.map(d=>modRow(`${d.kind==='receivable'?'Phải thu':'Phải trả'} · ${esc(d.party||'—')}`,`${esc(d.note||'')} ${esc(d.due||'')}`,`<b>${fmt(d.amount)} ₫</b><button class="secondary-btn" data-action="debt-del" data-id="${d.id}">Xóa</button>`)).join(''):modEmpty('Chưa có ghi tay','Ghi nợ phải thu/trả ngoài phiếu bán.')}</div></div>
-${modNote('Phải thu tự tính từ phiếu bán <b>chờ thu</b> (chuyển khoản/QR). Công nợ nhà cung cấp theo phiếu nhập: <b>chưa nối</b>.')}`;
+${modNote('Phải thu tự tính từ phiếu bán <b>chờ thu</b>. Công nợ nhà cung cấp: tự động cộng từ phiếu nhập kho và chứng từ ghi tay.')}`;
   panelScreen('Công nợ','Phải thu khách hàng và phải trả nhà cung cấp.','working','Đang dùng',body);
 }
 
@@ -6958,7 +7075,41 @@ function openReturnFlow(sale){
   for(const row of state.data.returns||[]) if(row.sale_id===sale.id) for(const line of row.lines||[]) prior.set(line.item_id,(prior.get(line.item_id)||0)+Number(line.quantity||0));
   const rows=(sale.items||[]).filter(line=>line.type!=='SERVICE'||line.track_inventory===false).map((line,i)=>{
     const id=line.item_id||line.itemId; const remaining=Math.max(0,Number(line.quantity||0)-(prior.get(id)||0));
-    return `<label class="return-line"><input type="checkbox" data-return-line="${esc(id)}" ${remaining?'':'disabled'}/><span><strong>${esc(line.name||'Sản phẩm')}</strong><small>${esc(line.sku||'')} · Đã bán ${fmt(line.quantity)} · Còn trả ${fmt(remaining)}</small></span><input type="number" min="1" max="${remaining}" value="${remaining?1:0}" data-return-qty="${esc(id)}" ${remaining?'':'disabled'}/><select data-return-condition="${esc(id)}" ${remaining?'':'disabled'}><option value="SELLABLE">Bán lại được</option><option value="DAMAGED">Hàng hỏng</option><option value="NO_RESTOCK">Không nhập lại</option></select></label>`;
+    const isAvailable=remaining>0;
+    return `<div class="return-item-card ${isAvailable?'':'disabled'}" data-card-for="${esc(id)}">
+      <div class="return-item-header">
+        <label class="return-checkbox-label">
+          <input type="checkbox" data-return-line="${esc(id)}" ${isAvailable?'':'disabled'}/>
+        </label>
+        <div class="return-item-main">
+          <strong class="return-item-title">${esc(line.name||'Sản phẩm')}</strong>
+          <div class="return-item-meta">
+            ${line.sku?`<span class="sku-tag">${esc(line.sku)}</span>`:''}
+            <span>Đã bán: <b>${fmt(line.quantity)}</b></span>
+            <span>Còn trả: <b class="${remaining>0?'text-green':'text-muted'}">${fmt(remaining)}</b></span>
+          </div>
+        </div>
+      </div>
+      ${isAvailable?`
+      <div class="return-item-controls" id="returnControls_${esc(id)}" style="display:none">
+        <div class="return-ctrl-row">
+          <label class="ctrl-label">Số lượng trả</label>
+          <div class="return-stepper">
+            <button type="button" class="stepper-btn minus" data-step-minus="${esc(id)}">−</button>
+            <input type="number" min="1" max="${remaining}" value="1" data-return-qty="${esc(id)}" inputmode="numeric"/>
+            <button type="button" class="stepper-btn plus" data-step-plus="${esc(id)}">+</button>
+          </div>
+        </div>
+        <div class="return-ctrl-row">
+          <label class="ctrl-label">Tình trạng kho</label>
+          <select data-return-condition="${esc(id)}" class="return-condition-select">
+            <option value="SELLABLE">Bán lại được</option>
+            <option value="DAMAGED">Hàng hỏng</option>
+            <option value="NO_RESTOCK">Không nhập lại</option>
+          </select>
+        </div>
+      </div>`:''}
+    </div>`;
   }).join('');
   let returnMode='return';
   const newItems=[];
@@ -6966,23 +7117,23 @@ function openReturnFlow(sale){
   const saleDebt=Number(sale.debt_amount??(sale.payment_status==='PARTIAL'?Math.max(0,Number(sale.grand_total??sale.total??0)-Number(sale.paid_amount||0)):0));
   const hasDebt=saleDebt>0;
 
-  const body=`<div class="return-flow">
-    <div class="warehouse-tabs" style="margin-bottom:12px">
+  const body=`<div class="return-flow-wrapper">
+    <div class="return-tabs">
       <button type="button" class="active" id="retTabReturn">Trả hàng</button>
       <button type="button" id="retTabExchange">Đổi hàng</button>
     </div>
-    <div class="callout" id="returnNotice">Chọn mặt hàng khách trả lại. Tồn kho sẽ được hoàn trả theo tình trạng đã chọn.</div>
+    <div class="return-notice" id="returnNotice">Chọn mặt hàng khách trả lại. Tồn kho sẽ được hoàn trả theo tình trạng đã chọn.</div>
     <div class="return-lines">${rows||'<div class="empty">Phiếu này không có sản phẩm để trả.</div>'}</div>
-    <div id="exchangePanel" style="display:none;margin-top:14px;border-top:1px solid var(--border,#e5e7eb);padding-top:12px">
-      <div class="field"><label>Chọn sản phẩm mới lấy</label><div class="stock-search"><input id="exSearch" placeholder="Tìm sản phẩm mới để đổi..." autocomplete="off"/>${icon('scan-line')}</div><div id="exSearchResults" class="stock-product-results"></div><div id="exLineList" class="line-list" style="margin-top:8px"></div></div>
-      <div class="count-compare" style="margin-top:12px">
+    <div id="exchangePanel" style="display:none;margin-top:6px;border-top:1px solid var(--border,#e5e7eb);padding-top:12px">
+      <div class="field"><label style="font-weight:700">Chọn sản phẩm mới lấy</label><div class="stock-search"><input id="exSearch" placeholder="Tìm sản phẩm mới để đổi..." autocomplete="off"/>${icon('scan-line')}</div><div id="exSearchResults" class="stock-product-results"></div><div id="exLineList" class="line-list" style="margin-top:8px"></div></div>
+      <div class="exchange-compare">
         <div><span>Giá trị hàng trả</span><strong id="exReturnSum">0 ₫</strong></div>
         <div><span>Giá trị hàng mới</span><strong id="exNewSum">0 ₫</strong></div>
-        <div><span>Chênh lệch</span><strong id="exDiffSum">0 ₫</strong></div>
+        <div class="diff-box"><span>Chênh lệch thanh toán</span><strong id="exDiffSum">0 ₫</strong></div>
       </div>
-      <div class="field" style="margin-top:10px"><label>Phương thức thanh toán chênh lệch</label><select id="exPaymentMethod"><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản / QR</option></select></div>
+      <div class="field" style="margin-top:12px"><label style="font-weight:700">Phương thức thanh toán chênh lệch</label><select id="exPaymentMethod"><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản / QR</option></select></div>
     </div>
-    <div class="form-grid" id="returnSimpleFields">
+    <div class="form-grid" id="returnSimpleFields" style="margin-top:6px">
       <div class="field"><label>Lý do</label><input id="returnReason" value="Khách trả hàng"/></div>
       <div class="field"><label>Hoàn tiền / Cấn trừ</label><select id="returnRefundMethod">${hasDebt?`<option value="debt" selected>Cấn trừ công nợ (Còn nợ ${fmt(saleDebt)} ₫)</option>`:'<option value="debt">Cấn trừ công nợ</option>'}<option value="original" ${!hasDebt?'selected':''}>Theo phương thức gốc</option><option value="cash">Tiền mặt</option><option value="transfer">Chuyển khoản / VietQR</option></select></div>
     </div>
@@ -7103,13 +7254,83 @@ function openReturnFlow(sale){
     calcDiff();
   };
 
-  $$('[data-return-line]',root).forEach(c=>c.onchange=calcDiff);
+  $$('[data-return-line]',root).forEach(c=>{
+    c.onchange=()=>{
+      const id=c.dataset.returnLine;
+      const ctrl=$(`#returnControls_${id}`,root);
+      const card=$(`[data-card-for="${id}"]`,root);
+      if(c.checked){
+        if(ctrl)ctrl.style.display='flex';
+        if(card)card.classList.add('active-selected');
+      }else{
+        if(ctrl)ctrl.style.display='none';
+        if(card)card.classList.remove('active-selected');
+      }
+      calcDiff();
+    };
+  });
+  $$('.return-item-card:not(.disabled) .return-item-main',root).forEach(main=>{
+    main.onclick=()=>{
+      const card=main.closest('.return-item-card');
+      const id=card?.dataset.cardFor;
+      const cb=$(`[data-return-line="${id}"]`,root);
+      if(cb&&!cb.disabled){
+        cb.checked=!cb.checked;
+        cb.dispatchEvent(new Event('change'));
+      }
+    };
+  });
+  $$('[data-step-minus]',root).forEach(btn=>{
+    btn.onclick=(e)=>{
+      e.stopPropagation();
+      const id=btn.dataset.stepMinus;
+      const input=$(`[data-return-qty="${id}"]`,root);
+      if(input){
+        input.value=Math.max(1,(Number(input.value)||1)-1);
+        calcDiff();
+      }
+    };
+  });
+  $$('[data-step-plus]',root).forEach(btn=>{
+    btn.onclick=(e)=>{
+      e.stopPropagation();
+      const id=btn.dataset.stepPlus;
+      const input=$(`[data-return-qty="${id}"]`,root);
+      if(input){
+        const max=Number(input.getAttribute('max'))||999999;
+        input.value=Math.min(max,(Number(input.value)||1)+1);
+        calcDiff();
+      }
+    };
+  });
   $$('[data-return-qty]',root).forEach(c=>c.oninput=calcDiff);
 }
 function renderReturnCenter(){
   setTitle('Trả / Đổi','QBiz');
-  const recent=(state.data.sales||[]).slice().sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,12);
-  $('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Trả hàng / Đổi hàng theo giao dịch</h2><p>Tìm phiếu → chọn dòng → hoàn tiền hoặc đổi sang sản phẩm mới.</p></div>${surfaceStatus('working','Đang dùng')}</div><div class="search large"><input id="returnSearch" placeholder="Tìm mã giao dịch hoặc khách hàng..."/></div><div class="compact-source-list">${recent.map(s=>`<button data-return-sale="${s.id}"><span><b>${esc(s.code||'Phiếu bán')}</b><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at)}</small></span><strong>${fmt(s.grand_total??s.total)} ₫</strong>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch để trả/đổi.</div>'}</div><p class="field-limit">Đổi hàng liên kết phiếu trả và phiếu bán mới; tự động hoàn trả tồn và xuất kho sản phẩm mới.</p></section></section>`;
+  const completedOrders = (state.data.orders||[])
+    .filter(o => o.status === 'COMPLETED' || o.status === 'SHIPPED')
+    .map(o => ({
+      id: o.id,
+      sale_uuid: o.order_uuid || o.id,
+      code: o.code || o.id,
+      customer_label: o.customer_label || o.customer_name || 'Khách online',
+      created_at: o.created_at || o.createdAt,
+      grand_total: o.grand_total ?? o.total ?? 0,
+      total: o.grand_total ?? o.total ?? 0,
+      subtotal: o.subtotal ?? (o.grand_total ?? o.total ?? 0),
+      discount_total: o.discount_total || 0,
+      paid_amount: o.paid_amount ?? (o.grand_total ?? o.total ?? 0),
+      payment_method: o.payment_method || 'transfer',
+      payment_status: o.payment_status || 'PAID',
+      items: o.items || [],
+      warehouseId: o.warehouseId || o.warehouse_id || 'wh_default',
+      warehouse_id: o.warehouseId || o.warehouse_id || 'wh_default',
+      is_order: true
+    }));
+  const recent = [...(state.data.sales || []), ...completedOrders]
+    .sort((a,b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+    .slice(0, 15);
+  $('#content').innerHTML=`<section class="feature-center"><section class="card feature-panel"><div class="section-head"><div><h2>Trả hàng / Đổi hàng theo giao dịch</h2><p>Tìm phiếu → chọn dòng → hoàn tiền hoặc đổi sang sản phẩm mới.</p></div>${surfaceStatus('working','Đang dùng')}</div><div class="search large"><input id="returnSearch" placeholder="Tìm mã giao dịch hoặc khách hàng..."/></div><div class="compact-source-list">${recent.map(s=>`<button data-return-sale="${s.id}"><span><div class="compact-source-code-row"><b>${esc(s.code||'Phiếu bán')}</b>${s.is_order ? '<span class="return-online-badge">Online</span>' : ''}</div><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at)}</small></span><strong>${fmt(s.grand_total??s.total)} ₫</strong>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch để trả/đổi.</div>'}</div><p class="field-limit">Hỗ trợ trả/đổi cả phiếu bán tại quầy lẫn đơn hàng online đã hoàn tất; tự động hoàn trả tồn kho.</p></section></section>`;
   $('#returnSearch')?.addEventListener('input',e=>{const q=norm(e.target.value);$$('[data-return-sale]').forEach(b=>{const s=recent.find(x=>x.id===b.dataset.returnSale);b.hidden=!!q&&!norm([s?.code,s?.customer_label].join(' ')).includes(q)})});
   $$('[data-return-sale]').forEach(b=>b.onclick=()=>openReturnFlow(recent.find(s=>s.id===b.dataset.returnSale)));
 }
@@ -8862,10 +9083,87 @@ function toast(msg, type = '', duration = 1400) {
 }
 
 async function updateSyncPill(){ const s=await syncStatus(); const el=$('#desktopSyncPill'); if(el) el.querySelector('span:last-child').textContent=s.label+(s.pending?` · ${s.pending} chờ`: ''); }
-async function exportBackup(){ const data=await snapshot(); const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),...data},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`qbiz-kho-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); }
+async function exportBackup({ includeImages = true } = {}){
+  const data = await snapshot();
+  if (!includeImages) {
+    if (Array.isArray(data.products)) {
+      data.products = data.products.map(p => {
+        const copy = { ...p };
+        if (copy.image && copy.image.startsWith('data:image/')) copy.image = '';
+        if (Array.isArray(copy.images)) copy.images = copy.images.filter(x => !(typeof x === 'string' ? x : x?.data)?.startsWith('data:image/'));
+        return copy;
+      });
+    }
+    if (Array.isArray(data.categories)) {
+      data.categories = data.categories.map(c => {
+        const copy = { ...c };
+        if (copy.image && copy.image.startsWith('data:image/')) copy.image = '';
+        return copy;
+      });
+    }
+  }
+  const suffix = includeImages ? 'day-du' : 'sieu-nhe';
+  const blob = new Blob([JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), backupType: suffix, ...data }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `qbiz-kho-backup-${suffix}-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function openBackupChoiceModal(){
+  openModal({
+    title: 'Sao lưu dữ liệu JSON',
+    sub: 'Chọn loại tệp sao lưu phù hợp nhu cầu',
+    hideSubmit: true,
+    body: `
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+        <button type="button" id="btnBackupLightweight" class="secondary-btn" style="display:flex;flex-direction:column;align-items:flex-start;padding:12px;text-align:left;border-radius:10px;gap:4px">
+          <div style="display:flex;align-items:center;gap:6px;width:100%">
+            <strong style="color:var(--text,#0f172a);font-size:13.5px">⚡ Bản siêu nhẹ (Khuyên dùng)</strong>
+            <span class="badge" style="background:#ecfdf5;color:#059669;font-weight:700;font-size:10px;padding:2px 6px;margin-left:auto">~30-80 KB</span>
+          </div>
+          <small style="color:#64748b;font-size:11.5px;line-height:1.35">Chỉ lưu dữ liệu bán hàng, kho, sổ quỹ, khách hàng. Cực nhẹ, tải tức thì, gửi qua Zalo hoặc Email trong 1 giây.</small>
+        </button>
+
+        <button type="button" id="btnBackupFull" class="ghost-btn" style="display:flex;flex-direction:column;align-items:flex-start;padding:12px;text-align:left;border:1px solid #e2e8f0;border-radius:10px;gap:4px">
+          <div style="display:flex;align-items:center;gap:6px;width:100%">
+            <strong style="color:#0f172a;font-size:13.5px">📦 Bản đầy đủ (Kèm toàn bộ ảnh)</strong>
+            <span class="badge" style="background:#eff6ff;color:#1e40af;font-weight:700;font-size:10px;padding:2px 6px;margin-left:auto">Đầy đủ</span>
+          </div>
+          <small style="color:#64748b;font-size:11.5px;line-height:1.35">Lưu toàn bộ dữ liệu kèm toàn bộ hình ảnh sản phẩm đã nén WebP.</small>
+        </button>
+      </div>
+    `
+  });
+
+  const root = $('#modalRoot');
+  $('#btnBackupLightweight', root)?.addEventListener('click', async () => {
+    await exportBackup({ includeImages: false });
+    localStorage.setItem('qbiz_last_backup_at', new Date().toISOString());
+    renderBackupCenter();
+    toast('Đã tải tệp sao lưu siêu nhẹ về máy.', 'ok');
+    root.innerHTML = '';
+  });
+  $('#btnBackupFull', root)?.addEventListener('click', async () => {
+    await exportBackup({ includeImages: true });
+    localStorage.setItem('qbiz_last_backup_at', new Date().toISOString());
+    renderBackupCenter();
+    toast('Đã tải tệp sao lưu đầy đủ về máy.', 'ok');
+    root.innerHTML = '';
+  });
+}
+
 function downloadText(name,text,type){const needBom=(type&&(type.includes('csv')||type.includes('excel')||type.includes('ms-excel'))&&!text.startsWith('\uFEFF'));const content=needBom?'\uFEFF'+text:text;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function csvCell(v){const x=String(v??'');return /[",\n]/.test(x)?`"${x.replaceAll('"','""')}"`:x}
-function exportProductsCsv(){downloadText(`qbiz-san-pham-${new Date().toISOString().slice(0,10)}.csv`,['name,sku,barcode,lowStock,image',...state.data.products.map(p=>[p.name,p.sku,p.barcode,p.lowStock,p.image].map(csvCell).join(','))].join('\n'),'text/csv;charset=utf-8')}
+function exportProductsCsv(){
+  const sanitizeImage = (img) => {
+    if (!img) return '';
+    if (typeof img === 'string' && img.startsWith('data:image/')) return '[Ảnh cục bộ]';
+    return img;
+  };
+  downloadText(`qbiz-san-pham-${new Date().toISOString().slice(0,10)}.csv`,['name,sku,barcode,lowStock,image',...state.data.products.map(p=>[p.name,p.sku,p.barcode,p.lowStock,sanitizeImage(p.image)].map(csvCell).join(','))].join('\n'),'text/csv;charset=utf-8')
+}
 async function importProductsCsv(e){
   const file=e.target.files?.[0]; if(!file)return;
   try{
@@ -8879,8 +9177,8 @@ async function importProductsCsv(e){
     openModal({title:'Xem trước nhập hàng hóa',sub:`${fresh.length} sản phẩm mới · ${duplicates.length} SKU trùng sẽ bỏ qua`,body:`<div class="restore-preview"><div class="callout"><strong>${esc(file.name)}</strong><br/>Chỉ nhập thông tin sản phẩm. Tồn đầu kỳ không được ghi từ CSV này để mọi biến động tồn luôn có chứng từ ledger.</div><div class="product-facts"><div><span>Sản phẩm mới</span><strong>${fresh.length}</strong></div><div><span>SKU trùng bỏ qua</span><strong>${duplicates.length}</strong></div></div><div class="csv-preview">${fresh.slice(0,8).map(p=>`<div><b>${esc(p.name)}</b><small>${esc(p.sku)}</small></div>`).join('')}${fresh.length>8?`<p class="muted">… và ${fresh.length-8} sản phẩm khác</p>`:''}</div></div>`,submitText:'Nhập sản phẩm',onSubmit:async()=>{for(const item of fresh)await createProduct(item);}});
   }catch(err){toast(err.message,'error');}finally{e.target.value='';}
 }
-async function importBackupLegacy(e){ const file=e.target.files?.[0]; if(!file) return; try{ const x=JSON.parse(await file.text()); if(!Array.isArray(x.products)||!Array.isArray(x.warehouses)||!Array.isArray(x.levels)) throw new Error('File backup không hợp lệ.'); await clearAll(); for(const name of ['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs']) if(Array.isArray(x[name])) await putMany(name,x[name]); await ensurePrintTemplates(); await refresh(); toast('Đã khôi phục bản sao.','ok'); } catch(err){ toast(err.message,'error'); } }
-const BACKUP_STORES=['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs'];
+async function importBackupLegacy(e){ const file=e.target.files?.[0]; if(!file) return; try{ const x=JSON.parse(await file.text()); if(!Array.isArray(x.products)||!Array.isArray(x.warehouses)||!Array.isArray(x.levels)) throw new Error('File backup không hợp lệ.'); await clearAll(); for(const name of ['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs','electronic_invoices','invoice_audit_logs']) if(Array.isArray(x[name])) await putMany(name,x[name]); await ensurePrintTemplates(); await refresh(); toast('Đã khôi phục bản sao.','ok'); } catch(err){ toast(err.message,'error'); } }
+const BACKUP_STORES=['products','warehouses','levels','movements','transfers','sales','orders','customers','suppliers','purchase_receipts','returns','refunds','shifts','categories','settings','outbox','devices','registers','print_templates','print_jobs','electronic_invoices','invoice_audit_logs'];
 function backupCounts(data){return ['products','warehouses','levels','movements','sales','orders','customers','suppliers','purchase_receipts'].map(name=>`${({products:'Hàng hóa',warehouses:'Kho',levels:'Tồn theo kho',movements:'Biến động',sales:'Phiếu bán',orders:'Đơn hàng',customers:'Khách hàng',suppliers:'Nhà cung cấp',purchase_receipts:'Phiếu nhập'})[name]}: ${(data[name]||[]).length}`).join(' · ')}
 async function importBackup(e){
   const file=e.target.files?.[0]; if(!file)return;
@@ -8899,8 +9197,13 @@ async function importBackup(e){
 }
 function formatBytes(n){if(!n)return '0 B';const units=['B','KB','MB'];const i=Math.min(Math.floor(Math.log(n)/Math.log(1024)),2);return `${(n/1024**i).toFixed(i?1:0)} ${units[i]}`}
 async function optimizeImage(file){
-  const max=1800; const bitmap=typeof createImageBitmap==='function'?await createImageBitmap(file):await loadImage(file); const scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height)); const canvas=document.createElement('canvas'); canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale)); const ctx=canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(bitmap,0,0,canvas.width,canvas.height); bitmap.close?.();
-  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.82)); return await blobToData(blob||file);
+  try {
+    return await optimizeImageFile(file, { maxDimension: 800, quality: 0.82 });
+  } catch (err) {
+    console.warn('[ImageOptimizer] Fallback to legacy optimizer:', err);
+    const max=800; const bitmap=typeof createImageBitmap==='function'?await createImageBitmap(file):await loadImage(file); const scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height)); const canvas=document.createElement('canvas'); canvas.width=Math.max(1,Math.round(bitmap.width*scale)); canvas.height=Math.max(1,Math.round(bitmap.height*scale)); const ctx=canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(bitmap,0,0,canvas.width,canvas.height); bitmap.close?.();
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',.82)); return await blobToData(blob||file);
+  }
 }
 function loadImage(file){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=URL.createObjectURL(file);})}
 function blobToData(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);})}
@@ -10376,6 +10679,7 @@ document.addEventListener('click', async e=>{
   if(action==='tax-preferences') return openTaxPreferencesModal();
   if(action==='connections-settings') return openConnectionSettings();
   if(action==='data-settings') return openDataSettings();
+  if(action==='storage-status') return openStorageStatusModal();
   if(action==='price-new') return openPriceForm();
   if(action==='price-del') return deleteModuleRow('price_lists',e.target.closest('[data-id]')?.dataset.id,renderPrices);
   if(action==='promo-new') return openPromoForm();
@@ -10440,8 +10744,8 @@ document.addEventListener('click', async e=>{
   if(action==='warehouse-management') return openWarehouseManagement();
   if(action==='show-qr') return openQR(e.target.closest('[data-product-id]')?.dataset.productId);
   if(action==='install-app') return runInstallApp();
-  if(action==='export-backup') return exportBackup();
-  if(action==='backup-now'){await exportBackup();localStorage.setItem('qbiz_last_backup_at',new Date().toISOString());renderBackupCenter();toast('Đã tạo tệp sao lưu local.','ok');return;}
+  if(action==='export-backup') return openBackupChoiceModal();
+  if(action==='backup-now') return openBackupChoiceModal();
   if(action==='mark-all-read'){buildNotifications().forEach(n=>state.notificationRead.add(n.id));renderNotificationCenter();return;}
   if(action==='export-csv') return exportProductsCsv();
   if(action==='sync-now'){ try{ const r=await flushOutbox(); toast(r.skipped?'Bản local: chưa bật API QBiz.':`Đã gửi ${r.sent} thay đổi.`,'ok'); } catch(err){ toast(err.message,'error'); } return; }
@@ -10619,6 +10923,8 @@ async function boot(){
   initAiUI(state);
   initScrollHeaderAutoHide();
   pruneSyncedOutbox().catch(() => {});
+  scheduleIdlePrefetch(state, { delayMs: 3500 });
+  scheduleAutoMaintenance();
   window.__QBIZ_BUILD_INFO__ = {
     baseGitSha: '9837b84a8b40126536874dfe53b613b46fff52f5',
     worktreeDirty: true,
@@ -10676,6 +10982,11 @@ async function boot(){
     openTaxPreferencesModal,
     openConnectionSettings,
     openDataSettings,
+    openStorageStatusModal,
+    runIdlePrefetch: () => runIdlePrefetch(state.data?.products || []),
+    getPrefetchStatus,
+    checkStorageQuota,
+    performAutoMaintenance,
     openPriceForm,
     openPromoForm,
     openComboForm,

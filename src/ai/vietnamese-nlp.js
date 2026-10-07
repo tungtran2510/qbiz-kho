@@ -814,15 +814,44 @@ export function parseAppNavigationAction(text) {
     return { actionId: 'open_store_info', label: 'Đã mở Thông tin cửa hàng.' };
   }
 
-  // 4. Chế độ kinh doanh / Mô hình kinh doanh
-  if (
+  // 4. Chế độ kinh doanh / Mô hình kinh doanh / Đổi ngành hàng / Phương thức bán hàng
+  const isBusinessModeQuery = (
     clean === 'che do kinh doanh' || clean === 'mo hinh kinh doanh' ||
     clean === 'doi che do kinh doanh' || clean === 'doi mo hinh kinh doanh' ||
     clean === 'chon che do' || clean === 'nganh kinh doanh' ||
-    clean === 'doi nganh kinh doanh' || c.includes('che do kinh doanh') || c.includes('mo hinh kinh doanh')
-  ) {
-    return { actionId: 'open_business_mode', label: 'Đã mở Chế độ kinh doanh.' };
+    clean === 'doi nganh kinh doanh' || clean === 'chuyen doi nganh hang' ||
+    clean === 'chuyen nganh hang' || clean === 'doi nganh hang' ||
+    clean === 'nganh hang' || clean === 'phuong thuc ban hang' ||
+    clean === 'chuyen doi phuong thuc ban hang' || clean === 'doi phuong thuc ban hang' ||
+    c.includes('che do kinh doanh') || c.includes('mo hinh kinh doanh') ||
+    c.includes('chuyen doi nganh hang') || c.includes('chuyen nganh hang') ||
+    c.includes('doi nganh hang') || c.includes('chuyen doi phuong thuc ban hang') ||
+    c.includes('phuong thuc ban hang') || c.includes('chuyen sang ban le') ||
+    c.includes('doi sang ban le') || c.includes('chuyen sang nganh ban le') ||
+    c.includes('nganh ban le') || c.includes('it nghiep vu') ||
+    (c.includes('chuyen') && c.includes('nganh')) ||
+    (c.includes('doi') && c.includes('nganh')) ||
+    (c.includes('chon') && c.includes('nganh')) ||
+    (c.includes('chuyen sang') && (c.includes('ban le') || c.includes('thoi trang') || c.includes('ca phe') || c.includes('quan an') || c.includes('dich vu') || c.includes('ban si')))
+  );
+
+  if (isBusinessModeQuery) {
+    let targetMode = null;
+    if (c.includes('ban le')) targetMode = 'retail';
+    else if (c.includes('thoi trang')) targetMode = 'fashion';
+    else if (c.includes('ca phe') || c.includes('quan an') || c.includes('fnb')) targetMode = 'fnb';
+    else if (c.includes('ban si') || c.includes('buon')) targetMode = 'wholesale';
+    else if (c.includes('dich vu') || c.includes('spa')) targetMode = 'service';
+    else if (c.includes('tu van')) targetMode = 'consulting';
+    else if (c.includes('chung') || c.includes('mac dinh')) targetMode = 'general';
+
+    const label = targetMode
+      ? `Đã mở Chế độ kinh doanh (Đề xuất: ${targetMode === 'retail' ? 'Bán lẻ' : targetMode}).`
+      : 'Đã mở Chế độ kinh doanh.';
+
+    return { actionId: 'open_business_mode', params: { mode: targetMode }, label };
   }
+
 
   // 5. Kiểu giao diện / Tùy chỉnh UI
   if (
