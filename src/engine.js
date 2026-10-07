@@ -12,9 +12,13 @@ const nextClientSeq=()=>{try{const k='qbiz_outbox_seq';const n=Math.max(Number(g
 // sự kiện đồng bộ nên chặn tại đây (giao dịch IndexedDB bị huỷ, không ghi nửa chừng). Outbox đang chờ vẫn được gửi lại.
 let newEventBlock=null;
 export function setNewEventBlock(reason){newEventBlock=reason||null;}
+// Backend web: tài khoản (auth id) tạo thao tác — flush.js KHÔNG gửi thao tác của tài khoản khác dưới phiên hiện tại
+// (đổi tài khoản trên cùng máy + cùng shop). Legacy không đặt → không có trường này.
+let outboxActor=null;
+export function setOutboxActor(authId){outboxActor=authId||null;}
 export function getNewEventBlock(){return newEventBlock;}
 const makeOutboxRaw=( {operationId,eventId=uuid(),entityType,entityId,action,version=1,deviceId='',registerId='',payload,createdAt=now(),type=`${entityType}.${action}`} )=>({id:operationId,client_seq:nextClientSeq(),event_id:eventId,source_event_id:eventId,operation_id:operationId,entity_type:entityType,entity_id:entityId,action,version,device_id:deviceId,register_id:registerId,source:SYNC_SOURCE,provider:'local',created_at:createdAt,updated_at:createdAt,retry_count:0,sync_status:'PENDING',type,payload});
-const makeOutbox=(args)=>{if(newEventBlock)throw new Error(newEventBlock);return makeOutboxRaw(args);};
+const makeOutbox=(args)=>{if(newEventBlock)throw new Error(newEventBlock);const row=makeOutboxRaw(args);return outboxActor?{...row,actor_auth_id:outboxActor}:row;};
 export async function ensureLocalIdentity(){return ensureIdentity(uuid,now);}
 async function localIdentity(){return ensureLocalIdentity();}
 async function localDeviceId(){return (await localIdentity()).device_id;}

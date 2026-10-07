@@ -471,7 +471,9 @@ export async function signOut() {
   try {
     const { url } = getSupabaseConfig();
     if (url && currentSession?.access_token) {
-      await supabaseFetch('/auth/v1/logout', { method: 'POST' }).catch(() => {});
+      // Backend web dùng chung tài khoản với website: scope local = chỉ thu hồi phiên CỦA app Kho trên máy này.
+      const path = CONFIG.BACKEND === 'web' ? '/auth/v1/logout?scope=local' : '/auth/v1/logout';
+      await supabaseFetch(path, { method: 'POST' }).catch(() => {});
     }
   } catch (err) {
     console.warn('Signout API warning:', err);
@@ -485,6 +487,41 @@ export async function signOut() {
     localStorage.removeItem(STORAGE_ACTIVE_SHOP_KEY);
     emitState();
   }
+}
+
+/** Người dùng của phiên đang LƯU (đọc trước initAuth — SSO cần so tài khoản trước khi mở DB). null = chưa đăng nhập. */
+export function peekSavedSessionUser() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_SESSION_KEY) || 'null');
+    return s?.user?.id ? { id: s.user.id, email: s.user.email || '', access_token: s.access_token || '' } : null;
+  } catch (_) { return null; }
+}
+
+/**
+ * Backend web: nhận phiên SSO từ website (src/web/sso.js — server đã đổi mã + mint phiên RIÊNG cho Kho). Lưu phiên,
+ * bỏ phiên demo, chọn sẵn shop đích (loadUserShops ở initAuth xác minh lại shop qua kho_my_shops, online). Gọi TRƯỚC
+ * initAuth. Phiên Kho cũ của tài khoản KHÁC được thu hồi (scope local) — outbox của nó giữ nguyên, không gửi dưới
+ * tài khoản mới (flush.js lọc theo actor_auth_id).
+ */
+export async function adoptWebSession({ access_token, refresh_token, expires_in }, shopId) {
+  if (CONFIG.BACKEND !== 'web') throw new Error('Chỉ dùng ở chế độ web.');
+  let claims = {};
+  try { claims = JSON.parse(decodeURIComponent(escape(atob(String(access_token).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (_) {}
+  if (!claims.sub) throw new Error('Phiên đăng nhập không hợp lệ.');
+  const prev = peekSavedSessionUser();
+  if (prev && prev.id !== claims.sub && prev.access_token) {
+    const { url, anonKey } = getSupabaseConfig();
+    fetch(`${url}/auth/v1/logout?scope=local`, { method: 'POST', headers: { apikey: anonKey, Authorization: `Bearer ${prev.access_token}` } }).catch(() => {});
+  }
+  currentSession = {
+    access_token, refresh_token, expires_in: Number(expires_in) || 3600,
+    user: { id: claims.sub, email: String(claims.email || '').toLowerCase(), user_metadata: claims.user_metadata || {}, app_metadata: claims.app_metadata || {} },
+  };
+  localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentSession));
+  clearDemoSession();
+  currentShop = null;
+  currentMembership = null;
+  if (shopId) localStorage.setItem(STORAGE_ACTIVE_SHOP_KEY, JSON.stringify({ shop: { id: String(shopId) } }));
 }
 
 /**

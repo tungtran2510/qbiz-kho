@@ -14,7 +14,7 @@
 // ==============================================================================
 
 import { getAll, getOne, put, runTransaction } from '../db.js';
-import { getActiveShop } from '../auth.js';
+import { getActiveShop, getCurrentUser } from '../auth.js';
 import { rpc, restInsert, classifyError, errorCode } from './api.js';
 import { splitWebItemId } from './catalog.js';
 
@@ -339,11 +339,15 @@ async function doFlush() {
   for (const r of all) { const k = createsKey(r); if (k) creator.set(k, r); }
   const rows = all.filter((r) => ACTIVE.includes(statusOf(r)));
 
-  let sent = 0, failed = 0, review = 0, deferred = 0;
+  let sent = 0, failed = 0, review = 0, deferred = 0, otherUser = 0;
+  const me = getCurrentUser()?.id || null;
   // Cập nhật bảng sự kiện gốc NGAY khi trạng thái đổi trong lượt này (phiếu bán vừa vào "cần xem" → phiếu trả phía sau
   // phải thấy ngay, không gửi đi rồi nhận SALE_NOT_FOUND chặn cả hàng đợi).
   const track = (r) => { const k = createsKey(r); if (k) creator.set(k, r); };
   for (const row of rows) {
+    // Thao tác do tài khoản KHÁC tạo trên máy này (đổi tài khoản) → không gửi dưới phiên hiện tại. Dừng (giữ thứ tự):
+    // tự gửi khi tài khoản đó đăng nhập lại.
+    if (row.actor_auth_id && me && row.actor_auth_id !== me) { otherUser++; break; }
     if (!isWebSupported(row.type)) {
       if (row.web_status !== 'DEFERRED') { await put('outbox', { ...row, web_status: 'DEFERRED' }); }
       deferred++;
@@ -400,7 +404,7 @@ async function doFlush() {
       break;   // giữ thứ tự: sự kiện sau có thể phụ thuộc sự kiện này
     }
   }
-  return { sent, failed, review, deferred, skipped: false };
+  return { sent, failed, review, deferred, otherUser, skipped: false };
 }
 
 /** Có sự kiện ảnh hưởng tồn còn chưa lên server (chờ / lỗi / cần xem)? — xác nhận kiểm kho chỉ khi KHÔNG. */
@@ -415,7 +419,8 @@ export async function webSyncStatus() {
   const by = (s) => rows.filter((r) => statusOf(r) === s).length;
   return { pending: by('PENDING') + by('ERROR') + by('SYNCING'), review: by('NEEDS_REVIEW'),
     deferred: rows.filter((r) => r.web_status === 'DEFERRED' && statusOf(r) !== 'SYNCED').length,
-    authRequired: rows.some((r) => r.web_status === 'AUTH_REQUIRED' && statusOf(r) === 'ERROR') };
+    authRequired: rows.some((r) => r.web_status === 'AUTH_REQUIRED' && statusOf(r) === 'ERROR'),
+    otherUser: (() => { const me = getCurrentUser()?.id; return me ? rows.filter((r) => r.actor_auth_id && r.actor_auth_id !== me && ACTIVE.includes(statusOf(r))).length : 0; })() };
 }
 
 // ---- Xử lý hàng "cần xem" (chủ shop / quản lý quyết; giao diện ở lát sau) -----------------------------------

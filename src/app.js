@@ -1,4 +1,4 @@
-import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn ,setNewEventBlock } from './engine.js?v=20260927-v21-consistency-audit';
+import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn ,setNewEventBlock ,setOutboxActor } from './engine.js?v=20260927-v21-consistency-audit';
 import { clearAll,getAll,getOne,put,putMany,runTransaction,currentDbName,openedDbName,demoDbName,clearDemoSession } from './db.js';
 import { syncStatus,flushOutbox,pruneSyncedOutbox } from './sync.js';
 import { CONFIG } from './config.js';
@@ -45,7 +45,8 @@ import {
   getPlatformCommercialConfig,
   savePlatformCommercialConfig,
   bootstrapSuperAdmin,
-  signInWithGoogle, loadUserShops } from './auth.js';
+  signInWithGoogle, loadUserShops, getAuthSessionToken, adoptWebSession, peekSavedSessionUser, tryRefreshToken } from './auth.js';
+import { beginKhoReceive, takeSsoFragment, takeReceiveTx, redeemForKho, issueForWeb, webAdminSsoUrl, takeSsoQuery, jwtClaims } from './web/sso.js';
 import {
   DRIVE_STATUS,
   BACKUP_RUN_STATUS,
@@ -403,6 +404,7 @@ function injectWebSyncNotice(){
   const productsUrl=noProducts?webAdminUrl(auth.shop?.slug,'products'):null;
   let text='', btn='';
   if(s.authRequired){ text='Phiên đăng nhập đã hết hạn — đăng nhập lại để gửi dữ liệu lên máy chủ.'; btn=`<button class="ghost-btn tiny" data-action="open-auth-modal" style="font-size:11px;padding:2px 6px;color:#0284c7;font-weight:600">Đăng nhập</button>`; }
+  else if(s.otherUser){ text=`<b>${s.otherUser}</b> thao tác của tài khoản khác chờ người đó đăng nhập lại để gửi`; }
   else if(s.review){ text=`<b>${s.review}</b> thao tác cần chủ cửa hàng xem lại${s.pending?` · ${s.pending} chờ gửi`:''}`; }
   else if(s.pending){ text=`<b>${s.pending}</b> thao tác chờ gửi lên máy chủ`; }
   else if(noProducts){ text='Chưa có sản phẩm — sản phẩm và dịch vụ được quản lý tại trang quản trị website.'; if(productsUrl) btn=`<button class="ghost-btn tiny" data-action="kho-open-web-products" style="font-size:11px;padding:2px 6px;color:#0284c7;font-weight:600">Thêm sản phẩm</button>`; }
@@ -494,7 +496,7 @@ function renderKhoNotEntitled(){
   const auth=getAuthState();
   if(auth.status!==AUTH_STATES.AUTHENTICATED_SHOP_READY || auth.shop?.kho_entitled!==false) return false;
   const isOwner=auth.membership?.web_role==='owner';
-  const buyUrl=isOwner?webAdminUrl(auth.shop.slug,'subscription'):null;
+  const buyUrl=isOwner?(webAdminSsoUrl(auth.shop.id,auth.shop.slug,'subscription')||webAdminUrl(auth.shop.slug,'subscription')):null;
   const pending=(state.webSync?.pending||0)+(state.webSync?.review||0);
   const many=getAvailableShops().length>1;
   const content=$('#content'); if(!content) return true;
@@ -8094,11 +8096,15 @@ function openUserMenuModal() {
           </button>
         </div>
 
+        ${isWebBackend && ['owner','shop_manager'].includes(auth.membership?.web_role) && webAdminSsoUrl(shop?.id, shop?.slug) ? `
+        <button type="button" class="primary-btn" data-action="kho-open-web-admin" style="width:100%;min-height:40px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:8px;font-size:12.5px;font-weight:700">
+          ${icon('store')} Quản trị cửa hàng (website)
+        </button>` : ''}
         <!-- 4. Subtle Maintenance & Sign Out -->
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
-          <button type="button" id="menuBtnClearDemoFresh" style="background:none;border:none;color:#64748b;font-size:11.5px;padding:4px 0;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer">
+          ${isWebBackend ? '' : `<button type="button" id="menuBtnClearDemoFresh" style="background:none;border:none;color:#64748b;font-size:11.5px;padding:4px 0;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer">
             ${icon('trash-2')} Xóa dữ liệu mẫu Demo (bắt đầu shop trắng)
-          </button>
+          </button>`}
           <button type="button" id="menuBtnSignOut" style="width:100%;height:38px;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;font-size:12.5px;font-weight:600;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer">
             ${icon('log-out')} Đăng xuất
           </button>
@@ -9168,8 +9174,9 @@ document.addEventListener('click', async e=>{
     return;
   }
   if(action==='prepare-sync-info') { if(isWebBackend) return; return openSyncInfoModal(); }
-  if(action==='kho-open-subscription') { const a=getAuthState(); if(!openWebPage(webAdminUrl(a.shop?.slug,'subscription'))) toast('Bật QBiz Kho tại trang Gói dịch vụ của website QBiz.','error'); return; }
-  if(action==='kho-open-web-products') { const a=getAuthState(); openWebPage(webAdminUrl(a.shop?.slug,'products')); return; }
+  if(action==='kho-open-subscription') { const a=getAuthState(); if(!openWebPage(webAdminSsoUrl(a.shop?.id,a.shop?.slug,'subscription')||webAdminUrl(a.shop?.slug,'subscription'))) toast('Bật QBiz Kho tại trang Gói dịch vụ của website QBiz.','error'); return; }
+  if(action==='kho-open-web-admin') { const a=getAuthState(); if(!openWebPage(webAdminSsoUrl(a.shop?.id,a.shop?.slug))) toast('Chưa cấu hình địa chỉ website QBiz.','error'); return; }
+  if(action==='kho-open-web-products') { const a=getAuthState(); openWebPage(webAdminSsoUrl(a.shop?.id,a.shop?.slug,'products')||webAdminUrl(a.shop?.slug,'products')); return; }
   if(action==='kho-recheck-entitlement') {
     try { await loadUserShops(); } catch(_) {}
     const a=getAuthState();
@@ -9393,7 +9400,51 @@ function initScrollHeaderAutoHide() {
   }, { passive: true });
 }
 
+/**
+ * Backend web: xử lý SSO với website ở ĐẦU boot (trước initAuth / mở DB / đồng bộ). Trả:
+ *  - 'navigated' : đã chuyển trang (dừng boot)
+ *  - { authorize } : Kho là bên cấp cho web — xử lý SAU initAuth (cần phiên Kho)
+ *  - { error } / null
+ */
+async function ssoEntry(){
+  const query = takeSsoQuery();
+  const frag = takeSsoFragment();
+  if (query?.mode === 'start') {
+    try { location.replace(await beginKhoReceive(query.shop)); return 'navigated'; }
+    catch (err) { return { error: err.message }; }
+  }
+  if (query?.mode === 'authorize') return { authorize: query };
+  if (!frag) return null;
+  if (frag.bad) return { error: 'Liên kết đăng nhập không hợp lệ.' };
+  const tx = takeReceiveTx(frag.state);
+  if (!tx) return { error: 'Liên kết đăng nhập không được mở từ thao tác của bạn trên máy này, hoặc đã hết hạn. Vui lòng thử lại từ website.' };
+  try {
+    const sess = await redeemForKho(frag.code, tx);
+    const incoming = jwtClaims(sess.access_token);
+    const prev = peekSavedSessionUser();
+    if (prev && prev.id !== incoming.sub) {
+      const ok = confirm(`QBiz Kho đang đăng nhập ${prev.email || 'một tài khoản khác'}. Chuyển sang ${incoming.email || 'tài khoản vừa xác thực'}?\nThao tác chưa gửi của tài khoản cũ được giữ lại và tự gửi khi tài khoản đó đăng nhập lại.`);
+      if (!ok) return { error: 'Đã giữ tài khoản đang đăng nhập.' };
+    }
+    await adoptWebSession(sess, tx.shopId);
+    return null;
+  } catch (err) {
+    return { error: err.message || 'Không đăng nhập liên kết được.' };
+  }
+}
+async function ssoAuthorizeForWeb(query){
+  let token = getAuthSessionToken();
+  if (!token) throw new Error('Đăng nhập QBiz Kho trước rồi bấm lại "Quản trị cửa hàng".');
+  try { return await issueForWeb(query, token); }
+  catch (err) {
+    if (err.status !== 401 || !(await tryRefreshToken())) throw err;
+    token = getAuthSessionToken();
+    return issueForWeb(query, token);
+  }
+}
 async function boot(){
+  const sso = isWebBackend ? await ssoEntry() : null;
+  if (sso === 'navigated') return;
   if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
     navigator.storage.persist().then(persisted => {
       if (persisted) {
@@ -9402,6 +9453,11 @@ async function boot(){
     }).catch(() => {});
   }
   await initAuth();
+  if (sso?.authorize) {
+    try { location.replace(await ssoAuthorizeForWeb(sso.authorize)); return; }
+    catch (err) { state.ssoError = err.message; }
+  }
+  if (sso?.error) state.ssoError = sso.error;
   const auth = getAuthState();
   if (!auth.user && typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_preview_demo') === '1') {
     const demoVer = (await getOne('settings', 'demo_data_version'))?.value;
@@ -9424,6 +9480,7 @@ async function boot(){
   const pageParam = new URLSearchParams(location.search).get('page') || (location.pathname.includes('/platform-admin') ? 'platform-admin' : null);
   if (pageParam) state.page = pageParam;
   history.replaceState(historyState(),'');render();
+  if (state.ssoError) { toast(state.ssoError, 'error'); state.ssoError = null; }
   subscribeAuthState(() => render());
   if (CONFIG.BACKEND === 'web') {
     // Đồng bộ với database web theo shop đang chọn; đổi shop / đăng xuất → dừng vòng cũ, chạy vòng mới.
@@ -9431,6 +9488,7 @@ async function boot(){
     subscribeAuthState((auth) => {
       const shop = auth?.status === AUTH_STATES.AUTHENTICATED_SHOP_READY ? auth.shop : null;
       setNewEventBlock(shop && shop.kho_entitled === false ? 'Cửa hàng chưa có QBiz Kho (hết dùng thử hoặc chưa mua gói). Thao tác mới không được ghi.' : null);
+      setOutboxActor(auth?.user?.id || null);
       // Khoá = shop + quyền Kho: "Kiểm tra lại" bật Kho cho CÙNG shop → chạy lại vòng đồng bộ (đăng ký thiết bị theo quyền mới).
       const webKey = shop ? `${shop.id}:${shop.kho_entitled !== false}` : null;
       if (webKey === webShopId) return;
