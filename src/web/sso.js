@@ -92,11 +92,17 @@ export async function issueForWeb(params, accessToken) {
   return dest;
 }
 
-/** URL mở trang quản trị web của shop, đăng nhập sẵn bằng tài khoản Kho (web là bên nhận). null nếu chưa cấu hình. */
-export function webAdminSsoUrl(shopId, slug, sub = '') {
-  if (!CONFIG.WEB_ORIGIN || !shopId || !slug) return null;
-  const next = `/admin/${encodeURIComponent(slug)}${sub ? '/' + sub : ''}`;
+/** URL mở 1 trang quản trị web (đường dẫn nội bộ `next`), đăng nhập sẵn bằng tài khoản Kho qua shop `shopId`
+ *  (web là bên nhận; server kiểm quyền chủ shop / quản lý của shop đó). null nếu chưa cấu hình. */
+export function webSsoUrl(shopId, next) {
+  if (!CONFIG.WEB_ORIGIN || !shopId || !String(next || '').startsWith('/')) return null;
   return `${CONFIG.WEB_ORIGIN}/auth/sso/start?${new URLSearchParams({ from: 'kho', shop: shopId, next }).toString()}`;
+}
+
+/** URL mở trang quản trị web của shop (sub vd 'members', 'subscription'), đăng nhập sẵn bằng tài khoản Kho. */
+export function webAdminSsoUrl(shopId, slug, sub = '') {
+  if (!slug) return null;
+  return webSsoUrl(shopId, `/admin/${encodeURIComponent(slug)}${sub ? '/' + sub : ''}`);
 }
 
 /** Đọc tham số `?sso=…` (start | authorize) rồi xoá khỏi URL. */

@@ -5,7 +5,7 @@ import { CONFIG } from './config.js';
 /** Backend web (database + đăng nhập dùng chung website QBiz) — xem config.js / src/web/. */
 const isWebBackend = CONFIG.BACKEND === 'web';
 import { startWebSync, stopWebSync } from './web/bootstrap.js';
-import { webRegisterUrl, webForgotUrl, webAdminUrl, openWebPage } from './web/links.js';
+import { webUrl, webRegisterUrl, webForgotUrl, webAdminUrl, openWebPage } from './web/links.js';
 import { webSyncStatus, webReviewItems, retryReviewItem, discardReviewItem, webFlushOutbox } from './web/flush.js';
 import { reviewTypeLabel, reviewReason, canDiscardReview } from './web/review.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
@@ -47,7 +47,7 @@ import {
   savePlatformCommercialConfig,
   bootstrapSuperAdmin,
   signInWithGoogle, loadUserShops, getAuthSessionToken, adoptWebSession, peekSavedSessionUser, tryRefreshToken } from './auth.js';
-import { beginKhoReceive, takeSsoFragment, takeReceiveTx, redeemForKho, issueForWeb, webAdminSsoUrl, takeSsoQuery, jwtClaims } from './web/sso.js';
+import { beginKhoReceive, takeSsoFragment, takeReceiveTx, redeemForKho, issueForWeb, webAdminSsoUrl, webSsoUrl, takeSsoQuery, jwtClaims } from './web/sso.js';
 import {
   DRIVE_STATUS,
   BACKUP_RUN_STATUS,
@@ -353,7 +353,7 @@ function headerActions(){
   } else if(auth.status===AUTH_STATES.AUTHENTICATED_SHOP_READY){
     userBadge=`<button class="user-badge-btn" data-action="open-user-menu" title="${esc(auth.user?.email||'Tài khoản')}">${icon('user')}<span>${esc(auth.shop?.name||'Shop')}</span></button>`;
   } else if(auth.status===AUTH_STATES.AUTHENTICATED_NO_SHOP){
-    userBadge=`<button class="user-badge-btn" data-action="open-user-menu" title="${esc(auth.user?.email||'Tài khoản')}">${icon('user')}<span>Tạo Shop</span></button>`;
+    userBadge=`<button class="user-badge-btn" data-action="open-user-menu" title="${esc(auth.user?.email||'Tài khoản')}">${icon('user')}<span>${isWebBackend ? 'Tài khoản' : 'Tạo Shop'}</span></button>`;
   } else {
     userBadge = `<button class="user-badge-btn icon-only" data-action="open-auth-modal" title="Tài khoản / Đăng nhập" aria-label="Đăng nhập">${icon('user')}</button>`;
   }
@@ -1610,7 +1610,7 @@ function renderDashboard(){
             <button type="button" class="primary-btn tiny" data-action="go-platform-admin" style="font-size:11px;font-weight:700;padding:3px 7px;background:#0284c7;border:none;border-radius:5px;gap:3px;cursor:pointer;white-space:nowrap">⚡ Quản trị</button>
             ` : ''}
             <button type="button" class="secondary-btn tiny" data-action="open-create-shop-modal" title="Tạo cửa hàng mới" style="font-size:11px;font-weight:600;padding:3px 6px;border-radius:5px;background:${isSuper ? '#1e293b' : '#fff'};border-color:${isSuper ? '#334155' : '#cbd5e1'};color:${isSuper ? '#e2e8f0' : '#334155'};cursor:pointer;white-space:nowrap">+ Shop</button>
-            <button type="button" class="secondary-btn tiny" data-action="clear-demo-fresh" title="Xóa sạch dữ liệu mẫu để bắt đầu cửa hàng trắng" style="font-size:11px;padding:3px 5px;border-radius:5px;background:${isSuper ? '#2d1515' : '#fef2f2'};border-color:${isSuper ? '#7f1d1d' : '#fecaca'};color:${isSuper ? '#fca5a5' : '#dc2626'};cursor:pointer">${icon('trash-2')}</button>
+            ${isWebBackend ? '' : `<button type="button" class="secondary-btn tiny" data-action="clear-demo-fresh" title="Xóa sạch dữ liệu mẫu để bắt đầu cửa hàng trắng" style="font-size:11px;padding:3px 5px;border-radius:5px;background:${isSuper ? '#2d1515' : '#fef2f2'};border-color:${isSuper ? '#7f1d1d' : '#fecaca'};color:${isSuper ? '#fca5a5' : '#dc2626'};cursor:pointer">${icon('trash-2')}</button>`}
           </div>
         </div>
         `;
@@ -7914,6 +7914,13 @@ function openAuthModal(defaultTab = 'signin') {
 }
 
 function openCreateShopModal() {
+  // Backend web: cửa hàng tạo ở website — đã đăng nhập → trang "Cửa hàng" của web (đăng nhập sẵn), chưa → đăng ký.
+  if (isWebBackend) {
+    const a = getAuthState();
+    const url = a.user ? (webSsoUrl(a.shop?.id, '/admin/shops') || webUrl('/admin/shops')) : webRegisterUrl();
+    if (!openWebPage(url)) toast('Cửa hàng được tạo tại trang quản trị QBiz (website).', 'error');
+    return;
+  }
   const auth = getAuthState();
   if (auth.status === AUTH_STATES.UNAUTHENTICATED) {
     return openAuthModal('signup');
@@ -8130,7 +8137,7 @@ function openUserMenuModal() {
             <div class="item-icon slate">${icon('users')}</div>
             <div class="item-content">
               <div class="item-title">Quản lý / Mời nhân viên</div>
-              <div class="item-sub">Phân quyền thu ngân, kho vận & trợ lý</div>
+              <div class="item-sub">${isWebBackend ? 'Trên trang Thành viên của website QBiz' : 'Phân quyền thu ngân, kho vận & trợ lý'}</div>
             </div>
             <div class="item-arrow">${icon('chevron-right')}</div>
           </button>
@@ -8179,6 +8186,7 @@ function openUserMenuModal() {
   }
   if ($('#menuBtnAddMember', root)) {
     $('#menuBtnAddMember', root).onclick = () => {
+      if (isWebBackend) { root.innerHTML = ''; const a = getAuthState(); if (!openWebPage(webAdminSsoUrl(a.shop?.id, a.shop?.slug, 'members'))) toast('Nhân viên được thêm tại trang Thành viên của website QBiz.', 'error'); return; }
       root.innerHTML = '';
       openAddMemberModal();
     };
@@ -9120,7 +9128,6 @@ document.addEventListener('click', async e=>{
   if(action==='open-auth-modal' || action==='open-hero-auth') return openAuthModal();
   if(action==='create-shop-modal' || action==='open-create-shop-modal') {
     // Backend web: tài khoản + cửa hàng + dùng thử Kho tạo ở website (1 luồng đăng ký duy nhất).
-    if (isWebBackend) { if (!openWebPage(webRegisterUrl())) toast('Cửa hàng được tạo tại trang quản trị QBiz (website).', 'error'); return; }
     return openCreateShopModal();
   }
   if(action==='preview-demo') return previewDemo('retail');
@@ -9144,7 +9151,10 @@ document.addEventListener('click', async e=>{
   }
   if(action==='exit-demo') return exitDemo();
   if(action==='open-user-menu') return openUserMenuModal();
-  if(action==='add-member-modal') return openAddMemberModal();
+  if(action==='add-member-modal') {
+    if (isWebBackend) { const a = getAuthState(); if (!openWebPage(webAdminSsoUrl(a.shop?.id, a.shop?.slug, 'members'))) toast('Nhân viên được thêm tại trang Thành viên của website QBiz.', 'error'); return; }
+    return openAddMemberModal();
+  }
   if(action==='open-forgot-password-modal') return openForgotPasswordModal();
   if(action==='switch-shop-modal' || action==='open-switch-shop-modal') return openSwitchShopModal();
   if(action==='open-platform-admin' || action==='go-platform-admin') { state.page = 'platform-admin'; return render(); }
