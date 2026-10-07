@@ -8,7 +8,13 @@ const uuid=()=>{if(globalThis.crypto?.randomUUID)return globalThis.crypto.random
 const SYNC_SOURCE='qbiz-kho-local';
 // client_seq: thứ tự tạo TĂNG ĐƠN ĐIỆU (kể cả khi đồng hồ máy chỉnh lùi) — backend web đẩy outbox theo thứ tự này.
 const nextClientSeq=()=>{try{const k='qbiz_outbox_seq';const n=Math.max(Number(globalThis.localStorage?.getItem(k)||0)+1,Date.now()*1000);globalThis.localStorage?.setItem(k,String(n));return n;}catch(_){return Date.now()*1000;}};
-const makeOutbox=( {operationId,eventId=uuid(),entityType,entityId,action,version=1,deviceId='',registerId='',payload,createdAt=now(),type=`${entityType}.${action}`} )=>({id:operationId,client_seq:nextClientSeq(),event_id:eventId,source_event_id:eventId,operation_id:operationId,entity_type:entityType,entity_id:entityId,action,version,device_id:deviceId,register_id:registerId,source:SYNC_SOURCE,provider:'local',created_at:createdAt,updated_at:createdAt,retry_count:0,sync_status:'PENDING',type,payload});
+// Backend web: shop không còn quyền QBiz Kho → không tạo thao tác mới (bán, nhập, ca…). makeOutbox là nơi DUY NHẤT sinh
+// sự kiện đồng bộ nên chặn tại đây (giao dịch IndexedDB bị huỷ, không ghi nửa chừng). Outbox đang chờ vẫn được gửi lại.
+let newEventBlock=null;
+export function setNewEventBlock(reason){newEventBlock=reason||null;}
+export function getNewEventBlock(){return newEventBlock;}
+const makeOutboxRaw=( {operationId,eventId=uuid(),entityType,entityId,action,version=1,deviceId='',registerId='',payload,createdAt=now(),type=`${entityType}.${action}`} )=>({id:operationId,client_seq:nextClientSeq(),event_id:eventId,source_event_id:eventId,operation_id:operationId,entity_type:entityType,entity_id:entityId,action,version,device_id:deviceId,register_id:registerId,source:SYNC_SOURCE,provider:'local',created_at:createdAt,updated_at:createdAt,retry_count:0,sync_status:'PENDING',type,payload});
+const makeOutbox=(args)=>{if(newEventBlock)throw new Error(newEventBlock);return makeOutboxRaw(args);};
 export async function ensureLocalIdentity(){return ensureIdentity(uuid,now);}
 async function localIdentity(){return ensureLocalIdentity();}
 async function localDeviceId(){return (await localIdentity()).device_id;}

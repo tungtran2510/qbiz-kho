@@ -1,11 +1,12 @@
-import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn } from './engine.js?v=20260927-v21-consistency-audit';
+import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn ,setNewEventBlock } from './engine.js?v=20260927-v21-consistency-audit';
 import { clearAll,getAll,getOne,put,putMany,runTransaction,currentDbName,openedDbName,demoDbName,clearDemoSession } from './db.js';
 import { syncStatus,flushOutbox,pruneSyncedOutbox } from './sync.js';
 import { CONFIG } from './config.js';
 /** Backend web (database + đăng nhập dùng chung website QBiz) — xem config.js / src/web/. */
 const isWebBackend = CONFIG.BACKEND === 'web';
 import { startWebSync, stopWebSync } from './web/bootstrap.js';
-import { webRegisterUrl, webForgotUrl, openWebPage } from './web/links.js';
+import { webRegisterUrl, webForgotUrl, webAdminUrl, openWebPage } from './web/links.js';
+import { webSyncStatus } from './web/flush.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
 import { kickCashDrawer, generateEscPosReceipt, buildDrawerKickCommand } from './hardware/escpos.js';
@@ -44,8 +45,7 @@ import {
   getPlatformCommercialConfig,
   savePlatformCommercialConfig,
   bootstrapSuperAdmin,
-  signInWithGoogle,
-} from './auth.js';
+  signInWithGoogle, loadUserShops } from './auth.js';
 import {
   DRIVE_STATUS,
   BACKUP_RUN_STATUS,
@@ -394,8 +394,28 @@ function injectInstallBanner(){
   `;
   target.prepend(banner);
 }
+function injectWebSyncNotice(){
+  const auth=getAuthState();
+  if(auth.status!==AUTH_STATES.AUTHENTICATED_SHOP_READY) return;
+  const content=$('#content'); if(!content || $('#webSyncNotice', content)) return;
+  const s=state.webSync||{};
+  const noProducts=(state.data?.products?.length||0)===0;
+  const productsUrl=noProducts?webAdminUrl(auth.shop?.slug,'products'):null;
+  let text='', btn='';
+  if(s.authRequired){ text='Phiên đăng nhập đã hết hạn — đăng nhập lại để gửi dữ liệu lên máy chủ.'; btn=`<button class="ghost-btn tiny" data-action="open-auth-modal" style="font-size:11px;padding:2px 6px;color:#0284c7;font-weight:600">Đăng nhập</button>`; }
+  else if(s.review){ text=`<b>${s.review}</b> thao tác cần chủ cửa hàng xem lại${s.pending?` · ${s.pending} chờ gửi`:''}`; }
+  else if(s.pending){ text=`<b>${s.pending}</b> thao tác chờ gửi lên máy chủ`; }
+  else if(noProducts){ text='Chưa có sản phẩm — sản phẩm và dịch vụ được quản lý tại trang quản trị website.'; if(productsUrl) btn=`<button class="ghost-btn tiny" data-action="kho-open-web-products" style="font-size:11px;padding:2px 6px;color:#0284c7;font-weight:600">Thêm sản phẩm</button>`; }
+  if(!text) return;
+  const banner=document.createElement('div');
+  banner.className='local-data-banner-compact';
+  banner.id='webSyncNotice';
+  banner.innerHTML=`<div style="display:flex;align-items:center;gap:6px;min-width:0"><span style="display:inline-flex;align-items:center;justify-content:center;background:${s.authRequired||s.review?'#d97706':'#0284c7'};color:#fff;border-radius:4px;padding:1px 5px;font-size:9.5px;font-weight:700;flex-shrink:0">ĐỒNG BỘ</span><span style="font-size:11.5px;color:#1e3a8a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${text}</span></div><div style="display:flex;align-items:center;gap:4px;flex-shrink:0">${btn}</div>`;
+  content.prepend(banner);
+}
 function injectLocalNotice(){
   if(state.page!=='dashboard') return;
+  if(isWebBackend) return injectWebSyncNotice();
   const auth=getAuthState();
   if(auth.status===AUTH_STATES.AUTHENTICATED_SHOP_READY && (state.data?.products?.length||0)>0 && !sessionStorage.getItem('qbiz_dismiss_local_notice')){
     const content=$('#content');
@@ -468,7 +488,33 @@ function nav(){
     return `<button class="${activePage===id?'active':''} ${isSales?'nav-sales-hero':''}" data-page="${id}">${icon(ico)}<span>${displayLabel}</span></button>`;
   }).join('');
 }
-function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); delete document.body.dataset.page; document.body.dataset.appPage=state.page||''; document.body.classList.toggle('on-platform-admin', state.page==='platform-admin'); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); injectInstallBanner(); updateSyncPill(); updateContextAndChips(); }
+/** Backend web: shop không còn quyền QBiz Kho (hết dùng thử / chưa mua) → màn chặn thay nội dung. true = đã chặn. */
+function renderKhoNotEntitled(){
+  if(!isWebBackend) return false;
+  const auth=getAuthState();
+  if(auth.status!==AUTH_STATES.AUTHENTICATED_SHOP_READY || auth.shop?.kho_entitled!==false) return false;
+  const isOwner=auth.membership?.web_role==='owner';
+  const buyUrl=isOwner?webAdminUrl(auth.shop.slug,'subscription'):null;
+  const pending=(state.webSync?.pending||0)+(state.webSync?.review||0);
+  const many=getAvailableShops().length>1;
+  const content=$('#content'); if(!content) return true;
+  content.innerHTML=`
+    <section class="card kho-not-entitled" style="max-width:520px;margin:24px auto;padding:22px 18px;border-radius:16px;text-align:center">
+      <div style="width:52px;height:52px;margin:0 auto 12px;border-radius:50%;background:#fef3c7;color:#b45309;display:flex;align-items:center;justify-content:center">${icon('shield-alert')}</div>
+      <h2 style="margin:0 0 6px;font-size:17px">Cửa hàng chưa có QBiz Kho</h2>
+      <p style="margin:0 0 4px;color:var(--text-muted,#64748b);font-size:13px"><b>${esc(auth.shop.name||'')}</b> chưa bật hoặc đã hết hạn gói QBiz Kho.</p>
+      <p style="margin:0 0 14px;color:var(--text-muted,#64748b);font-size:13px">${isOwner?'Bật dùng thử miễn phí hoặc mua gói tại trang Gói dịch vụ của website QBiz.':'Vui lòng liên hệ chủ cửa hàng để bật QBiz Kho.'}</p>
+      ${pending?`<p style="margin:0 0 14px;font-size:12.5px;color:#1e3a8a;background:#eff6ff;border-radius:8px;padding:8px">${pending} thao tác chưa đồng bộ được giữ lại và tự gửi khi cửa hàng có lại QBiz Kho.</p>`:''}
+      <div style="display:grid;gap:8px">
+        ${buyUrl?`<button type="button" class="primary-btn" data-action="kho-open-subscription" style="min-height:44px">Dùng thử / Mua QBiz Kho</button>`:''}
+        <button type="button" class="secondary-btn" data-action="kho-recheck-entitlement" style="min-height:44px">Kiểm tra lại</button>
+        ${many?`<button type="button" class="ghost-btn" data-action="switch-shop-modal">Đổi cửa hàng</button>`:''}
+        <button type="button" class="ghost-btn" data-action="open-user-menu">Tài khoản</button>
+      </div>
+    </section>`;
+  return true;
+}
+function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); delete document.body.dataset.page; document.body.dataset.appPage=state.page||''; document.body.classList.toggle('on-platform-admin', state.page==='platform-admin'); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); if(renderKhoNotEntitled()){ headerActions(); updateSyncPill(); return; } ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); injectInstallBanner(); updateSyncPill(); updateContextAndChips(); }
 
 const levelAvail=l=>Math.max(0,(l?.onHand||0)-(l?.reserved||0)-(l?.damaged||0));
 function warehouseStock(productId){ const p = product(productId); return p ? productTotals(p).available : 0; }
@@ -784,7 +830,7 @@ function bindSaleControls(){
     pillStrip.addEventListener('mousemove',e=>{if(!isDown)return;e.preventDefault();const x=e.pageX-pillStrip.offsetLeft;pillStrip.scrollLeft=scrollLeft-(x-startX)*1.5});
   }
 }
-function renderSales(){
+function renderSales(){if(renderKhoNotEntitled())return;
   document.body.dataset.saleStep=state.saleStep;
   if(!userCan('SELL')){
     setTitle('Bán hàng','QBiz');
@@ -7608,7 +7654,7 @@ function toast(msg, type = '', duration = 1400) {
   setTimeout(() => dismissToast(n), duration);
 }
 
-async function updateSyncPill(){ const s=await syncStatus(); const el=$('#desktopSyncPill'); if(el) el.querySelector('span:last-child').textContent=s.label+(s.pending?` · ${s.pending} chờ`: ''); }
+async function updateSyncPill(){ if(isWebBackend){ const el=$('#desktopSyncPill'); const w=state.webSync||{}; if(el) el.querySelector('span:last-child').textContent=w.authRequired?'Cần đăng nhập lại':w.review?`${w.review} cần xem${w.pending?` · ${w.pending} chờ`:''}`:w.pending?`${w.pending} chờ gửi`:'Đã đồng bộ'; return; } const s=await syncStatus(); const el=$('#desktopSyncPill'); if(el) el.querySelector('span:last-child').textContent=s.label+(s.pending?` · ${s.pending} chờ`: ''); }
 async function exportBackup(){ const data=await snapshot(); const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),...data},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`qbiz-kho-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); }
 function downloadText(name,text,type){const needBom=(type&&(type.includes('csv')||type.includes('excel')||type.includes('ms-excel'))&&!text.startsWith('\uFEFF'));const content=needBom?'\uFEFF'+text:text;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function csvCell(v){const x=String(v??'');return /[",\n]/.test(x)?`"${x.replaceAll('"','""')}"`:x}
@@ -9121,7 +9167,15 @@ document.addEventListener('click', async e=>{
     if(b) b.remove();
     return;
   }
-  if(action==='prepare-sync-info') return openSyncInfoModal();
+  if(action==='prepare-sync-info') { if(isWebBackend) return; return openSyncInfoModal(); }
+  if(action==='kho-open-subscription') { const a=getAuthState(); if(!openWebPage(webAdminUrl(a.shop?.slug,'subscription'))) toast('Bật QBiz Kho tại trang Gói dịch vụ của website QBiz.','error'); return; }
+  if(action==='kho-open-web-products') { const a=getAuthState(); openWebPage(webAdminUrl(a.shop?.slug,'products')); return; }
+  if(action==='kho-recheck-entitlement') {
+    try { await loadUserShops(); } catch(_) {}
+    const a=getAuthState();
+    if(a.shop?.kho_entitled===false) toast('Cửa hàng vẫn chưa có QBiz Kho.','error'); else toast('Đã bật QBiz Kho cho cửa hàng.','ok');
+    return render();
+  }
   if(action==='return-center') return navigate('returns');
   if(action==='stocktake' || action==='count' || (action==='quick-action' && kind==='count')) return openQuick('count');
   if(action==='quick-action') return openQuick(kind||'receive');
@@ -9376,14 +9430,17 @@ async function boot(){
     let webShopId = null;
     subscribeAuthState((auth) => {
       const shop = auth?.status === AUTH_STATES.AUTHENTICATED_SHOP_READY ? auth.shop : null;
-      if ((shop?.id || null) === webShopId) return;
-      webShopId = shop?.id || null;
+      setNewEventBlock(shop && shop.kho_entitled === false ? 'Cửa hàng chưa có QBiz Kho (hết dùng thử hoặc chưa mua gói). Thao tác mới không được ghi.' : null);
+      // Khoá = shop + quyền Kho: "Kiểm tra lại" bật Kho cho CÙNG shop → chạy lại vòng đồng bộ (đăng ký thiết bị theo quyền mới).
+      const webKey = shop ? `${shop.id}:${shop.kho_entitled !== false}` : null;
+      if (webKey === webShopId) return;
+      webShopId = webKey;
       if (!shop) { stopWebSync(); return; }
       // Mỗi shop 1 database (db.js currentDbName). Đã mở DB của shop khác / DB chưa chọn shop → tải lại trang để
       // mở đúng DB (dữ liệu, outbox, danh tính thiết bị của shop này).
       if (openedDbName() && openedDbName() !== currentDbName()) { stopWebSync(); location.reload(); return; }
       if (openedDbName() === demoDbName()) { stopWebSync(); clearDemoSession(); location.reload(); return; }
-      startWebSync(shop, () => { refresh().catch(() => {}); }).catch((err) => console.warn('[web-sync]', err));
+      startWebSync(shop, () => { webSyncStatus().then((s) => { state.webSync = s; }).catch(() => {}).finally(() => { refresh().catch(() => {}); }); }).catch((err) => console.warn('[web-sync]', err));
     });
   }
   initAiUI(state);
