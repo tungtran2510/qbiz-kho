@@ -380,6 +380,10 @@ export function validateProposal(proposal, currentState, actor = { role: 'owner'
     }
   } else if (intent === 'propose_memory_save') {
     if (!parameters.content && !parameters.title) errors.push('Thiếu nội dung ghi nhớ.');
+  } else if (intent === 'create_service_proposal' || intent === 'create_service' || intent === 'CREATE_SERVICE_PROPOSAL') {
+    if (!parameters.name || !String(parameters.name).trim()) errors.push('Thiếu tên dịch vụ.');
+  } else if (intent === 'create_product_proposal' || intent === 'create_product' || intent === 'CREATE_PRODUCT_PROPOSAL') {
+    if (!parameters.name || !String(parameters.name).trim()) errors.push('Thiếu tên sản phẩm.');
   }
 
   const isValid = errors.length === 0;
@@ -1029,6 +1033,31 @@ export async function executeProposal(proposal, appState, idempotencyKey, actor 
       const { name } = proposal.parameters || {};
       if (!name?.trim()) throw new Error('Tên kho là bắt buộc.');
       executionResult = await engine.createWarehouse(name.trim());
+
+    } else if (proposal.intent === 'create_service_proposal' || proposal.intent === 'create_service' || proposal.intent === 'CREATE_SERVICE_PROPOSAL') {
+      const { name, price, categoryId } = proposal.parameters || {};
+      if (!name?.trim()) throw new Error('Tên dịch vụ là bắt buộc.');
+      executionResult = await engine.createService({
+        name: name.trim(),
+        price: price != null ? Number(price) : null,
+        categoryId: categoryId || '',
+        active: true,
+        trackInventory: false,
+      });
+
+    } else if (proposal.intent === 'create_product_proposal' || proposal.intent === 'create_product' || proposal.intent === 'CREATE_PRODUCT_PROPOSAL') {
+      const { name, sku, price, categoryId, lowStock } = proposal.parameters || {};
+      if (!name?.trim()) throw new Error('Tên sản phẩm là bắt buộc.');
+      const finalSku = sku?.trim() || `SKU-${Date.now().toString().slice(-6)}`;
+      executionResult = await engine.createProduct({
+        name: name.trim(),
+        sku: finalSku,
+        price: price != null ? Number(price) : null,
+        categoryId: categoryId || '',
+        lowStock: lowStock != null ? Number(lowStock) : 5,
+        active: true,
+        trackInventory: true,
+      });
     }
 
     // Refresh application state snapshot so in-memory levels reflect committed DB writes

@@ -216,6 +216,8 @@ export function buildContextEnvelope(appState = {}, overrides = {}) {
     idempotency_key: overrides.idempotency_key || `idem_${reqId}`,
     current_route: currentRoute,
     current_screen: currentScreen,
+    current_product_type: appState.productType || 'PRODUCT',
+    is_service_tab: appState.productType === 'SERVICE',
 
     actor_id: actor.id,
     actor_role: actor.role,

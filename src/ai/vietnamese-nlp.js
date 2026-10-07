@@ -2250,5 +2250,138 @@ export function parseVietnameseBankNotification(text) {
   };
 }
 
+/**
+ * Parse natural language commands for creating services or products.
+ * E.g.:
+ * - "thêm dịch vụ sửa khóa túi 50k" -> { type: 'SERVICE', name: 'Sửa khóa túi', price: 50000 }
+ * - "thêm sửa chữa cặp vào dịch vụ giá 100k" -> { type: 'SERVICE', name: 'Sửa chữa cặp', price: 100000 }
+ * - "tạo dịch vụ thay pin đồng hồ 150.000đ" -> { type: 'SERVICE', name: 'Thay pin đồng hồ', price: 150000 }
+ * - "thêm sản phẩm bàn phím cơ 500k" -> { type: 'PRODUCT', name: 'Bàn phím cơ', price: 500000 }
+ * - "thêm sửa khóa túi 50k" (khi context.is_service_tab === true) -> { type: 'SERVICE', name: 'Sửa khóa túi', price: 50000 }
+ */
+export function parseCreateServiceOrProductCommand(rawText, context = {}, state = {}) {
+  if (!rawText) return null;
+  const raw = String(rawText).trim();
+  const lower = raw.toLowerCase();
+  const pNorm = canonicalizeVietnamese(raw);
+
+  // Negative checks: exclude sales, inventory receipts, queries, stocktake, transfer
+  if (/^(?:bán|xem|kiểm|check|tìm|hỏi|tồn|doanh thu|lợi nhuận|báo cáo|giá vốn|thống kê)\b/i.test(lower)) return null;
+  if (/nhập\s+(?:\d+)\s*(?:cái|sp|chiếc|bộ|hộp|thùng)?\s*(?:vào|cho)?/i.test(lower)) return null;
+  if (/(?:bán\s+hàng|tạo\s+đơn|lên\s+đơn|thanh\s+toán|chốt\s+đơn)/i.test(lower)) return null;
+  if (pNorm.includes('chuyen kho') || pNorm.includes('kiem ke') || pNorm.includes('xuat kho')) return null;
+
+  // Positive trigger: must start with create/add verb or contain "vào dịch vụ" / "vào sản phẩm"
+  const isCreatePrefix = /^(?:thêm|tạo|bổ\s*sung|nhập\s*mới|khai\s*báo)\b/i.test(lower);
+  const hasAddTarget = /(?:vào\s*(?:mục\s*)?dịch\s*vụ|vào\s*danh\s*sách\s*dịch\s*vụ|vào\s*(?:mục\s*)?sản\s*phẩm)/i.test(lower);
+  if (!isCreatePrefix && !hasAddTarget) return null;
+
+  const isServiceTab = Boolean(context.is_service_tab || context.current_product_type === 'SERVICE' || state.productType === 'SERVICE');
+  const isProductTab = Boolean(context.current_product_type === 'PRODUCT' || state.productType === 'PRODUCT');
+
+  const hasServiceKw = /dịch\s*vụ|dich\s*vu|\bdv\b|sửa\s*chữa|thay\s*thế|vệ\s*sinh|bảo\s*dưỡng|bảo\s*hành|gia\s*công|giặt\s*hấp|massage|giao\s*hàng|lắp\s*đặt/i.test(lower);
+  const hasProductKw = /sản\s*phẩm|san\s*pham|\bsp\b|mặt\s*hàng|hàng\s*mới|hàng\s*hóa/i.test(lower);
+
+  let type = 'PRODUCT';
+  if (hasServiceKw || isServiceTab || /(?:vào\s*(?:mục\s*)?dịch\s*vụ|vào\s*danh\s*sách\s*dịch\s*vụ)/i.test(lower)) {
+    type = 'SERVICE';
+  } else if (hasProductKw) {
+    type = 'PRODUCT';
+  } else if (isProductTab) {
+    type = 'PRODUCT';
+  } else {
+    if (/sửa|chữa|thay|cắt|may|vệ sinh|bảo dưỡng|giặt|đánh bóng|phục hồi/i.test(lower)) {
+      type = 'SERVICE';
+    }
+  }
+
+  // Extract price
+  const p1 = /(?:giá\s*bán|với\s*giá|giá\s*là|giá)?\s*[:=]?\s*(\d{1,3}(?:[.,]\d{3})+(?:\s*(?:đ|d|dong|đồng|vnd))?)/i;
+  const p2 = /(?:giá\s*bán|với\s*giá|giá\s*là|giá)?\s*[:=]?\s*(\d+(?:[.,]\d+)?\s*(?:k|nghìn|ngàn|nghin|ngan|triệu|trieu|tr|củ|cu|m|lít|lit|xị|xi|cành|canh|loét|đ|d|đồng|dong|vnd))/i;
+  const p3 = /(?:giá\s*bán|với\s*giá|giá\s*là|giá)\s*[:=]?\s*(\d+)/i;
+
+  let rawPriceMatch = '';
+  let priceStr = '';
+  let m = raw.match(p1);
+  if (m) {
+    rawPriceMatch = m[0];
+    priceStr = m[1];
+  } else {
+    m = raw.match(p2);
+    if (m) {
+      rawPriceMatch = m[0];
+      priceStr = m[1];
+    } else {
+      m = raw.match(p3);
+      if (m) {
+        rawPriceMatch = m[0];
+        priceStr = m[1];
+      } else {
+        const pEnd = /\b(\d+(?:[.,]\d+)?\s*(?:k|nghìn|ngàn|nghin|ngan|triệu|trieu|tr|củ|cu|m|lít|lit|xị|xi|cành|canh|loét|đ|d|đồng|dong|vnd)?)$/i;
+        const mEnd = raw.match(pEnd);
+        if (mEnd && !/^(?:cái|chiếc|bộ|lô|thùng|hộp)$/i.test(mEnd[1])) {
+          rawPriceMatch = mEnd[0];
+          priceStr = mEnd[1];
+        }
+      }
+    }
+  }
+
+  let priceVal = null;
+  if (priceStr) {
+    let clean = String(priceStr).toLowerCase().trim();
+    clean = clean.replace(/[đd\s]|đồng|dong|vnd/gi, '');
+    if (/^\d{1,3}(?:[.,]\d{3})+$/.test(clean)) {
+      clean = clean.replace(/[.,]/g, '');
+      priceVal = parseInt(clean, 10);
+    } else {
+      let multiplier = 1;
+      if (/k|nghìn|ngàn|nghin|ngan|cành|canh/i.test(clean)) {
+        multiplier = 1000;
+        clean = clean.replace(/k|nghìn|ngàn|nghin|ngan|cành|canh/gi, '');
+      } else if (/lít|lit|loét/i.test(clean)) {
+        multiplier = 100000;
+        clean = clean.replace(/lít|lit|loét/gi, '');
+      } else if (/xị|xi/i.test(clean)) {
+        multiplier = 100000;
+        clean = clean.replace(/xị|xi/gi, '');
+      } else if (/triệu|trieu|tr|củ|cu|m/i.test(clean)) {
+        multiplier = 1000000;
+        clean = clean.replace(/triệu|trieu|tr|củ|cu|m/gi, '');
+      }
+      clean = clean.replace(',', '.');
+      const num = parseFloat(clean);
+      if (!isNaN(num)) {
+        priceVal = Math.round(num * multiplier);
+      }
+    }
+  }
+
+  // Extract name by stripping price match and command syntax
+  let namePart = raw;
+  if (rawPriceMatch) {
+    namePart = namePart.replace(rawPriceMatch, ' ');
+  }
+
+  namePart = namePart.replace(/^(?:thêm\s*mới|tạo\s*mới|nhập\s*mới|thêm\s*vào|tạo\s*vào|bổ\s*sung|khai\s*báo|thêm|tạo|nhập)\s*/i, '');
+  namePart = namePart.replace(/(?:vào\s*(?:mục\s*)?dịch\s*vụ|vào\s*danh\s*sách\s*dịch\s*vụ|vào\s*(?:mục\s*)?sản\s*phẩm|vào\s*kho)\s*/gi, '');
+  namePart = namePart.replace(/^(?:dịch\s*vụ|dich\s*vu|sản\s*phẩm|san\s*pham|hàng\s*mới|mặt\s*hàng|sp|dv)\s*/i, '');
+  namePart = namePart.replace(/^[:=,-]\s*/, '').replace(/[:=,-]\s*$/, '').trim();
+  namePart = namePart.replace(/(?:với\s*giá|giá\s*bán|giá\s*là|giá)\s*$/i, '').trim();
+  namePart = namePart.replace(/^[:=,-]\s*/, '').replace(/[:=,-]\s*$/, '').trim();
+
+  if (!namePart || namePart.length < 2) return null;
+
+  namePart = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+
+  return {
+    type,
+    name: namePart,
+    price: priceVal,
+    isService: type === 'SERVICE',
+    intent: type === 'SERVICE' ? 'create_service_proposal' : 'create_product_proposal'
+  };
+}
+
 
 
