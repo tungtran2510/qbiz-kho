@@ -946,9 +946,27 @@ export function parseAppNavigationAction(text) {
     clean === 'danh sach hang hoa' || clean === 'mo san pham' || clean === 'xem san pham' ||
     clean === 'quan ly san pham' || clean === 'quan ly hang hoa' ||
     clean === 'danh muc san pham' || clean === 'danh muc hang hoa' || clean === 'danh muc' ||
-    clean === 'danh muc hang' || clean === 'kho san pham'
+    clean === 'danh muc hang' || clean === 'kho san pham' ||
+    clean === 'khu san pham' || clean === 'vao khu san pham' || clean === 'vao san pham' ||
+    clean === 'khu hang hoa' || clean === 'vao khu hang hoa' || clean === 'vao hang hoa' ||
+    clean === 'mo khu san pham' || c.includes('khu san pham') || c.includes('khu hang hoa') ||
+    c === 'vao san pham' || c === 'vao hang hoa' || c === 'vao khu san pham' || c === 'vao khu hang hoa'
   ) {
     return { actionId: 'open_products', label: 'Đã mở Danh sách Hàng hóa.' };
+  }
+
+  // 14b. Dịch vụ & Sửa chữa
+  if (
+    clean === 'dich vu' || clean === 'sua chua' || clean === 'dich vu sua chua' ||
+    clean === 'danh sach dich vu' || clean === 'danh sach dich vu sua chua' ||
+    clean === 'mo dich vu' || clean === 'vao dich vu' || clean === 'xem dich vu' ||
+    clean === 'khu dich vu' || clean === 'bao hanh va dich vu' || clean === 'dich vu va sua chua' ||
+    clean === 'danh sach sua chua' || clean === 'mo sua chua' || clean === 'vao sua chua' ||
+    c.includes('danh sach dich vu') || c.includes('danh sach sua chua') ||
+    c.includes('dich vu sua chua') || c.includes('khu dich vu') ||
+    c === 'vao dich vu' || c === 'vao sua chua' || c === 'mo dich vu'
+  ) {
+    return { actionId: 'open_services', label: 'Đã mở Danh mục Dịch vụ & Sửa chữa.' };
   }
 
   // 15. Khách hàng
@@ -1219,6 +1237,18 @@ export function parseVietnameseNumberWord(str) {
   const litMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*lit\b/i);
   if (litMatch) {
     return Math.round(parseFloat(litMatch[1].replace(',', '.')) * 100000);
+  }
+  const xiMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*(?:xi|xị)\b/i) || s.match(/(\d+(?:[.,]\d+)?)\s*(?:xi|xị)(?![a-zA-Z0-9\u00C0-\u1EF9])/i);
+  if (xiMatch) {
+    return Math.round(parseFloat(xiMatch[1].replace(',', '.')) * 100000);
+  }
+  const canhMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*(?:canh|cành)\b/i) || s.match(/(\d+(?:[.,]\d+)?)\s*(?:canh|cành)(?![a-zA-Z0-9\u00C0-\u1EF9])/i);
+  if (canhMatch) {
+    return Math.round(parseFloat(canhMatch[1].replace(',', '.')) * 1000);
+  }
+  const chaiMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*chai\b/i);
+  if (chaiMatch) {
+    return Math.round(parseFloat(chaiMatch[1].replace(',', '.')) * 1000000);
   }
   const vanMatch = s.match(/\b(\d+(?:[.,]\d+)?)\s*van\b/i);
   if (vanMatch) {
@@ -2012,26 +2042,108 @@ export function extractVietnameseOrderItems(text, allProducts = []) {
 
   for (const prod of (allProducts || [])) {
     const pNorm = removeVietnameseDiacritics(prod.name);
-    const tokens = pNorm.split(/\s+/).filter(t => !['sang', 'che', 'co', 'lung', 'chan'].includes(t));
-    const distinctiveCode = tokens.slice(1).join(' ');
+    let matchIdx = -1;
 
-    if (distinctiveCode) {
-      const rx = new RegExp(`\\b${distinctiveCode}\\b`, 'i');
-      const m = normText.match(rx);
-      if (m) {
-        const idx = m.index;
-        const prefix = normText.slice(Math.max(0, idx - 35), idx);
-        const nums = [...prefix.matchAll(/(\d+)/g)];
-        const qty = nums.length > 0 ? parseInt(nums[nums.length - 1][1], 10) : 1;
-        matched.push({
-          productId: prod.id,
-          productName: prod.name,
-          quantity: qty,
-          unitPrice: prod.price || 0,
-          unit: prod.unit || 'cái',
-          matchIndex: idx,
-        });
+    if (normText.includes(pNorm)) {
+      matchIdx = normText.indexOf(pNorm);
+    } else {
+      const tokens = pNorm.split(/\s+/).filter(t => !['sang', 'che', 'co', 'lung', 'chan', 'san', 'pham', 'ban', 'chai', 'danh', 'rang'].includes(t));
+      const brandOrCode = tokens.length > 0 ? tokens[0] : '';
+      if (brandOrCode && brandOrCode.length >= 3 && new RegExp(`\\b${brandOrCode}\\b`, 'i').test(normText)) {
+        matchIdx = normText.search(new RegExp(`\\b${brandOrCode}\\b`, 'i'));
+      } else {
+        const allTokens = pNorm.split(/\s+/).filter(Boolean);
+        const distinctiveCode = allTokens.length > 1 ? allTokens.slice(1).join(' ') : allTokens[0];
+        if (distinctiveCode && normText.includes(distinctiveCode)) {
+          matchIdx = normText.indexOf(distinctiveCode);
+        }
       }
+    }
+
+    if (matchIdx !== -1) {
+      const prefix = normText.slice(Math.max(0, matchIdx - 35), matchIdx);
+      const nums = [...prefix.matchAll(/(\d+)/g)];
+      const qty = nums.length > 0 ? parseInt(nums[nums.length - 1][1], 10) : 1;
+      matched.push({
+        productId: prod.id,
+        productName: prod.name,
+        quantity: qty,
+        unitPrice: prod.price || 0,
+        unit: prod.unit || 'cái',
+        matchIndex: matchIdx,
+        type: prod.type || 'GOODS',
+        isService: prod.type === 'SERVICE',
+        warranty_months: prod.warranty_months || 0,
+        warranty_exchange: !!prod.warranty_exchange,
+        warranty_policy: prod.warranty_policy || '',
+      });
+    }
+  }
+
+  // --- Dynamic Ad-hoc Service & Repair Detection ---
+  const serviceRegex = /(?:khách\s+)?(thay\s+[^,;.]+?|sửa\s+[^,;.]+?|vệ\s*sinh\s+[^,;.]+?|cài\s+[^,;.]+?|ép\s+kính\s+[^,;.]+?|dán\s+[^,;.]+?|dịch\s*vụ\s+[^,;.]+?)(?=\s+(?:giá|tiền|công|phí|lấy|hẹn|bảo\s*hành|bh|\d+k|\d+tr|\d+\s*(?:nghìn|ngàn|triệu|cành|xị|lít)|$)|,|$)/i;
+  const svcMatch = text.match(serviceRegex);
+  if (svcMatch) {
+    let svcName = svcMatch[1].trim();
+    svcName = svcName.replace(/\s+(?:giá|tiền|công|phí|lấy)$/i, '').trim();
+
+    const alreadyMatched = matched.some(m => removeVietnameseDiacritics(m.productName).includes(removeVietnameseDiacritics(svcName)));
+    if (!alreadyMatched && svcName.length >= 3) {
+      let svcPrice = 0;
+
+      // Compound match first like "1tr5", "2tr2"
+      const compoundMatch = text.match(/(\d+)\s*(?:tr|trieu|củ)\s*(\d+)/i);
+      if (compoundMatch) {
+        const major = parseInt(compoundMatch[1], 10) * 1000000;
+        const minorStr = compoundMatch[2];
+        const minor = minorStr.length === 1 ? parseInt(minorStr, 10) * 100000 : parseInt(minorStr, 10) * 1000;
+        svcPrice = major + minor;
+      } else {
+        // Explicit currency units & Vietnamese slangs (350k, 100 cành, 5 xị, 2 lít, 1.500.000đ)
+        const currencyMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(tr(?:iệu)?|củ|cu|chai|k|cành|canh|xị|xi|lít|lit|nghìn|ngàn|đ|vnd)(?![a-zA-Z0-9\u00C0-\u1EF9])/i) ||
+                              text.match(/(?:giá|tiền\s*công|công|phí)\s*[:=]?\s*(\d+(?:[.,]\d+)*)\s*(tr(?:iệu)?|củ|cu|chai|k|cành|canh|xị|xi|lít|lit|nghìn|ngàn|đ|vnd)?(?![a-zA-Z0-9\u00C0-\u1EF9])/i) ||
+                              text.match(/\b(\d{4,9})\s*(?:đ|vnd)?(?![a-zA-Z0-9\u00C0-\u1EF9])/i);
+        if (currencyMatch) {
+          let numStr = currencyMatch[1].replace(',', '.');
+          let unit = (currencyMatch[2] || '').toLowerCase();
+          let val = parseFloat(numStr);
+          if (!isNaN(val)) {
+            if (unit.startsWith('tr') || unit === 'củ' || unit === 'cu' || unit === 'chai') {
+              svcPrice = Math.round(val * 1000000);
+            } else if (unit === 'xị' || unit === 'xi' || unit === 'lít' || unit === 'lit') {
+              svcPrice = Math.round(val * 100000);
+            } else if (unit === 'k' || unit.startsWith('ngh') || unit === 'cành' || unit === 'canh') {
+              svcPrice = Math.round(val * 1000);
+            } else if (val >= 1000) {
+              svcPrice = Math.round(val);
+            }
+          }
+        }
+      }
+
+      let warrantyMonths = 0;
+      const wmMatch = text.match(/(?:bảo\s*hành|bh)\s*(\d+)\s*(tháng|t|năm)/i);
+      if (wmMatch) {
+        const wVal = parseInt(wmMatch[1], 10);
+        warrantyMonths = wmMatch[2].toLowerCase().startsWith('năm') ? wVal * 12 : wVal;
+      }
+
+      const isExchange = /(?:1\s*đổi\s*1|1\s*doi\s*1|1d1|đổi\s*mới)/i.test(text);
+      const formattedName = svcName.charAt(0).toUpperCase() + svcName.slice(1);
+
+      matched.push({
+        productId: 'svc_adhoc_' + Date.now(),
+        productName: formattedName,
+        quantity: 1,
+        unitPrice: svcPrice,
+        unit: 'lần',
+        matchIndex: svcMatch.index || 0,
+        type: 'SERVICE',
+        isService: true,
+        warranty_months: warrantyMonths,
+        warranty_exchange: isExchange,
+        warranty_policy: isExchange ? '1 đổi 1 nếu lỗi kỹ thuật' : (warrantyMonths > 0 ? `Bảo hành ${warrantyMonths} tháng` : ''),
+      });
     }
   }
 

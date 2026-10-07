@@ -1306,22 +1306,31 @@ export const TOOLS = {
 
     const normalizedItems = (items || []).map(line => {
       const p = findProduct(products, line);
+      const isService = line.type === 'SERVICE' || line.isService || p?.type === 'SERVICE' ||
+        (line.productName && /^(?:sửa|thay|dán|vệ sinh|cài|công|dịch vụ)/i.test(line.productName)) ||
+        (line.name && /^(?:sửa|thay|dán|vệ sinh|cài|công|dịch vụ)/i.test(line.name));
       const qty = Math.max(1, Number(line.quantity || line.qty || 1));
-      const unitPrice = Number(line.unitPrice || line.unit_price || p?.price || 0);
+      const unitPrice = Number(line.unitPrice || line.unit_price || line.price || p?.price || 0);
       const lineTotal = qty * unitPrice;
-      const curLevel = targetWhId && p ? levelFor(state?.data, p.id, targetWhId) : null;
-      const avail = curLevel ? available(curLevel) : 0;
+      const curLevel = targetWhId && p && !isService ? levelFor(state?.data, p.id, targetWhId) : null;
+      const avail = isService ? 999999 : (curLevel ? available(curLevel) : 0);
 
       return {
-        productId: p?.id || line.productId || line.itemId,
-        itemId: p?.id || line.productId || line.itemId,
-        productName: p?.name || line.productName || line.name || 'Sản phẩm',
-        unit: p?.unit || line.unit || 'cái',
+        productId: p?.id || line.productId || line.itemId || (isService ? 'svc_' + Date.now() : 'item_temp'),
+        itemId: p?.id || line.productId || line.itemId || (isService ? 'svc_' + Date.now() : 'item_temp'),
+        productName: p?.name || line.productName || line.name || (isService ? 'Dịch vụ kỹ thuật' : 'Sản phẩm'),
+        unit: p?.unit || line.unit || (isService ? 'lần' : 'cái'),
         quantity: qty,
         unitPrice,
         lineTotal,
         available: avail,
-        isSufficient: avail >= qty,
+        isSufficient: isService ? true : avail >= qty,
+        type: isService ? 'SERVICE' : (p?.type || 'GOODS'),
+        isService: !!isService,
+        warranty_months: Number(line.warranty_months || line.warrantyMonths || p?.warranty_months || 0),
+        warranty_exchange: !!(line.warranty_exchange ?? line.warrantyExchange ?? p?.warranty_exchange),
+        warranty_policy: line.warranty_policy || line.warrantyPolicy || p?.warranty_policy || '',
+        imei: line.imei || line.serial || '',
       };
     });
 
@@ -1398,7 +1407,7 @@ export const TOOLS = {
         note: note || `Đơn hàng qua AI Trợ lý${termSummary}`,
       },
       inventorySnapshot,
-      humanSummary: `Đơn bán hàng cho "${customerName}": ${normalizedItems.map(i => `${i.quantity} ${i.unit} ${i.productName}`).join(', ')} — Tổng: ${new Intl.NumberFormat('vi-VN').format(grandTotal)}đ${discSummary}${shipSummary}${termSummary}`,
+      humanSummary: `Đơn bán hàng cho "${customerName}": ${normalizedItems.map(i => `${i.quantity} ${i.unit} ${i.productName}${i.unitPrice ? ` (${new Intl.NumberFormat('vi-VN').format(i.unitPrice)}đ)` : ''}${i.warranty_months ? ` [BH: ${i.warranty_months}T${i.warranty_exchange ? ' - 1 đổi 1' : ''}]` : ''}`).join(', ')} — Tổng: ${new Intl.NumberFormat('vi-VN').format(grandTotal)}đ${discSummary}${shipSummary}${termSummary}`,
       contextSnapshot: envelope,
     });
   },

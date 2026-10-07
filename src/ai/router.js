@@ -2658,8 +2658,62 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
+  // 7.E2) IMEI & Serial Number Traceability Fast-Path
+  const imeiMatch = rawPrompt.match(/\b\d{14,18}\b/) || rawPrompt.match(/(?:imei|serial|so may|so imei|sn)\s*[:#]?\s*([A-Za-z0-9]{8,22})/i);
+  if (imeiMatch && (pNorm.includes('tim') || pNorm.includes('kiem tra') || pNorm.includes('don') || pNorm.includes('bao hanh') || pNorm.includes('tra cuu') || pNorm.includes('may') || pNorm.includes('imei') || pNorm.includes('serial'))) {
+    const imeiCode = imeiMatch[1] || imeiMatch[0];
+    const sales = state?.data?.sales || [];
+    const transactions = state?.data?.transactions || [];
+    const foundSale = sales.find(s => {
+      const inItems = (s.items || []).some(it => String(it.imei || it.serial || '').includes(imeiCode) || String(it.note || '').includes(imeiCode));
+      const inNote = String(s.note || '').includes(imeiCode);
+      return inItems || inNote;
+    }) || transactions.find(t => {
+      const inItems = (t.items || []).some(it => String(it.imei || it.serial || '').includes(imeiCode) || String(it.note || '').includes(imeiCode));
+      return inItems || String(t.note || '').includes(imeiCode);
+    });
+
+    if (foundSale) {
+      return {
+        text: `🔍 **Kết quả tra cứu IMEI / Serial:** \`${imeiCode}\`\n\n` +
+              `• **Mã đơn hàng:** \`${foundSale.code || foundSale.id}\`\n` +
+              `• **Khách hàng:** ${foundSale.customerName || 'Khách lẻ'}${foundSale.customerPhone ? ` (${foundSale.customerPhone})` : ''}\n` +
+              `• **Ngày bán:** ${foundSale.createdAt ? new Date(foundSale.createdAt).toLocaleDateString('vi-VN') : 'N/A'}\n` +
+              `• **Mặt hàng:** ${(foundSale.items || []).map(i => i.productName || i.name).join(', ')}\n` +
+              `• **Trạng thái:** ${foundSale.status || 'Hoàn tất'}\n\n` +
+              `✅ *Máy hợp lệ trong hệ thống QBiz. Bạn có thể mở chi tiết đơn hàng để tiếp nhận bảo hành.*`,
+        status: 'SUCCESS',
+        intent: 'IMEI_LOOKUP',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC
+      };
+    } else {
+      return {
+        text: `🔍 **Tra cứu IMEI / Serial:** \`${imeiCode}\`\n\n` +
+              `• Chưa tìm thấy lịch sử bán hàng hoặc phiếu xuất kho gắn với số IMEI này trên hệ thống.\n` +
+              `• **Gợi ý:** Bạn có thể kiểm tra lại số IMEI hoặc vào mục **Bán hàng (POS) → Thêm dịch vụ / Bảo hành** để lập phiếu tiếp nhận mới cho khách hàng.`,
+        status: 'SUCCESS',
+        intent: 'IMEI_LOOKUP',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC
+      };
+    }
+  }
+
   // 7.F) Warranty & Repair Tracking SOP (Q070)
-  if ((pNorm.includes('bao hanh') || pNorm.includes('sua chua')) && !pNorm.includes('thue') && !pNorm.includes('nop thue')) {
+  const isWarrantyActionOrNav = (
+    pNorm.includes('them') || pNorm.includes('tao') || pNorm.includes('lap') || pNorm.includes('ban') ||
+    pNorm.includes('xem') || pNorm.includes('mo') || pNorm.includes('vao') || pNorm.includes('danh sach') ||
+    pNorm.includes('tim') || pNorm.includes('khach') || pNorm.includes('thay') ||
+    /\d+(?:\s*k|\s*tr|\s*d|\s*vnd)?/i.test(pNorm) || /\b\d{10,18}\b/.test(pNorm)
+  );
+  const isSopQuestion = (
+    pNorm.includes('quy trinh') || pNorm.includes('huong dan') || pNorm.includes('chinh sach') ||
+    pNorm.includes('cach theo doi') || pNorm.includes('theo doi nhu the nao') || pNorm.includes('lam sao de') ||
+    pNorm.includes('sop') || pNorm.includes('quy dinh')
+  );
+
+  if ((pNorm.includes('bao hanh') || pNorm.includes('sua chua')) && !pNorm.includes('thue') && !pNorm.includes('nop thue') && isSopQuestion && !isWarrantyActionOrNav) {
     return {
       text: `🛠️ **Theo dõi Hàng Bảo hành & Sửa chữa:**\n\n` +
             `• **Vị trí theo dõi:** Bạn vào mục **Hàng hóa → Bảo hành & Dịch vụ** hoặc tra cứu theo số điện thoại khách hàng trên thanh tìm kiếm POS.\n` +
@@ -2922,7 +2976,9 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
   if (
     pNorm.includes('tuoi no') || pNorm.includes('bao cao tuoi no') || pNorm.includes('no qua han') ||
     pNorm.includes('no qua') || pNorm.includes('no tren') || (pNorm.includes('no') && (pNorm.includes('30 ngay') || pNorm.includes('chua thanh toan'))) ||
-    (pNorm.includes('ai dang no') && !pNorm.includes('bao nhieu'))
+    pNorm.includes('ai dang no') || pNorm.includes('ai con no') || pNorm.includes('ai dang con no') ||
+    pNorm.includes('danh sach no') || pNorm.includes('nhung ai dang no') || pNorm.includes('khach nao dang no') ||
+    (pNorm.includes('ai') && pNorm.includes('no') && !pNorm.includes('bao nhieu'))
   ) {
     const res = await executeSkill('customer-aging-report', {}, context, state);
     return { ...res, intent: 'CUSTOMER_AGING_REPORT', skillId: 'customer-aging-report', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
@@ -3481,6 +3537,22 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         provider: PROVIDER_MODES.DETERMINISTIC,
       };
     }
+  }
+
+  // 2.95 App Navigation Fast-Path ("vào khu sản phẩm", "mở bán hàng", "vào pos", "danh sách dịch vụ", "cài đặt máy in")
+  const earlyNavAction = parseAppNavigationAction(pNorm) || parseAppNavigationAction(rawPrompt);
+  if (earlyNavAction) {
+    const actRes = await executeAction(earlyNavAction.actionId, earlyNavAction.params || {}, state);
+    return {
+      text: actRes.success ? `✅ **${earlyNavAction.label}**` : `⚠️ ${actRes.error}`,
+      actionId: earlyNavAction.actionId,
+      actionResult: actRes,
+      status: 'SUCCESS',
+      intent: 'NAVIGATION',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
   }
 
   // 3. Semantic Planner (For business, advice, inquiry, financial and compound queries)

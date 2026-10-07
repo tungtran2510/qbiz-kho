@@ -380,11 +380,48 @@ export const ACTION_REGISTRY = {
     example_phrases: ['mở hàng hóa', 'vào hàng hóa', 'mở danh mục', 'xem sản phẩm'],
     contexts: ['dashboard', 'sales', 'orders', 'settings'],
     async execute(params, state) {
-      if (window.__qbiz_app__?.navigate) {
-        state.warehouseFilter = 'all';
-        state.warehouseStockFilter = 'all';
-        window.__qbiz_app__.navigate('products');
-        return { success: true, message: 'Đã mở danh sách hàng hóa.' };
+      const navFn = window.__qbiz_app__?.navigate || window.navigate;
+      if (navFn) {
+        if (state) {
+          state.warehouseFilter = 'all';
+          state.warehouseStockFilter = 'all';
+          if (params?.type === 'SERVICE' || params?.tab === 'SERVICE') {
+            state.productType = 'SERVICE';
+            state._userSelectedProductType = true;
+          } else {
+            state.productType = 'ALL';
+          }
+        }
+        navFn('products');
+        return { success: true, message: params?.type === 'SERVICE' ? 'Đã mở danh mục dịch vụ.' : 'Đã mở danh sách hàng hóa.' };
+      }
+      return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
+    },
+  },
+
+  open_services: {
+    id: 'open_services',
+    name: 'Mở danh mục dịch vụ & sửa chữa',
+    feature_id: 'PRODUCTS',
+    route: 'products',
+    screen: 'ServiceList',
+    required_capabilities: [PERMISSIONS.READ_STOCK],
+    execution_mode: EXECUTION_MODE.NAVIGATE,
+    risk_level: 'NAVIGATE',
+    confirmation_policy: 'NEVER',
+    implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
+    aliases: ['dich vu', 'sua chua', 'dich vu sua chua', 'danh sach dich vu', 'mo dich vu', 'vao dich vu', 'khu dich vu'],
+    example_phrases: ['mở dịch vụ', 'vào dịch vụ', 'danh sách dịch vụ sửa chữa'],
+    contexts: ['dashboard', 'sales', 'products'],
+    async execute(params, state) {
+      const navFn = window.__qbiz_app__?.navigate || window.navigate;
+      if (navFn) {
+        if (state) {
+          state.productType = 'SERVICE';
+          state._userSelectedProductType = true;
+        }
+        navFn('products');
+        return { success: true, message: 'Đã mở danh mục dịch vụ & sửa chữa.' };
       }
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
     },
