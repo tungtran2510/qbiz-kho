@@ -6,7 +6,8 @@ import { CONFIG } from './config.js';
 const isWebBackend = CONFIG.BACKEND === 'web';
 import { startWebSync, stopWebSync } from './web/bootstrap.js';
 import { webRegisterUrl, webForgotUrl, webAdminUrl, openWebPage } from './web/links.js';
-import { webSyncStatus } from './web/flush.js';
+import { webSyncStatus, webReviewItems, retryReviewItem, discardReviewItem, webFlushOutbox } from './web/flush.js';
+import { reviewTypeLabel, reviewReason, canDiscardReview } from './web/review.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
 import { kickCashDrawer, generateEscPosReceipt, buildDrawerKickCommand } from './hardware/escpos.js';
@@ -405,7 +406,7 @@ function injectWebSyncNotice(){
   let text='', btn='';
   if(s.authRequired){ text='Phiên đăng nhập đã hết hạn — đăng nhập lại để gửi dữ liệu lên máy chủ.'; btn=`<button class="ghost-btn tiny" data-action="open-auth-modal" style="font-size:11px;padding:2px 6px;color:#0284c7;font-weight:600">Đăng nhập</button>`; }
   else if(s.otherUser){ text=`<b>${s.otherUser}</b> thao tác của tài khoản khác chờ người đó đăng nhập lại để gửi`; }
-  else if(s.review){ text=`<b>${s.review}</b> thao tác cần chủ cửa hàng xem lại${s.pending?` · ${s.pending} chờ gửi`:''}`; }
+  else if(s.review){ text=`<b>${s.review}</b> thao tác cần chủ cửa hàng xem lại${s.pending?` · ${s.pending} chờ gửi`:''}`; btn=`<button class="ghost-btn tiny" data-action="web-review-queue" style="font-size:11px;padding:2px 6px;color:#d97706;font-weight:600">Xem</button>`; }
   else if(s.pending){ text=`<b>${s.pending}</b> thao tác chờ gửi lên máy chủ`; }
   else if(noProducts){ text='Chưa có sản phẩm — sản phẩm và dịch vụ được quản lý tại trang quản trị website.'; if(productsUrl) btn=`<button class="ghost-btn tiny" data-action="kho-open-web-products" style="font-size:11px;padding:2px 6px;color:#0284c7;font-weight:600">Thêm sản phẩm</button>`; }
   if(!text) return;
@@ -490,6 +491,55 @@ function nav(){
     return `<button class="${activePage===id?'active':''} ${isSales?'nav-sales-hero':''}" data-page="${id}">${icon(ico)}<span>${displayLabel}</span></button>`;
   }).join('');
 }
+/**
+ * Backend web: hàng "cần xem" — thao tác máy chủ từ chối vì dữ liệu (giá đổi, hết hàng, sản phẩm bị xoá…). Gửi lại sau khi
+ * đã sửa nguyên nhân (ai cũng được — sai thì về lại hàng này); Bỏ = dữ liệu chỉ còn trên máy, không lên báo cáo cửa hàng
+ * (chỉ chủ shop / quản lý, phải xác nhận). Danh sách theo thứ tự xảy ra; thao tác phụ thuộc tự vào hàng này.
+ */
+async function openWebReviewModal(){
+  const role = getCurrentRole();
+  const allowDiscard = canDiscardReview(role);
+  const draw = async () => {
+    const rows = await webReviewItems();
+    const box = $('#webReviewList'); if(!box) return;
+    box.innerHTML = rows.length ? rows.map((r) => `
+      <div class="card" style="padding:10px 12px;margin-bottom:8px;border-radius:10px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+          <strong style="font-size:13px">${esc(reviewTypeLabel(r.type))}</strong>
+          <small style="color:var(--text-muted,#64748b)">${(r.created_at ? esc(dt(r.created_at)) : '')}</small>
+        </div>
+        <div style="font-size:12.5px;color:#b45309;margin:4px 0 8px">${esc(reviewReason(r))}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="secondary-btn tiny" data-review-retry="${esc(r.id)}">Gửi lại</button>
+          ${allowDiscard ? `<button type="button" class="ghost-btn tiny" data-review-discard="${esc(r.id)}" style="color:#dc2626">Bỏ</button>` : ''}
+        </div>
+      </div>`).join('') : '<div class="empty"><strong>Không còn thao tác cần xem.</strong></div>';
+    $$('[data-review-retry]', box).forEach((b) => b.onclick = async () => {
+      b.disabled = true;
+      await retryReviewItem(b.dataset.reviewRetry);
+      try { await webFlushOutbox(); } catch (_) {}
+      state.webSync = await webSyncStatus().catch(() => state.webSync);
+      toast('Đã gửi lại thao tác.', 'ok');
+      await draw(); refresh().catch(() => {});
+    });
+    $$('[data-review-discard]', box).forEach((b) => b.onclick = async () => {
+      if (!confirm('Bỏ thao tác này? Dữ liệu chỉ còn trên máy này và KHÔNG lên báo cáo của cửa hàng. Thao tác phụ thuộc cũng chuyển vào hàng cần xem.')) return;
+      b.disabled = true;
+      await discardReviewItem(b.dataset.reviewDiscard, 'Bỏ bởi ' + (getCurrentUser()?.email || 'người dùng'));
+      state.webSync = await webSyncStatus().catch(() => state.webSync);
+      toast('Đã bỏ thao tác.', 'ok');
+      await draw(); refresh().catch(() => {});
+    });
+  };
+  openModal({
+    title: 'Thao tác cần xem',
+    sub: allowDiscard ? 'Máy chủ từ chối vì dữ liệu. Sửa nguyên nhân rồi gửi lại, hoặc bỏ.' : 'Máy chủ từ chối vì dữ liệu. Báo chủ cửa hàng hoặc quản lý để xử lý.',
+    hideSubmit: true,
+    body: '<div id="webReviewList"><div class="empty">Đang tải…</div></div>',
+  });
+  await draw();
+}
+
 /** Backend web: shop không còn quyền QBiz Kho (hết dùng thử / chưa mua) → màn chặn thay nội dung. true = đã chặn. */
 function renderKhoNotEntitled(){
   if(!isWebBackend) return false;
@@ -9177,6 +9227,7 @@ document.addEventListener('click', async e=>{
   if(action==='kho-open-subscription') { const a=getAuthState(); if(!openWebPage(webAdminSsoUrl(a.shop?.id,a.shop?.slug,'subscription')||webAdminUrl(a.shop?.slug,'subscription'))) toast('Bật QBiz Kho tại trang Gói dịch vụ của website QBiz.','error'); return; }
   if(action==='kho-open-web-admin') { const a=getAuthState(); if(!openWebPage(webAdminSsoUrl(a.shop?.id,a.shop?.slug))) toast('Chưa cấu hình địa chỉ website QBiz.','error'); return; }
   if(action==='kho-open-web-products') { const a=getAuthState(); openWebPage(webAdminSsoUrl(a.shop?.id,a.shop?.slug,'products')||webAdminUrl(a.shop?.slug,'products')); return; }
+  if(action==='web-review-queue') return openWebReviewModal();
   if(action==='kho-recheck-entitlement') {
     try { await loadUserShops(); } catch(_) {}
     const a=getAuthState();

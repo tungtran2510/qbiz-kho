@@ -424,7 +424,11 @@ export async function webSyncStatus() {
     otherUser: (() => { const me = getCurrentUser()?.id; return me ? rows.filter((r) => r.actor_auth_id && r.actor_auth_id !== me && ACTIVE.includes(statusOf(r)) && isWebSupported(r.type)).length : 0; })() };
 }
 
-// ---- Xử lý hàng "cần xem" (chủ shop / quản lý quyết; giao diện ở lát sau) -----------------------------------
+// ---- Xử lý hàng "cần xem" (chủ shop / quản lý quyết; giao diện: app.js openWebReviewModal) --------------------
+/** Các thao tác đang "cần xem", cũ trước (đúng thứ tự xảy ra). */
+export async function webReviewItems() {
+  return (await getAll('outbox')).filter((r) => statusOf(r) === 'NEEDS_REVIEW').sort(byOrder);
+}
 /** Bỏ 1 mục (dữ liệu sai không sửa được): KHÔNG xoá — giữ dấu vết, không gửi nữa, không chặn kiểm kho. */
 export async function discardReviewItem(id, reason = '') {
   const row = await getOne('outbox', id);
