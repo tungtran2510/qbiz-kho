@@ -47,7 +47,7 @@ if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
       if(msg?.data?.type === 'PLEASE_CLOSE_DB'){
         if(dbPromise){
           dbPromise.then(db => {
-            requestSafeCloseDb(db, globalThis.__QBIZ_TEST_DB_NAME || CONFIG.DB_NAME, 'BroadcastChannel');
+            requestSafeCloseDb(db, openedName || currentDbName(), 'BroadcastChannel');
           }).catch(()=>{});
         }
       }
@@ -55,12 +55,26 @@ if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
   } catch(_) {}
 }
 
+// Backend web: MỖI SHOP 1 database riêng (danh tính thiết bị/quầy, outbox, dữ liệu) — đổi shop không gửi nhầm
+// phiếu sang shop khác, không lộ dữ liệu shop trước, không xung đột thiết bị giữa 2 shop trên server. Legacy giữ
+// nguyên tên cũ. Shop đang chọn đọc từ localStorage (auth.js lưu trước khi app mở DB).
+export function currentDbName(){
+  if (globalThis.__QBIZ_TEST_DB_NAME) return globalThis.__QBIZ_TEST_DB_NAME;
+  if (CONFIG.BACKEND !== 'web') return CONFIG.DB_NAME;
+  let shopId = '';
+  try { shopId = JSON.parse(globalThis.localStorage?.getItem('qbiz_active_shop') || 'null')?.shop?.id || ''; } catch (_) {}
+  return shopId ? `${CONFIG.DB_NAME}__web__${shopId}` : `${CONFIG.DB_NAME}__web`;
+}
+let openedName = null;
+/** Tên DB đang mở (null nếu chưa mở) — app so với currentDbName() để biết cần tải lại khi đổi shop. */
+export function openedDbName(){ return openedName; }
+
 function openDB(){
   if(dbPromise) return dbPromise;
   dbPromise = new Promise((resolve,reject)=>{
     // Test harnesses may opt into a dedicated database before importing this module.
-    // Production keeps the configured database name unchanged.
-    const dbName = globalThis.__QBIZ_TEST_DB_NAME || CONFIG.DB_NAME;
+    const dbName = currentDbName();
+    openedName = dbName;
     const req = indexedDB.open(dbName, CONFIG.DB_VERSION);
     req.onblocked = () => {
       console.warn('[DB] Quá trình nâng cấp DB bị chặn bởi tab/phiên khác đang mở.');

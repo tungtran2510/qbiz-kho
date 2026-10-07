@@ -14,7 +14,7 @@
 // các phiếu đó → màn hình hiện tồn cao giả; mã giá vốn đổi giữa lúc bán và lúc gửi).
 // ==============================================================================
 
-import { getAll, put, putMany, remove } from '../db.js';
+import { getAll, put, putMany, remove, runTransaction } from '../db.js';
 import { selectAll } from './api.js';
 
 const STOCK_EVENT_TYPES = /^(sale|return|exchange|inventory|inventory_document|transfer|purchase_return)\./;
@@ -70,7 +70,10 @@ export async function pullCatalog(shopId) {
   });
   for (const p of products) {
     if (p.status === 'hidden') continue;
-    const vlist = Array.isArray(p.variants) ? p.variants.filter((v) => v && v.id && !v.hidden) : [];
+    const allVariants = Array.isArray(p.variants) ? p.variants.filter((v) => v && v.id) : [];
+    const vlist = allVariants.filter((v) => !v.hidden);
+    // CÓ biến thể nhưng tất cả đều ẩn → sản phẩm không bán được (KHÔNG coi là "không có biến thể" rồi bán hàng cha).
+    if (allVariants.length && !vlist.length) continue;
     // Mã giá vốn đóng băng: giữ mã cũ nếu còn phiếu chờ gửi (stockFresh=false).
     const costVersion = (id) => (stockFresh ? latestVersion.get(p.id) || null : oldItems.get(id)?.cost_version_id ?? latestVersion.get(p.id) ?? null);
     if (!vlist.length) {
@@ -105,11 +108,27 @@ export async function pullCatalog(shopId) {
 
   if (levels) {
     const stamp = new Date().toISOString();
-    await replaceStore('levels', levels.map((l) => {
+    const next = levels.map((l) => {
       const itemId = webItemId(l.product_id, l.variant_id);
       return { id: `${itemId}:${l.warehouse_id}`, productId: itemId, variantId: '', variant_id: '', warehouseId: l.warehouse_id,
         onHand: Number(l.on_hand || 0), reserved: Number(l.reserved || 0), damaged: 0, updatedAt: stamp, source: 'web' };
-    }));
+    });
+    // NGUYÊN TỬ với outbox (review Codex): kiểm lại "còn phiếu chờ" TRONG cùng giao dịch ghi tồn — phiếu bán tạo ra
+    // trong lúc đang tải mạng sẽ khiến bỏ qua lần ghi này (không ghi đè phần trừ tồn cục bộ của phiếu đó).
+    await runTransaction(['outbox', 'levels'], (stores) => {
+      const req = stores.outbox.getAll();
+      req.onsuccess = () => {
+        const pending = (req.result || []).some((r) => ['PENDING', 'SYNCING', 'ERROR'].includes(String(r.sync_status || 'PENDING').toUpperCase())
+          && r.web_status !== 'DEFERRED' && STOCK_EVENT_TYPES.test(String(r.type || '')));
+        if (pending) return;
+        const keep = new Set(next.map((x) => x.id));
+        const cur = stores.levels.getAll();
+        cur.onsuccess = () => {
+          for (const old of cur.result || []) if (!keep.has(old.id)) stores.levels.delete(old.id);
+          for (const x of next) stores.levels.put(x);
+        };
+      };
+    });
   }
   await put('settings', { id: 'web_catalog_pulled_at', value: new Date().toISOString() });
   return { items: items.length, warehouses: warehouses.length, customers: customers.length, levels: levels ? levels.length : null };

@@ -2,7 +2,7 @@
 // QBIZ KHO — BACKEND WEB: đẩy outbox lên RPC kho_* của website.
 //
 // Quy tắc (review Codex/advisor):
-//  1. ĐÚNG THỨ TỰ TẠO: sắp theo created_at (outbox IndexedDB trả theo khoá = UUID ngẫu nhiên, không phải thứ tự).
+//  1. ĐÚNG THỨ TỰ TẠO: sắp theo client_seq (engine.makeOutbox, tăng đơn điệu) → created_at (IndexedDB trả theo khoá UUID).
 //     Gặp lỗi CHỜ (retry) → DỪNG lượt đẩy (giữ thứ tự: mở ca trước đóng ca, khách trước phiếu bán, ...).
 //  2. ĐÓNG BĂNG PAYLOAD: lần gửi đầu dựng payload RPC rồi LƯU vào dòng outbox (rpc_payload); mọi lần gửi lại dùng
 //     y nguyên → server so request_hash = md5(payload) không báo OPERATION_ID_CONFLICT giả.
@@ -13,22 +13,15 @@
 // Loại sự kiện chưa hỗ trợ ở lát này → DEFERRED (giữ nguyên, không chặn sự kiện khác).
 // ==============================================================================
 
-import { getAll, getOne, put } from '../db.js';
-import { getActiveShop, supabaseFetch } from '../auth.js';
-import { rpc, classifyError, errorCode } from './api.js';
+import { getAll, getOne, put, runTransaction } from '../db.js';
+import { getActiveShop } from '../auth.js';
+import { rpc, restInsert, classifyError, errorCode } from './api.js';
 import { splitWebItemId } from './catalog.js';
 
 const BACKOFF_MS = [5000, 15000, 30000, 60000, 300000];
 const nowIso = () => new Date().toISOString();
 const nn = (v) => (v === undefined || v === null || v === '' ? null : v);
 const shiftRef = (id) => (id && id !== 'shift_auto' ? id : null);
-
-async function nextWebSaleSeq(deviceId) {
-  const key = `web_sale_seq:${deviceId}`;
-  const cur = Number((await getOne('settings', key))?.value || 0) + 1;
-  await put('settings', { id: key, value: cur });
-  return cur;
-}
 
 // ---- Dựng payload RPC từ payload outbox (chạy 1 LẦN / sự kiện, kết quả được đóng băng) ----------------------
 const BUILDERS = {
@@ -40,6 +33,7 @@ const BUILDERS = {
     const deviceId = s.device_id || row.device_id;
     return {
       fn: 'kho_record_sale',
+      seq_device: deviceId || null,
       args: {
         p_sale: {
           id: s.id,
@@ -47,7 +41,7 @@ const BUILDERS = {
           code: nn(s.code),
           warehouse_id: s.warehouseId || s.location_id || s.warehouse_id,
           device_id: nn(deviceId),
-          device_seq: deviceId ? await nextWebSaleSeq(deviceId) : null,
+          device_seq: null,   // cấp NGUYÊN TỬ lúc đóng băng (freezeAtomic)
           register_id: nn(s.register_id || row.register_id),
           shift_id: shiftRef(s.shift_id),
           // Khách tạo offline chưa lên web → gửi nhãn, không gửi mã (tránh CUSTOMER_NOT_FOUND).
@@ -70,7 +64,8 @@ const BUILDERS = {
               tax_rate: it.tax_rate == null || it.tax_rate === '' ? null : Number(it.tax_rate),
               tax_amount: Number(it.tax_amount || 0),
               tax_inclusive: Boolean(it.tax_inclusive),
-              cost_version_id: nn(products.get(it.item_id || it.itemId)?.cost_version_id),
+              // Mã phiên bản giá vốn ĐÓNG BĂNG LÚC BÁN (engine.createSale); dòng cũ chưa có → mã hiện tại của mặt hàng.
+              cost_version_id: nn(it.cost_version_id) ?? nn(products.get(it.item_id || it.itemId)?.cost_version_id),
             };
           }),
           payments: (s.payments || []).map((p) => ({
@@ -136,8 +131,12 @@ Object.assign(BUILDERS, {
     const sale = (await getAll('sales')).find((s) => s.id === d.sale_id);
     let method = String(d.refund_method || '').toLowerCase();
     if (!RETURN_METHODS.has(method)) {
-      // 'split' / 'original' / phương thức lạ: tiền mặt nếu không vượt tiền mặt đã thu của phiếu, ngược lại chuyển khoản.
-      method = Number(d.cash_refund || 0) <= localCashPaid(sale) ? 'cash' : 'transfer';
+      // 'split' / 'original' / phương thức lạ: tiền mặt nếu không vượt (tiền mặt đã thu − tiền mặt đã hoàn trước) của
+      // phiếu, ngược lại chuyển khoản (server giới hạn hoàn tiền mặt theo đúng công thức này).
+      const priorCash = (await getAll('refunds'))
+        .filter((f) => f.sale_id === d.sale_id && f.return_id !== d.id && (f.method || f.refund_method) === 'cash')
+        .reduce((n, f) => n + Number(f.amount || 0), 0);
+      method = Number(d.cash_refund || 0) <= localCashPaid(sale) - priorCash ? 'cash' : 'transfer';
     }
     return {
       fn: 'kho_record_return',
@@ -230,8 +229,7 @@ export function isWebSupported(type) { return Object.prototype.hasOwnProperty.ca
 async function sendFrozen(frozen) {
   if (frozen.rest) {
     try {
-      await supabaseFetch(`/rest/v1/${frozen.rest}`, { method: 'POST', headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ ...frozen.row, shop_id: frozen.args.p_shop_id }) });
+      await restInsert(frozen.rest, { ...frozen.row, shop_id: frozen.args.p_shop_id });
       return { id: frozen.row.id, duplicate: false };
     } catch (err) {
       if (errorCode(err) === 'PG_23505') return { id: frozen.row.id, duplicate: true };   // đã có (lần gửi trước)
@@ -242,15 +240,68 @@ async function sendFrozen(frozen) {
 }
 
 // ---- Đăng ký thiết bị + quầy (server yêu cầu tồn tại + đang bật trước khi mở ca) ------------------------------
-export async function ensureDevice(shopId, identity, defaultWarehouseId) {
+export async function ensureDevice(shopId, identity, defaultWarehouseId, role = '') {
   const dev = await rpc('kho_register_device', { p_shop_id: shopId, p_device: {
     id: identity.device_id, device_key: identity.device_id,
     name: identity.device_name || 'Thiết bị Kho', platform: (globalThis.navigator?.userAgent || '').slice(0, 200) } });
-  if (identity.register_id) {
+  // Quầy thu ngân chỉ cho vai trò bán hàng (server: owner/manager/cashier) — thủ kho không có quầy/ca, không được
+  // để lỗi FORBIDDEN ở đây chặn việc kéo dữ liệu kho / đẩy phiếu kho.
+  if (identity.register_id && String(role).toUpperCase() !== 'WAREHOUSE') {
     await rpc('kho_ensure_register', { p_shop_id: shopId, p_register: {
       id: identity.register_id, name: identity.register_name || 'Quầy chính', warehouse_id: defaultWarehouseId || null } });
   }
   return dev;   // { id, active, name } — active=false: thiết bị bị chủ shop tắt → app ngừng bán
+}
+
+// ---- Đóng băng NGUYÊN TỬ: cấp device_seq + lưu payload trong CÙNG 1 giao dịch IndexedDB (review Codex) -------
+// Crash giữa "tăng bộ đếm" và "lưu payload" từng tạo lỗ vĩnh viễn trong dãy 1..N → không xác nhận kiểm kho được.
+// Tab khác đã đóng băng trước → dùng payload của tab đó (không cấp số mới).
+async function freezeAtomic(rowId, frozen) {
+  let out = null;
+  await runTransaction(['settings', 'outbox'], (stores) => {
+    const obReq = stores.outbox.get(rowId);
+    obReq.onsuccess = () => {
+      const cur = obReq.result;
+      if (!cur) return;
+      if (cur.rpc_payload) { out = cur.rpc_payload; return; }
+      const save = () => { stores.outbox.put({ ...cur, rpc_payload: frozen, rpc_frozen_at: nowIso() }); out = frozen; };
+      if (!frozen.seq_device) { save(); return; }
+      const key = `web_sale_seq:${frozen.seq_device}`;
+      const sReq = stores.settings.get(key);
+      sReq.onsuccess = () => {
+        const n = Number(sReq.result?.value || 0) + 1;
+        stores.settings.put({ id: key, value: n });
+        frozen.args.p_sale.device_seq = n;
+        save();
+      };
+    };
+  });
+  return out;
+}
+
+// ---- Thứ tự + phụ thuộc -------------------------------------------------------------------------------------
+// client_seq (engine.makeOutbox, tăng đơn điệu kể cả khi đồng hồ lùi) → created_at → id.
+const orderKey = (r) => [Number(r.client_seq || 0), String(r.created_at || ''), String(r.id)];
+function byOrder(a, b) {
+  const x = orderKey(a), y = orderKey(b);
+  if (x[0] && y[0] && x[0] !== y[0]) return x[0] - y[0];
+  return x[1].localeCompare(y[1]) || x[2].localeCompare(y[2]);
+}
+// Thực thể mà 1 sự kiện TẠO ra / PHỤ THUỘC vào (cùng khoá 'loại:id').
+function createsKey(r) {
+  const p = r.payload || {};
+  if (r.type === 'sale.create') return `sale:${p.sale?.id}`;
+  if (r.type === 'shift.open') return `shift:${p.shift?.id}`;
+  if (r.type === 'transfer.create') return `transfer:${p.transfer?.id}`;
+  return null;
+}
+function dependsOn(r) {
+  const p = r.payload || {};
+  if (r.type === 'return.create') return [`sale:${p.return?.sale_id}`];
+  if (r.type === 'sale.mark_paid' || r.type === 'sale.partial_paid') return [`sale:${p.sale?.id}`];
+  if (r.type === 'shift.close') return [`shift:${p.shift?.id || r.entity_id}`];
+  if (r.type === 'transfer.receive' || r.type === 'transfer.cancel') return [`transfer:${p.transfer?.id || r.entity_id}`];
+  return [];
 }
 
 // ---- Vòng đẩy ------------------------------------------------------------------------------------------------
@@ -261,50 +312,71 @@ export function webFlushOutbox() {
   return running;
 }
 
+const ACTIVE = ['PENDING', 'ERROR', 'SYNCING'];
+const statusOf = (r) => String(r.sync_status || 'PENDING').toUpperCase();
+
 async function doFlush() {
   const shop = getActiveShop();
   if (!shop?.id) return { sent: 0, failed: 0, skipped: true, reason: 'NO_SHOP' };
   const now = Date.now();
-  const rows = (await getAll('outbox'))
-    .filter((r) => ['PENDING', 'ERROR', 'SYNCING'].includes(String(r.sync_status || 'PENDING').toUpperCase()))
-    .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')) || String(a.id).localeCompare(String(b.id)));
+  const all = (await getAll('outbox')).sort(byOrder);
+  const creator = new Map();
+  for (const r of all) { const k = createsKey(r); if (k) creator.set(k, r); }
+  const rows = all.filter((r) => ACTIVE.includes(statusOf(r)));
 
   let sent = 0, failed = 0, review = 0, deferred = 0;
+  // Cập nhật bảng sự kiện gốc NGAY khi trạng thái đổi trong lượt này (phiếu bán vừa vào "cần xem" → phiếu trả phía sau
+  // phải thấy ngay, không gửi đi rồi nhận SALE_NOT_FOUND chặn cả hàng đợi).
+  const track = (r) => { const k = createsKey(r); if (k) creator.set(k, r); };
   for (const row of rows) {
     if (!isWebSupported(row.type)) {
       if (row.web_status !== 'DEFERRED') { await put('outbox', { ...row, web_status: 'DEFERRED' }); }
       deferred++;
       continue;
     }
-    if (row.sync_status === 'ERROR' && row.next_retry_at && Date.parse(row.next_retry_at) > now) break;   // giữ thứ tự
+    // Sự kiện gốc (phiếu bán / mở ca / tạo phiếu chuyển) đang "cần xem" → sự kiện phụ thuộc không bao giờ lên được:
+    // đưa luôn vào "cần xem" thay vì chờ *_NOT_FOUND vô hạn (chặn cả hàng đợi).
+    const blocked = dependsOn(row).map((k) => creator.get(k)).find((c) => c && statusOf(c) === 'NEEDS_REVIEW');
+    if (blocked) {
+      const upd = { ...row, sync_status: 'NEEDS_REVIEW', web_status: 'NEEDS_REVIEW', last_error_code: 'DEPENDENCY_IN_REVIEW',
+        last_error: `Phụ thuộc ${blocked.type} ${blocked.id} đang cần xem.`, updated_at: nowIso() };
+      await put('outbox', upd); track(upd);
+      review++;
+      continue;
+    }
+    if (statusOf(row) === 'ERROR' && row.next_retry_at && Date.parse(row.next_retry_at) > now) break;   // giữ thứ tự
 
     let frozen = row.rpc_payload;
     if (!frozen) {
-      frozen = await BUILDERS[row.type](row);
-      frozen.args = { p_shop_id: shop.id, ...(frozen.args || {}) };
-      await put('outbox', { ...row, rpc_payload: frozen, rpc_frozen_at: nowIso() });
+      const built = await BUILDERS[row.type](row);
+      built.args = { p_shop_id: shop.id, ...(built.args || {}) };
+      frozen = await freezeAtomic(row.id, built);
+      if (!frozen) continue;   // dòng đã bị xoá giữa chừng
     }
+    const fresh = (await getOne('outbox', row.id)) || row;
     try {
       const ack = await sendFrozen(frozen);
       if (frozen.after) {
         const cur = await getOne(frozen.after.store, frozen.after.id);
         if (cur) await put(frozen.after.store, { ...cur, ...frozen.after.patch });
       }
-      await put('outbox', { ...row, rpc_payload: frozen, sync_status: 'SYNCED', web_status: 'SYNCED',
-        synced_at: nowIso(), ack, last_error: null, updated_at: nowIso() });
+      const done = { ...fresh, rpc_payload: frozen, sync_status: 'SYNCED', web_status: 'SYNCED',
+        synced_at: nowIso(), ack, last_error: null, updated_at: nowIso() };
+      await put('outbox', done); track(done);
       sent++;
     } catch (err) {
       const code = errorCode(err);
       if (classifyError(err) === 'terminal') {
-        // Dữ liệu sai → hàng "cần xem". Không chặn sự kiện sau (sự kiện phụ thuộc sẽ tự rơi vào "cần xem").
-        await put('outbox', { ...row, rpc_payload: frozen, sync_status: 'NEEDS_REVIEW', web_status: 'NEEDS_REVIEW',
-          last_error: String(err.message || err), last_error_code: code, updated_at: nowIso() });
+        // Dữ liệu sai → hàng "cần xem". Không chặn sự kiện sau (sự kiện phụ thuộc tự vào "cần xem" ở trên).
+        const rev = { ...fresh, rpc_payload: frozen, sync_status: 'NEEDS_REVIEW', web_status: 'NEEDS_REVIEW',
+          last_error: String(err.message || err), last_error_code: code, updated_at: nowIso() };
+        await put('outbox', rev); track(rev);
         review++;
         continue;
       }
-      const retry = Number(row.retry_count || 0) + 1;
-      await put('outbox', { ...row, rpc_payload: frozen, sync_status: 'ERROR', web_status: 'WAITING', retry_count: retry,
-        last_error: String(err.message || err), last_error_code: code, updated_at: nowIso(),
+      const retry = Number(fresh.retry_count || 0) + 1;
+      await put('outbox', { ...fresh, rpc_payload: frozen, sync_status: 'ERROR', web_status: code === 'AUTH' ? 'AUTH_REQUIRED' : 'WAITING',
+        retry_count: retry, last_error: String(err.message || err), last_error_code: code, updated_at: nowIso(),
         next_retry_at: new Date(Date.now() + BACKOFF_MS[Math.min(retry - 1, BACKOFF_MS.length - 1)]).toISOString() });
       failed++;
       break;   // giữ thứ tự: sự kiện sau có thể phụ thuộc sự kiện này
@@ -313,10 +385,33 @@ async function doFlush() {
   return { sent, failed, review, deferred, skipped: false };
 }
 
+/** Có sự kiện ảnh hưởng tồn còn chưa lên server (chờ / lỗi / cần xem)? — xác nhận kiểm kho chỉ khi KHÔNG. */
+export async function hasUnsettledStockEvents() {
+  return (await getAll('outbox')).some((r) => [...ACTIVE, 'NEEDS_REVIEW'].includes(statusOf(r)) && r.web_status !== 'DEFERRED'
+    && /^(sale|return|exchange|inventory_document|transfer|purchase_return)\./.test(String(r.type || '')));
+}
+
 /** Số liệu cho thanh trạng thái đồng bộ. */
 export async function webSyncStatus() {
   const rows = await getAll('outbox');
-  const by = (s) => rows.filter((r) => String(r.sync_status || '').toUpperCase() === s).length;
+  const by = (s) => rows.filter((r) => statusOf(r) === s).length;
   return { pending: by('PENDING') + by('ERROR') + by('SYNCING'), review: by('NEEDS_REVIEW'),
-    deferred: rows.filter((r) => r.web_status === 'DEFERRED' && r.sync_status !== 'SYNCED').length };
+    deferred: rows.filter((r) => r.web_status === 'DEFERRED' && statusOf(r) !== 'SYNCED').length,
+    authRequired: rows.some((r) => r.web_status === 'AUTH_REQUIRED' && statusOf(r) === 'ERROR') };
+}
+
+// ---- Xử lý hàng "cần xem" (chủ shop / quản lý quyết; giao diện ở lát sau) -----------------------------------
+/** Bỏ 1 mục (dữ liệu sai không sửa được): KHÔNG xoá — giữ dấu vết, không gửi nữa, không chặn kiểm kho. */
+export async function discardReviewItem(id, reason = '') {
+  const row = await getOne('outbox', id);
+  if (!row || statusOf(row) !== 'NEEDS_REVIEW') return false;
+  await put('outbox', { ...row, sync_status: 'DISCARDED', web_status: 'DISCARDED', discarded_reason: reason || null, updated_at: nowIso() });
+  return true;
+}
+/** Gửi lại 1 mục (vd phụ thuộc đã được xử lý, hoặc lỗi tạm bị xếp nhầm). Payload đóng băng giữ nguyên. */
+export async function retryReviewItem(id) {
+  const row = await getOne('outbox', id);
+  if (!row || statusOf(row) !== 'NEEDS_REVIEW') return false;
+  await put('outbox', { ...row, sync_status: 'PENDING', web_status: 'RETRY', next_retry_at: null, updated_at: nowIso() });
+  return true;
 }

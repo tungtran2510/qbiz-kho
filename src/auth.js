@@ -482,13 +482,15 @@ export async function signOut() {
  * Refresh access token using refresh token.
  */
 export async function tryRefreshToken() {
-  if (!currentSession?.refresh_token) return;
+  if (!currentSession?.refresh_token) return false;
   const { url, anonKey } = getSupabaseConfig();
-  if (!url || !anonKey) return;
+  if (!url || !anonKey) return false;
 
   try {
+    // Không gửi access token CŨ (đã hết hạn) — gateway có thể từ chối cả yêu cầu làm mới. Dùng anon key.
     const res = await supabaseFetch('/auth/v1/token?grant_type=refresh_token', {
       method: 'POST',
+      headers: { Authorization: `Bearer ${anonKey}` },
       body: JSON.stringify({ refresh_token: currentSession.refresh_token }),
     });
 
@@ -498,16 +500,19 @@ export async function tryRefreshToken() {
       if (res.user) currentSession.user = res.user;
       localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentSession));
       emitState();
+      return true;
     }
   } catch (err) {
     console.warn('Không thể refresh token:', err);
   }
+  return false;
 }
 
 /**
  * Create a new Shop and assign the creator as OWNER.
  */
 export async function createShop({ name }) {
+  if (CONFIG.BACKEND === 'web') throw new Error('Cửa hàng được tạo và quản lý tại trang quản trị QBiz (web).');
   if (!currentSession?.user) throw new Error('Vui lòng đăng nhập trước khi tạo cửa hàng.');
   const trimmedName = (name || '').trim();
   if (!trimmedName) throw new Error('Tên cửa hàng không được để trống.');
@@ -722,15 +727,8 @@ export async function switchShop(shopId) {
   if (!target) {
     throw new Error('Bạn không có quyền truy cập cửa hàng này hoặc cửa hàng không tồn tại.');
   }
-  // Backend web: dữ liệu cục bộ + outbox thuộc THIẾT BỊ, payload gửi kèm shop ĐANG chọn → đổi shop khi còn thay đổi
-  // chưa đồng bộ sẽ gửi nhầm phiếu sang shop khác. Bắt buộc đồng bộ xong trước khi đổi.
-  if (CONFIG.BACKEND === 'web' && shopId !== currentShop?.id) {
-    const { getAll } = await import('./db.js');
-    const pending = (await getAll('outbox')).filter((r) => String(r.sync_status || '').toUpperCase() !== 'SYNCED').length;
-    if (pending > 0) {
-      throw new Error(`Còn ${pending} thay đổi chưa đồng bộ lên QBiz. Hãy kết nối mạng và đồng bộ xong (hoặc xử lý mục "cần xem") trước khi đổi cửa hàng.`);
-    }
-  }
+  // Backend web: mỗi shop có database riêng (db.js currentDbName) → đổi shop an toàn kể cả khi còn thay đổi chưa
+  // đồng bộ (chúng nằm trong DB của shop cũ, gửi tiếp khi quay lại shop đó). app.js tải lại trang để mở đúng DB.
   currentShop = target.shop;
   currentMembership = target.membership;
   localStorage.setItem(STORAGE_ACTIVE_SHOP_KEY, JSON.stringify({ shop: currentShop, membership: currentMembership }));
@@ -744,6 +742,7 @@ export async function switchShop(shopId) {
  * SUPER_ADMIN is NEVER a shop membership role.
  */
 export async function addMember({ email, role }) {
+  if (CONFIG.BACKEND === 'web') throw new Error('Nhân viên và vai trò được mời / quản lý tại trang quản trị QBiz (web).');
   if (!email || !role) throw new Error('Vui lòng cung cấp email và vai trò.');
 
   const upperRole = String(role).toUpperCase().trim();
@@ -794,6 +793,7 @@ export async function addMember({ email, role }) {
  * Disable a membership. (OWNER only)
  */
 export async function disableMember(membershipId) {
+  if (CONFIG.BACKEND === 'web') throw new Error('Nhân viên và vai trò được mời / quản lý tại trang quản trị QBiz (web).');
   if (!userCan('MANAGE_USERS')) throw new Error('Bạn không có quyền quản lý thành viên.');
   const { url, anonKey } = getSupabaseConfig();
   if (!url || !anonKey) {

@@ -10,6 +10,7 @@ import { ensureLocalIdentity } from '../engine.js';
 import { pullCatalog } from './catalog.js';
 import { ensureDevice, webFlushOutbox } from './flush.js';
 import { autoAckOpenSessions } from './count.js';
+import { getCurrentRole } from '../auth.js';
 
 const FLUSH_EVERY_MS = 20000;
 const CATALOG_EVERY_MS = 5 * 60000;
@@ -39,7 +40,7 @@ export async function startWebSync(shop, onChange = () => {}) {
   let registered = false;
   const register = async () => {
     if (registered || shop.kho_entitled === false) return;
-    const dev = await ensureDevice(shop.id, identity, shop.default_warehouse_id);
+    const dev = await ensureDevice(shop.id, identity, shop.default_warehouse_id, getCurrentRole());
     lastState.deviceActive = dev?.active !== false;
     registered = true;
   };

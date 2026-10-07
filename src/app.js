@@ -1,5 +1,5 @@
 import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn } from './engine.js?v=20260927-v21-consistency-audit';
-import { clearAll,getAll,getOne,put,putMany,runTransaction } from './db.js';
+import { clearAll,getAll,getOne,put,putMany,runTransaction,currentDbName,openedDbName } from './db.js';
 import { syncStatus,flushOutbox,pruneSyncedOutbox } from './sync.js';
 import { CONFIG } from './config.js';
 import { startWebSync, stopWebSync } from './web/bootstrap.js';
@@ -9345,6 +9345,9 @@ async function boot(){
       if ((shop?.id || null) === webShopId) return;
       webShopId = shop?.id || null;
       if (!shop) { stopWebSync(); return; }
+      // Mỗi shop 1 database (db.js currentDbName). Đã mở DB của shop khác / DB chưa chọn shop → tải lại trang để
+      // mở đúng DB (dữ liệu, outbox, danh tính thiết bị của shop này).
+      if (openedDbName() && openedDbName() !== currentDbName()) { stopWebSync(); location.reload(); return; }
       startWebSync(shop, () => { refresh().catch(() => {}); }).catch((err) => console.warn('[web-sync]', err));
     });
   }

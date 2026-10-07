@@ -7,7 +7,7 @@
 // ==============================================================================
 
 import { rpc, selectAll } from './api.js';
-import { contiguousSyncedSeq } from './flush.js';
+import { contiguousSyncedSeq, hasUnsettledStockEvents } from './flush.js';
 
 const enc = encodeURIComponent;
 
@@ -19,6 +19,9 @@ export async function openCountSessions(shopId) {
 export async function autoAckOpenSessions(shopId, deviceId) {
   const sessions = await openCountSessions(shopId);
   if (!sessions.length) return { sessions: 0, acked: 0 };
+  // Chỉ xác nhận khi KHÔNG còn sự kiện ảnh hưởng tồn nào chưa lên server (chờ / lỗi / cần xem) — xác nhận = cam kết
+  // máy đã đồng bộ hết; còn mục "cần xem" thì chủ shop phải xử lý trước (hoặc chốt cưỡng bức, có ghi cờ).
+  if (await hasUnsettledStockEvents()) return { sessions: sessions.length, acked: 0, blocked: 'UNSETTLED_EVENTS' };
   const seq = await contiguousSyncedSeq(deviceId);
   let acked = 0;
   for (const s of sessions) {
