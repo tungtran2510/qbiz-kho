@@ -5,6 +5,7 @@
 //   QBIZ_WEB_ORIGIN                             — vd https://qbiz.vn (đăng ký / quên mật khẩu / SSO / trang quản trị)
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const env = process.env;
 const cfg = {};
@@ -20,6 +21,6 @@ if (/service_role/.test(Buffer.from(String(cfg.SUPABASE_ANON_KEY || '').split('.
   console.error('QBIZ_SUPABASE_ANON_KEY đang là service_role key — KHÔNG được đưa ra trình duyệt.');
   process.exit(1);
 }
-const out = path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', 'qbiz-config.js');
+const out = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'qbiz-config.js');
 fs.writeFileSync(out, `// SINH TỰ ĐỘNG bởi scripts/write-qbiz-config.mjs — không sửa tay.\nwindow.__QBIZ_CONFIG__ = Object.assign({}, ${JSON.stringify(cfg)}, window.__QBIZ_CONFIG__ || {});\n`);
 console.log('qbiz-config.js:', Object.keys(cfg).join(', ') || '(trống — legacy)');

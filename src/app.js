@@ -10,6 +10,7 @@ import { webSyncStatus, webReviewItems, retryReviewItem, discardReviewItem, webF
 import { reviewTypeLabel, reviewReason, canDiscardReview } from './web/review.js';
 import { openCountSessions, startCountSession, submitCountLines, finalizeCountSession, cancelCountSession, resolveStockException, sessionAcks, activeDevices, pendingStockExceptions } from './web/count.js';
 import { errorCode } from './web/api.js';
+import { webItemId } from './web/catalog.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
 import { kickCashDrawer, generateEscPosReceipt, buildDrawerKickCommand } from './hardware/escpos.js';
@@ -592,29 +593,37 @@ const COUNT_ERRORS = {
   NETWORK: 'Cần kết nối mạng để thao tác phiên kiểm kho.',
 };
 const countErr = (err) => COUNT_ERRORS[errorCode(err)] || String(err?.message || err);
+let countRenderGen = 0;
 async function renderCountSessions(){
   setTitle('Phiên kiểm kho','QBiz');
   const content = $('#content'); if (!content) return;
+  const gen = ++countRenderGen;
+  const stale = () => gen !== countRenderGen || state.page !== 'count-sessions';
   const auth = getAuthState(); const shopId = auth.shop?.id; const role = getCurrentRole();
   const canStart = ['OWNER','MANAGER','WAREHOUSE'].includes(role), canFinal = ['OWNER','MANAGER'].includes(role);
   const whs = (state.data.warehouses || []).filter((w) => String(w.status || 'active').toLowerCase() === 'active');
   if (!state.countWh || !whs.some((w) => w.id === state.countWh)) state.countWh = whs[0]?.id || '';
-  content.innerHTML = '<section class="feature-center"><div class="empty">Đang tải phiên kiểm kho…</div></section>';
+  if (!content.querySelector('#countWh')) content.innerHTML = '<section class="feature-center"><div class="empty">Đang tải phiên kiểm kho…</div></section>';
   let sessions = [], exceptions = [], acks = [], devices = [];
   try {
     sessions = await openCountSessions(shopId);
     if (canFinal) exceptions = await pendingStockExceptions(shopId);
   } catch (err) {
+    if (stale()) return;
     content.innerHTML = `<section class="feature-center"><div class="empty"><strong>Không tải được phiên kiểm kho</strong><span>${esc(countErr(err))}</span></div></section>`;
     return;
   }
   const sess = sessions.find((s) => s.warehouse_id === state.countWh);
   if (sess) { try { [acks, devices] = await Promise.all([sessionAcks(sess.id), activeDevices(shopId)]); } catch (_) {} }
+  if (stale()) return;
+  // P1: số đếm CHƯA lưu nằm trong state (theo phiên + mặt hàng) — vẽ lại trang (đồng bộ nền) không xoá chúng.
+  const drafts = sess ? ((state.countDrafts ||= {})[sess.id] ||= {}) : {};
+  const focused = document.activeElement?.dataset?.countItem || null;
   const ackedIds = new Set(acks.map((a) => a.device_id));
   const missing = devices.filter((d) => !ackedIds.has(d.id));
   const items = (state.data.products || []).filter((p) => p.type !== 'SERVICE' && p.trackInventory !== false);
   const onHand = (id) => (state.data.levels || []).find((l) => l.productId === id && l.warehouseId === state.countWh)?.onHand ?? 0;
-  const prodName = (pid, vid) => { const p = (state.data.products || []).find((x) => x.id === (vid ? `${pid}:${vid}` : pid) || x.id === pid); return p?.name || pid || '—'; };
+  const prodName = (pid, vid) => (state.data.products || []).find((x) => x.id === webItemId(pid, vid))?.name || [pid, vid].filter(Boolean).join(' / ') || '—';
   const whName = (id) => whs.find((w) => w.id === id)?.name || id;
   const mine = exceptions.filter((e) => e.warehouse_id === state.countWh);
   content.innerHTML = `<section class="feature-center"><section class="card feature-panel" style="padding:14px">
@@ -627,7 +636,7 @@ async function renderCountSessions(){
       ${canStart ? `<div class="count-lines" style="max-height:52vh;overflow:auto;border:1px solid var(--border,#e2e8f0);border-radius:10px">
         ${items.length ? items.map((p) => `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border,#f1f5f9)">
           <div style="flex:1;min-width:0"><strong style="font-size:13px">${esc(p.name)}</strong><small style="display:block;color:var(--text-muted,#64748b)">${esc(p.sku || '')} · máy: ${fmt(onHand(p.id))}</small></div>
-          <input type="number" inputmode="numeric" min="0" step="1" data-count-item="${esc(p.id)}" placeholder="Số đếm" style="width:92px;padding:7px 8px;border:1px solid #cbd5e1;border-radius:8px"/>
+          <input type="number" inputmode="numeric" min="0" step="1" data-count-item="${esc(p.id)}" value="${esc(drafts[p.id] ?? '')}" placeholder="Số đếm" style="width:92px;padding:7px 8px;border:1px solid #cbd5e1;border-radius:8px"/>
         </div>`).join('') : '<div class="empty">Kho chưa có mặt hàng theo dõi tồn.</div>'}
       </div>
       <button type="button" class="primary-btn full" data-action="count-save" style="margin-top:10px;width:100%">Lưu số đếm</button>` : ''}
@@ -647,12 +656,14 @@ async function renderCountSessions(){
       </div>`).join('')}` : ''}
   </section></section>`;
   $('#countWh').onchange = (ev) => { state.countWh = ev.target.value; renderCountSessions(); };
+  $$('[data-count-item]').forEach((i) => { i.oninput = () => { if (i.value === '') delete drafts[i.dataset.countItem]; else drafts[i.dataset.countItem] = i.value; }; });
+  if (focused) { const el = $$('[data-count-item]').find((i) => i.dataset.countItem === focused); if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {} } }
   const run = async (fn, okMsg) => { try { await fn(); toast(okMsg, 'ok'); } catch (err) { toast(countErr(err), 'error'); } renderCountSessions(); };
   $('[data-action="count-start"]')?.addEventListener('click', () => run(() => startCountSession(shopId, { id: saleUuid(), warehouseId: state.countWh, note: $('#countNote')?.value?.trim() }), 'Đã mở phiên kiểm kho.'));
   $('[data-action="count-save"]')?.addEventListener('click', () => {
     const lines = $$('[data-count-item]').filter((i) => i.value !== '').map((i) => ({ itemId: i.dataset.countItem, counted: Math.max(0, Math.floor(Number(i.value))) }));
     if (!lines.length) return toast('Nhập số đếm cho ít nhất 1 mặt hàng.', 'error');
-    run(() => submitCountLines(shopId, sess.id, lines), `Đã lưu số đếm ${lines.length} mặt hàng.`);
+    run(async () => { await submitCountLines(shopId, sess.id, lines); for (const l of lines) delete drafts[l.itemId]; }, `Đã lưu số đếm ${lines.length} mặt hàng.`);
   });
   $('[data-action="count-finalize"]')?.addEventListener('click', () => {
     let force = false;
