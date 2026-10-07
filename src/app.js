@@ -1,8 +1,11 @@
 import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn } from './engine.js?v=20260927-v21-consistency-audit';
-import { clearAll,getAll,getOne,put,putMany,runTransaction,currentDbName,openedDbName } from './db.js';
+import { clearAll,getAll,getOne,put,putMany,runTransaction,currentDbName,openedDbName,demoDbName,clearDemoSession } from './db.js';
 import { syncStatus,flushOutbox,pruneSyncedOutbox } from './sync.js';
 import { CONFIG } from './config.js';
+/** Backend web (database + đăng nhập dùng chung website QBiz) — xem config.js / src/web/. */
+const isWebBackend = CONFIG.BACKEND === 'web';
 import { startWebSync, stopWebSync } from './web/bootstrap.js';
+import { webRegisterUrl, webForgotUrl, openWebPage } from './web/links.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
 import { kickCashDrawer, generateEscPosReceipt, buildDrawerKickCommand } from './hardware/escpos.js';
@@ -1382,10 +1385,10 @@ function renderDashboard(){
 
           <!-- HÀNG 1: Tạo shop mới & Đăng nhập (cùng 1 hàng, icon và chữ ngang hàng) | HÀNG 2: Xem shop demo (hàng dưới) -->
           <div class="entry-cta-bar" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
-            <button type="button" class="primary-btn entry-cta-btn" data-action="create-shop-modal" title="Tạo cửa hàng mới" style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 8px;font-size:clamp(12px,3.2vw,13.5px);font-weight:700;border-radius:10px;min-height:46px;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;color:#fff;box-shadow:0 2px 6px rgba(2,132,199,0.25);cursor:pointer;white-space:nowrap">
+            ${isWebBackend && !webRegisterUrl() ? '' : `<button type="button" class="primary-btn entry-cta-btn" data-action="create-shop-modal" title="${isWebBackend ? 'Đăng ký QBiz Kho — dùng thử miễn phí' : 'Tạo cửa hàng mới'}" style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 8px;font-size:clamp(12px,3.2vw,13.5px);font-weight:700;border-radius:10px;min-height:46px;background:linear-gradient(135deg,#0284c7,#0369a1);border:none;color:#fff;box-shadow:0 2px 6px rgba(2,132,199,0.25);cursor:pointer;white-space:nowrap">
               ${icon('store')}
-              <span style="white-space:nowrap">Tạo shop mới</span>
-            </button>
+              <span style="white-space:nowrap">${isWebBackend ? 'Đăng ký QBiz Kho' : 'Tạo shop mới'}</span>
+            </button>`}
             <button type="button" class="secondary-btn entry-cta-btn" data-action="open-auth-modal" title="Đăng nhập tài khoản" style="display:flex;flex-direction:row;align-items:center;justify-content:center;gap:8px;padding:10px 8px;font-size:clamp(12px,3.2vw,13.5px);font-weight:700;border-radius:10px;min-height:46px;background:#fff;border:1.5px solid #cbd5e1;color:#1e293b;box-shadow:0 1px 2px rgba(0,0,0,0.04);cursor:pointer;white-space:nowrap">
               ${icon('user')}
               <span style="white-space:nowrap">Đăng nhập</span>
@@ -1429,6 +1432,7 @@ function renderDashboard(){
             </div>
           </div>
 
+          ${isWebBackend ? `<div style="text-align:center;color:var(--text-muted,#64748b);font-size:11.5px;margin:6px 0 10px">Đăng nhập bằng tài khoản QBiz (email và mật khẩu dùng trên website)</div>` : `
           <!-- Google Sign-in Button -->
           <button type="button" class="google-auth-btn" id="quickGoogleLoginBtn" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:10px 16px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;font-weight:600;font-size:13px;color:#1e293b;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.04);margin-bottom:10px">
             <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
@@ -1439,7 +1443,7 @@ function renderDashboard(){
             <span style="flex:1;border-bottom:1px solid #e2e8f0"></span>
             <span style="padding:0 8px">hoặc đăng nhập bằng Email</span>
             <span style="flex:1;border-bottom:1px solid #e2e8f0"></span>
-          </div>
+          </div>`}
 
           <div class="public-entry-form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">
             <input type="email" id="quickLoginEmail" placeholder="Email đăng nhập" style="padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff" />
@@ -7649,6 +7653,11 @@ function loadImage(file){return new Promise((resolve,reject)=>{const img=new Ima
 function blobToData(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);})}
 
 function openForgotPasswordModal() {
+  if (isWebBackend) {
+    const email = ($('#quickLoginEmail')?.value || $('#authEmail')?.value || '').trim();
+    if (!openWebPage(webForgotUrl(email))) toast('Đặt lại mật khẩu tại trang đăng nhập website QBiz.', 'error');
+    return;
+  }
   openModal({
     title: 'Khôi phục mật khẩu',
     sub: 'Nhập email tài khoản để nhận liên kết đặt lại mật khẩu.',
@@ -7672,7 +7681,8 @@ function openForgotPasswordModal() {
 }
 
 function openAuthModal(defaultTab = 'signin') {
-  let activeTab = defaultTab;
+  // Backend web: chỉ đăng nhập (tài khoản tạo ở web) — không có tab đăng ký trong Kho.
+  let activeTab = isWebBackend ? 'signin' : defaultTab;
   const renderBody = () => `
     <div class="auth-brand" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border,#e2e8f0)">
       <div style="width:40px;height:40px;border-radius:8px;background:var(--primary,#0284c7);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:18px">Q</div>
@@ -7681,7 +7691,7 @@ function openAuthModal(defaultTab = 'signin') {
         <span style="font-size:12px;color:var(--text-muted,#64748b)">Nền tảng Quản lý kho & Bán hàng</span>
       </div>
     </div>
-    <div class="auth-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:8px">
+    ${isWebBackend ? '' : `<div class="auth-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border,#e2e8f0);padding-bottom:8px">
       <button type="button" class="tab-btn ${activeTab==='signin'?'active':''}" id="authTabSignin" style="flex:1;padding:8px;border-radius:6px;border:none;background:${activeTab==='signin'?'var(--primary,#0284c7)':'transparent'};color:${activeTab==='signin'?'#fff':'inherit'};font-weight:600;cursor:pointer">Đăng nhập</button>
       <button type="button" class="tab-btn ${activeTab==='signup'?'active':''}" id="authTabSignup" style="flex:1;padding:8px;border-radius:6px;border:none;background:${activeTab==='signup'?'var(--primary,#0284c7)':'transparent'};color:${activeTab==='signup'?'#fff':'inherit'};font-weight:600;cursor:pointer">Đăng ký tài khoản</button>
     </div>
@@ -7696,7 +7706,7 @@ function openAuthModal(defaultTab = 'signin') {
       <span style="flex:1;border-bottom:1px solid var(--border,#e2e8f0)"></span>
       <span style="padding:0 10px">hoặc</span>
       <span style="flex:1;border-bottom:1px solid var(--border,#e2e8f0)"></span>
-    </div>
+    </div>`}
 
     <div class="field">
       <label>Email tài khoản</label>
@@ -7715,11 +7725,11 @@ function openAuthModal(defaultTab = 'signin') {
     ${activeTab === 'signin' ? `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
       <button type="button" class="link-btn" id="authForgotPasswordBtn" style="background:none;border:none;color:var(--primary,#0284c7);padding:0;font-size:12px;cursor:pointer;text-decoration:underline">Quên mật khẩu?</button>
-      <button type="button" class="link-btn" id="authGoCreateShopBtn" style="background:none;border:none;color:var(--primary,#0284c7);padding:0;font-size:12px;cursor:pointer">Tạo cửa hàng mới</button>
+      ${isWebBackend && !webRegisterUrl() ? '' : `<button type="button" class="link-btn" id="authGoCreateShopBtn" style="background:none;border:none;color:var(--primary,#0284c7);padding:0;font-size:12px;cursor:pointer">${isWebBackend ? 'Đăng ký QBiz Kho' : 'Tạo cửa hàng mới'}</button>`}
     </div>
     ` : ''}
     <p class="field-limit" style="margin-top:10px;font-size:12px;color:var(--text-muted,#64748b)">
-      ${activeTab === 'signin' ? 'Đăng nhập để kết nối với Cửa hàng đám mây và phân quyền nhân viên.' : 'Đăng ký tài khoản mới để sở hữu Shop và quản lý phân quyền bán hàng.'}
+      ${isWebBackend ? 'Dùng tài khoản QBiz (email và mật khẩu đăng nhập website). Nhân viên do chủ cửa hàng thêm ở trang quản trị QBiz.' : activeTab === 'signin' ? 'Đăng nhập để kết nối với Cửa hàng đám mây và phân quyền nhân viên.' : 'Đăng ký tài khoản mới để sở hữu Shop và quản lý phân quyền bán hàng.'}
     </p>
   `;
 
@@ -7794,6 +7804,7 @@ function openAuthModal(defaultTab = 'signin') {
     }
     if ($('#authGoCreateShopBtn', root)) {
       $('#authGoCreateShopBtn', root).onclick = () => {
+        if (isWebBackend) { root.innerHTML = ''; openWebPage(webRegisterUrl()); return; }
         activeTab = 'signup';
         container.innerHTML = renderBody();
         if (submitBtn) submitBtn.textContent = 'Tạo tài khoản';
@@ -8096,6 +8107,7 @@ function openUserMenuModal() {
   if ($('#menuBtnSignOut', root)) {
     $('#menuBtnSignOut', root).onclick = async () => {
       await signOut();
+      if (isWebBackend) { stopWebSync(); location.reload(); return; }
       root.innerHTML = '';
       render();
       toast('Đã đăng xuất tài khoản.', 'ok');
@@ -8858,6 +8870,18 @@ function openSyncInfoModal() {
 }
 
 async function previewDemo(industryKey = 'retail'){
+  if (isWebBackend && openedDbName() !== demoDbName()) {
+    try {
+      sessionStorage.setItem('qbiz_preview_demo', '1');
+      sessionStorage.setItem('qbiz_demo_industry', industryKey);
+      sessionStorage.setItem('qbiz_demo_role', 'OWNER');
+      // Boot gieo lại đúng ngành vừa chọn vào DB demo (KHÔNG ghi gì vào DB đang mở — có thể là DB shop thật).
+      sessionStorage.setItem('qbiz_demo_reseed', '1');
+    } catch (_) {}
+    stopWebSync();
+    location.reload();
+    return;
+  }
   try{
     await loadDemoIndustry(industryKey, 'OWNER');
     state._userSelectedProductType = false;
@@ -8872,6 +8896,7 @@ async function previewDemo(industryKey = 'retail'){
   }
 }
 async function exitDemo(){
+  if (isWebBackend) { clearDemoSession(); location.reload(); return; }
   sessionStorage.removeItem('qbiz_preview_demo');
   sessionStorage.removeItem('qbiz_demo_industry');
   sessionStorage.removeItem('qbiz_demo_role');
@@ -8991,7 +9016,11 @@ document.addEventListener('click', async e=>{
     return;
   }
   if(action==='open-auth-modal' || action==='open-hero-auth') return openAuthModal();
-  if(action==='create-shop-modal' || action==='open-create-shop-modal') return openCreateShopModal();
+  if(action==='create-shop-modal' || action==='open-create-shop-modal') {
+    // Backend web: tài khoản + cửa hàng + dùng thử Kho tạo ở website (1 luồng đăng ký duy nhất).
+    if (isWebBackend) { if (!openWebPage(webRegisterUrl())) toast('Cửa hàng được tạo tại trang quản trị QBiz (website).', 'error'); return; }
+    return openCreateShopModal();
+  }
   if(action==='preview-demo') return previewDemo('retail');
   if(action==='select-demo-industry') {
     const ind = e.target.closest('[data-industry]')?.dataset.industry || 'retail';
@@ -9007,7 +9036,10 @@ document.addEventListener('click', async e=>{
     }
     return;
   }
-  if(action==='clear-demo-fresh') return openClearDemoFreshModal();
+  if(action==='clear-demo-fresh') {
+    if (isWebBackend) { if (!openWebPage(webRegisterUrl())) toast('Cửa hàng được tạo tại trang quản trị QBiz (website).', 'error'); return; }
+    return openClearDemoFreshModal();
+  }
   if(action==='exit-demo') return exitDemo();
   if(action==='open-user-menu') return openUserMenuModal();
   if(action==='add-member-modal') return openAddMemberModal();
@@ -9319,7 +9351,9 @@ async function boot(){
   const auth = getAuthState();
   if (!auth.user && typeof sessionStorage !== 'undefined' && sessionStorage.getItem('qbiz_preview_demo') === '1') {
     const demoVer = (await getOne('settings', 'demo_data_version'))?.value;
-    if (demoVer !== 'v20261005_all_in_stock') {
+    const reseed = sessionStorage.getItem('qbiz_demo_reseed') === '1';
+    sessionStorage.removeItem('qbiz_demo_reseed');
+    if (reseed || demoVer !== 'v20261005_all_in_stock') {
       await loadDemoIndustry(getActiveDemoIndustryKey(), getActiveDemoRole());
     }
   } else if (CONFIG.BACKEND !== 'web') {
@@ -9348,6 +9382,7 @@ async function boot(){
       // Mỗi shop 1 database (db.js currentDbName). Đã mở DB của shop khác / DB chưa chọn shop → tải lại trang để
       // mở đúng DB (dữ liệu, outbox, danh tính thiết bị của shop này).
       if (openedDbName() && openedDbName() !== currentDbName()) { stopWebSync(); location.reload(); return; }
+      if (openedDbName() === demoDbName()) { stopWebSync(); clearDemoSession(); location.reload(); return; }
       startWebSync(shop, () => { refresh().catch(() => {}); }).catch((err) => console.warn('[web-sync]', err));
     });
   }

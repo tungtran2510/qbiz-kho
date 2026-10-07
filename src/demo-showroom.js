@@ -20,7 +20,8 @@
  *  - 0 cloud mutations
  */
 
-import { clearAll, put, putMany, getAll } from './db.js';
+import { clearAll, put, putMany, getAll, openedDbName, demoDbName } from './db.js';
+import { CONFIG } from './config.js';
 import { switchBusinessProfile } from './business-profile.js';
 import { ROLES, ROLE_LABELS } from './capabilities.js';
 
@@ -1421,6 +1422,11 @@ function buildIndustryOperationalHistory(indKey) {
  * @param {string} role - OWNER | MANAGER | CASHIER | WAREHOUSE
  */
 export async function loadDemoIndustry(industryKey = 'retail', role = ROLES.OWNER) {
+  // Backend web: bước 1 XOÁ SẠCH DB đang mở → chỉ cho chạy trên DB demo riêng (app chuyển DB bằng tải lại trang,
+  // xem previewDemo ở app.js). DB shop thật có outbox chưa gửi — tuyệt đối không xoá.
+  if (CONFIG.BACKEND === 'web' && openedDbName() && openedDbName() !== demoDbName()) {
+    throw new Error('Shop demo chỉ chạy trên dữ liệu demo riêng. Vui lòng tải lại trang rồi thử lại.');
+  }
   const normKey = industryKey === 'fnb' ? 'food_beverage' : industryKey;
   const ind = DEMO_INDUSTRIES[normKey] || DEMO_INDUSTRIES.retail;
 

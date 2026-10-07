@@ -4,6 +4,7 @@
 // ==============================================================================
 
 import { CONFIG } from './config.js';
+import { clearDemoSession } from './db.js';
 import { ROLES, hasCapability, PLATFORM_ROLES, PLATFORM_CAPABILITIES } from './capabilities.js';
 
 export const AUTH_STATES = {
@@ -195,7 +196,9 @@ function translateAuthError(msg) {
 export async function initAuth() {
   try {
     // 1. Check for OAuth callback tokens in URL hash or search code (from Google OAuth callback)
-    if (typeof window !== 'undefined' && window.location) {
+    // Backend web: KHÔNG nhận token thô từ URL (#access_token / ?code= không có verifier) — chống login-CSRF; đăng
+    // nhập chỉ bằng email/mật khẩu, SSO với web làm ở bước sau (giao dịch state + verifier).
+    if (CONFIG.BACKEND !== 'web' && typeof window !== 'undefined' && window.location) {
       let accessToken = null;
       let refreshToken = null;
       let expiresIn = null;
@@ -356,6 +359,8 @@ export async function signUp({ email, password, fullName = '' }) {
  * Sign in existing user with email and password.
  */
 export async function signIn({ email, password }) {
+  // Backend web: phiên thật thay phiên demo → DB đổi từ demo sang shop (app tự tải lại khi shop sẵn sàng).
+  if (CONFIG.BACKEND === 'web') clearDemoSession();
   if (!email || !password) throw new Error('Vui lòng nhập đầy đủ email và mật khẩu.');
 
   const { url, anonKey } = getSupabaseConfig();
@@ -421,6 +426,9 @@ export async function signIn({ email, password }) {
  * SECURITY INVARIANT: NEVER request Google Drive scope during normal sign-in!
  */
 export async function signInWithGoogle({ redirectTo } = {}) {
+  if (CONFIG.BACKEND === 'web') {
+    throw new Error('Đăng nhập Google cho QBiz Kho chưa mở. Vui lòng đăng nhập bằng email và mật khẩu tài khoản QBiz.');
+  }
   const targetRedirect = redirectTo || (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://kho.qbiz.vn');
   const { url, anonKey } = getSupabaseConfig();
   const isMock = !url || !anonKey || localStorage.getItem('qbiz_mock_env') === 'true';

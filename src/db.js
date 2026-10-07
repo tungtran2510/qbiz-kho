@@ -61,9 +61,22 @@ if(typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'){
 export function currentDbName(){
   if (globalThis.__QBIZ_TEST_DB_NAME) return globalThis.__QBIZ_TEST_DB_NAME;
   if (CONFIG.BACKEND !== 'web') return CONFIG.DB_NAME;
+  // Shop demo (dữ liệu mẫu, xoá/gieo lại tuỳ ý, KHÔNG đồng bộ) luôn ở DB riêng — không bao giờ chạm DB shop thật
+  // (outbox chưa gửi), kể cả khi localStorage còn sót shop đang chọn.
+  if (isDemoSession()) return demoDbName();
   let shopId = '';
   try { shopId = JSON.parse(globalThis.localStorage?.getItem('qbiz_active_shop') || 'null')?.shop?.id || ''; } catch (_) {}
   return shopId ? `${CONFIG.DB_NAME}__web__${shopId}` : `${CONFIG.DB_NAME}__web`;
+}
+/** Backend web: tên DB của shop demo. */
+export function demoDbName(){ return `${CONFIG.DB_NAME}__web__demo`; }
+/** Phiên đang xem shop demo (cờ sessionStorage do demo-showroom.js đặt). */
+export function isDemoSession(){
+  try { return globalThis.sessionStorage?.getItem('qbiz_preview_demo') === '1'; } catch (_) { return false; }
+}
+/** Xoá cờ demo (đăng nhập thật / thoát demo). */
+export function clearDemoSession(){
+  try { ['qbiz_preview_demo', 'qbiz_demo_shop', 'qbiz_demo_industry', 'qbiz_demo_role'].forEach((k) => globalThis.sessionStorage?.removeItem(k)); } catch (_) {}
 }
 let openedName = null;
 /** Tên DB đang mở (null nếu chưa mở) — app so với currentDbName() để biết cần tải lại khi đổi shop. */
