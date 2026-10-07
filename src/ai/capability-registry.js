@@ -233,6 +233,21 @@ export const KHO_CAPABILITY_REGISTRY = {
     active: true,
   },
 
+  'export_products': {
+    compact_description: 'Xuất danh mục hàng hóa, bảng giá và tồn kho thực tế ra Excel/CSV',
+    capability_id: 'export_products',
+    domain: 'INVENTORY',
+    mode: CAPABILITY_MODES.READ,
+    human_description: 'Xuất toàn bộ danh sách sản phẩm, bảng giá vốn/bán lẻ và tồn kho ra file Excel chuẩn UTF-8 BOM.',
+    input_schema: {},
+    output_contract: 'ExportProductsResult',
+    required_permissions: [PERMISSIONS.VIEW_PRODUCTS],
+    entity_types: ['product'],
+    time_support: false,
+    implementation_binding: { type: 'skill', target: 'export-products', fallbackTool: 'get_stock_overview' },
+    active: true,
+  },
+
   'top_selling_products': {
     compact_description: 'Danh sách các mặt hàng bán chạy nhất',
     capability_id: 'top_selling_products',

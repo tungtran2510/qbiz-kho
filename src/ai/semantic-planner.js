@@ -581,6 +581,45 @@ export function generateDeterministicSemanticPlan(capsule) {
     });
   }
 
+  // 6.B Export Data / Products / Reports
+  const asksExport = (
+    p.includes('xuat file') || p.includes('xuat excel') || p.includes('xuat csv') ||
+    p.includes('tai file') || p.includes('tai excel') || p.includes('tai danh sach') ||
+    p.includes('xuat danh sach') || p.includes('export file') || p.includes('export excel') ||
+    (p.includes('xuat') && (p.includes('file') || p.includes('excel') || p.includes('csv')))
+  );
+
+  if (asksExport) {
+    if (p.includes('doanh thu') || p.includes('ban hang') || p.includes('tt88') || p.includes('s2b')) {
+      intents.push({
+        intent_name: 'export_report',
+        mode: 'READ',
+        domain: 'SALES',
+        required_capability: 'export_report',
+        entities: { reportType: p.includes('tt88') ? 'revenue_tt88' : 'sales' },
+        confidence: 0.98,
+      });
+    } else if (p.includes('nhap xuat ton')) {
+      intents.push({
+        intent_name: 'export_report',
+        mode: 'READ',
+        domain: 'INVENTORY',
+        required_capability: 'export_report',
+        entities: { reportType: 'inventory' },
+        confidence: 0.98,
+      });
+    } else {
+      intents.push({
+        intent_name: 'export_products',
+        mode: 'READ',
+        domain: 'INVENTORY',
+        required_capability: 'export_products',
+        entities: {},
+        confidence: 0.98,
+      });
+    }
+  }
+
   // Tax / Circular 88 Report (Mẫu 01-1/GTGT / S2b-HKD)
   const hasTaxExportAction = p.includes('xuat') || p.includes('tai') || p.includes('download') || p.includes('in file') || p.includes('lay file') || p.includes('export');
   const asksTaxReport = hasTaxExportAction && (
@@ -702,16 +741,64 @@ export function generateDeterministicSemanticPlan(capsule) {
   if (intents.length > 1) {
     composition = 'SEQUENTIAL_READ';
   } else if (intents.length === 0) {
-    // Default exploratory stock overview
-    intents.push({
-      intent_name: 'check_stock_overview',
-      mode: 'READ',
-      domain: 'INVENTORY',
-      entities: {},
-      time_range: null,
-      required_capability: 'check_stock',
-      confidence: 0.70,
-    });
+    // Action-specific fallback when intents is empty — NEVER drop into find-low-stock for actions!
+    if (p.includes('xuat file') || p.includes('xuat excel') || p.includes('tai file') || p.includes('tai danh sach') || (p.includes('xuat') && p.includes('hang'))) {
+      intents.push({
+        intent_name: 'export_products',
+        mode: 'READ',
+        domain: 'INVENTORY',
+        required_capability: 'export_products',
+        entities: {},
+        confidence: 0.95,
+      });
+    } else if (p.includes('nhap')) {
+      intents.push({
+        intent_name: 'receipt_proposal',
+        mode: 'WRITE',
+        domain: 'INVENTORY',
+        required_capability: 'receipt_proposal',
+        entities: { query: capsule.raw_prompt },
+        confidence: 0.85,
+      });
+    } else if (p.includes('xuat') && (p.includes('huy') || p.includes('noi bo') || p.includes('mau') || p.includes('hong') || p.includes('kho'))) {
+      intents.push({
+        intent_name: 'issue_proposal',
+        mode: 'WRITE',
+        domain: 'INVENTORY',
+        required_capability: 'issue_proposal',
+        entities: { query: capsule.raw_prompt },
+        confidence: 0.85,
+      });
+    } else if (p.includes('kiem')) {
+      intents.push({
+        intent_name: 'stocktake_proposal',
+        mode: 'WRITE',
+        domain: 'INVENTORY',
+        required_capability: 'stocktake_proposal',
+        entities: { query: capsule.raw_prompt },
+        confidence: 0.85,
+      });
+    } else if (p.includes('in') || p.includes('hoa don')) {
+      intents.push({
+        intent_name: 'electronic_invoice_proposal',
+        mode: 'WRITE',
+        domain: 'INVOICE',
+        required_capability: 'electronic_invoice_proposal',
+        entities: { query: capsule.raw_prompt },
+        confidence: 0.85,
+      });
+    } else {
+      // Default exploratory stock overview ONLY for truly generic inquiry
+      intents.push({
+        intent_name: 'check_stock_overview',
+        mode: 'READ',
+        domain: 'INVENTORY',
+        entities: {},
+        time_range: null,
+        required_capability: 'check_stock',
+        confidence: 0.70,
+      });
+    }
   }
 
   return {

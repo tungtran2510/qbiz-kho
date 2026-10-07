@@ -1640,6 +1640,113 @@ export const SKILL_REGISTRY = {
     }
   },
 
+  // 36.B. export-products
+  'export-products': {
+    id: 'export-products',
+    name: 'Xuất danh mục hàng hóa ra Excel/CSV',
+    description: 'Xuất toàn bộ danh sách sản phẩm, bảng giá và tồn kho thực tế ra file Excel/CSV chuẩn UTF-8 BOM',
+    async execute(params = {}, context = {}, state = {}) {
+      const fmtNumber = new Intl.NumberFormat('vi-VN');
+      const now = new Date();
+      const dateTag = now.toISOString().slice(0, 10);
+      const filename = `qbiz-danh-sach-hang-hoa-${dateTag}.csv`;
+
+      const prods = (state?.data?.products || []).filter(p => p.type !== 'SERVICE');
+      const levels = state?.data?.levels || [];
+      const warehouses = state?.data?.warehouses || [];
+      const categories = state?.data?.categories || [];
+
+      const catMap = new Map((categories || []).map(c => [c.id, c.name]));
+      const whMap = new Map((warehouses || []).map(w => [w.id, w.name]));
+
+      const header = [
+        'STT',
+        'Mã SKU',
+        'Tên sản phẩm',
+        'Đơn vị tính',
+        'Danh mục',
+        'Giá vốn (₫)',
+        'Giá bán lẻ (₫)',
+        'Giá bán buôn (₫)',
+        'Tổng tồn thực tế',
+        'Có thể bán',
+        'Đang giữ hàng',
+        'Chi tiết các kho',
+        'Trạng thái'
+      ];
+
+      const rows = [];
+      let totalQty = 0;
+      let totalCostVal = 0;
+      let totalRetailVal = 0;
+      let idx = 1;
+
+      for (const p of prods) {
+        const prodLevels = levels.filter(l => l.productId === p.id);
+        const onHand = prodLevels.reduce((s, l) => s + Number(l.onHand || 0), 0);
+        const reserved = prodLevels.reduce((s, l) => s + Number(l.reserved || 0), 0);
+        const available = Math.max(0, onHand - reserved);
+
+        const cost = Number(p.cost_price || p.purchase_price || p.cost || p.price || 0);
+        const retail = Number(p.price || p.retail_price || 0);
+        const wholesale = Number(p.wholesale_price || retail);
+
+        totalQty += onHand;
+        totalCostVal += (onHand * cost);
+        totalRetailVal += (onHand * retail);
+
+        const whDetails = prodLevels.map(l => `${whMap.get(l.warehouseId) || l.warehouseId || 'Kho'}: ${l.onHand || 0}`).join('; ');
+
+        rows.push([
+          idx++,
+          p.sku || p.code || '—',
+          p.name || 'Sản phẩm',
+          p.unit || 'cái',
+          catMap.get(p.categoryId) || 'Mặc định',
+          cost,
+          retail,
+          wholesale,
+          onHand,
+          available,
+          reserved,
+          whDetails || 'Chưa phân bổ',
+          (p.active !== false) ? 'Đang kinh doanh' : 'Ngừng kinh doanh'
+        ]);
+      }
+
+      const csvContent = [
+        header.map(csvCell).join(','),
+        ...rows.map(r => r.map(csvCell).join(','))
+      ].join('\n');
+
+      const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+      const downloaded = isBrowser ? triggerBrowserDownload(filename, csvContent, 'text/csv;charset=utf-8') : false;
+
+      return {
+        text: `📦 **Đã xuất danh mục hàng hóa ra file Excel thành công!**\n\n` +
+          `• 📁 **Tên file:** \`${filename}\`\n` +
+          `• 📊 **Tổng số mặt hàng:** **${rows.length} sản phẩm**\n` +
+          `• 🏷️ **Tổng tồn kho:** **${fmtNumber.format(totalQty)} đơn vị**\n` +
+          `• 💰 **Tổng giá trị vốn tồn kho:** **${fmtNumber.format(totalCostVal)} ₫**\n` +
+          `• ⚡ **Định dạng:** CSV chuẩn UTF-8 BOM (mở trực tiếp bằng Microsoft Excel không lỗi font)\n` +
+          (downloaded ? `• ⬇️ **Trạng thái:** Tệp đã được tự động tải về thiết bị của bạn.\n` : '') +
+          `\n💡 *Gợi ý: Bạn có thể mở file để gửi báo giá cho đại lý, kiểm kê số lượng hoặc nhập dữ liệu sang hệ thống khác.*`,
+        exportedFile: filename,
+        totalItems: rows.length,
+        totalQty,
+        totalCostValue: totalCostVal,
+        totalRetailValue: totalRetailVal,
+        downloaded,
+        tier: 0,
+        provider: 'DETERMINISTIC',
+        actions: [
+          { id: 'open_products', label: 'Xem Danh sách Hàng hóa', screen: 'products' },
+          { id: 'open_reports', label: 'Xem Báo cáo Kho', screen: 'reports' }
+        ]
+      };
+    }
+  },
+
   // 37. operational-audit
   'operational-audit': {
     id: 'operational-audit',

@@ -199,6 +199,11 @@ async function executeCapabilityBinding(capId, capability, resolved, intent, con
       return { ...res, intent: 'EXPORT_REPORT', toolExecuted: 'export-report' };
     }
 
+    case 'export_products': {
+      const res = await executeSkill('export-products', entities || {}, context, state);
+      return { ...res, intent: 'EXPORT_PRODUCTS', toolExecuted: 'export-products' };
+    }
+
     case 'top_selling_products': {
       const period = resolved.timeRange?.code || intent.time_range || 'month';
       const res = await executeSkill('top-selling-products', { period, query: entities.query || context.rawPrompt }, context, state);
