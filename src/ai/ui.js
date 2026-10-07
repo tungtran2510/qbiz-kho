@@ -157,6 +157,10 @@ function fmtMarkdown(text) {
   s = s.replace(/<\/ul>\s*/g, '</ul>');
   s = s.replace(/\s*<hr class="ai-divider"\/>\s*/g, '<hr class="ai-divider"/>');
 
+  // Handle compact hint / guidance lines (e.g. "💡 Gợi ý:", "💡 *Gợi ý:", "*(Lưu ý:")
+  s = s.replace(/(?:^|\n)\s*(?:💡\s*\*?Gợi ý:|\*Gợi ý:)\s*(.*?)(?:\*|\n|$)/gi, '<div class="ai-hint-line">💡 <b>Gợi ý:</b> $1</div>');
+  s = s.replace(/(?:^|\n)\s*\*\((?:Lưu ý:?|Ghi chú:?)\s*(.*?)\)\*/gi, '<div class="ai-note-line">ℹ️ <i>Lưu ý: $1</i></div>');
+
   // Paragraph gap for double newline, simple <br/> for single newline
   s = s.replace(/\n\n+/g, '<span class="ai-p-gap"></span>');
   s = s.replace(/\n/g, '<br/>');

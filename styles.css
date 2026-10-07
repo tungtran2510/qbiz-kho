@@ -7082,5 +7082,427 @@ body.topbar-hidden .install-subtle-tip {
   }
 }
 
+/* =========================================================================
+   STREAMLINED GOODS TOOLS: SORT, COMPACT DISPLAY, FILTER & BATCH ACTIONS
+   ========================================================================= */
+
+/* 1. Sort Tool Button & Sort Modal */
+.btn-tool-sort {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 2px !important;
+  padding: 0 6px !important;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1px solid #dce4ee;
+  border-radius: 9px;
+  color: #526176;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+.btn-tool-sort .sort-tool-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-tool-sort .sort-tool-arrow {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #64748b;
+}
+.btn-tool-sort .sort-tool-arrow .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+.btn-tool-sort.active {
+  border-color: var(--q-blue, #0284c7) !important;
+  color: var(--q-blue, #0284c7) !important;
+  background: rgba(2, 132, 199, 0.08) !important;
+}
+
+.sort-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.sort-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+.sort-option-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.sort-option-btn.active {
+  border-color: var(--q-blue, #0284c7);
+  background: #eff6ff;
+}
+.sort-opt-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.sort-opt-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.sort-option-btn.active .sort-opt-icon {
+  background: var(--q-blue, #0284c7);
+  color: #ffffff;
+}
+.sort-opt-icon .ui-icon {
+  width: 16px;
+  height: 16px;
+}
+.sort-opt-text strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.sort-opt-text small {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+.sort-opt-check {
+  color: var(--q-blue, #0284c7);
+  display: grid;
+  place-items: center;
+  margin-left: 8px;
+}
+.sort-opt-check .ui-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* 2. Compact Display Settings Modal */
+.compact-display-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.compact-display-modal h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 750;
+  color: #1e293b;
+}
+.compact-options {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+}
+.compact-options label {
+  min-height: 34px !important;
+  padding: 4px 6px !important;
+  border-radius: 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  justify-content: center !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  transition: all 0.15s ease;
+}
+.compact-options label input,
+.compact-check-list label input {
+  margin-right: 4px;
+}
+.compact-options label.is-checked,
+.compact-check-list label.is-checked {
+  border-color: var(--q-blue, #0284c7) !important;
+  background: #eff6ff !important;
+  color: var(--q-blue-dark, #0868c6) !important;
+}
+
+.compact-check-list {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+}
+.compact-check-list label {
+  min-height: 34px !important;
+  padding: 4px 6px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.display-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.compact-segment {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 4px !important;
+  padding: 2px !important;
+  background: #edf1f6 !important;
+  border-radius: 8px !important;
+}
+.compact-segment label {
+  min-height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11.5px !important;
+  font-weight: 650 !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+}
+.compact-pos-options {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 4px !important;
+}
+.compact-pos-options label {
+  min-height: 32px !important;
+  padding: 2px 4px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+  justify-content: center !important;
+  text-align: center !important;
+  cursor: pointer !important;
+}
+
+.compact-device-cards {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 6px !important;
+}
+.compact-device-cards .device-card {
+  padding: 8px 4px !important;
+  border-radius: 9px !important;
+  min-height: auto !important;
+  gap: 3px !important;
+}
+.compact-device-cards .dev-card-icon {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 6px !important;
+}
+.compact-device-cards .dev-card-icon .ui-icon {
+  width: 14px !important;
+  height: 14px !important;
+}
+.compact-device-cards .dev-card-info strong {
+  font-size: 11.5px !important;
+}
+.compact-device-cards .dev-card-info small {
+  font-size: 9.5px !important;
+  margin-top: 1px !important;
+}
+
+/* 3. Compact Filter Modal */
+.compact-filter-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.compact-filter-modal .mod-block {
+  margin-bottom: 2px;
+}
+.compact-filter-modal .mod-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.compact-chips {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin: 0 !important;
+}
+.filter-chip-btn {
+  padding: 6px 12px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  min-height: 32px !important;
+}
+.filter-chip-btn:hover {
+  border-color: #94a3b8 !important;
+  background: #f8fafc !important;
+}
+.filter-chip-btn.active {
+  border-color: var(--q-blue, #0284c7) !important;
+  background: #eff6ff !important;
+  color: var(--q-blue-dark, #0868c6) !important;
+  font-weight: 750 !important;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.15) !important;
+}
+
+/* 4. Batch Action Sheet & Sub-modals */
+.batch-action-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0;
+}
+.batch-group-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 8px 0 4px;
+}
+.batch-group-title.danger {
+  color: #dc2626;
+}
+.batch-action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.batch-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 7px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+.batch-action-btn:hover {
+  border-color: var(--q-blue, #0284c7);
+  background: #f8fafc;
+}
+.batch-action-btn .ui-icon:last-child {
+  margin-left: auto;
+  color: #94a3b8;
+  width: 16px;
+  height: 16px;
+}
+.batch-act-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.batch-act-icon .ui-icon {
+  width: 18px;
+  height: 18px;
+}
+.batch-act-icon.ok { background: #ecfdf5; color: #059669; }
+.batch-act-icon.primary { background: #eff6ff; color: #0284c7; }
+.batch-act-icon.warn { background: #fffbeb; color: #d97706; }
+.batch-act-icon.purple { background: #faf5ff; color: #9333ea; }
+.batch-act-icon.blue { background: #f0f9ff; color: #0284c7; }
+.batch-act-icon.teal { background: #f0fdfa; color: #0d9488; }
+.batch-act-icon.danger { background: #fef2f2; color: #dc2626; }
+
+.batch-action-btn.is-danger {
+  border-color: #fecaca;
+}
+.batch-action-btn.is-danger:hover {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+.batch-act-info {
+  flex: 1;
+  min-width: 0;
+}
+.batch-act-info strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.batch-action-btn.is-danger .batch-act-info strong {
+  color: #dc2626;
+}
+.batch-act-info small {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.batch-price-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.batch-price-preview {
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.batch-price-preview .price-compare-row {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+/* 5. AI Guidance & Note Single-Line Compact Styles */
+.ai-hint-line {
+  font-size: 11.5px;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 3px 8px;
+  margin-top: 5px;
+  line-height: 1.35;
+  display: block;
+  white-space: normal;
+}
+.ai-note-line {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.25;
+  display: block;
+  margin-top: 2px;
+}
+
 
 
