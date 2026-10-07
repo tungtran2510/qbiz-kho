@@ -1,4 +1,4 @@
-import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn } from './engine.js?v=20260927-v21-consistency-audit';
+import { ensureSeed,ensureLocalIdentity,snapshot,totalFor,available,receive,issue,countAdjust,setOpeningStock,applyWarehouseBatch,STOCK_IN_TYPES,STOCK_OUT_TYPES,createTransfer,receiveTransfer,cancelTransfer,createProduct,createService,createCategory,createCustomer,getCustomerDebtSummary,getCustomerAgingReport,getCustomerProfileHistory,updateItem,deleteItem,createWarehouse,createSupplier,updateSupplier,createReturn,createSale,createOrder,confirmOrder,processOrder,completeOrder,cancelOrder,currentShift,openShift,closeShift,markSalePaid,markOrderPaid,createExchange,calculateSalesMetrics,createExpense,getExpenses,createPurchaseReturn } from './engine.js?v=20260927-v21-consistency-audit';
 import { clearAll,getAll,getOne,put,putMany,runTransaction } from './db.js';
 import { syncStatus,flushOutbox,pruneSyncedOutbox } from './sync.js';
 import { CONFIG } from './config.js';
@@ -1231,7 +1231,7 @@ function productTableRow(p){
   const t=productTotals(p),[c,l]=productStatus(p),service=p.type==='SERVICE',exception=c!=='ok'||!p.price,prefs=state.displayPrefs,selected=state.productSelected.has(p.id);
   const meta=service?esc(p.categoryId||p.category||'Dịch vụ'):[prefs.showSku?esc(p.sku||'Chưa có SKU'):'',prefs.showStock?`${fmt(t.onHand)} tồn · ${fmt(t.available)} có thể bán`:''].filter(Boolean).join(' · ');
   return `<div class="p-row goods-row ${service?'is-service':''} ${selected?'selected':''} ${state.productSelecting?'is-selecting':''}" data-product="${p.id}">
-    <div class="swipe-actions"><button data-edit-product="${p.id}">Sửa</button><button data-more-product="${p.id}">Thêm…</button></div>
+    <div class="swipe-actions"><button type="button" class="swipe-btn swipe-edit" data-edit-product="${p.id}">Sửa</button><button type="button" class="swipe-btn swipe-delete" data-delete-product="${p.id}">Xóa</button></div>
     <div class="p-item">
       ${state.productSelecting?`<button type="button" class="row-select" data-select-product="${p.id}" aria-label="Chọn ${esc(p.name)}"><span>${selected?'✓':''}</span></button>`:''}
       ${prefs.view==='compact'?'':`<div class="product-photo small">${p.image?`<img src="${p.image}" alt="${esc(p.name)}" loading="lazy"/>`:esc(p.name.slice(0,1))}</div>`}
@@ -2045,7 +2045,10 @@ function renderProducts(){
       };
     });
   }
-  $$('[data-edit-product]').forEach(b=>b.onclick=e=>{e.stopPropagation();openEditItem(b.dataset.editProduct)});$$('[data-more-product]').forEach(b=>b.onclick=e=>{e.stopPropagation();openItemActions(b.dataset.moreProduct)});bindGoodsSwipe();
+  $$('[data-edit-product]').forEach(b=>b.onclick=e=>{e.stopPropagation();openEditItem(b.dataset.editProduct)});
+  $$('[data-delete-product]').forEach(b=>b.onclick=e=>{e.stopPropagation();openDeleteProduct(b.dataset.deleteProduct)});
+  $$('[data-more-product]').forEach(b=>b.onclick=e=>{e.stopPropagation();openItemActions(b.dataset.moreProduct)});
+  bindGoodsSwipe();
 }
 
 function openDisplaySettings(){
@@ -2077,15 +2080,54 @@ function openBatchActions(){
   const ids=[...state.productSelected],items=state.data.products.filter(p=>ids.includes(p.id));if(!items.length)return;
   openModal({title:`Thao tác ${items.length} mục`,sub:'Chỉ các thay đổi có lưu dữ liệu thật.',submitText:'Lưu thay đổi',body:`<div class="form-grid"><div class="field full-span"><label>Đổi danh mục</label><select id="batchCategory"><option value="">Không đổi</option>${categoryOptions(state.productType)}</select></div><div class="field full-span"><label>Trạng thái</label><select id="batchStatus"><option value="">Không đổi</option><option value="active">Đang bán</option><option value="inactive">Ngừng bán</option></select></div></div>`,onSubmit:async r=>{const category=$('#batchCategory',r).value,status=$('#batchStatus',r).value;if(!category&&!status)throw new Error('Hãy chọn thay đổi cần áp dụng.');for(const item of items)await updateItem({...item,...(category?{categoryId:category}:{}),...(status?{active:status==='active'}:{})});state.productSelected.clear();state.productSelecting=false;}});
 }
+function openDeleteProduct(id){
+  const p=product(id);if(!p)return;
+  const isService=p.type==='SERVICE';
+  const label=isService?'dịch vụ':'sản phẩm';
+  openModal({
+    title:`Xóa ${label}`,
+    sub:p.name,
+    submitText:`Xác nhận xóa`,
+    body:`<div style="padding:14px 6px 8px;text-align:center"><div style="width:54px;height:54px;margin:0 auto 12px;background:#fef2f2;color:#dc2626;border-radius:50%;display:grid;place-items:center;font-size:24px">${icon('trash-2')}</div><h4 style="margin:0 0 6px;font-size:16px;font-weight:750;color:var(--text)">Xác nhận xóa ${label}?</h4><p style="margin:0 0 10px;font-size:13.5px;color:var(--q-muted);line-height:1.45">Bạn có chắc muốn xóa <strong>${esc(p.name)}</strong>${p.sku?` (${esc(p.sku)})`:''}? Thao tác này sẽ xóa mục khỏi danh mục và kho.</p></div>`,
+    onSubmit:async()=>{
+      await deleteItem(p.id);
+      state.productSelected.delete(p.id);
+      toast(`Đã xóa ${label} "${p.name}".`,'ok');
+      await refresh();
+    }
+  });
+  const submitBtn=$('#modalSubmit');
+  if(submitBtn){
+    submitBtn.classList.add('danger-btn');
+    submitBtn.style.background='#dc2626';
+    submitBtn.style.borderColor='#dc2626';
+    submitBtn.style.color='#fff';
+  }
+}
 function openItemActions(id){
   const p=product(id);if(!p)return;
-  openModal({title:p.name,sub:p.type==='SERVICE'?'Dịch vụ':'Thao tác nhanh',hideSubmit:true,body:`<div class="action-sheet-list"><button data-action="edit-item" data-product-id="${p.id}">Sửa thông tin${icon('chevron-right')}</button>${p.type==='SERVICE'?'':`<button data-item-stock="${p.id}">Điều chỉnh tồn${icon('chevron-right')}</button>`}<button data-item-category="${p.id}">Đổi danh mục${icon('chevron-right')}</button><button data-item-status="${p.id}">${p.active===false?'Bật bán lại':'Ngừng bán'}${icon('chevron-right')}</button></div>`});
+  openModal({title:p.name,sub:p.type==='SERVICE'?'Dịch vụ':'Thao tác nhanh',hideSubmit:true,body:`<div class="action-sheet-list"><button data-action="edit-item" data-product-id="${p.id}">Sửa thông tin${icon('chevron-right')}</button>${p.type==='SERVICE'?'':`<button data-item-stock="${p.id}">Điều chỉnh tồn${icon('chevron-right')}</button>`}<button data-item-category="${p.id}">Đổi danh mục${icon('chevron-right')}</button><button data-item-status="${p.id}">${p.active===false?'Bật bán lại':'Ngừng bán'}${icon('chevron-right')}</button><button data-item-delete="${p.id}" style="color:#dc2626">${icon('trash-2')} Xóa ${p.type==='SERVICE'?'dịch vụ':'sản phẩm'}${icon('chevron-right')}</button></div>`});
   $('[data-item-stock]',$('#modalRoot'))?.addEventListener('click',()=>{$('#modalRoot').innerHTML='';openQuick('count',id)});
   $('[data-item-category]',$('#modalRoot'))?.addEventListener('click',()=>{const root=$('#modalRoot');root.innerHTML='';openModal({title:'Đổi danh mục',sub:p.name,body:`<div class="field"><label>Danh mục</label><select id="singleCategory">${categoryOptions(p.type==='SERVICE'?'SERVICE':'PRODUCT',p.categoryId||p.category||'')}</select></div>`,submitText:'Lưu',onSubmit:r=>updateItem({...p,categoryId:$('#singleCategory',r).value})})});
   $('[data-item-status]',$('#modalRoot'))?.addEventListener('click',async()=>{await updateItem({...p,active:p.active===false});$('#modalRoot').innerHTML='';await refresh();toast(p.active===false?'Đã bật bán lại.':'Đã ngừng bán.','ok')});
+  $('[data-item-delete]',$('#modalRoot'))?.addEventListener('click',()=>{$('#modalRoot').innerHTML='';openDeleteProduct(id)});
 }
 function bindGoodsSwipe(){
-  $$('.goods-row').forEach(row=>{let startX=0;row.addEventListener('touchstart',e=>{startX=e.touches[0].clientX},{passive:true});row.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-startX;$$('.goods-row.reveal').forEach(x=>x!==row&&x.classList.remove('reveal'));if(dx<-45)row.classList.add('reveal');if(dx>35)row.classList.remove('reveal')},{passive:true});});
+  $$('.goods-row').forEach(row=>{
+    let startX=0, startY=0;
+    row.addEventListener('touchstart',e=>{
+      startX=e.touches[0].clientX;
+      startY=e.touches[0].clientY;
+    },{passive:true});
+    row.addEventListener('touchend',e=>{
+      const dx=e.changedTouches[0].clientX-startX;
+      const dy=e.changedTouches[0].clientY-startY;
+      if(Math.abs(dy) > Math.abs(dx)) return;
+      $$('.goods-row.reveal').forEach(x=>x!==row&&x.classList.remove('reveal'));
+      if(dx<-40)row.classList.add('reveal');
+      if(dx>30)row.classList.remove('reveal');
+    },{passive:true});
+  });
 }
 
 function renderTransfers(){

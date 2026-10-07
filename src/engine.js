@@ -1716,6 +1716,34 @@ export async function updateItem(item,requestedOperationId=''){
   if(cleanBc&&all.some(p=>p.id!==item.id&&String(p.barcode||'').trim().toLowerCase()===cleanBc)) throw new Error('Mã vạch (Barcode) này đã được dùng cho sản phẩm khác.');
   const identity=await localIdentity();const operationId=requestedOperationId||uuid();const next={...item,name:item.name.trim(),operation_id:operationId,version:Number(item.version||0)+1,source:item.source||SYNC_SOURCE,updated_at:now()};const outbox=makeOutbox({operationId,entityType:'item',entityId:next.id,action:'update',version:next.version,deviceId:identity.device_id,registerId:identity.register_id,type:'item.update',payload:{item:next}});await runTransaction(['products','outbox'],stores=>{stores.products.put(next);stores.outbox.put(outbox);});return next;
 }
+export async function deleteItem(id,requestedOperationId=''){
+  if(!id) throw new Error('ID mục không hợp lệ.');
+  const item=await getOne('products',id);
+  if(!item) return false;
+  const identity=await localIdentity();
+  const operationId=requestedOperationId||uuid();
+  const stamp=now();
+  const outbox=makeOutbox({operationId,entityType:'item',entityId:id,action:'delete',version:Number(item.version||0)+1,deviceId:identity.device_id,registerId:identity.register_id,type:'item.delete',createdAt:stamp,payload:{id,name:item.name,sku:item.sku}});
+  await runTransaction(['products','levels','outbox'],(stores)=>{
+    stores.products.delete(id);
+    const lvReq=stores.levels.getAll();
+    lvReq.onsuccess=()=>{
+      const levels=lvReq.result||[];
+      levels.filter(l=>l.productId===id||String(l.id||'').startsWith(`${id}:`)).forEach(l=>stores.levels.delete(l.id));
+    };
+    stores.outbox.put(outbox);
+  });
+  if(typeof window!=='undefined' && window.__qbiz_app__?.state?.data){
+    const appData=window.__qbiz_app__.state.data;
+    if(Array.isArray(appData.products)){
+      appData.products=appData.products.filter(p=>p.id!==id);
+    }
+    if(Array.isArray(appData.levels)){
+      appData.levels=appData.levels.filter(l=>l.productId!==id&&!String(l.id||'').startsWith(`${id}:`));
+    }
+  }
+  return true;
+}
 export async function createWarehouse(name){ if(!name?.trim()) throw new Error('Tên kho là bắt buộc.');const identity=await localIdentity();const operationId=uuid();const w={id:uid('wh'),name:name.trim(),operation_id:operationId,version:1,source:SYNC_SOURCE};const outbox=makeOutbox({operationId,entityType:'warehouse',entityId:w.id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'warehouse.create',payload:{warehouse:w}});await runTransaction(['warehouses','outbox'],stores=>{stores.warehouses.put(w);stores.outbox.put(outbox);});return w; }
 
 function normalizeSupplierInput(input={}){
