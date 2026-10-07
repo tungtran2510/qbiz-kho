@@ -90,7 +90,7 @@ const keepFocus=(sel,fn)=>{const el=document.querySelector(sel);const had=el&&do
 const money=n=>n?new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(Number(n)):'';
 const dt=s=>new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(s));
 const saleUuid=()=>globalThis.crypto?.randomUUID?globalThis.crypto.randomUUID():'';
-const NAV=[['dashboard','Tổng quan','layout-dashboard'],['products','Hàng hóa','package-search'],['sales','Bán hàng','shopping-cart'],['transfers','Kho','warehouse'],['more','Thêm','menu']];
+const NAV=[['dashboard','Tổng quan','layout-dashboard'],['products','Hàng hóa','package-search'],['sales','Bán hàng','shopping-cart'],['transactions','Hóa đơn','receipt'],['more','Thêm','menu']];
 const MOVE_LABEL={receive:['Nhập','↓'],issue:['Xuất','↑'],sale:['Bán hàng','↗'],count:['Kiểm kho','✓'],transfer_out:['Chuyển đi','⇄'],transfer_in:['Nhận chuyển','⇄'],reserve:['Giữ hàng','◌'],release:['Trả giữ','◌'],return:['Khách trả','↩']};
 const DEFAULT_DISPLAY={version:2,view:'image',showPrice:true,showStock:true,showSku:true,density:'medium',posView:'grid3'};
 function loadDisplayPrefs(){try{const saved=JSON.parse(localStorage.getItem('qbiz_display_preferences')||'{}');return saved.version?{...DEFAULT_DISPLAY,...saved}:{...DEFAULT_DISPLAY}}catch{return {...DEFAULT_DISPLAY}}}
@@ -270,6 +270,7 @@ const ICONS={
   ,'users':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
   ,'warehouse':'<path d="M3 21V9.5L12 4l9 5.5V21H3z"/><path d="M9 21V11h6v10"/><path d="M9 14h6"/><path d="M9 17h6"/>'
   ,'menu':'<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>'
+  ,'receipt':'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M16 8h-8"/><path d="M16 12h-8"/><path d="M13 16h-5"/>'
 };
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
@@ -436,7 +437,7 @@ function isServiceMode(){
 }
 function nav(){
   const isSvc = isServiceMode();
-  const activePage=NAV.some(([id])=>id===state.page)?state.page:'more';
+  const activePage=state.page==='transfers'?'products':(NAV.some(([id])=>id===state.page)?state.page:'more');
   const isPlatformAdmin = state.page === 'platform-admin';
   const mobileNav = $('#mobileNav');
   const desktopNav = $('#desktopNav');
@@ -1869,6 +1870,13 @@ function renderProducts(){
   $('#content').innerHTML=`
     <section class="goods-toolbar card ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">
       <div class="goods-title goods-title-compact"><div class="goods-stats"><strong class="goods-stat-main">${fmt(list.length)} ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'}</strong><span class="goods-stat-meta"><span class="goods-stat-sub">Tồn kho ${fmt(totalQty)}</span>${low?`<span class="goods-stat-sub warn">${fmt(low)} sắp hết</span>`:''}</span></div><div><button class="secondary-btn compact" data-display-settings>Hiển thị</button><button class="primary-btn compact" data-action="new-product" aria-label="Thêm ${state.productType==='SERVICE'?'dịch vụ':'hàng hóa'}">Thêm ${state.productType==='SERVICE'?'dịch vụ':'sản phẩm'} +</button></div></div>
+      <button type="button" class="goods-warehouse-btn" data-page="transfers" aria-label="Kho hàng">
+        <span class="goods-wh-left">
+          ${icon('warehouse')}
+          <span>Kho hàng</span>
+        </span>
+        <span class="goods-wh-arrow">${icon('chevron-right')}</span>
+      </button>
       <div class="goods-segments"><button class="${state.productType==='PRODUCT'?'active':''}" data-product-type="PRODUCT">Sản phẩm</button><button class="${state.productType==='SERVICE'?'active':''}" data-product-type="SERVICE">Dịch vụ</button></div>
       <div class="goods-search"><input id="productSearch" value="${esc(state.search)}" placeholder="${state.productType==='PRODUCT'?'Tìm tên / SKU / barcode...':'Tìm tên dịch vụ...'}"/><button data-action="scan" aria-label="Quét mã" ${state.productType==='SERVICE'?'hidden':''}>${icon('scan-line')}</button></div>
       <div class="goods-tools"><button data-category-picker>Danh mục${state.productCategory==='all'?'':` · ${esc(categoryLabel(state.productCategory))}`}</button><button data-product-filter class="${(state.productStatusFilter&&state.productStatusFilter!=='all')||(state.productStockFilter&&state.productStockFilter!=='all')||state.warehouse!=='all'?'active':''}">Lọc</button><select id="productSort"><option value="newest" ${state.productSort==='newest'?'selected':''}>Mới nhất</option><option value="oldest" ${state.productSort==='oldest'?'selected':''}>Cũ nhất</option><option value="priceAsc" ${state.productSort==='priceAsc'?'selected':''}>Giá thấp trước</option><option value="default" ${state.productSort==='default'?'selected':''}>Sắp xếp</option><option value="name" ${state.productSort==='name'?'selected':''}>Tên A–Z</option><option value="price" ${state.productSort==='price'?'selected':''}>Giá cao trước</option>${state.productType==='PRODUCT'?`<option value="stock" ${state.productSort==='stock'?'selected':''}>Tồn thấp trước</option><option value="status" ${state.productSort==='status'?'selected':''}>Trạng thái</option>`:''}</select><button data-toggle-select>${state.productSelecting?'Xong':'Chọn'}</button></div>
@@ -1935,7 +1943,7 @@ function renderTransfers(){
   const stockRows=state.data.products.filter(p=>p.type!=='SERVICE'&&(!state.warehouseSearch||[p.name,p.sku].some(v=>norm(v).includes(norm(state.warehouseSearch))))).filter(p=>{const t=stockView(p,state.warehouseStockWarehouse);return state.warehouseFilter==='all'||state.warehouseFilter==='low'&&t.available<=p.lowStock||state.warehouseFilter==='out'&&t.available===0}).sort((a,b)=>state.warehouseSort==='available'?stockView(a,state.warehouseStockWarehouse).available-stockView(b,state.warehouseStockWarehouse).available:String(a.name).localeCompare(String(b.name),'vi'));
   $('#content').innerHTML=`
   <section class="toolbar-panel card">
-    <div class="toolbar-row top"><div><h2>Kho</h2></div></div>
+    <div class="toolbar-row top" style="display:flex;align-items:center;justify-content:space-between"><div><h2>Kho hàng</h2></div><button type="button" class="secondary-btn compact" data-page="products" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700">${icon('undo-2')} <span>Hàng hóa</span></button></div>
     <div class="warehouse-tabs"><button class="${state.warehouseTab==='stock'?'active':''}" data-warehouse-tab="stock">Tồn kho</button><button class="${state.warehouseTab==='operations'?'active':''}" data-warehouse-tab="operations">Nghiệp vụ</button><button class="${state.warehouseTab==='history'?'active':''}" data-warehouse-tab="history">Lịch sử</button></div>
     ${state.warehouseTab==='stock'?`<div class="warehouse-search"><input id="warehouseSearch" value="${esc(state.warehouseSearch)}" placeholder="Tìm tên hoặc mã sản phẩm..."/><div class="warehouse-tools"><select id="warehouseStockWarehouse"><option value="all">Tất cả kho</option>${(state.data.warehouses||[]).map(w=>`<option value="${w.id}" ${state.warehouseStockWarehouse===w.id?'selected':''}>${esc(w.name)}</option>`).join('')}</select><select id="warehouseStockFilter"><option value="all">Tất cả trạng thái</option><option value="low" ${state.warehouseFilter==='low'?'selected':''}>Sắp hết</option><option value="out" ${state.warehouseFilter==='out'?'selected':''}>Hết hàng</option></select><select id="warehouseStockSort"><option value="name">Tên A–Z</option><option value="available" ${state.warehouseSort==='available'?'selected':''}>Tồn thấp trước</option></select></div></div><div class="warehouse-stock-list">${stockRows.slice(0,40).map(p=>{const t=stockView(p,state.warehouseStockWarehouse),status=t.available===0?'Hết hàng':t.available<=p.lowStock?'Sắp hết':'';return `<button class="stock-row" data-product="${p.id}"><div class="product-photo tiny">${p.image?`<img src="${p.image}" alt="${esc(p.name)}"/>`:esc((p.name||'S').slice(0,1))}</div><span><strong>${esc(p.name)}</strong><small>${esc(p.sku||'Chưa có SKU')}</small></span><div><b>${fmt(t.onHand)}</b><small>Tồn thực</small></div><div><b>${fmt(t.available)}</b><small>Có thể bán</small></div>${status?`<em>${status}</em>`:''}</button>`}).join('')||'<div class="empty">Không có sản phẩm phù hợp.</div>'}</div>`:state.warehouseTab==='history'?`<div class="warehouse-history">${state.data.movements.slice(0,50).map(movementRow).join('')||'<div class="empty">Chưa có lịch sử kho.</div>'}</div>`:`<div class="warehouse-actions warehouse-operation-grid"><button data-action="quick-action" data-kind="receive">${icon('package-plus')}<strong>Nhập kho</strong></button><button data-action="quick-action" data-kind="issue">${icon('package-minus')}<strong>Xuất kho</strong></button><button data-action="quick-action" data-kind="transfer">${icon('arrow-left-right')}<strong>Chuyển kho</strong></button><button data-action="quick-action" data-kind="count">${icon('clipboard-check')}<strong>Kiểm kho</strong></button><button data-action="warehouse-management">${icon('settings-2')}<strong>Quản lý kho</strong></button></div>`}
   </section>

@@ -740,9 +740,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .form-grid[hidden],.full-span[hidden],#productFields[hidden],#serviceFields[hidden]{display:none}
 
 /* ==== ADDITIVE: form Thêm sản phẩm gọn (chip danh mục, biến thể, hàng đôi) ==== */
-.goods-segments{border-radius:10px;margin-top:14px}
+.goods-segments{border-radius:10px;margin-top:10px}
 .goods-segments button{border-radius:8px}
 .goods-toolbar .goods-search{margin-top:8px}
+.goods-warehouse-btn{display:flex;align-items:center;justify-content:center;position:relative;width:100%;min-height:44px;margin-top:10px;padding:0 16px;background:#0f5fd8;color:#fff;border:0;border-radius:9px;font-size:15px;font-weight:750;cursor:pointer;box-shadow:0 2px 6px rgba(15,95,216,.22);transition:transform .15s ease,background .15s ease}
+.goods-warehouse-btn:hover{background:#0d54c0}
+.goods-warehouse-btn:active{transform:scale(.985)}
+.goods-warehouse-btn .goods-wh-left{display:inline-flex;align-items:center;gap:8px}
+.goods-warehouse-btn .goods-wh-left .ui-icon{width:20px;height:20px}
+.goods-warehouse-btn .goods-wh-arrow{position:absolute;right:14px;display:flex;align-items:center}
+.goods-warehouse-btn .goods-wh-arrow .ui-icon{width:18px;height:18px}
 .np-form{padding-bottom:132px}
 .np-form{display:grid;grid-template-columns:1fr;gap:10px}
 .np-form>*{grid-column:1/-1;min-width:0}
