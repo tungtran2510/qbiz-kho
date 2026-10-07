@@ -345,14 +345,15 @@ async function doFlush() {
   // phải thấy ngay, không gửi đi rồi nhận SALE_NOT_FOUND chặn cả hàng đợi).
   const track = (r) => { const k = createsKey(r); if (k) creator.set(k, r); };
   for (const row of rows) {
-    // Thao tác do tài khoản KHÁC tạo trên máy này (đổi tài khoản) → không gửi dưới phiên hiện tại. Dừng (giữ thứ tự):
-    // tự gửi khi tài khoản đó đăng nhập lại.
-    if (row.actor_auth_id && me && row.actor_auth_id !== me) { otherUser++; break; }
     if (!isWebSupported(row.type)) {
       if (row.web_status !== 'DEFERRED') { await put('outbox', { ...row, web_status: 'DEFERRED' }); }
       deferred++;
       continue;
     }
+    // Thao tác do tài khoản KHÁC tạo trên máy này (đổi tài khoản) → không gửi dưới phiên hiện tại. Dừng (giữ thứ tự):
+    // tự gửi khi tài khoản đó đăng nhập lại. Đặt SAU nhánh hoãn: thao tác web chưa hỗ trợ không bao giờ lên server, không
+    // được chặn hàng đợi của người khác (Codex review bước 3).
+    if (row.actor_auth_id && me && row.actor_auth_id !== me) { otherUser++; break; }
     // Sự kiện gốc (phiếu bán / mở ca / tạo phiếu chuyển) đang "cần xem" → sự kiện phụ thuộc không bao giờ lên được:
     // đưa luôn vào "cần xem" thay vì chờ *_NOT_FOUND vô hạn (chặn cả hàng đợi).
     // Sự kiện gốc bị chủ shop BỎ (DISCARDED) cũng không bao giờ lên server → sự kiện phụ thuộc vào "cần xem".
@@ -420,7 +421,7 @@ export async function webSyncStatus() {
   return { pending: by('PENDING') + by('ERROR') + by('SYNCING'), review: by('NEEDS_REVIEW'),
     deferred: rows.filter((r) => r.web_status === 'DEFERRED' && statusOf(r) !== 'SYNCED').length,
     authRequired: rows.some((r) => r.web_status === 'AUTH_REQUIRED' && statusOf(r) === 'ERROR'),
-    otherUser: (() => { const me = getCurrentUser()?.id; return me ? rows.filter((r) => r.actor_auth_id && r.actor_auth_id !== me && ACTIVE.includes(statusOf(r))).length : 0; })() };
+    otherUser: (() => { const me = getCurrentUser()?.id; return me ? rows.filter((r) => r.actor_auth_id && r.actor_auth_id !== me && ACTIVE.includes(statusOf(r)) && isWebSupported(r.type)).length : 0; })() };
 }
 
 // ---- Xử lý hàng "cần xem" (chủ shop / quản lý quyết; giao diện ở lát sau) -----------------------------------

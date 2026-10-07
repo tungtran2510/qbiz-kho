@@ -10,15 +10,16 @@ const SYNC_SOURCE='qbiz-kho-local';
 const nextClientSeq=()=>{try{const k='qbiz_outbox_seq';const n=Math.max(Number(globalThis.localStorage?.getItem(k)||0)+1,Date.now()*1000);globalThis.localStorage?.setItem(k,String(n));return n;}catch(_){return Date.now()*1000;}};
 // Backend web: shop không còn quyền QBiz Kho → không tạo thao tác mới (bán, nhập, ca…). makeOutbox là nơi DUY NHẤT sinh
 // sự kiện đồng bộ nên chặn tại đây (giao dịch IndexedDB bị huỷ, không ghi nửa chừng). Outbox đang chờ vẫn được gửi lại.
-let newEventBlock=null;
-export function setNewEventBlock(reason){newEventBlock=reason||null;}
+// Trạng thái để trên globalThis: engine.js có thể được nạp thành 2 module riêng (app.js import kèm ?v=…, trợ lý AI import
+// '../engine.js') — mọi bản PHẢI thấy cùng chốt chặn + cùng người tạo (Codex review bước 3).
+const gates=(globalThis.__QBIZ_ENGINE_GATES ||= {newEventBlock:null,outboxActor:null});
+export function setNewEventBlock(reason){gates.newEventBlock=reason||null;}
 // Backend web: tài khoản (auth id) tạo thao tác — flush.js KHÔNG gửi thao tác của tài khoản khác dưới phiên hiện tại
 // (đổi tài khoản trên cùng máy + cùng shop). Legacy không đặt → không có trường này.
-let outboxActor=null;
-export function setOutboxActor(authId){outboxActor=authId||null;}
-export function getNewEventBlock(){return newEventBlock;}
+export function setOutboxActor(authId){gates.outboxActor=authId||null;}
+export function getNewEventBlock(){return gates.newEventBlock;}
 const makeOutboxRaw=( {operationId,eventId=uuid(),entityType,entityId,action,version=1,deviceId='',registerId='',payload,createdAt=now(),type=`${entityType}.${action}`} )=>({id:operationId,client_seq:nextClientSeq(),event_id:eventId,source_event_id:eventId,operation_id:operationId,entity_type:entityType,entity_id:entityId,action,version,device_id:deviceId,register_id:registerId,source:SYNC_SOURCE,provider:'local',created_at:createdAt,updated_at:createdAt,retry_count:0,sync_status:'PENDING',type,payload});
-const makeOutbox=(args)=>{if(newEventBlock)throw new Error(newEventBlock);const row=makeOutboxRaw(args);return outboxActor?{...row,actor_auth_id:outboxActor}:row;};
+const makeOutbox=(args)=>{if(gates.newEventBlock)throw new Error(gates.newEventBlock);const row=makeOutboxRaw(args);return gates.outboxActor?{...row,actor_auth_id:gates.outboxActor}:row;};
 export async function ensureLocalIdentity(){return ensureIdentity(uuid,now);}
 async function localIdentity(){return ensureLocalIdentity();}
 async function localDeviceId(){return (await localIdentity()).device_id;}
