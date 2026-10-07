@@ -39,6 +39,10 @@ export async function hasPendingStockEvents() {
     && r.web_status !== 'DEFERRED' && STOCK_EVENT_TYPES.test(String(r.type || '')));
 }
 
+async function maxStockSeq() {
+  return (await getAll('outbox')).reduce((m, r) => (STOCK_EVENT_TYPES.test(String(r.type || '')) ? Math.max(m, Number(r.client_seq || 0)) : m), 0);
+}
+
 /** Thay toàn bộ nội dung 1 store bằng `rows` (xoá dòng không còn trên web). */
 async function replaceStore(name, rows, keep = () => false) {
   const ids = new Set(rows.map((r) => r.id));
@@ -49,6 +53,9 @@ async function replaceStore(name, rows, keep = () => false) {
 export async function pullCatalog(shopId) {
   const sid = enc(shopId);
   const stockFresh = !(await hasPendingStockEvents());
+  // Mốc: client_seq lớn nhất của sự kiện ảnh hưởng tồn (MỌI trạng thái) TRƯỚC khi tải tồn. Lúc ghi mà có sự kiện mới
+  // hơn mốc (kể cả đã gửi xong trong lúc đang tải) → snapshot tải về đã cũ → bỏ qua (review Codex: local 45 / server 44).
+  const stockMark = await maxStockSeq();
   const [products, services, warehouses, customers, levels, versions] = await Promise.all([
     selectAll(`products?shop_id=eq.${sid}&select=id,name,sku,barcode,price,sale_price,images,status,is_hidden,variants,unit&order=sort_order.asc`),
     selectAll(`services?shop_id=eq.${sid}&select=id,title,price_number,status&order=title.asc`),
@@ -118,9 +125,11 @@ export async function pullCatalog(shopId) {
     await runTransaction(['outbox', 'levels'], (stores) => {
       const req = stores.outbox.getAll();
       req.onsuccess = () => {
-        const pending = (req.result || []).some((r) => ['PENDING', 'SYNCING', 'ERROR'].includes(String(r.sync_status || 'PENDING').toUpperCase())
+        const rows = req.result || [];
+        const pending = rows.some((r) => ['PENDING', 'SYNCING', 'ERROR'].includes(String(r.sync_status || 'PENDING').toUpperCase())
           && r.web_status !== 'DEFERRED' && STOCK_EVENT_TYPES.test(String(r.type || '')));
-        if (pending) return;
+        const newer = rows.some((r) => STOCK_EVENT_TYPES.test(String(r.type || '')) && Number(r.client_seq || 0) > stockMark);
+        if (pending || newer) return;
         const keep = new Set(next.map((x) => x.id));
         const cur = stores.levels.getAll();
         cur.onsuccess = () => {

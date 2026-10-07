@@ -133,9 +133,13 @@ Object.assign(BUILDERS, {
     if (!RETURN_METHODS.has(method)) {
       // 'split' / 'original' / phương thức lạ: tiền mặt nếu không vượt (tiền mặt đã thu − tiền mặt đã hoàn trước) của
       // phiếu, ngược lại chuyển khoản (server giới hạn hoàn tiền mặt theo đúng công thức này).
-      const priorCash = (await getAll('refunds'))
-        .filter((f) => f.sale_id === d.sale_id && f.return_id !== d.id && (f.method || f.refund_method) === 'cash')
-        .reduce((n, f) => n + Number(f.amount || 0), 0);
+      // Tiền mặt ĐÃ hoàn trước theo phương thức THỰC TẾ đã gửi server (payload đóng băng của các phiếu trả trước) —
+      // engine lưu 'split'/'original' nên không dựa vào phương thức cục bộ được.
+      const priorCash = (await getAll('outbox'))
+        .filter((o) => o.type === 'return.create' && o.id !== row.id && o.payload?.return?.sale_id === d.sale_id
+          && !['NEEDS_REVIEW', 'DISCARDED'].includes(String(o.sync_status || '').toUpperCase())
+          && o.rpc_payload?.args?.p_return?.refund_method === 'cash')
+        .reduce((n, o) => n + Number(o.rpc_payload.args.p_return.cash_refund || 0), 0);
       method = Number(d.cash_refund || 0) <= localCashPaid(sale) - priorCash ? 'cash' : 'transfer';
     }
     return {
@@ -336,10 +340,13 @@ async function doFlush() {
     }
     // Sự kiện gốc (phiếu bán / mở ca / tạo phiếu chuyển) đang "cần xem" → sự kiện phụ thuộc không bao giờ lên được:
     // đưa luôn vào "cần xem" thay vì chờ *_NOT_FOUND vô hạn (chặn cả hàng đợi).
-    const blocked = dependsOn(row).map((k) => creator.get(k)).find((c) => c && statusOf(c) === 'NEEDS_REVIEW');
+    // Sự kiện gốc bị chủ shop BỎ (DISCARDED) cũng không bao giờ lên server → sự kiện phụ thuộc vào "cần xem".
+    const blocked = dependsOn(row).map((k) => creator.get(k)).find((c) => c && ['NEEDS_REVIEW', 'DISCARDED'].includes(statusOf(c)));
     if (blocked) {
-      const upd = { ...row, sync_status: 'NEEDS_REVIEW', web_status: 'NEEDS_REVIEW', last_error_code: 'DEPENDENCY_IN_REVIEW',
-        last_error: `Phụ thuộc ${blocked.type} ${blocked.id} đang cần xem.`, updated_at: nowIso() };
+      const discarded = statusOf(blocked) === 'DISCARDED';
+      const upd = { ...row, sync_status: 'NEEDS_REVIEW', web_status: 'NEEDS_REVIEW',
+        last_error_code: discarded ? 'DEPENDENCY_DISCARDED' : 'DEPENDENCY_IN_REVIEW',
+        last_error: `Phụ thuộc ${blocked.type} ${blocked.id} ${discarded ? 'đã bị bỏ' : 'đang cần xem'}.`, updated_at: nowIso() };
       await put('outbox', upd); track(upd);
       review++;
       continue;
