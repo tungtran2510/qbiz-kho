@@ -273,6 +273,22 @@ const ICONS={
   ,'receipt':'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M16 8h-8"/><path d="M16 12h-8"/><path d="M13 16h-5"/>'
   ,'search':'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
   ,'x':'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
+  ,'filter':'<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>'
+  ,'arrow-up-down':'<path d="m7 15 5 5 5-5M7 9l5-5 5 5M12 4v16"/>'
+  ,'tag':'<path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/>'
+  ,'dollar-sign':'<line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
+  ,'folder-tree':'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4"/><path d="M12 10v4"/><path d="M16 10v4"/>'
+  ,'toggle-right':'<rect width="20" height="12" x="2" y="6" rx="6" ry="6"/><circle cx="16" cy="12" r="3" fill="currentColor"/>'
+  ,'barcode':'<path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14"/>'
+  ,'trash-2':'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>'
+  ,'tablet':'<rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="12" x2="12.01" y1="18" y2="18"/>'
+  ,'monitor':'<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>'
+  ,'flame':'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>'
+  ,'package-check':'<path d="m16 16 2 2 4-4"/><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'
+  ,'sort-asc':'<path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"/>'
+  ,'list':'<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>'
+  ,'grid':'<rect width="18" height="18" x="3" y="3" rx="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="3" x2="21" y1="15" y2="15"/><line x1="9" x2="9" y1="3" y2="21"/><line x1="15" x2="15" y1="3" y2="21"/>'
+  ,'image':'<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'
 };
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
@@ -2101,7 +2117,7 @@ function renderProducts(){
         <span class="goods-wh-arrow">${icon('chevron-right')}</span>
       </button>
       <div class="goods-segments"><button class="${state.productType==='PRODUCT'?'active':''}" data-product-type="PRODUCT">Sản phẩm</button><button class="${state.productType==='SERVICE'?'active':''}" data-product-type="SERVICE">Dịch vụ</button></div>
-      <div class="goods-tools"><button type="button" class="btn-tool-select ${state.productSelecting?'active':''}" data-toggle-select title="${state.productSelecting?'Hoàn tất chọn':'Chọn hàng loạt'}">${state.productSelecting?'Xong':'Chọn'}</button><button type="button" class="btn-tool-cat" data-category-picker title="Lọc theo danh mục">${state.productCategory==='all'?'Danh mục':esc(categoryLabel(state.productCategory))}</button><button type="button" class="btn-tool-filter ${(state.productStatusFilter&&state.productStatusFilter!=='all')||(state.productStockFilter&&state.productStockFilter!=='all')||state.warehouse!=='all'?'active':''}" data-product-filter title="Lọc hàng hóa">Lọc</button><button type="button" class="btn-tool-sort ${state.productSort&&state.productSort!=='newest'&&state.productSort!=='default'?'active':''}" data-product-sort title="Sắp xếp danh sách"><span class="btn-tool-sort-icon">${icon('arrow-up-down')}</span><span class="btn-tool-sort-label">${sortShortLabel(state.productSort)}</span></button><select id="productSort" hidden><option value="${state.productSort||'newest'}" selected></option></select><button type="button" class="btn-tool-display" data-display-settings title="Tùy chọn hiển thị" aria-label="Tùy chọn hiển thị">${icon('layout-grid')}</button></div>
+      <div class="goods-tools"><button type="button" class="btn-tool-select ${state.productSelecting?'active':''}" data-toggle-select title="${state.productSelecting?'Hoàn tất chọn':'Chọn hàng loạt'}">${state.productSelecting?'Xong':'Chọn'}</button><button type="button" class="btn-tool-cat" data-category-picker title="Lọc theo danh mục">${state.productCategory==='all'?'Danh mục':esc(categoryLabel(state.productCategory))}</button><button type="button" class="btn-tool-filter ${(state.productStatusFilter&&state.productStatusFilter!=='all')||(state.productStockFilter&&state.productStockFilter!=='all')||state.warehouse!=='all'?'active':''}" data-product-filter title="Lọc hàng hóa"><span class="btn-tool-filter-icon">${icon('filter')}</span><span class="btn-tool-filter-label">Lọc</span></button><button type="button" class="btn-tool-sort ${state.productSort&&state.productSort!=='newest'&&state.productSort!=='default'?'active':''}" data-product-sort title="Sắp xếp danh sách"><span class="btn-tool-sort-icon">${icon('arrow-up-down')}</span><span class="btn-tool-sort-label">${sortShortLabel(state.productSort)}</span></button><select id="productSort" hidden><option value="${state.productSort||'newest'}" selected></option></select><button type="button" class="btn-tool-display" data-display-settings title="Tùy chọn hiển thị" aria-label="Tùy chọn hiển thị">${icon('layout-grid')}</button></div>
       ${state.productSelecting?`<div class="selection-bar single-row-bar"><button type="button" class="sel-btn-compact" data-select-all>Chọn tất cả</button><span class="sel-status-badge"><strong>${state.productSelected.size}</strong> đã chọn</span><button type="button" class="sel-btn-compact" data-select-clear>Bỏ chọn</button><button type="button" class="sel-btn-action" data-batch-actions ${state.productSelected.size?'':'disabled'}>Thao tác</button></div>`:''}
     </section>
 
@@ -2149,40 +2165,13 @@ function renderProducts(){
 
 function openDisplaySettings(){
   const p=state.displayPrefs;
-  const currentPreset = p.devicePreset || (window.innerWidth <= 640 ? 'phone' : window.innerWidth <= 920 ? 'tablet' : 'pc');
+  let activePreviewDevice = window.innerWidth <= 640 ? 'phone' : window.innerWidth <= 920 ? 'tablet' : 'pc';
 
   openModal({
     title:'Hiển thị & Bố cục',
     submitText:'Áp dụng',
     body:`
       <div class="compact-display-modal">
-        <div>
-          <div class="device-section-head">
-            <h4>Chế độ hiển thị theo thiết bị</h4>
-            <span class="device-section-hint">Chạm để chọn nhanh</span>
-          </div>
-          <div class="compact-device-cards">
-            <button type="button" class="device-card-btn ${currentPreset==='phone'?'active':''}" data-device-preset="phone">
-              <span class="dev-card-icon">${icon('smartphone')}</span>
-              <strong>Điện thoại</strong>
-              <small>Gọn gàng · 1 chạm</small>
-            </button>
-            <button type="button" class="device-card-btn ${currentPreset==='tablet'?'active':''}" data-device-preset="tablet">
-              <span class="dev-card-icon">${icon('tablet')}</span>
-              <strong>Máy tính bảng</strong>
-              <small>Lưới 2 · POS quầy</small>
-            </button>
-            <button type="button" class="device-card-btn ${currentPreset==='pc'?'active':''}" data-device-preset="pc">
-              <span class="dev-card-icon">${icon('monitor')}</span>
-              <strong>Máy tính</strong>
-              <small>Màn rộng · Đầy đủ</small>
-            </button>
-          </div>
-          <div id="devicePresetBanner" class="device-preset-banner">
-            ${currentPreset==='phone'?'📱 Đang dùng chế độ: <b>Điện thoại</b> (Danh sách gọn, mật độ gọn)' : currentPreset==='tablet'?'📟 Đang dùng chế độ: <b>Máy tính bảng</b> (Lưới 2 cột, mật độ vừa)' : '💻 Đang dùng chế độ: <b>Máy tính</b> (Danh sách rộng, POS đa cột)'}
-          </div>
-        </div>
-
         <div>
           <h4>Chế độ xem hàng hóa</h4>
           <div class="compact-options">
@@ -2235,6 +2224,28 @@ function openDisplaySettings(){
             `).join('')}
           </div>
         </div>
+
+        <div class="device-preview-section">
+          <div class="device-section-head">
+            <h4>Chế độ xem trước theo thiết bị</h4>
+            <span class="device-section-hint">Mô phỏng hiển thị thực tế</span>
+          </div>
+          <div class="device-preview-tabs">
+            <button type="button" class="dev-tab-btn ${activePreviewDevice==='phone'?'active':''}" data-preview-device="phone">
+              <span class="dev-tab-icon">${icon('smartphone')}</span>
+              <span>Điện thoại</span>
+            </button>
+            <button type="button" class="dev-tab-btn ${activePreviewDevice==='tablet'?'active':''}" data-preview-device="tablet">
+              <span class="dev-tab-icon">${icon('tablet')}</span>
+              <span>Máy tính bảng</span>
+            </button>
+            <button type="button" class="dev-tab-btn ${activePreviewDevice==='pc'?'active':''}" data-preview-device="pc">
+              <span class="dev-tab-icon">${icon('monitor')}</span>
+              <span>Máy tính</span>
+            </button>
+          </div>
+          <div id="devicePreviewCanvas" class="device-preview-canvas"></div>
+        </div>
       </div>
     `,
     onSubmit:r=>{
@@ -2246,62 +2257,186 @@ function openDisplaySettings(){
         showSku:$('#showSku',r).checked,
         density:$('input[name="density"]:checked',r)?.value||'compact',
         posView:$('input[name="posView"]:checked',r)?.value||'grid2',
-        devicePreset:state.displayPrefs.devicePreset||'phone'
+        devicePreset:activePreviewDevice
       };
       saveDisplayPrefs();
+      renderProducts();
+      toast('Đã lưu tùy chọn hiển thị', 'ok');
     }
   });
 
   const root=$('#modalRoot');
-  const presets = {
-    phone: { view: 'compact', density: 'compact', posView: 'grid2', label: 'Điện thoại', desc: 'Danh sách gọn, mật độ gọn', icon: '📱' },
-    tablet: { view: 'grid2', density: 'medium', posView: 'grid3', label: 'Máy tính bảng', desc: 'Lưới 2 cột, mật độ vừa', icon: '📟' },
-    pc: { view: 'compact', density: 'medium', posView: 'list', label: 'Máy tính', desc: 'Danh sách rộng, POS đa cột', icon: '💻' }
-  };
+  const updateDevicePreview = () => {
+    const canvas = $('#devicePreviewCanvas', root);
+    if(!canvas) return;
+    const currentView = $('input[name="goodsView"]:checked', root)?.value || 'compact';
+    const showPrice = $('#showPrice', root)?.checked ?? true;
+    const showStock = $('#showStock', root)?.checked ?? true;
+    const showSku = $('#showSku', root)?.checked ?? true;
 
-  const applyPreset = (key) => {
-    const cfg = presets[key];
-    if(!cfg) return;
-
-    // Update active state on device buttons
-    $$('[data-device-preset]', root).forEach(b => b.classList.toggle('active', b.dataset.devicePreset === key));
-
-    // Update radios and is-checked classes
-    $$('input[name="goodsView"]', root).forEach(r => {
-      r.checked = (r.value === cfg.view);
-      r.closest('label')?.classList.toggle('is-checked', r.checked);
-    });
-    $$('input[name="density"]', root).forEach(r => {
-      r.checked = (r.value === cfg.density);
-      r.closest('label')?.classList.toggle('is-checked', r.checked);
-    });
-    $$('input[name="posView"]', root).forEach(r => {
-      r.checked = (r.value === cfg.posView);
-      r.closest('label')?.classList.toggle('is-checked', r.checked);
-    });
-
-    const banner = $('#devicePresetBanner', root);
-    if(banner){
-      banner.innerHTML = `${cfg.icon} Đang dùng chế độ: <b>${cfg.label}</b> (${cfg.desc})`;
+    if(activePreviewDevice === 'phone') {
+      canvas.innerHTML = `
+        <div class="preview-canvas-header">
+          <span class="dev-badge">${icon('smartphone')} Màn hình Điện thoại (390px)</span>
+          <span>1 chạm · Gọn gàng</span>
+        </div>
+        ${currentView === 'compact' ? `
+          <div class="preview-mock-list">
+            <div class="preview-mock-item">
+              <div class="preview-mock-info">
+                <div><span class="preview-mock-title">Áo sơ mi Oxford</span>${showSku?'<span class="preview-mock-sku">SM-01</span>':''}</div>
+                <div class="preview-mock-meta">
+                  ${showPrice?'<span class="preview-mock-price">250.000₫</span>':''}
+                  ${showStock?'<span class="preview-mock-stock">Tồn 48</span>':''}
+                </div>
+              </div>
+            </div>
+            <div class="preview-mock-item">
+              <div class="preview-mock-info">
+                <div><span class="preview-mock-title">Quần âu Slimfit</span>${showSku?'<span class="preview-mock-sku">QA-02</span>':''}</div>
+                <div class="preview-mock-meta">
+                  ${showPrice?'<span class="preview-mock-price">380.000₫</span>':''}
+                  ${showStock?'<span class="preview-mock-stock">Tồn 12</span>':''}
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : currentView === 'image' ? `
+          <div class="preview-mock-list">
+            <div class="preview-mock-item">
+              <div class="preview-mock-img">${icon('image')}</div>
+              <div class="preview-mock-info">
+                <div><span class="preview-mock-title">Áo sơ mi Oxford</span>${showSku?'<span class="preview-mock-sku">SM-01</span>':''}</div>
+                <div class="preview-mock-meta">
+                  ${showPrice?'<span class="preview-mock-price">250.000₫</span>':''}
+                  ${showStock?'<span class="preview-mock-stock">Tồn 48</span>':''}
+                </div>
+              </div>
+            </div>
+            <div class="preview-mock-item">
+              <div class="preview-mock-img">${icon('image')}</div>
+              <div class="preview-mock-info">
+                <div><span class="preview-mock-title">Quần âu Slimfit</span>${showSku?'<span class="preview-mock-sku">QA-02</span>':''}</div>
+                <div class="preview-mock-meta">
+                  ${showPrice?'<span class="preview-mock-price">380.000₫</span>':''}
+                  ${showStock?'<span class="preview-mock-stock">Tồn 12</span>':''}
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : currentView === 'grid2' ? `
+          <div class="preview-mock-grid cols-2">
+            <div class="preview-mock-card">
+              <div class="preview-mock-card-img">${icon('image')}</div>
+              <div class="preview-mock-card-title">Áo sơ mi Oxford</div>
+              ${showSku?'<span class="preview-mock-sku" style="align-self:start">SM-01</span>':''}
+              <div class="preview-mock-card-foot">
+                ${showPrice?'<span class="preview-mock-price">250.000₫</span>':''}
+                ${showStock?'<span class="preview-mock-stock">Tồn 48</span>':''}
+              </div>
+            </div>
+            <div class="preview-mock-card">
+              <div class="preview-mock-card-img">${icon('image')}</div>
+              <div class="preview-mock-card-title">Quần âu Slimfit</div>
+              ${showSku?'<span class="preview-mock-sku" style="align-self:start">QA-02</span>':''}
+              <div class="preview-mock-card-foot">
+                ${showPrice?'<span class="preview-mock-price">380.000₫</span>':''}
+                ${showStock?'<span class="preview-mock-stock">Tồn 12</span>':''}
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="preview-mock-grid cols-3">
+            <div class="preview-mock-card">
+              <div class="preview-mock-card-img" style="height:28px">${icon('image')}</div>
+              <div class="preview-mock-card-title">Áo sơ mi</div>
+              ${showPrice?'<span class="preview-mock-price" style="font-size:9px">250k</span>':''}
+            </div>
+            <div class="preview-mock-card">
+              <div class="preview-mock-card-img" style="height:28px">${icon('image')}</div>
+              <div class="preview-mock-card-title">Quần âu</div>
+              ${showPrice?'<span class="preview-mock-price" style="font-size:9px">380k</span>':''}
+            </div>
+            <div class="preview-mock-card">
+              <div class="preview-mock-card-img" style="height:28px">${icon('image')}</div>
+              <div class="preview-mock-card-title">Cà vạt lụa</div>
+              ${showPrice?'<span class="preview-mock-price" style="font-size:9px">95k</span>':''}
+            </div>
+          </div>
+        `}
+      `;
+    } else if(activePreviewDevice === 'tablet') {
+      canvas.innerHTML = `
+        <div class="preview-canvas-header">
+          <span class="dev-badge">${icon('tablet')} Máy tính bảng (768px)</span>
+          <span>POS quầy đa cột</span>
+        </div>
+        <div class="preview-mock-grid cols-2">
+          <div class="preview-mock-item" style="padding:6px 9px">
+            <div class="preview-mock-img">${icon('image')}</div>
+            <div class="preview-mock-info">
+              <div><span class="preview-mock-title">Áo sơ mi Oxford kẻ</span>${showSku?'<span class="preview-mock-sku">SM-01</span>':''}</div>
+              <div class="preview-mock-meta">
+                ${showPrice?'<span class="preview-mock-price">250.000₫</span>':''}
+                ${showStock?'<span class="preview-mock-stock">Tồn 48</span>':''}
+              </div>
+            </div>
+          </div>
+          <div class="preview-mock-item" style="padding:6px 9px">
+            <div class="preview-mock-img">${icon('image')}</div>
+            <div class="preview-mock-info">
+              <div><span class="preview-mock-title">Quần âu Slimfit</span>${showSku?'<span class="preview-mock-sku">QA-02</span>':''}</div>
+              <div class="preview-mock-meta">
+                ${showPrice?'<span class="preview-mock-price">380.000₫</span>':''}
+                ${showStock?'<span class="preview-mock-stock">Tồn 12</span>':''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      canvas.innerHTML = `
+        <div class="preview-canvas-header">
+          <span class="dev-badge">${icon('monitor')} Máy tính (1200px+)</span>
+          <span>Bảng dữ liệu rộng</span>
+        </div>
+        <table class="preview-mock-table">
+          <thead>
+            <tr>
+              ${showSku?'<th>Mã SKU</th>':''}
+              <th>Tên hàng hóa</th>
+              ${showPrice?'<th>Giá bán</th>':''}
+              ${showStock?'<th>Tồn kho</th>':''}
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              ${showSku?'<td><span class="preview-mock-sku">SM-01</span></td>':''}
+              <td><strong>Áo sơ mi Oxford</strong></td>
+              ${showPrice?'<td><span class="preview-mock-price">250.000₫</span></td>':''}
+              ${showStock?'<td><span class="preview-mock-stock">48</span></td>':''}
+              <td><span style="color:#15803d;font-weight:700">Đang bán</span></td>
+            </tr>
+            <tr>
+              ${showSku?'<td><span class="preview-mock-sku">QA-02</span></td>':''}
+              <td><strong>Quần âu Slimfit</strong></td>
+              ${showPrice?'<td><span class="preview-mock-price">380.000₫</span></td>':''}
+              ${showStock?'<td><span class="preview-mock-stock">12</span></td>':''}
+              <td><span style="color:#15803d;font-weight:700">Đang bán</span></td>
+            </tr>
+          </tbody>
+        </table>
+      `;
     }
-
-    state.displayPrefs = {
-      version: 2,
-      view: cfg.view,
-      showPrice: true,
-      showStock: true,
-      showSku: true,
-      density: cfg.density,
-      posView: cfg.posView,
-      devicePreset: key
-    };
-    saveDisplayPrefs();
-    renderProducts();
-    toast(`Đã chọn chế độ hiển thị: ${cfg.label}`, 'ok');
   };
 
-  $$('[data-device-preset]', root).forEach(btn => {
-    btn.onclick = () => applyPreset(btn.dataset.devicePreset);
+  $$('[data-preview-device]', root).forEach(btn => {
+    btn.onclick = () => {
+      activePreviewDevice = btn.dataset.previewDevice;
+      $$('[data-preview-device]', root).forEach(b => b.classList.toggle('active', b === btn));
+      updateDevicePreview();
+    };
   });
 
   $$('input[type="radio"]', root).forEach(r => {
@@ -2309,13 +2444,17 @@ function openDisplaySettings(){
       $$(`input[name="${r.name}"]`, root).forEach(other => {
         other.closest('label')?.classList.toggle('is-checked', other.checked);
       });
+      updateDevicePreview();
     });
   });
   $$('input[type="checkbox"]', root).forEach(cb => {
     cb.addEventListener('change', () => {
       cb.closest('label')?.classList.toggle('is-checked', cb.checked);
+      updateDevicePreview();
     });
   });
+
+  updateDevicePreview();
 }
 function openProductFilter(){
   const productMode=state.productType==='PRODUCT';
@@ -2432,32 +2571,10 @@ function openBatchActions(){
         <button type="button" class="secondary-btn compact" data-batch-clear style="font-size:11px;padding:2px 8px;min-height:26px">Bỏ chọn tất cả</button>
       </div>
 
-      ${!isService?`
-        <div class="batch-group-title">Nghiệp vụ Kho hàng loạt</div>
-        <div class="batch-action-list">
-          <button type="button" class="batch-action-btn" data-batch-action="receive">
-            <span class="batch-act-icon ok">${icon('package-plus')}</span>
-            <div class="batch-act-info">
-              <strong>Lập phiếu nhập kho hàng loạt</strong>
-              <small>Tạo phiếu nhập gom ${items.length} sản phẩm đã chọn</small>
-            </div>
-            ${icon('chevron-right')}
-          </button>
-          <button type="button" class="batch-action-btn" data-batch-action="transfer">
-            <span class="batch-act-icon primary">${icon('arrow-left-right')}</span>
-            <div class="batch-act-info">
-              <strong>Điều chuyển kho hàng loạt</strong>
-              <small>Chuyển ${items.length} mặt hàng sang kho / chi nhánh khác</small>
-            </div>
-            ${icon('chevron-right')}
-          </button>
-        </div>
-      `:''}
-
-      <div class="batch-group-title">Cập nhật thông tin</div>
+      <div class="batch-group-title">Cập nhật thông tin hàng loạt</div>
       <div class="batch-action-list">
         <button type="button" class="batch-action-btn" data-batch-action="price">
-          <span class="batch-act-icon warn">${icon('tag')}</span>
+          <span class="batch-act-icon gold">${icon('dollar-sign')}</span>
           <div class="batch-act-info">
             <strong>Điều chỉnh giá bán hàng loạt</strong>
             <small>Tăng/giảm theo % hoặc số tiền cụ thể</small>
@@ -2482,10 +2599,32 @@ function openBatchActions(){
         </button>
       </div>
 
+      ${!isService?`
+        <div class="batch-group-title">Nghiệp vụ kho hàng loạt</div>
+        <div class="batch-action-list">
+          <button type="button" class="batch-action-btn" data-batch-action="receive">
+            <span class="batch-act-icon green">${icon('package-plus')}</span>
+            <div class="batch-act-info">
+              <strong>Lập phiếu nhập kho hàng loạt</strong>
+              <small>Tạo phiếu nhập gom ${items.length} sản phẩm đã chọn</small>
+            </div>
+            ${icon('chevron-right')}
+          </button>
+          <button type="button" class="batch-action-btn" data-batch-action="transfer">
+            <span class="batch-act-icon blue">${icon('arrow-left-right')}</span>
+            <div class="batch-act-info">
+              <strong>Điều chuyển kho hàng loạt</strong>
+              <small>Chuyển ${items.length} mặt hàng sang kho / chi nhánh khác</small>
+            </div>
+            ${icon('chevron-right')}
+          </button>
+        </div>
+      `:''}
+
       <div class="batch-group-title">Tiện ích &amp; Xuất dữ liệu</div>
       <div class="batch-action-list">
         <button type="button" class="batch-action-btn" data-batch-action="export">
-          <span class="batch-act-icon blue">${icon('file-spreadsheet')}</span>
+          <span class="batch-act-icon excel">${icon('file-spreadsheet')}</span>
           <div class="batch-act-info">
             <strong>Xuất Excel / CSV đã chọn</strong>
             <small>Tải file Excel ${items.length} dòng đầy đủ giá, tồn, mã</small>
@@ -2493,7 +2632,7 @@ function openBatchActions(){
           ${icon('chevron-right')}
         </button>
         <button type="button" class="batch-action-btn" data-batch-action="barcode">
-          <span class="batch-act-icon blue">${icon('barcode')}</span>
+          <span class="batch-act-icon slate">${icon('barcode')}</span>
           <div class="batch-act-info">
             <strong>In tem mã vạch hàng loạt</strong>
             <small>Xem và in tem mã barcode ${items.length} mặt hàng</small>
