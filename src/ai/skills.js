@@ -172,11 +172,11 @@ export const SKILL_REGISTRY = {
       const t = res.stockTotals || { available: 0, onHand: 0, reserved: 0 };
       const unit = p.unit || 'cái';
       const whBreakdown = (res.warehouses || [])
-        .map(w => `  • **${w.warehouseName || 'Kho'}**: Còn bán được **${w.available ?? 0}**, thực tế ${w.onHand ?? 0}`)
+        .map(w => `  • ${w.warehouseName || 'Kho'}: **${w.available ?? 0}**`)
         .join('\n');
 
       return {
-        text: `Sản phẩm **${p.name || 'Sản phẩm'}**:\n- Tổng có thể bán: **${t.available ?? 0} ${unit}** (Thực tồn: ${t.onHand ?? 0}, Đang giữ: ${t.reserved ?? 0})\n- Chi tiết theo kho:\n${whBreakdown || '  • Chưa có dữ liệu kho'}`,
+        text: `📦 **${p.name || 'Sản phẩm'}**: Còn **${t.available ?? 0} ${unit}** có thể bán.${whBreakdown ? `\n- Theo kho:\n${whBreakdown}` : ''}`,
         product: p,
         stockTotals: t,
         warehouses: res.warehouses,
@@ -194,7 +194,7 @@ export const SKILL_REGISTRY = {
       const res = executeTool('find_low_stock', {}, state, context);
       if (res.count === 0) {
         return {
-          text: 'Tất cả hàng hóa hiện đều ở mức tồn an toàn. Không có sản phẩm nào chạm ngưỡng tối thiểu.',
+          text: '✅ **Kho an toàn:** Toàn bộ hàng hóa đang ở mức tồn an toàn, chưa có mặt hàng nào chạm ngưỡng tối thiểu.',
           items: [],
           tier: 0,
         };
@@ -560,7 +560,7 @@ export const SKILL_REGISTRY = {
     async execute(params, context, state) {
       const proposal = executeTool('create_order_proposal', params, state, context);
       return {
-        text: `Đã tạo đề xuất đơn hàng: **${proposal.human_summary}**.\n*(Chưa tạo giao dịch chính thức - chờ xác nhận)*`,
+        text: '📝 **Đề xuất đơn bán hàng:**',
         proposal,
         tier: 0,
       };
@@ -2626,14 +2626,24 @@ export const SKILL_REGISTRY = {
       const b = report.buckets;
       const fmt = new Intl.NumberFormat('vi-VN');
 
+      if (report.totalCustomersWithDebt === 0) {
+        return {
+          text: `✅ **Công nợ an toàn:** Hiện không có khách hàng nào nợ tiền cửa hàng (Tổng nợ: 0 ₫).`,
+          report,
+          intent: 'QUERY_AGING_REPORT',
+          skillId: 'customer-aging-report',
+          tier: 0,
+        };
+      }
+
       let text = `📊 **Báo cáo Phân tích Tuổi nợ Phải thu:**\n` +
         `- Tổng số khách hàng đang nợ: **${report.totalCustomersWithDebt} khách**\n` +
         `- **Tổng công nợ phải thu:** **${report.formattedOutstandingDebt}**\n\n` +
         `⏳ **Phân bổ theo khoảng thời gian:**\n` +
-        `• 🟢 **Trong hạn (0 - 30 ngày):** **${fmt.format(b.current.total)} ₫** (${b.current.count} đơn)\n` +
-        `• 🟡 **Quá hạn 31 - 60 ngày:** **${fmt.format(b.overdue30.total)} ₫** (${b.overdue30.count} đơn)\n` +
-        `• 🟠 **Quá hạn 61 - 90 ngày:** **${fmt.format(b.overdue60.total)} ₫** (${b.overdue60.count} đơn)\n` +
-        `• 🔴 **Nợ xấu (> 90 ngày):** **${fmt.format(b.overdue90.total)} ₫** (${b.overdue90.count} đơn)`;
+        (b.current.total > 0 ? `• 🟢 **Trong hạn (0 - 30 ngày):** **${fmt.format(b.current.total)} ₫** (${b.current.count} đơn)\n` : '') +
+        (b.overdue30.total > 0 ? `• 🟡 **Quá hạn 31 - 60 ngày:** **${fmt.format(b.overdue30.total)} ₫** (${b.overdue30.count} đơn)\n` : '') +
+        (b.overdue60.total > 0 ? `• 🟠 **Quá hạn 61 - 90 ngày:** **${fmt.format(b.overdue60.total)} ₫** (${b.overdue60.count} đơn)\n` : '') +
+        (b.overdue90.total > 0 ? `• 🔴 **Nợ xấu (> 90 ngày):** **${fmt.format(b.overdue90.total)} ₫** (${b.overdue90.count} đơn)` : '');
 
       if (report.topDebtors && report.topDebtors.length > 0) {
         text += `\n\n👥 **Top khách hàng nợ nhiều nhất:**`;

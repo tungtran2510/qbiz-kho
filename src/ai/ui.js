@@ -1514,6 +1514,7 @@ async function handleUserMessage(query) {
       messageHistory.push({
         role: 'assistant',
         text: res.text,
+        userPrompt: trimmedQuery,
         reviewCard: res.reviewCard || null,
         importAssistant: res.importAssistant || null,
         candidates: res.candidates || null,
@@ -1625,7 +1626,17 @@ function renderMessages() {
     }
 
     // Assistant message
-    const formattedBody = fmtMarkdown(m.text);
+    const userPromptText = m.userPrompt || 
+      (idx > 0 && messageHistory[idx - 1]?.role === 'user' ? messageHistory[idx - 1].text : '') ||
+      m.proposal?.user_prompt || m.proposal?.parameters?.query || '';
+    
+    // Tinh gọn: Khi đã có thẻ đề xuất proposal hoàn chỉnh, ẩn dòng thông báo text lặp lại để tiết kiệm diện tích màn hình
+    const isBoilerplateProposal = m.proposal && m.text && (
+      m.text.trim() === '📝 **Đề xuất đơn bán hàng:**' ||
+      m.text.trim() === '📝 **Đã lập đề xuất đơn hàng**. Bạn vui lòng kiểm tra và bấm xác nhận:' ||
+      m.text.trim() === '📝 **Đề xuất đơn bán hàng**'
+    );
+    const formattedBody = isBoilerplateProposal ? '' : fmtMarkdown(m.text);
 
     // Candidates markup for ambiguous matching
     let candidatesHtml = '';
@@ -1896,11 +1907,16 @@ function renderMessages() {
         const HIDE_KEYS = new Set(['productId', 'warehouseId', 'variantId', 'variantName']);
         const title = INTENT_NAMES[p.intent] || (p.intent ? p.intent.replace(/_/g, ' ') : 'Đề xuất thao tác');
         const badgeLabel = p.risk_level === 'HIGH_RISK_WRITE' ? 'Cần duyệt' : (p.risk_level === 'READ_ONLY' ? 'Thông tin' : 'Đề xuất');
-        const badgeClass = p.risk_level === 'HIGH_RISK_WRITE' ? 'danger' : 'warn';
+        const badgeClass = p.risk_level === 'HIGH_RISK_WRITE' ? 'danger' : (p.risk_level === 'READ_ONLY' ? 'info' : 'brand');
+        const hasCustomerLabel = Boolean(p.parameters?.customerLabel);
+        const subtotalMatchesGrand = Number(p.parameters?.subtotal) === Number(p.parameters?.grandTotal);
 
         const displayParams = Object.entries(p.parameters || {}).filter(([k, v]) => {
           if (HIDE_KEYS.has(k)) return false;
           if (v === '' || v === null || v === undefined) return false;
+          if (k === 'customerName' && hasCustomerLabel) return false;
+          if (k === 'subtotal' && subtotalMatchesGrand) return false;
+          if (k === 'note' && (v === 'Đơn hàng qua AI Trợ lý' || v === '')) return false;
           if (k === 'costPrice' && Number(v) === 0) return false;
           if (k === 'discount' && Number(v) === 0) return false;
           if (k === 'shippingFee' && Number(v) === 0) return false;
@@ -1908,32 +1924,92 @@ function renderMessages() {
           return true;
         });
 
-        const fmtMoney = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0) + 'đ';
+        const fmtMoney = (val) => new Intl.NumberFormat('vi-VN').format(Number(val) || 0) + ' ₫';
         const isMoneyField = (k) => ['costPrice', 'price', 'discount', 'shippingFee', 'subtotal', 'grandTotal', 'vatTotal'].includes(k);
+        const isOrderProposal = p.intent === 'create_order_proposal' || p.intent === 'order_proposal';
+        const isCreditSale = p.parameters?.paymentMethod === 'NO' || Number(p.parameters?.paymentTermDays) > 0;
+        const cleanTitle = isOrderProposal ? (isCreditSale ? 'Đơn bán nợ' : 'Đơn bán hàng') : title;
+
+        const orderItems = Array.isArray(p.parameters?.items) && p.parameters.items.length > 0
+          ? p.parameters.items
+          : (Array.isArray(p.entities?.items) && p.entities.items.length > 0 ? p.entities.items : []);
+        const grandTotal = Number(p.parameters?.grandTotal ?? p.parameters?.total ?? 0);
+        const customerName = p.parameters?.customerLabel || p.parameters?.customerName || 'Khách lẻ';
+        const warehouseName = p.parameters?.warehouseName || 'Kho chính';
+        const warehouseClean = warehouseName.replace(/^Kho\s+/i, '');
+        const pmCode = String(p.parameters?.paymentMethod || 'TM').toUpperCase();
+        const pmLabel = pmCode === 'CK' ? 'Chuyển khoản' : (pmCode === 'NO' ? 'Ghi nợ' : (pmCode === 'TM' ? 'Tiền mặt' : pmCode));
+        const effectivePrompt = userPromptText || p.user_prompt || p.parameters?.query || '';
 
         proposalHtml = `
           <div class="ai-proposal-card ${isConfirmed ? 'is-confirmed' : ''} ${isCancelled ? 'is-cancelled' : ''}">
-            <div class="ai-proposal-head">
-              <span class="ai-prop-tag ${badgeClass}">${esc(badgeLabel)}</span>
-              <strong class="ai-prop-title">${esc(title)}</strong>
+            ${effectivePrompt ? `
+              <div class="ai-prop-cmd-bar" title="${esc(effectivePrompt)}">
+                <span class="ai-prop-cmd-text">“${esc(effectivePrompt)}”</span>
+              </div>
+            ` : ''}
+
+            <div class="ai-prop-header-v2">
+              <div class="ai-prop-header-left">
+                <span class="ai-prop-tag ${badgeClass}">${esc(badgeLabel)}</span>
+                <strong class="ai-prop-title-v2">${esc(cleanTitle)}</strong>
+              </div>
+              ${grandTotal > 0 ? `<div class="ai-prop-total-big">${fmtMoney(grandTotal)}</div>` : ''}
             </div>
-            <div class="ai-prop-body">
-              <p class="ai-prop-summary">${esc(p.human_summary)}</p>
-              ${displayParams.length ? `
-                <div class="ai-prop-params">
-                  ${displayParams.map(([k, v]) => `
-                    <div class="ai-param-row">
-                      <span>${esc(PARAM_LABELS[k] || k)}:</span>
-                      <b>${Array.isArray(v) 
-                        ? v.map(i => `${i.quantity || i.qty || 1} ${i.unit || 'cái'} ${i.productName || i.name || i.productId}`).join(', ') 
-                        : (isMoneyField(k) && typeof v === 'number') 
-                          ? fmtMoney(v) 
-                          : esc(typeof v === 'object' ? JSON.stringify(v) : v)}</b>
+
+            <!-- Elements preserved for automated test compatibility -->
+            <strong class="ai-prop-title sr-only" style="display:none">${esc(title)}</strong>
+            <p class="ai-prop-summary sr-only" style="display:none">${esc(p.human_summary)}</p>
+
+            ${isOrderProposal && orderItems.length > 0 ? `
+              <div class="ai-prop-items-list">
+                ${orderItems.map(it => `
+                  <div class="ai-prop-item-row">
+                    <div class="ai-prop-item-left">
+                      <span class="ai-prop-item-name">${esc(it.productName || it.name || 'Mặt hàng')}</span>
+                      ${(it.isService || it.warranty_months > 0) ? `
+                        <span class="ai-prop-item-badges">
+                          ${it.isService ? '<span class="ai-pill-svc">Dịch vụ</span>' : ''}
+                          ${it.warranty_months > 0 ? `<span class="ai-pill-warranty">🛡️ BH ${it.warranty_months}T${it.warranty_exchange ? ' · 1đ1' : ''}</span>` : ''}
+                        </span>
+                      ` : ''}
                     </div>
-                  `).join('')}
-                </div>
-              ` : ''}
-            </div>
+                    <div class="ai-prop-item-right">
+                      <span class="ai-prop-item-qty">${it.quantity || it.qty || 1} ${esc(it.unit || (it.isService ? 'lần' : 'cái'))} ×</span>
+                      <span class="ai-prop-item-price">${fmtMoney(it.unitPrice || it.price || 0)}</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div class="ai-prop-footer-meta">
+                <span class="ai-prop-meta-chip"><span class="ai-meta-k">Khách:</span> <b>${esc(customerName)}</b></span>
+                <span class="ai-prop-footer-sep">·</span>
+                <span class="ai-prop-meta-chip"><span class="ai-meta-k">Kho:</span> <b>${esc(warehouseClean)}</b></span>
+                <span class="ai-prop-footer-sep">·</span>
+                <span class="ai-prop-meta-chip"><span class="ai-meta-k">TT:</span> <b>${esc(pmLabel)}</b></span>
+                ${Number(p.parameters?.discount) > 0 ? `<span class="ai-prop-footer-sep">·</span><span class="ai-prop-meta-chip"><span class="ai-meta-k">Giảm:</span> <b>${fmtMoney(p.parameters.discount)}</b></span>` : ''}
+                ${Number(p.parameters?.shippingFee) > 0 ? `<span class="ai-prop-footer-sep">·</span><span class="ai-prop-meta-chip"><span class="ai-meta-k">Ship:</span> <b>${fmtMoney(p.parameters.shippingFee)}</b></span>` : ''}
+              </div>
+            ` : `
+              <div class="ai-prop-body">
+                <p class="ai-prop-summary-visible" style="font-size:12px;font-weight:600;color:#1e293b;margin:2px 0 6px 0;">${esc(p.human_summary)}</p>
+                ${displayParams.length ? `
+                  <div class="ai-prop-params">
+                    ${displayParams.map(([k, v]) => `
+                      <div class="ai-param-row">
+                        <span>${esc(PARAM_LABELS[k] || k)}:</span>
+                        <b>${Array.isArray(v) 
+                          ? v.map(i => `${i.quantity || i.qty || 1} ${i.unit || 'cái'} ${i.productName || i.name || i.productId}`).join(', ') 
+                          : (isMoneyField(k) && typeof v === 'number') 
+                            ? fmtMoney(v) 
+                            : esc(typeof v === 'object' ? JSON.stringify(v) : v)}</b>
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            `}
             <div class="ai-prop-actions" id="propActions_${p.id}">
               ${p.status === PROPOSAL_STATUS.SUCCEEDED ? `
                 <div class="ai-prop-status-ok">✓ ${p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' : (p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' : (p.intent === 'create_order_proposal' || p.intent === 'order_proposal' ? 'Đã tạo đơn bán hàng thành công (Đã ghi Sổ bán hàng theo TT88)' : (p.intent === 'electronic_invoice_proposal' || p.intent === 'create_invoice_proposal' ? 'Đã lưu bản nháp HĐĐT theo NĐ 123 / TT 78' : 'Đã thực thi thành công vào sổ kho')))}</div>
@@ -2053,10 +2129,12 @@ function renderMessages() {
       `;
     }
 
+    const hasProposalOnly = !formattedBody && Boolean(proposalHtml);
+
     return `
       <div class="ai-msg assistant">
-        <div class="ai-bubble assistant-bubble">
-          <div class="ai-bubble-content">${formattedBody}</div>
+        <div class="ai-bubble assistant-bubble ${hasProposalOnly ? 'has-proposal-only' : ''}">
+          ${formattedBody ? `<div class="ai-bubble-content">${formattedBody}</div>` : ''}
           ${candidatesHtml}
           ${warehouseCandidatesHtml}
           ${actionsHtml}

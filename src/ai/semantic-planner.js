@@ -8,7 +8,7 @@
  * - Enforces Post-Plan Business Risk Guard (READ+READ allowed, WRITE requires proposal).
  */
 
-import { canonicalizeVietnamese, parseVietnameseTaxCode, parseVietnameseCustomer, parseVietnameseCurrency } from './vietnamese-nlp.js';
+import { canonicalizeVietnamese, parseVietnameseTaxCode, parseVietnameseCustomer, parseVietnameseCurrency, extractVietnameseOrderItems } from './vietnamese-nlp.js';
 import { getCurrentActor } from './context.js';
 import { hasCapability, PERMISSIONS } from './policy.js';
 import { getProviderConfig, dispatchSemanticPlanning, dispatchCloudEscalation, dispatchDeepSeekPrimary, PROVIDER_MODES } from './providers.js';
@@ -56,6 +56,7 @@ export function buildContextCapsule(prompt, context = {}, state = {}) {
     shop_id: context.shop_id || 'shop_default',
     warehouse_id: context.warehouse_id || 'all',
     bound_product: boundProductSummary,
+    products: state?.data?.products || [],
     actor: {
       id: actor.id || 'usr_owner_1',
       role: actor.role || 'owner',
@@ -467,7 +468,12 @@ export function generateDeterministicSemanticPlan(capsule) {
   }
 
   // Customer Debt & Aging Report
-  const asksAging = p.includes('tuoi no') || p.includes('bao cao tuoi no') || p.includes('no qua han') || (p.includes('ai dang no') && !p.includes('bao nhieu'));
+  const asksAging = (
+    p.includes('tuoi no') || p.includes('bao cao tuoi no') || p.includes('no qua han') ||
+    p.includes('ai dang no') || p.includes('ai con no') || p.includes('ai dang con no') ||
+    p.includes('danh sach no') || p.includes('nhung ai dang no') || p.includes('khach nao dang no') ||
+    p.includes('ai no') || (p.includes('ai') && p.includes('no') && !p.includes('bao nhieu'))
+  );
   if (asksAging) {
     intents.push({
       intent_name: 'customer_aging_report',
@@ -479,7 +485,11 @@ export function generateDeterministicSemanticPlan(capsule) {
     });
   }
 
-  const asksCustomerDebt = (p.includes('cong no') || p.includes('con no bao nhieu') || p.includes('no bao nhieu') || p.includes('tien no') || p.includes('so no') || (p.includes('no') && (p.includes('khach') || p.includes('anh') || p.includes('chi')))) && !asksAging;
+  const asksCustomerDebt = (
+    p.includes('cong no') || p.includes('con no bao nhieu') || p.includes('no bao nhieu') ||
+    p.includes('tien no') || p.includes('no tien') || p.includes('con no') || p.includes('so no') ||
+    (p.includes('no') && (p.includes('khach') || p.includes('anh') || p.includes('chi') || p.includes('cua hang') || p.includes('tien')))
+  ) && !asksAging;
   if (asksCustomerDebt) {
     intents.push({
       intent_name: 'customer_debt_summary',
@@ -686,7 +696,13 @@ export function generateDeterministicSemanticPlan(capsule) {
   }
 
   // Order / Credit Sale Proposal
+  const hasExtractedOrder = extractVietnameseOrderItems(capsule.raw_prompt, capsule.products || []).length > 0;
+  const asksServiceAction = /(?:thay\s+|sửa\s+|vệ\s*sinh\s+|cài\s+|ép\s+kính|dán\s+|bán\s+)/i.test(capsule.raw_prompt) &&
+    /(?:\d+\s*(?:k|tr|trieu|củ|cu|chai|cành|canh|xị|xi|lít|lit|nghìn|ngàn|đ|vnd)|\d{4,9})/i.test(capsule.raw_prompt);
+
   const asksDetOrder = !asksDetInvoice && (
+    hasExtractedOrder ||
+    asksServiceAction ||
     p.includes('ban no') ||
     p.includes('cho khach hang') ||
     p.includes('cho khach') ||
@@ -778,7 +794,7 @@ export function generateDeterministicSemanticPlan(capsule) {
         entities: { query: capsule.raw_prompt },
         confidence: 0.85,
       });
-    } else if (p.includes('in') || p.includes('hoa don')) {
+    } else if ((/\bin\b/.test(p) && (p.includes('hoa don') || p.includes('phieu'))) || p.includes('hoa don') || p.includes('hoa don do')) {
       intents.push({
         intent_name: 'electronic_invoice_proposal',
         mode: 'WRITE',
@@ -1158,9 +1174,7 @@ ${capsule.raw_prompt}`;
           p.includes('nen lay') ||
           p.includes('hang nao len lay') ||
           p.includes('hang nao nen lay') ||
-          p.includes('nhap them') ||
-          p.includes('sap het') ||
-          p.includes('het hang')
+          p.includes('nhap them')
         );
         const asksLowStock = (
           p.includes('con ton it') || p.includes('ton it') || p.includes('hang nao con ton it') ||
@@ -1314,7 +1328,12 @@ ${capsule.raw_prompt}`;
         }
 
         // 6b. Customer Aging Report & Debt
-        const asksAgingInModel = p.includes('tuoi no') || p.includes('bao cao tuoi no') || p.includes('no qua han') || (p.includes('ai dang no') && !p.includes('bao nhieu'));
+        const asksAgingInModel = (
+          p.includes('tuoi no') || p.includes('bao cao tuoi no') || p.includes('no qua han') ||
+          p.includes('ai dang no') || p.includes('ai con no') || p.includes('ai dang con no') ||
+          p.includes('danh sach no') || p.includes('nhung ai dang no') || p.includes('khach nao dang no') ||
+          p.includes('ai no') || (p.includes('ai') && p.includes('no') && !p.includes('bao nhieu'))
+        );
         if (asksAgingInModel && !curatedIntents.some(it => (it.required_capability || it.intent_name) === 'get_customer_aging_report')) {
           curatedIntents.push({
             intent_name: 'customer_aging_report',
@@ -1326,7 +1345,11 @@ ${capsule.raw_prompt}`;
           });
         }
 
-        const asksDebtInModel = (p.includes('cong no') || p.includes('con no bao nhieu') || p.includes('no bao nhieu') || p.includes('tien no') || p.includes('so no') || (p.includes('no') && (p.includes('khach') || p.includes('anh') || p.includes('chi')))) && !asksAgingInModel;
+        const asksDebtInModel = (
+          p.includes('cong no') || p.includes('con no bao nhieu') || p.includes('no bao nhieu') ||
+          p.includes('tien no') || p.includes('no tien') || p.includes('con no') || p.includes('so no') ||
+          (p.includes('no') && (p.includes('khach') || p.includes('anh') || p.includes('chi') || p.includes('cua hang') || p.includes('tien')))
+        ) && !asksAgingInModel;
         if (asksDebtInModel && !curatedIntents.some(it => (it.required_capability || it.intent_name) === 'get_customer_debt_summary')) {
           curatedIntents.push({
             intent_name: 'customer_debt_summary',

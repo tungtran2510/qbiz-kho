@@ -32,6 +32,7 @@ import {
   setPendingProposal,
   addTurnToHistory,
 } from './conversation-state.js';
+import { extractVietnameseOrderItems } from './vietnamese-nlp.js';
 
 /**
  * Legacy Evidence Verification Helper (kept for backward compatibility).
@@ -420,12 +421,23 @@ async function executeCapabilityBinding(capId, capability, resolved, intent, con
     }
 
     case 'order_proposal': {
+      let orderItems = (resolved.items && resolved.items.length > 0) ? resolved.items : (entities.items || []);
+      if (!orderItems || orderItems.length === 0) {
+        const promptToExtract = entities.query || context.rawPrompt || context.raw_prompt || context.user_prompt || '';
+        if (promptToExtract) {
+          orderItems = extractVietnameseOrderItems(promptToExtract, state?.data?.products || []);
+        }
+      }
+      if ((!orderItems || orderItems.length === 0) && resolved.productId) {
+        orderItems = [{ productId: resolved.productId, quantity: entities.quantity || resolved.qty || 1 }];
+      }
+
       const res = await executeSkill('order-proposal', {
         ...entities,
         customerName: resolved.customerName || entities.customerName || 'Khách lẻ',
         customerPhone: resolved.customerPhone || entities.customerPhone || '',
         address: resolved.address || entities.address || '',
-        items: (resolved.items && resolved.items.length > 0) ? resolved.items : (entities.items || (resolved.productId ? [{ productId: resolved.productId, quantity: entities.quantity || resolved.qty || 1 }] : [])),
+        items: orderItems,
         discount: entities.discount ?? resolved.discount ?? 0,
         shippingFee: entities.shippingFee ?? resolved.shippingFee ?? 0,
         paymentMethod: entities.paymentMethod || resolved.paymentMethod || 'TM',
@@ -436,13 +448,24 @@ async function executeCapabilityBinding(capId, capability, resolved, intent, con
     }
 
     case 'electronic_invoice_proposal': {
+      let invItems = (resolved.items && resolved.items.length > 0) ? resolved.items : (entities.items || []);
+      if (!invItems || invItems.length === 0) {
+        const promptToExtract = entities.query || context.rawPrompt || context.raw_prompt || context.user_prompt || '';
+        if (promptToExtract) {
+          invItems = extractVietnameseOrderItems(promptToExtract, state?.data?.products || []);
+        }
+      }
+      if ((!invItems || invItems.length === 0) && resolved.productId) {
+        invItems = [{ productId: resolved.productId, quantity: entities.quantity || resolved.qty || 1 }];
+      }
+
       const res = await executeSkill('invoice-proposal', {
         ...entities,
         taxCode: resolved.taxCode || entities.taxCode || '',
         companyName: resolved.companyName || entities.companyName || '',
         address: resolved.address || entities.address || '',
         email: resolved.email || entities.email || '',
-        items: (resolved.items && resolved.items.length > 0) ? resolved.items : (entities.items || (resolved.productId ? [{ productId: resolved.productId, quantity: entities.quantity || resolved.qty || 1 }] : [])),
+        items: invItems,
         vatRate: entities.vatRate ?? resolved.vatRate ?? 10,
         paymentMethod: entities.paymentMethod || resolved.paymentMethod || 'CK',
       }, context, state);
