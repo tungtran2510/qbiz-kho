@@ -2959,22 +2959,217 @@ function openItemActions(id){
   $('[data-item-delete]',$('#modalRoot'))?.addEventListener('click',()=>{$('#modalRoot').innerHTML='';openDeleteProduct(id)});
 }
 function bindGoodsSwipe(){
-  $$('.goods-row').forEach(row=>{
-    let startX=0, startY=0;
-    row.addEventListener('touchstart',e=>{
-      startX=e.touches[0].clientX;
-      startY=e.touches[0].clientY;
-    },{passive:true});
-    row.addEventListener('touchend',e=>{
-      const dx=e.changedTouches[0].clientX-startX;
-      const dy=e.changedTouches[0].clientY-startY;
-      if(Math.abs(dy) > Math.abs(dx)) return;
-      $$('.goods-row.reveal').forEach(x=>x!==row&&x.classList.remove('reveal'));
-      if(dx<-40)row.classList.add('reveal');
-      if(dx>30)row.classList.remove('reveal');
-    },{passive:true});
+  const rows = $$('.goods-row');
+  if(!rows.length) return;
+
+  const closeAllRevealed = (exceptRow = null) => {
+    $$('.goods-row.reveal').forEach(r => {
+      if(r !== exceptRow){
+        r.classList.remove('reveal');
+        r.classList.remove('is-swiping');
+        const movers = [r.querySelector('.p-item'), r.querySelector('.more-btn')].filter(Boolean);
+        const mb = r.querySelector('.more-btn');
+        if(mb) mb.style.opacity = '1';
+        movers.forEach(el => {
+          el.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+          el.style.transform = 'translate3d(0, 0, 0)';
+        });
+        setTimeout(() => {
+          movers.forEach(el => {
+            el.style.transition = '';
+            el.style.transform = '';
+          });
+          if(mb) mb.style.opacity = '';
+        }, 240);
+      }
+    });
+  };
+
+  rows.forEach(row => {
+    if(row._swipeBound) return;
+    row._swipeBound = true;
+
+    const pItem = row.querySelector('.p-item');
+    const moreBtn = row.querySelector('.more-btn');
+    const movers = [pItem, moreBtn].filter(Boolean);
+
+    let startX = 0;
+    let startY = 0;
+    let currentDx = 0;
+    let startTime = 0;
+    let isSwiping = false;
+    let isScrolling = false;
+    let isAlreadyOpen = false;
+    let rafId = null;
+
+    const setPosition = (x, transition = 'none') => {
+      movers.forEach(el => {
+        el.style.transition = transition;
+        el.style.transform = x === 0 ? '' : `translate3d(${x}px, 0, 0)`;
+      });
+    };
+
+    const onStart = (clientX, clientY, target) => {
+      if(target && target.closest('.swipe-actions')) return false;
+      isAlreadyOpen = row.classList.contains('reveal');
+      closeAllRevealed(isAlreadyOpen ? row : null);
+
+      startX = clientX;
+      startY = clientY;
+      currentDx = 0;
+      startTime = Date.now();
+      isSwiping = false;
+      isScrolling = false;
+      return true;
+    };
+
+    const onMove = (clientX, clientY, e) => {
+      if(isScrolling) return;
+      const dx = clientX - startX;
+      const dy = clientY - startY;
+
+      if(!isSwiping && !isScrolling) {
+        if(Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 7) {
+          isScrolling = true;
+          return;
+        }
+        if(Math.abs(dx) > 7 && Math.abs(dx) > Math.abs(dy)) {
+          isSwiping = true;
+          row.classList.add('is-swiping');
+        }
+      }
+
+      if(!isSwiping) return;
+
+      if(e && e.cancelable) e.preventDefault();
+
+      let targetX = (isAlreadyOpen ? -128 : 0) + dx;
+      if(targetX > 0) {
+        targetX = targetX * 0.18;
+      } else if(targetX < -128) {
+        targetX = -128 + (targetX - (-128)) * 0.22;
+      }
+
+      currentDx = targetX;
+      if(rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setPosition(currentDx, 'none');
+        if(moreBtn) {
+          moreBtn.style.opacity = String(Math.max(0, Math.min(1, 1 + currentDx / 55)));
+        }
+      });
+    };
+
+    const onEnd = (clientX, clientY, target) => {
+      if(rafId) cancelAnimationFrame(rafId);
+      row.classList.remove('is-swiping');
+      if(!isSwiping) {
+        if(isAlreadyOpen && target && !target.closest('.swipe-actions')) {
+          const dx = Math.abs(clientX - startX);
+          const dy = Math.abs(clientY - startY);
+          if(dx < 8 && dy < 8) {
+            row.classList.remove('reveal');
+            setPosition(0, 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)');
+            if(moreBtn) moreBtn.style.opacity = '1';
+            setTimeout(() => {
+              setPosition(0, '');
+              if(moreBtn) moreBtn.style.opacity = '';
+            }, 240);
+          }
+        }
+        return;
+      }
+
+      isSwiping = false;
+      const totalDx = clientX - startX;
+      const dt = Math.max(1, Date.now() - startTime);
+      const vx = totalDx / dt;
+
+      let shouldOpen = false;
+      if(!isAlreadyOpen) {
+        shouldOpen = currentDx < -45 || (totalDx < -20 && vx < -0.25);
+      } else {
+        shouldOpen = !(currentDx > -85 || (totalDx > 20 && vx > 0.25));
+      }
+
+      const snap = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)';
+      if(shouldOpen) {
+        row.classList.add('reveal');
+        setPosition(-128, snap);
+        if(moreBtn) moreBtn.style.opacity = '0';
+      } else {
+        row.classList.remove('reveal');
+        setPosition(0, snap);
+        if(moreBtn) moreBtn.style.opacity = '1';
+      }
+
+      setTimeout(() => {
+        movers.forEach(el => {
+          el.style.transition = '';
+          el.style.transform = '';
+        });
+        if(moreBtn) moreBtn.style.opacity = '';
+      }, 260);
+    };
+
+    row.addEventListener('touchstart', e => {
+      if(e.touches.length === 1) {
+        onStart(e.touches[0].clientX, e.touches[0].clientY, e.target);
+      }
+    }, {passive: true});
+
+    row.addEventListener('touchmove', e => {
+      if(e.touches.length === 1) {
+        onMove(e.touches[0].clientX, e.touches[0].clientY, e);
+      }
+    }, {passive: false});
+
+    row.addEventListener('touchend', e => {
+      const t = (e.changedTouches && e.changedTouches[0]) || e;
+      onEnd(t.clientX, t.clientY, e.target);
+    }, {passive: true});
+
+    row.addEventListener('touchcancel', e => {
+      const t = (e.changedTouches && e.changedTouches[0]) || e;
+      onEnd(t.clientX, t.clientY, e.target);
+    }, {passive: true});
+
+    row.addEventListener('mousedown', e => {
+      if(e.button !== 0) return;
+      if(onStart(e.clientX, e.clientY, e.target)) {
+        window._activeRowDrag = { onMove, onEnd };
+      }
+    });
   });
+
+  if(!window._goodsSwipeDocBound) {
+    window._goodsSwipeDocBound = true;
+    window.addEventListener('mousemove', e => {
+      if(window._activeRowDrag) {
+        window._activeRowDrag.onMove(e.clientX, e.clientY, e);
+      }
+    });
+    window.addEventListener('mouseup', e => {
+      if(window._activeRowDrag) {
+        window._activeRowDrag.onEnd(e.clientX, e.clientY, e.target);
+        window._activeRowDrag = null;
+      }
+    });
+    document.addEventListener('touchstart', e => {
+      const el = e.target instanceof Element ? e.target : (e.target && e.target.parentElement);
+      if(!el || !el.closest('.goods-row.reveal')) {
+        closeAllRevealed();
+      }
+    }, {passive: true});
+    document.addEventListener('click', e => {
+      const el = e.target instanceof Element ? e.target : (e.target && e.target.parentElement);
+      if(!el || !el.closest('.goods-row.reveal')) {
+        closeAllRevealed();
+      }
+    });
+  }
 }
+
 
 function renderTransfers(){
   setTitle('Kho','QBiz');
