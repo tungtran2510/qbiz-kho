@@ -2408,6 +2408,28 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     return { ...res, intent: 'AUDIT_QR_PAYMENT', skillId: 'audit-qr-payment', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
   }
 
+  // 1.D) Export Data & Files Fast-Path ("xuất file hàng hóa", "xuất file excel", "tải file tồn kho", "xuất file báo cáo")
+  const isExportFileFastPath = (
+    pNorm.includes('xuat file') || pNorm.includes('xuat excel') || pNorm.includes('xuat csv') ||
+    pNorm.includes('tai file') || pNorm.includes('tai excel') || pNorm.includes('tai danh sach') ||
+    pNorm.includes('xuat danh sach') || pNorm.includes('export file') || pNorm.includes('export excel') ||
+    (pNorm.includes('xuat') && (pNorm.includes('file') || pNorm.includes('excel') || pNorm.includes('csv')))
+  );
+
+  if (isExportFileFastPath) {
+    if (pNorm.includes('doanh thu') || pNorm.includes('ban hang') || pNorm.includes('tt88') || pNorm.includes('s2b')) {
+      const res = await executeSkill('export-report', { reportType: pNorm.includes('tt88') ? 'revenue_tt88' : 'sales', period: 'month' }, context, state);
+      return { ...res, intent: 'EXPORT_REPORT', skillId: 'export-report', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+    }
+    if (pNorm.includes('nhap xuat ton')) {
+      const res = await executeSkill('export-report', { reportType: 'inventory', period: 'month' }, context, state);
+      return { ...res, intent: 'EXPORT_REPORT', skillId: 'export-report', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+    }
+    // Default: Export Products & Price List & Real Stock
+    const res = await executeSkill('export-products', {}, context, state);
+    return { ...res, intent: 'EXPORT_PRODUCTS', skillId: 'export-products', tier: 0, provider: PROVIDER_MODES.DETERMINISTIC };
+  }
+
   // 2) Warehouse List Fast-Path
   if (pNorm.includes('danh sach cac kho') || pNorm.includes('danh sach kho') || pNorm.includes('cac kho hang hien co') || pNorm.includes('co nhung kho nao') || pNorm.includes('cac kho hien co')) {
     const warehouses = state?.data?.warehouses || [];

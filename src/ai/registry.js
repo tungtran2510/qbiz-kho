@@ -1061,13 +1061,19 @@ export const ACTION_REGISTRY = {
     required_capabilities: [],
     execution_mode: EXECUTION_MODE.OPEN, risk_level: 'NAVIGATE',
     confirmation_policy: 'NEVER', implementation_state: IMPLEMENTATION_STATE.AVAILABLE,
-    aliases: ['che do kinh doanh', 'doi che do', 'mo hinh kinh doanh', 'doi mo hinh', 'chon mo hinh', 'chon che do kinh doanh', 'mo che do kinh doanh'],
-    example_phrases: ['đổi chế độ kinh doanh', 'chuyển sang bán lẻ', 'mở mô hình kinh doanh', 'đổi mô hình kinh doanh'],
+    aliases: [
+      'che do kinh doanh', 'doi che do', 'mo hinh kinh doanh', 'doi mo hinh', 'chon mo hinh', 'chon che do kinh doanh', 'mo che do kinh doanh',
+      'chuyen doi nganh hang', 'chuyen nganh hang', 'doi nganh hang', 'nganh hang',
+      'chuyen doi phuong thuc ban hang', 'phuong thuc ban hang', 'doi phuong thuc ban hang',
+      'chuyen sang ban le', 'doi sang ban le', 'nganh ban le', 'ban le'
+    ],
+    example_phrases: ['đổi chế độ kinh doanh', 'chuyển sang bán lẻ', 'mở mô hình kinh doanh', 'đổi mô hình kinh doanh', 'chuyển đổi ngành hàng', 'chuyển đổi phương thức bán hàng'],
     contexts: ['settings', 'dashboard'],
     async execute(params, state) {
       if (window.__qbiz_app__?.openBusinessModeModal) {
-        window.__qbiz_app__.openBusinessModeModal();
-        return { success: true, message: 'Đã mở chọn chế độ kinh doanh.' };
+        window.__qbiz_app__.openBusinessModeModal(params?.mode);
+        const modeLabel = params?.mode === 'retail' ? 'Bán lẻ' : params?.mode;
+        return { success: true, message: modeLabel ? `Đã mở Chế độ kinh doanh (Đề xuất: ${modeLabel}).` : 'Đã mở chọn chế độ kinh doanh.' };
       }
       if (window.__qbiz_app__?.navigate) {
         window.__qbiz_app__.navigate('settings');
@@ -1077,6 +1083,7 @@ export const ACTION_REGISTRY = {
       return { success: false, error: 'Chưa khởi tạo điều hướng app.' };
     },
   },
+
 
   open_ui_profile: {
     id: 'open_ui_profile', name: 'Mở kiểu giao diện', feature_id: null,

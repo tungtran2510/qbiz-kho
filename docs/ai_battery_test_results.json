@@ -1,0 +1,288 @@
+{
+  "target_url": "http://localhost:4180/?page=products",
+  "badge_text": "DeepSeek V3 (Online)",
+  "total_queries": 35,
+  "timestamp": "2026-10-07 13:19:50",
+  "results": [
+    {
+      "id": 1,
+      "category": "Xuất file & Báo cáo",
+      "query": "xuất file hàng hóa",
+      "response": "📊 Đã xuất dữ liệu ra file Excel thành công!\n📁 Tên file: qbiz-so-chi-tiet-doanh-thu-tt88-2026-10-07.csv\n🕒 Khoảng thời gian: hôm nay\n📑 Chi tiết: Tổng cộng: 0 phiếu bán, tổng doanh thu: 0 ₫ (theo chuẩn S2b-HKD TT 88/2021)\n⚡ Định dạng: file CSV (tương thích mở bằng Excel chuẩn UTF-8 BOM)\n⬇️ Trạng thái: Tệp đã tự động tải xuống máy tính của bạn.\n💡 Gợi ý: Bạn có thể vào mục Xuất dữ liệu trong menu để tải các mẫu sổ kế toán S2b-HKD (TT88) hoặc Bảng kê xuất kho (TT200).",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 2,
+      "category": "Xuất file & Báo cáo",
+      "query": "xuất file excel danh sách sản phẩm",
+      "response": "🔍 Vui lòng nhập tên, mã SKU hoặc mã vạch sản phẩm để tìm kiếm.",
+      "assessment": "FAIL_OFF_TOPIC",
+      "reason": "Không thực hiện hoặc hướng dẫn xuất file"
+    },
+    {
+      "id": 3,
+      "category": "Xuất file & Báo cáo",
+      "query": "tải file tồn kho các mặt hàng",
+      "response": "Kho hiện có 19 mặt hàng (tổng tồn 0 đơn vị):\nGhế sáng chế 135: Tồn 0 chiếc\nGhế sáng chế 150: Tồn 0 chiếc\nGhế sáng chế 90D: Tồn 0 chiếc\nGhế sáng chế 90T: Tồn 0 chiếc\nGhế sáng chế 95: Tồn 0 chiếc\nBạn muốn kiểm tra chi tiết mặt hàng nào?",
+      "assessment": "FAIL_OFF_TOPIC",
+      "reason": "Không thực hiện hoặc hướng dẫn xuất file"
+    },
+    {
+      "id": 4,
+      "category": "Xuất file & Báo cáo",
+      "query": "xuất file báo cáo xuất nhập tồn tháng này",
+      "response": "Doanh số tháng này:\nDoanh thu thực thu: 0 ₫\nSố phiếu hoàn tất: 0 phiếu",
+      "assessment": "FAIL_OFF_TOPIC",
+      "reason": "Không thực hiện hoặc hướng dẫn xuất file"
+    },
+    {
+      "id": 5,
+      "category": "Xuất file & Báo cáo",
+      "query": "xuất danh sách khách hàng ra excel",
+      "response": "⚠️ Cảnh báo an toàn: Phát hiện yêu cầu có dấu hiệu can thiệp chính sách an toàn hoặc chỉ thị hệ thống.\nHệ thống hoạt động theo chính sách bảo mật nội bộ và không cho phép can thiệp quyền hạn.",
+      "assessment": "FAIL_OFF_TOPIC",
+      "reason": "Không thực hiện hoặc hướng dẫn xuất file"
+    },
+    {
+      "id": 6,
+      "category": "Nhập kho",
+      "query": "nhập hàng",
+      "response": "Đã tạo đề xuất nhập kho: Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\".\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 7,
+      "category": "Nhập kho",
+      "query": "tạo phiếu nhập kho",
+      "response": "Đã tạo đề xuất nhập kho: Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\".\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 8,
+      "category": "Nhập kho",
+      "query": "nhập 50 cái Bàn chải đánh răng Colgate SlimSoft vào kho trung tâm",
+      "response": "Đã tạo đề xuất nhập kho: Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\".\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 9,
+      "category": "Nhập kho",
+      "query": "lập phiếu nhập kho cho Ghế sáng chế 135 số lượng 10 giá 40000000",
+      "response": "Đã tạo đề xuất nhập kho: Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\".\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 10,
+      "category": "Nhập kho",
+      "query": "tháng này đã nhập vào bao nhiêu hàng?",
+      "response": "📊 Báo cáo nhập hàng tháng này (tháng 10/2026):\nTổng số lượng đã nhập: 0 sản phẩm\nTổng số phiếu nhập: 0 phiếu\n(Chưa có phiếu nhập nào phát sinh trong kỳ)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 11,
+      "category": "Xuất kho",
+      "query": "xuất kho",
+      "response": "Đã tạo đề xuất xuất kho: Xuất kho / Giảm 1 chiếc \"Ghế sáng chế 135\" khỏi kho \"Kho Trung tâm\" (Lý do: Đề xuất xuất kho từ trợ lý AI).\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 12,
+      "category": "Xuất kho",
+      "query": "tạo phiếu xuất kho",
+      "response": "Đã tạo đề xuất xuất kho: Xuất kho / Giảm 1 chiếc \"Ghế sáng chế 135\" khỏi kho \"Kho Trung tâm\" (Lý do: Đề xuất xuất kho từ trợ lý AI).\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 13,
+      "category": "Xuất kho",
+      "query": "xuất kho hủy 5 cái bàn chải bị hỏng do ngập nước",
+      "response": "Đã tạo đề xuất xuất kho: Xuất kho / Giảm 5 chiếc \"Ghế sáng chế 135\" khỏi kho \"Kho Trung tâm\" (Lý do: hỏng do ngập nước).\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 14,
+      "category": "Xuất kho",
+      "query": "xuất nội bộ 2 cái ghế sáng chế để phòng họp",
+      "response": "Đã tạo đề xuất xuất kho: Xuất kho / Giảm 2 chiếc \"Ghế sáng chế 135\" khỏi kho \"Kho Trung tâm\" (Lý do: dùng nội bộ phòng họp).\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 15,
+      "category": "Xuất kho",
+      "query": "xuất hàng mẫu cho khách hàng xem thử",
+      "response": "Đã tạo đề xuất đơn hàng: Đơn bán hàng cho \"xem thử\": — Tổng: 0đ.\n(Chưa tạo giao dịch chính thức - chờ xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 16,
+      "category": "Xuất kho",
+      "query": "xuất kho thanh lý hàng hết hạn sử dụng",
+      "response": "Đã tạo đề xuất xuất kho: Xuất kho / Giảm 1 chiếc \"Ghế sáng chế 135\" khỏi kho \"Kho Trung tâm\" (Lý do: thanh lý hàng hết hạn sử dụng).\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 17,
+      "category": "Hóa đơn & In ấn",
+      "query": "xuất hóa đơn",
+      "response": "🧾 Hướng dẫn Xuất & Quản lý Hóa đơn điện tử (Nghị định 123/2020/NĐ-CP):\nQuy trình phát hành Hóa đơn điện tử trên QBiz:\n1.\nMở bất kỳ Phiếu bán hàng hoặc Đơn hàng đã hoàn tất thanh toán.\n2.\nBấm nút [🧾 Hóa đơn điện tử] (nút màu xanh nổi bật ngay trên đỉnh chi tiết giao dịch).\n3.\nĐiền thông tin doanh nghiệp / khách hàng:\nMã số thuế (MST) của người mua.\nTên đơn vị / Tên công ty và Địa chỉ đăng ký kinh doanh.\nEmail nhận hóa đơn điện tử (định dạng XML + PDF có chữ ký số).\nThuế suất VAT: 0%, 5%, 8% hoặc 10% theo quy định mặt hàng.\n4.\nBấm \"Phát hành hóa đơn\" (tuân thủ Nghị định 123/2020/NĐ-CP và Thông tư 78/2021/TT-BTC).\nPhân biệt Phiếu bán hàng và Hóa đơn điện tử:\nPhiếu bán hàng: Chứng từ bán lẻ nội bộ cho khách lẻ (in nhiệt K80/K57).\nHóa đơn điện tử: Chứng từ có giá trị pháp lý với cơ quan thuế khi khách hàng là công ty cần lấy hóa đơn đỏ VAT khấu trừ chi phí.\nHộ kinh doanh có được xuất Hóa đơn điện tử không?\nHộ kinh doanh nộp thuế theo phương pháp trực tiếp (% doanh thu) được sử dụng Hóa đơn bán hàng điện tử (không có thuế suất VAT khấu trừ).\nDoanh nghiệp phương pháp khấu trừ phát hành Hóa đơn GTGT điện tử.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 18,
+      "category": "Hóa đơn & In ấn",
+      "query": "xuất hóa đơn điện tử",
+      "response": "🧾 Hướng dẫn Xuất & Quản lý Hóa đơn điện tử (Nghị định 123/2020/NĐ-CP):\nQuy trình phát hành Hóa đơn điện tử trên QBiz:\n1.\nMở bất kỳ Phiếu bán hàng hoặc Đơn hàng đã hoàn tất thanh toán.\n2.\nBấm nút [🧾 Hóa đơn điện tử] (nút màu xanh nổi bật ngay trên đỉnh chi tiết giao dịch).\n3.\nĐiền thông tin doanh nghiệp / khách hàng:\nMã số thuế (MST) của người mua.\nTên đơn vị / Tên công ty và Địa chỉ đăng ký kinh doanh.\nEmail nhận hóa đơn điện tử (định dạng XML + PDF có chữ ký số).\nThuế suất VAT: 0%, 5%, 8% hoặc 10% theo quy định mặt hàng.\n4.\nBấm \"Phát hành hóa đơn\" (tuân thủ Nghị định 123/2020/NĐ-CP và Thông tư 78/2021/TT-BTC).\nPhân biệt Phiếu bán hàng và Hóa đơn điện tử:\nPhiếu bán hàng: Chứng từ bán lẻ nội bộ cho khách lẻ (in nhiệt K80/K57).\nHóa đơn điện tử: Chứng từ có giá trị pháp lý với cơ quan thuế khi khách hàng là công ty cần lấy hóa đơn đỏ VAT khấu trừ chi phí.\nHộ kinh doanh có được xuất Hóa đơn điện tử không?\nHộ kinh doanh nộp thuế theo phương pháp trực tiếp (% doanh thu) được sử dụng Hóa đơn bán hàng điện tử (không có thuế suất VAT khấu trừ).\nDoanh nghiệp phương pháp khấu trừ phát hành Hóa đơn GTGT điện tử.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 19,
+      "category": "Hóa đơn & In ấn",
+      "query": "xuất hóa đơn VAT cho Công ty TNHH ABC mã số thuế 0101234567",
+      "response": "🧾 Hướng dẫn Xuất & Quản lý Hóa đơn điện tử (Nghị định 123/2020/NĐ-CP):\nQuy trình phát hành Hóa đơn điện tử trên QBiz:\n1.\nMở bất kỳ Phiếu bán hàng hoặc Đơn hàng đã hoàn tất thanh toán.\n2.\nBấm nút [🧾 Hóa đơn điện tử] (nút màu xanh nổi bật ngay trên đỉnh chi tiết giao dịch).\n3.\nĐiền thông tin doanh nghiệp / khách hàng:\nMã số thuế (MST) của người mua.\nTên đơn vị / Tên công ty và Địa chỉ đăng ký kinh doanh.\nEmail nhận hóa đơn điện tử (định dạng XML + PDF có chữ ký số).\nThuế suất VAT: 0%, 5%, 8% hoặc 10% theo quy định mặt hàng.\n4.\nBấm \"Phát hành hóa đơn\" (tuân thủ Nghị định 123/2020/NĐ-CP và Thông tư 78/2021/TT-BTC).\nPhân biệt Phiếu bán hàng và Hóa đơn điện tử:\nPhiếu bán hàng: Chứng từ bán lẻ nội bộ cho khách lẻ (in nhiệt K80/K57).\nHóa đơn điện tử: Chứng từ có giá trị pháp lý với cơ quan thuế khi khách hàng là công ty cần lấy hóa đơn đỏ VAT khấu trừ chi phí.\nHộ kinh doanh có được xuất Hóa đơn điện tử không?\nHộ kinh doanh nộp thuế theo phương pháp trực tiếp (% doanh thu) được sử dụng Hóa đơn bán hàng điện tử (không có thuế suất VAT khấu trừ).\nDoanh nghiệp phương pháp khấu trừ phát hành Hóa đơn GTGT điện tử.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 20,
+      "category": "Hóa đơn & In ấn",
+      "query": "in hóa đơn",
+      "response": "🧾 Hướng dẫn Xuất & Quản lý Hóa đơn điện tử (Nghị định 123/2020/NĐ-CP):\nQuy trình phát hành Hóa đơn điện tử trên QBiz:\n1.\nMở bất kỳ Phiếu bán hàng hoặc Đơn hàng đã hoàn tất thanh toán.\n2.\nBấm nút [🧾 Hóa đơn điện tử] (nút màu xanh nổi bật ngay trên đỉnh chi tiết giao dịch).\n3.\nĐiền thông tin doanh nghiệp / khách hàng:\nMã số thuế (MST) của người mua.\nTên đơn vị / Tên công ty và Địa chỉ đăng ký kinh doanh.\nEmail nhận hóa đơn điện tử (định dạng XML + PDF có chữ ký số).\nThuế suất VAT: 0%, 5%, 8% hoặc 10% theo quy định mặt hàng.\n4.\nBấm \"Phát hành hóa đơn\" (tuân thủ Nghị định 123/2020/NĐ-CP và Thông tư 78/2021/TT-BTC).\nPhân biệt Phiếu bán hàng và Hóa đơn điện tử:\nPhiếu bán hàng: Chứng từ bán lẻ nội bộ cho khách lẻ (in nhiệt K80/K57).\nHóa đơn điện tử: Chứng từ có giá trị pháp lý với cơ quan thuế khi khách hàng là công ty cần lấy hóa đơn đỏ VAT khấu trừ chi phí.\nHộ kinh doanh có được xuất Hóa đơn điện tử không?\nHộ kinh doanh nộp thuế theo phương pháp trực tiếp (% doanh thu) được sử dụng Hóa đơn bán hàng điện tử (không có thuế suất VAT khấu trừ).\nDoanh nghiệp phương pháp khấu trừ phát hành Hóa đơn GTGT điện tử.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 21,
+      "category": "Hóa đơn & In ấn",
+      "query": "in lại hóa đơn đơn hàng gần nhất",
+      "response": "🧾 Hướng dẫn Xuất & Quản lý Hóa đơn điện tử (Nghị định 123/2020/NĐ-CP):\nQuy trình phát hành Hóa đơn điện tử trên QBiz:\n1.\nMở bất kỳ Phiếu bán hàng hoặc Đơn hàng đã hoàn tất thanh toán.\n2.\nBấm nút [🧾 Hóa đơn điện tử] (nút màu xanh nổi bật ngay trên đỉnh chi tiết giao dịch).\n3.\nĐiền thông tin doanh nghiệp / khách hàng:\nMã số thuế (MST) của người mua.\nTên đơn vị / Tên công ty và Địa chỉ đăng ký kinh doanh.\nEmail nhận hóa đơn điện tử (định dạng XML + PDF có chữ ký số).\nThuế suất VAT: 0%, 5%, 8% hoặc 10% theo quy định mặt hàng.\n4.\nBấm \"Phát hành hóa đơn\" (tuân thủ Nghị định 123/2020/NĐ-CP và Thông tư 78/2021/TT-BTC).\nPhân biệt Phiếu bán hàng và Hóa đơn điện tử:\nPhiếu bán hàng: Chứng từ bán lẻ nội bộ cho khách lẻ (in nhiệt K80/K57).\nHóa đơn điện tử: Chứng từ có giá trị pháp lý với cơ quan thuế khi khách hàng là công ty cần lấy hóa đơn đỏ VAT khấu trừ chi phí.\nHộ kinh doanh có được xuất Hóa đơn điện tử không?\nHộ kinh doanh nộp thuế theo phương pháp trực tiếp (% doanh thu) được sử dụng Hóa đơn bán hàng điện tử (không có thuế suất VAT khấu trừ).\nDoanh nghiệp phương pháp khấu trừ phát hành Hóa đơn GTGT điện tử.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 22,
+      "category": "Hóa đơn & In ấn",
+      "query": "cấu hình máy in hóa đơn K80",
+      "response": "🖨️ Cài đặt & Kết nối Máy in (Khổ K80 80mm):\n✅ Đã mở bảng Cài đặt Máy in & Thiết bị trên màn hình.\nKết nối máy in qua Bluetooth / LAN / USB:\n1.\nBật nguồn máy in và kích hoạt chế độ ghép đôi Bluetooth (hoặc cắm cáp LAN/USB).\n2.\nChọn thiết bị trong danh sách quét và bấm \"Kết nối máy in tem mã vạch\".\n3.\nĐịnh dạng in: Khổ giấy K80 (80mm).\n4.\nBấm \"In thử (Test)\" để kiểm tra cuộn in hoặc nhãn tem mã vạch.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 23,
+      "category": "Hàng hóa & Tồn kho",
+      "query": "thêm hàng hóa mới",
+      "response": "Đã tạo đề xuất nhập kho: Nhập thêm 20 chiếc \"Ghế sáng chế 135\" vào kho \"Kho Trung tâm\".\n(Chưa có thay đổi tồn kho thực tế - chờ duyệt xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 24,
+      "category": "Hàng hóa & Tồn kho",
+      "query": "sửa giá bán Bàn chải Colgate thành 42000",
+      "response": "⚠️ Không thể xác thực dữ liệu: Hệ thống không tìm thấy bằng chứng hợp lệ để trả lời yêu cầu của bạn một cách an toàn.",
+      "assessment": "FAIL_OFF_TOPIC",
+      "reason": "Không xử lý đúng nghiệp vụ hàng hóa/tồn kho"
+    },
+    {
+      "id": 25,
+      "category": "Hàng hóa & Tồn kho",
+      "query": "xóa sản phẩm",
+      "response": "Tôi chưa hiểu rõ yêu cầu này. Bạn có thể diễn đạt cụ thể hơn về sản phẩm, kho hoặc thao tác bạn muốn thực hiện không?",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 26,
+      "category": "Hàng hóa & Tồn kho",
+      "query": "kiểm kê kho trung tâm",
+      "response": "Bạn muốn kiểm kê sản phẩm nào? Vui lòng chọn sản phẩm và cung cấp số lượng kiểm đếm cụ thể.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 27,
+      "category": "Hàng hóa & Tồn kho",
+      "query": "điều chuyển 10 cái bàn chải từ kho trung tâm sang kho hà đông",
+      "response": "Bạn muốn chuyển hàng đến kho nào? Vui lòng chọn kho đích cụ thể.",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 28,
+      "category": "Hàng hóa & Tồn kho",
+      "query": "sản phẩm nào còn tồn nhiều nhất?",
+      "response": "Sản phẩm Ghế sáng chế 135:\nTổng có thể bán: 72 chiếc (Thực tồn: 72, Đang giữ: 0)\nChi tiết theo kho:\nKho Trung tâm: Còn bán được 24, thực tế 24\nKho Hà Đông: Còn bán được 48, thực tế 48",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 29,
+      "category": "Hàng hóa & Tồn kho",
+      "query": "hàng nào sắp hết cần nhập gấp?",
+      "response": "Tất cả hàng hóa hiện đều ở mức tồn an toàn. Không có sản phẩm nào chạm ngưỡng tối thiểu.\n✅ Tồn kho các mặt hàng hiện ở mức an toàn. Chưa cần tạo đề xuất nhập thêm hàng.",
+      "assessment": "FAIL_IRRELEVANT",
+      "reason": "Bị ngộ nhận thành câu hỏi kiểm tra tồn kho tối thiểu (find-low-stock)"
+    },
+    {
+      "id": 30,
+      "category": "Bán hàng & Tài chính",
+      "query": "bán 2 cái Bàn chải Colgate cho anh Nam",
+      "response": "Đã tạo đề xuất đơn hàng: Đơn bán hàng cho \"anh Nam\": — Tổng: 0đ.\n(Chưa tạo giao dịch chính thức - chờ xác nhận)",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 31,
+      "category": "Bán hàng & Tài chính",
+      "query": "bán nợ cho khách quen hẹn cuối tháng trả",
+      "response": "Đã tạo đề xuất đơn hàng: Đơn bán hàng cho \"Khách lẻ\": — Tổng: 0đ (Hạn nợ: 30 ngày).\n(Chưa tạo giao dịch chính thức - chờ xác nhận)\nKhông tìm thấy khách hàng \"bán nợ cho khách quen hẹn cuối tháng trả\".",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 32,
+      "category": "Bán hàng & Tài chính",
+      "query": "xem công nợ của khách hàng",
+      "response": "Không tìm thấy khách hàng \"xem công nợ của khách hàng\".",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 33,
+      "category": "Bán hàng & Tài chính",
+      "query": "doanh thu hôm nay được bao nhiêu?",
+      "response": "Doanh số hôm nay:\nDoanh thu thực thu: 0 ₫\nSố phiếu hoàn tất: 0 phiếu",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 34,
+      "category": "Bán hàng & Tài chính",
+      "query": "lợi nhuận tuần này thế nào?",
+      "response": "Lợi nhuận gộp tuần này:\nChưa đủ giá vốn để tính lợi nhuận an toàn (phiếu bán chưa có cost snapshot và chưa có sổ chi phí).",
+      "assessment": "PASS",
+      "reason": ""
+    },
+    {
+      "id": 35,
+      "category": "Bán hàng & Tài chính",
+      "query": "tạo mã VietQR thanh toán 500k",
+      "response": "💳 Hướng dẫn Thiết lập Thanh toán QR & Ngân hàng:\n1.\nTài khoản nhận tiền (VietQR):\n\n⚠️ Chưa cấu hình tài khoản ngân hàng! Cần nhập Số TK & Ngân hàng để máy tự tạo mã VietQR chuẩn.\nKhách quét mã VietQR tự điền đúng số tiền và cú pháp đơn hàng (NAPAS 24/7).\n2.\nCơ chế xác thực tiền về:\nHiện tại: Thủ công tại quầy (Mặc định · 0đ)\nThủ công (0đ phí): Thu ngân kiểm tra app ngân hàng rồi bấm Xác thực đã nhận tiền trên màn hình POS. An toàn 100%, không cần cài đặt thêm.\nTự động 100% qua payOS: Miễn phí qua cổng Open Banking ngân hàng. Tiền vào tài khoản là máy tự động phát chuông \"Tinh tinh\" và hoàn tất đơn ngay lập tức.\nTự động qua Webhook / SePay: Nhận tín hiệu từ điện thoại Android hoặc cổng SePay.\n👉 Bấm các nút bên dưới để mở ngay màn hình cài đặt tương ứng:",
+      "assessment": "UNAVAILABLE",
+      "reason": "Hệ thống báo AI chưa khả dụng hoặc thiếu cấu hình"
+    }
+  ]
+}
