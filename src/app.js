@@ -8,6 +8,8 @@ import { startWebSync, stopWebSync } from './web/bootstrap.js';
 import { webUrl, webRegisterUrl, webForgotUrl, webAdminUrl, openWebPage } from './web/links.js';
 import { webSyncStatus, webReviewItems, retryReviewItem, discardReviewItem, webFlushOutbox } from './web/flush.js';
 import { reviewTypeLabel, reviewReason, canDiscardReview } from './web/review.js';
+import { openCountSessions, startCountSession, submitCountLines, finalizeCountSession, cancelCountSession, resolveStockException, sessionAcks, activeDevices, pendingStockExceptions } from './web/count.js';
+import { errorCode } from './web/api.js';
 import { createInvoiceDraftForSale, getInvoiceBySaleId } from './invoice/service.js';
 import { openInvoiceModalForSale, createReturnAdjustmentProposal } from './invoice/ui.js';
 import { kickCashDrawer, generateEscPosReceipt, buildDrawerKickCommand } from './hardware/escpos.js';
@@ -540,6 +542,102 @@ async function openWebReviewModal(){
   await draw();
 }
 
+/**
+ * Backend web: PHIÊN KIỂM KHO (server kiểm soát, migration 0096) — kiểm TOÀN kho: mở phiên → kho bị khoá biến động
+ * (bán vẫn ghi doanh thu, phần tồn vào hàng đối soát) → nhập số đếm → mọi thiết bị tự xác nhận đã đồng bộ → chốt
+ * (on_hand = số đếm). Mọi thao tác ONLINE (RPC). Mở / ghi số: chủ shop, quản lý, thủ kho; chốt / huỷ / đối soát: chủ shop,
+ * quản lý. Kiểm lẻ từng dòng vẫn dùng phiếu kiểm như cũ.
+ */
+const COUNT_ERRORS = {
+  COUNT_SESSION_ALREADY_OPEN: 'Kho này đang có phiên kiểm khác.',
+  SESSION_NOT_OPEN: 'Phiên đã được chốt hoặc huỷ.',
+  DEVICES_NOT_ACKED: 'Còn thiết bị chưa xác nhận đã đồng bộ.',
+  WAREHOUSE_INVALID: 'Kho không còn hoạt động.',
+  INVALID_COUNT: 'Số đếm không hợp lệ.',
+  ITEM_NOT_FOUND: 'Có mặt hàng không còn trên website.',
+  FORBIDDEN: 'Tài khoản không có quyền với thao tác này.',
+  KHO_NOT_ENTITLED: 'Cửa hàng chưa có QBiz Kho.',
+  NETWORK: 'Cần kết nối mạng để thao tác phiên kiểm kho.',
+};
+const countErr = (err) => COUNT_ERRORS[errorCode(err)] || String(err?.message || err);
+async function renderCountSessions(){
+  setTitle('Phiên kiểm kho','QBiz');
+  const content = $('#content'); if (!content) return;
+  const auth = getAuthState(); const shopId = auth.shop?.id; const role = getCurrentRole();
+  const canStart = ['OWNER','MANAGER','WAREHOUSE'].includes(role), canFinal = ['OWNER','MANAGER'].includes(role);
+  const whs = (state.data.warehouses || []).filter((w) => String(w.status || 'active').toLowerCase() === 'active');
+  if (!state.countWh || !whs.some((w) => w.id === state.countWh)) state.countWh = whs[0]?.id || '';
+  content.innerHTML = '<section class="feature-center"><div class="empty">Đang tải phiên kiểm kho…</div></section>';
+  let sessions = [], exceptions = [], acks = [], devices = [];
+  try {
+    sessions = await openCountSessions(shopId);
+    if (canFinal) exceptions = await pendingStockExceptions(shopId);
+  } catch (err) {
+    content.innerHTML = `<section class="feature-center"><div class="empty"><strong>Không tải được phiên kiểm kho</strong><span>${esc(countErr(err))}</span></div></section>`;
+    return;
+  }
+  const sess = sessions.find((s) => s.warehouse_id === state.countWh);
+  if (sess) { try { [acks, devices] = await Promise.all([sessionAcks(sess.id), activeDevices(shopId)]); } catch (_) {} }
+  const ackedIds = new Set(acks.map((a) => a.device_id));
+  const missing = devices.filter((d) => !ackedIds.has(d.id));
+  const items = (state.data.products || []).filter((p) => p.type !== 'SERVICE' && p.trackInventory !== false);
+  const onHand = (id) => (state.data.levels || []).find((l) => l.productId === id && l.warehouseId === state.countWh)?.onHand ?? 0;
+  const prodName = (pid, vid) => { const p = (state.data.products || []).find((x) => x.id === (vid ? `${pid}:${vid}` : pid) || x.id === pid); return p?.name || pid || '—'; };
+  const whName = (id) => whs.find((w) => w.id === id)?.name || id;
+  const mine = exceptions.filter((e) => e.warehouse_id === state.countWh);
+  content.innerHTML = `<section class="feature-center"><section class="card feature-panel" style="padding:14px">
+    <div class="field"><label>Kho</label><select id="countWh">${whs.map((w) => `<option value="${esc(w.id)}" ${w.id === state.countWh ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+    ${sess ? `
+      <div class="callout" style="margin:10px 0;font-size:13px">
+        <strong>Đang kiểm kho</strong> từ ${esc(dt(sess.started_at))} — kho đang KHOÁ biến động (bán vẫn ghi doanh thu, phần tồn chờ đối soát).
+        <div style="margin-top:6px">Thiết bị đã xác nhận đồng bộ: <b>${devices.length - missing.length}/${devices.length}</b>${missing.length ? ` · chưa: ${missing.slice(0, 3).map((d) => esc(d.name || d.id)).join(', ')}${missing.length > 3 ? ` và ${missing.length - 3} máy khác` : ''}` : ''}</div>
+      </div>
+      ${canStart ? `<div class="count-lines" style="max-height:52vh;overflow:auto;border:1px solid var(--border,#e2e8f0);border-radius:10px">
+        ${items.length ? items.map((p) => `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border,#f1f5f9)">
+          <div style="flex:1;min-width:0"><strong style="font-size:13px">${esc(p.name)}</strong><small style="display:block;color:var(--text-muted,#64748b)">${esc(p.sku || '')} · máy: ${fmt(onHand(p.id))}</small></div>
+          <input type="number" inputmode="numeric" min="0" step="1" data-count-item="${esc(p.id)}" placeholder="Số đếm" style="width:92px;padding:7px 8px;border:1px solid #cbd5e1;border-radius:8px"/>
+        </div>`).join('') : '<div class="empty">Kho chưa có mặt hàng theo dõi tồn.</div>'}
+      </div>
+      <button type="button" class="primary-btn full" data-action="count-save" style="margin-top:10px;width:100%">Lưu số đếm</button>` : ''}
+      ${canFinal ? `<div style="display:grid;gap:8px;margin-top:10px">
+        <button type="button" class="secondary-btn" data-action="count-finalize">Chốt phiên (tồn = số đếm)</button>
+        <button type="button" class="ghost-btn" data-action="count-cancel" style="color:#dc2626">Huỷ phiên</button>
+      </div>` : ''}`
+    : `<p style="font-size:13px;color:var(--text-muted,#64748b);margin:10px 0">Kho chưa có phiên kiểm. Mở phiên khi kiểm TOÀN kho; kiểm lẻ vài mặt hàng dùng phiếu kiểm như thường.</p>
+      ${canStart ? `<div class="field"><label>Ghi chú</label><input id="countNote" placeholder="VD: Kiểm kho cuối tháng"/></div>
+      <button type="button" class="primary-btn full" data-action="count-start">Mở phiên kiểm kho ${esc(whName(state.countWh))}</button>` : '<div class="empty">Chỉ chủ cửa hàng, quản lý hoặc thủ kho mở được phiên kiểm.</div>'}`}
+    ${canFinal && mine.length ? `<h3 style="font-size:14px;margin:16px 0 6px">Đối soát (${mine.length})</h3>
+      ${mine.map((e) => `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--border,#f1f5f9)">
+        <div style="flex:1;min-width:0;font-size:12.5px"><strong>${esc(prodName(e.product_id, e.variant_id))}</strong> ${e.delta > 0 ? '+' : ''}${fmt(e.delta)}
+          <small style="display:block;color:var(--text-muted,#64748b)">${esc(e.reference_type)} · ${e.suggestion === 'discard' ? 'gợi ý: bỏ (đã nằm trong số đếm)' : 'cần xem'}</small></div>
+        <button type="button" class="secondary-btn tiny" data-exc-apply="${esc(e.id)}">Áp</button>
+        <button type="button" class="ghost-btn tiny" data-exc-discard="${esc(e.id)}">Bỏ</button>
+      </div>`).join('')}` : ''}
+  </section></section>`;
+  $('#countWh').onchange = (ev) => { state.countWh = ev.target.value; renderCountSessions(); };
+  const run = async (fn, okMsg) => { try { await fn(); toast(okMsg, 'ok'); } catch (err) { toast(countErr(err), 'error'); } renderCountSessions(); };
+  $('[data-action="count-start"]')?.addEventListener('click', () => run(() => startCountSession(shopId, { id: saleUuid(), warehouseId: state.countWh, note: $('#countNote')?.value?.trim() }), 'Đã mở phiên kiểm kho.'));
+  $('[data-action="count-save"]')?.addEventListener('click', () => {
+    const lines = $$('[data-count-item]').filter((i) => i.value !== '').map((i) => ({ itemId: i.dataset.countItem, counted: Math.max(0, Math.floor(Number(i.value))) }));
+    if (!lines.length) return toast('Nhập số đếm cho ít nhất 1 mặt hàng.', 'error');
+    run(() => submitCountLines(shopId, sess.id, lines), `Đã lưu số đếm ${lines.length} mặt hàng.`);
+  });
+  $('[data-action="count-finalize"]')?.addEventListener('click', () => {
+    let force = false;
+    if (missing.length) {
+      if (!confirm(`Còn ${missing.length} thiết bị chưa xác nhận đồng bộ. Chốt cưỡng bức? Phiếu cũ của các máy đó tới sau sẽ trừ tồn thêm (phiên ghi cờ cưỡng bức).`)) return;
+      force = true;
+    } else if (!confirm('Chốt phiên: tồn kho = số đếm cho các mặt hàng đã đếm. Tiếp tục?')) return;
+    run(() => finalizeCountSession(shopId, sess.id, force), 'Đã chốt phiên kiểm kho.');
+  });
+  $('[data-action="count-cancel"]')?.addEventListener('click', () => {
+    if (!confirm('Huỷ phiên kiểm? Kho mở khoá; mọi biến động trong lúc kiểm được áp vào tồn.')) return;
+    run(() => cancelCountSession(shopId, sess.id), 'Đã huỷ phiên kiểm kho.');
+  });
+  $$('[data-exc-apply]').forEach((b) => b.onclick = () => run(() => resolveStockException(shopId, b.dataset.excApply, 'apply'), 'Đã áp vào tồn.'));
+  $$('[data-exc-discard]').forEach((b) => b.onclick = () => run(() => resolveStockException(shopId, b.dataset.excDiscard, 'discard'), 'Đã bỏ mục đối soát.'));
+}
+
 /** Backend web: shop không còn quyền QBiz Kho (hết dùng thử / chưa mua) → màn chặn thay nội dung. true = đã chặn. */
 function renderKhoNotEntitled(){
   if(!isWebBackend) return false;
@@ -566,7 +664,7 @@ function renderKhoNotEntitled(){
     </section>`;
   return true;
 }
-function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); delete document.body.dataset.page; document.body.dataset.appPage=state.page||''; document.body.classList.toggle('on-platform-admin', state.page==='platform-admin'); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); if(renderKhoNotEntitled()){ headerActions(); updateSyncPill(); return; } ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); injectInstallBanner(); updateSyncPill(); updateContextAndChips(); }
+function render(){ if(!state.data) return; if(!state.workspace) state.workspace = businessProfileModule.resolveWorkspaceProfile(state.businessProfile || businessProfileModule.getBusinessProfile()); state.uiProfile = uiProfileModule.resolveUiProfile(uiProfileModule.getUiProfile()?.id, (state.businessProfile || businessProfileModule.getBusinessProfile())?.profile_id); delete document.body.dataset.page; document.body.dataset.appPage=state.page||''; document.body.classList.toggle('on-platform-admin', state.page==='platform-admin'); document.body.dataset.saleStep=state.page==='sales'?state.saleStep:''; nav(); if(renderKhoNotEntitled()){ headerActions(); updateSyncPill(); return; } ({dashboard:renderDashboard,sales:renderSales,products:renderProducts,transfers:renderTransfers,history:renderHistory,settings:renderSettings,prints:renderPrintCenter,print:renderPrintCenter,reports:renderFeatureReports,more:renderMore,orders:renderOrders,transactions:renderTransactions,customers:renderCustomers,suppliers:renderSuppliers,imports:renderImportCenter,backup:renderBackupCenter,returns:renderReturnCenter,shifts:renderShiftCenter,notifications:renderNotificationCenter,shipping:renderShippingCenter,channels:renderChannelCenter,permissions:renderPermissionCenter,scanner:renderScannerCenter,advanced:renderAdvancedHub,prices:renderPrices,promos:renderPromotions,combos:renderCombos,units:renderUnits,opening:renderOpening,labels:renderLabels,cash:renderCash,debts:renderDebts,audit:renderAudit,search:renderSearch,modules:renderModules,onboarding:renderOnboarding,optional:renderOptional,documents:renderDocuments,numbering:renderNumbering,'purchase-orders':renderPurchaseOrders,'supplier-returns':renderSupplierReturns,replenish:renderReplenish,diagnostics:renderDiagnostics,exports:renderExports,'platform-admin':renderPlatformAdmin,'count-sessions':renderCountSessions}[state.page]||renderDashboard)(); headerActions(); injectLocalNotice(); injectInstallBanner(); updateSyncPill(); updateContextAndChips(); }
 
 const levelAvail=l=>Math.max(0,(l?.onHand||0)-(l?.reserved||0)-(l?.damaged||0));
 function warehouseStock(productId){ const p = product(productId); return p ? productTotals(p).available : 0; }
@@ -4240,6 +4338,7 @@ function renderMore(){
   $('#content').innerHTML=`<section class="more-screen feature-hub">
     <div class="more-group"><h2>Công việc</h2><div class="hub-list">${hubItem('transactions','file-text','Giao dịch & hóa đơn','Phiếu bán và chứng từ')}${hubItem('returns','undo-2','Trả / Đổi','Xử lý theo giao dịch gốc')}${hubItem('customers','user','Khách hàng','Thông tin và lịch sử mua')}${CONFIG.FEATURE_FLAGS.shift?hubItem('shifts','clipboard-check','Ca thu ngân','Mở, đóng và đối soát ca'):''}</div></div>
     <div class="more-group"><h2>Quản lý</h2><div class="hub-list">${hubItem('suppliers','package-plus','Nhà cung cấp','Hồ sơ và lịch sử nhập')}${hubItem('reports','layout-dashboard','Báo cáo','Doanh thu, bán hàng và tồn kho')}</div></div>
+    ${isWebBackend ? `<div class="more-group"><h2>Kiểm kho</h2><div class="hub-list">${hubItem('count-sessions','clipboard-check','Phiên kiểm kho','Kiểm toàn kho — khoá biến động tới khi chốt')}</div></div>` : ''}
     <div class="more-group"><h2>Hệ thống</h2><div class="hub-list">${hubItem('settings','settings-2','Cài đặt','Cửa hàng, thiết bị và dữ liệu')}</div></div>
   </section>`;
 }

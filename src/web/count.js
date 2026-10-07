@@ -49,3 +49,14 @@ export const cancelCountSession = (shopId, sessionId) =>
   rpc('kho_cancel_count_session', { p_shop_id: shopId, p_session_id: sessionId });
 export const resolveStockException = (shopId, exceptionId, action) =>
   rpc('kho_resolve_stock_exception', { p_shop_id: shopId, p_exception_id: exceptionId, p_action: action });
+
+// ---- Đọc cho giao diện phiên kiểm kho (app.js renderCountSessions) ----------------------------------------
+/** Thiết bị đã xác nhận đồng bộ trong 1 phiên. */
+export const sessionAcks = (sessionId) =>
+  selectAll(`kho_count_session_devices?session_id=eq.${enc(sessionId)}&select=device_id,acked_seq,acked_at`);
+/** Thiết bị đang bật của shop (phiên chỉ chốt thường khi TẤT CẢ đã xác nhận). */
+export const activeDevices = (shopId) =>
+  selectAll(`kho_devices?shop_id=eq.${enc(shopId)}&status=eq.active&select=id,name,last_seen_at`);
+/** Mục đối soát chờ xử lý (biến động tồn tới trong lúc kho đang kiểm). */
+export const pendingStockExceptions = (shopId) =>
+  selectAll(`kho_stock_exceptions?shop_id=eq.${enc(shopId)}&status=eq.pending&select=id,session_id,warehouse_id,product_id,variant_id,delta,reference_type,reference_id,suggestion,created_at&order=created_at.asc`);
