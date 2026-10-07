@@ -271,6 +271,8 @@ const ICONS={
   ,'warehouse':'<path d="M3 21V9.5L12 4l9 5.5V21H3z"/><path d="M9 21V11h6v10"/><path d="M9 14h6"/><path d="M9 17h6"/>'
   ,'menu':'<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>'
   ,'receipt':'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/><path d="M16 8h-8"/><path d="M16 12h-8"/><path d="M13 16h-5"/>'
+  ,'search':'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+  ,'x':'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'
 };
 function icon(name,label=''){return `<svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||ICONS['package-search']}</svg>${label?`<span>${label}</span>`:''}`}
 
@@ -1878,16 +1880,27 @@ function renderProducts(){
         <span class="goods-wh-arrow">${icon('chevron-right')}</span>
       </button>
       <div class="goods-segments"><button class="${state.productType==='PRODUCT'?'active':''}" data-product-type="PRODUCT">Sản phẩm</button><button class="${state.productType==='SERVICE'?'active':''}" data-product-type="SERVICE">Dịch vụ</button></div>
-      <div class="goods-search"><input id="productSearch" value="${esc(state.search)}" placeholder="${state.productType==='PRODUCT'?'Tìm tên / SKU / barcode...':'Tìm tên dịch vụ...'}"/><button data-action="scan" aria-label="Quét mã" ${state.productType==='SERVICE'?'hidden':''}>${icon('scan-line')}</button></div>
       <div class="goods-tools"><button data-category-picker>Danh mục${state.productCategory==='all'?'':` · ${esc(categoryLabel(state.productCategory))}`}</button><button data-product-filter class="${(state.productStatusFilter&&state.productStatusFilter!=='all')||(state.productStockFilter&&state.productStockFilter!=='all')||state.warehouse!=='all'?'active':''}">Lọc</button><select id="productSort"><option value="newest" ${state.productSort==='newest'?'selected':''}>Mới nhất</option><option value="oldest" ${state.productSort==='oldest'?'selected':''}>Cũ nhất</option><option value="priceAsc" ${state.productSort==='priceAsc'?'selected':''}>Giá thấp trước</option><option value="default" ${state.productSort==='default'?'selected':''}>Sắp xếp</option><option value="name" ${state.productSort==='name'?'selected':''}>Tên A–Z</option><option value="price" ${state.productSort==='price'?'selected':''}>Giá cao trước</option>${state.productType==='PRODUCT'?`<option value="stock" ${state.productSort==='stock'?'selected':''}>Tồn thấp trước</option><option value="status" ${state.productSort==='status'?'selected':''}>Trạng thái</option>`:''}</select><button data-toggle-select>${state.productSelecting?'Xong':'Chọn'}</button></div>
       ${state.productSelecting?`<div class="selection-bar"><button data-select-all>Chọn tất cả</button><strong>${state.productSelected.size} đã chọn</strong><button data-select-clear>Bỏ chọn</button><button data-batch-actions ${state.productSelected.size?'':'disabled'}>Thao tác</button></div>`:''}
     </section>
+
+    <div class="goods-search-sticky">
+      <div class="goods-search">
+        <div class="goods-search-input-wrap">
+          <span class="search-input-icon">${icon('search')}</span>
+          <input id="productSearch" value="${esc(state.search)}" placeholder="${state.productType==='SERVICE'?'Tìm tên dịch vụ...':'Tìm tên / SKU / barcode...'}"/>
+          ${state.search?`<button type="button" class="search-clear-btn" data-clear-search aria-label="Xóa tìm kiếm">${icon('x')}</button>`:''}
+        </div>
+        <button data-action="scan" aria-label="Quét mã" ${state.productType==='SERVICE'?'hidden':''}>${icon('scan-line')}</button>
+      </div>
+    </div>
 
     ${gridMode
       ? `<section class="product-grid ${state.displayPrefs.view} ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">${visible.map(productCard).join('')||'<div class="empty"><strong>Không tìm thấy</strong>Thử tên hoặc SKU khác.</div>'}</section>`
       : `<section class="card goods-list ${state.displayPrefs.density==='compact'?'is-compact':''} ui-profile-${state.uiProfile?.effective_profile_id || 'standard'}">${visible.map(productTableRow).join('')||'<div class="empty"><strong>Không tìm thấy</strong>Thử tên hoặc SKU khác.</div>'}</section>`}${visible.length<list.length?`<button class="catalog-more product-more" data-product-more>Xem thêm ${Math.min(40,list.length-visible.length)}</button>`:''}
   `;
   $('#productSearch')?.addEventListener('input',e=>{state.search=e.target.value;keepFocus('#productSearch',renderProducts)});
+  $('[data-clear-search]')?.addEventListener('click',()=>{state.search='';renderProducts()});
   $$('[data-product-type]').forEach(b=>b.onclick=()=>{state.productType=b.dataset.productType;state._userSelectedProductType=true;state.productCategory='all';state.productLimit=40;state.productSelected.clear();renderProducts()});
   $('#productSort')?.addEventListener('change',e=>{state.productSort=e.target.value;renderProducts()});$('[data-product-more]')?.addEventListener('click',()=>{state.productLimit+=40;renderProducts()});
   $('[data-display-settings]')?.addEventListener('click',openDisplaySettings);$('[data-category-picker]')?.addEventListener('click',()=>openCategoryPicker());$('[data-product-filter]')?.addEventListener('click',openProductFilter);
@@ -9287,6 +9300,17 @@ function initScrollHeaderAutoHide() {
         // 2. Không ẩn nếu đang mở modal hoặc đang ở chuyên trang Platform Admin
         const isModalOpen = Boolean($('#modalRoot')?.innerHTML?.trim()) || document.body.classList.contains('modal-open');
         if (isModalOpen || state.page === 'platform-admin') {
+          isTicking = false;
+          return;
+        }
+
+        // 2b. Đối với trang Hàng hóa (products): Khi cuộn xuống (> 50px),
+        // luôn giữ ẩn topbar để nhường vị trí đỉnh (top: 0) cho thanh tìm kiếm siêu gọn dính đỉnh (luôn luôn ở trên đầu)
+        if (state.page === 'products' && currentScrollY > 50) {
+          if (!document.body.classList.contains('topbar-hidden')) {
+            document.body.classList.add('topbar-hidden');
+          }
+          lastScrollY = currentScrollY;
           isTicking = false;
           return;
         }
