@@ -359,8 +359,6 @@ export async function signUp({ email, password, fullName = '' }) {
  * Sign in existing user with email and password.
  */
 export async function signIn({ email, password }) {
-  // Backend web: phiên thật thay phiên demo → DB đổi từ demo sang shop (app tự tải lại khi shop sẵn sàng).
-  if (CONFIG.BACKEND === 'web') clearDemoSession();
   if (!email || !password) throw new Error('Vui lòng nhập đầy đủ email và mật khẩu.');
 
   const { url, anonKey } = getSupabaseConfig();
@@ -411,6 +409,9 @@ export async function signIn({ email, password }) {
     user: res.user,
   };
   localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(currentSession));
+  // Backend web: đăng nhập THÀNH CÔNG mới bỏ phiên demo (sai mật khẩu/lỗi mạng → vẫn ở demo) — DB đổi từ demo sang
+  // shop, app tự tải lại khi shop sẵn sàng.
+  if (CONFIG.BACKEND === 'web') clearDemoSession();
 
   // Load user's shops & platform admin status
   await loadUserShops();
