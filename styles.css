@@ -3943,30 +3943,64 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   color: var(--q-blue-dark, #0868c6) !important;
   font-weight: 800 !important;
 }
-/* Nút Bán hàng nổi bật (Hero) */
+/* Nút Bán hàng nổi bật nhất (Raised Hero Floating Button - Mobile & Desktop) */
 .mobile-nav button.nav-sales-hero {
   position: relative !important;
+  background: transparent !important;
+  padding: 0 2px 3px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  overflow: visible !important;
 }
-.mobile-nav button.nav-sales-hero .ui-icon {
-  width: 28px !important;
-  height: 28px !important;
-  padding: 4px !important;
-  background: linear-gradient(135deg, #1485ee, #0868c6) !important;
-  color: #ffffff !important;
+.mobile-nav button.nav-sales-hero .nav-hero-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
   border-radius: 50% !important;
-  box-shadow: 0 3px 8px rgba(8, 104, 198, 0.35) !important;
-  transition: transform 0.16s ease, box-shadow 0.16s ease !important;
+  background: linear-gradient(135deg, #1485ee 0%, #0868c6 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 16px rgba(8, 104, 198, 0.45), 0 0 0 3.5px #ffffff !important;
+  margin-top: -16px !important;
+  margin-bottom: 2px !important;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, background 0.18s ease !important;
 }
-.mobile-nav button.nav-sales-hero:hover .ui-icon,
-.mobile-nav button.nav-sales-hero.active .ui-icon {
-  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.45) !important;
-  transform: scale(1.08) !important;
+.mobile-nav button.nav-sales-hero .nav-hero-icon .ui-icon {
+  width: 25px !important;
+  height: 25px !important;
+  color: #ffffff !important;
+  stroke-width: 2.2 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+.mobile-nav button.nav-sales-hero:hover .nav-hero-icon,
+.mobile-nav button.nav-sales-hero.active .nav-hero-icon {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  box-shadow: 0 7px 20px rgba(2, 132, 199, 0.55), 0 0 0 4px #ffffff !important;
+  transform: translateY(-2px) scale(1.06) !important;
+}
+.mobile-nav button.nav-sales-hero:active .nav-hero-icon {
+  transform: translateY(0) scale(0.96) !important;
 }
 .mobile-nav button.nav-sales-hero span {
+  font-size: 11px !important;
   color: var(--q-blue-dark, #0868c6) !important;
   font-weight: 800 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.2px !important;
 }
+.mobile-nav button.nav-sales-hero.active span {
+  color: var(--q-blue-dark, #0868c6) !important;
+  font-weight: 900 !important;
+}
+
 /* Desktop Nav Button Polish */
 .nav-btn {
   color: #475569 !important;
@@ -3984,7 +4018,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   font-weight: 800 !important;
 }
 .nav-btn.nav-sales-hero .nav-ico {
-  color: var(--q-blue, #1485ee) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  background: linear-gradient(135deg, #1485ee, #0868c6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(8, 104, 198, 0.3) !important;
+}
+.nav-btn.nav-sales-hero .nav-ico .ui-icon {
+  width: 18px !important;
+  height: 18px !important;
+  color: #ffffff !important;
 }
 
 /* ==========================================================================
