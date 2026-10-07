@@ -7126,23 +7126,25 @@ body.topbar-hidden .install-subtle-tip {
 
 .sort-modal-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
 }
 .sort-option-btn {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 8px;
   width: 100%;
-  min-height: 48px;
-  padding: 8px 12px;
+  min-height: 42px;
+  padding: 6px 10px;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 9px;
   background: #ffffff;
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
   box-sizing: border-box;
+  white-space: nowrap;
 }
 .sort-option-btn:hover {
   border-color: #cbd5e1;
@@ -7151,18 +7153,12 @@ body.topbar-hidden .install-subtle-tip {
 .sort-option-btn.active {
   border-color: var(--q-blue, #0284c7);
   background: #eff6ff;
-}
-.sort-opt-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
+  box-shadow: 0 0 0 1px var(--q-blue, #0284c7);
 }
 .sort-opt-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   background: #f1f5f9;
   color: #475569;
   display: grid;
@@ -7174,65 +7170,103 @@ body.topbar-hidden .install-subtle-tip {
   color: #ffffff;
 }
 .sort-opt-icon .ui-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
-.sort-opt-text strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
+.sort-opt-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 650;
   color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.sort-opt-text small {
-  display: block;
-  font-size: 11px;
-  color: #64748b;
-  margin-top: 1px;
+.sort-option-btn.active .sort-opt-title {
+  color: var(--q-blue, #0284c7);
+  font-weight: 700;
 }
 .sort-opt-check {
   color: var(--q-blue, #0284c7);
   display: grid;
   place-items: center;
-  margin-left: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 .sort-opt-check .ui-icon {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
 }
 
 /* 2. Compact Display Settings Modal */
 .compact-display-modal {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 .compact-display-modal h4 {
-  margin: 0 0 6px;
-  font-size: 13px;
+  margin: 0 0 4px;
+  font-size: 12px;
   font-weight: 750;
   color: #1e293b;
 }
+.device-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.device-section-head h4 {
+  margin: 0;
+}
+.device-section-hint {
+  font-size: 10.5px;
+  color: #64748b;
+}
 .compact-options {
   display: grid !important;
-  grid-template-columns: repeat(4, 1fr) !important;
-  gap: 6px !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 5px !important;
 }
-.compact-options label {
-  min-height: 34px !important;
-  padding: 4px 6px !important;
+.compact-options label.view-opt-label {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  min-height: 35px !important;
+  padding: 4px 8px !important;
   border-radius: 8px !important;
   font-size: 11.5px !important;
   font-weight: 600 !important;
-  justify-content: center !important;
-  text-align: center !important;
   cursor: pointer !important;
   background: #fff;
   border: 1px solid #cbd5e1;
   transition: all 0.15s ease;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+.view-opt-ic {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  flex-shrink: 0;
+}
+.view-opt-ic .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+.view-opt-txt {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
 }
 .compact-options label input,
 .compact-check-list label input {
-  margin-right: 4px;
+  margin-right: 2px;
 }
 .compact-options label.is-checked,
 .compact-check-list label.is-checked {
@@ -7240,45 +7274,54 @@ body.topbar-hidden .install-subtle-tip {
   background: #eff6ff !important;
   color: var(--q-blue-dark, #0868c6) !important;
 }
+.compact-options label.is-checked .view-opt-ic {
+  color: var(--q-blue, #0284c7);
+}
+.compact-options label.is-checked .view-opt-txt {
+  color: var(--q-blue-dark, #0868c6);
+  font-weight: 700;
+}
 
 .compact-check-list {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
-  gap: 6px !important;
+  gap: 5px !important;
 }
 .compact-check-list label {
-  min-height: 34px !important;
-  padding: 4px 6px !important;
-  border-radius: 8px !important;
-  font-size: 12px !important;
+  min-height: 32px !important;
+  padding: 3px 5px !important;
+  border-radius: 7px !important;
+  font-size: 11.5px !important;
   justify-content: center !important;
   cursor: pointer !important;
   border: 1px solid #cbd5e1;
   background: #fff;
+  white-space: nowrap !important;
 }
 
 .display-grid-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 7px;
 }
 .compact-segment {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
-  gap: 4px !important;
+  gap: 3px !important;
   padding: 2px !important;
   background: #edf1f6 !important;
   border-radius: 8px !important;
 }
 .compact-segment label {
-  min-height: 32px !important;
+  min-height: 30px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  font-size: 11.5px !important;
+  font-size: 11px !important;
   font-weight: 650 !important;
   border-radius: 6px !important;
   cursor: pointer !important;
+  white-space: nowrap !important;
 }
 .compact-pos-options {
   display: grid !important;
@@ -7287,12 +7330,31 @@ body.topbar-hidden .install-subtle-tip {
 }
 .compact-pos-options label {
   min-height: 32px !important;
-  padding: 2px 4px !important;
+  padding: 2px 5px !important;
   font-size: 11px !important;
-  border-radius: 6px !important;
+  border-radius: 7px !important;
+  display: flex !important;
+  align-items: center !important;
   justify-content: center !important;
-  text-align: center !important;
+  gap: 4px !important;
   cursor: pointer !important;
+  white-space: nowrap !important;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+.compact-pos-options label.is-checked {
+  border-color: var(--q-blue, #0284c7) !important;
+  background: #eff6ff !important;
+  color: var(--q-blue-dark, #0868c6) !important;
+  font-weight: 700 !important;
+}
+.compact-pos-options label .view-opt-ic {
+  width: 14px;
+  height: 14px;
+}
+.compact-pos-options label .view-opt-ic .ui-icon {
+  width: 13px;
+  height: 13px;
 }
 
 .compact-device-cards {
@@ -7300,27 +7362,71 @@ body.topbar-hidden .install-subtle-tip {
   grid-template-columns: repeat(3, 1fr) !important;
   gap: 6px !important;
 }
-.compact-device-cards .device-card {
-  padding: 8px 4px !important;
+.device-card-btn {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 7px 4px !important;
+  border: 1px solid #cbd5e1 !important;
   border-radius: 9px !important;
-  min-height: auto !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  text-align: center !important;
   gap: 3px !important;
+  box-sizing: border-box !important;
 }
-.compact-device-cards .dev-card-icon {
+.device-card-btn:hover {
+  border-color: #94a3b8 !important;
+  background: #f8fafc !important;
+}
+.device-card-btn.active {
+  border-color: var(--q-blue, #0284c7) !important;
+  background: #eff6ff !important;
+  box-shadow: 0 0 0 1.5px var(--q-blue, #0284c7) !important;
+}
+.device-card-btn .dev-card-icon {
   width: 26px !important;
   height: 26px !important;
   border-radius: 6px !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  display: grid !important;
+  place-items: center !important;
 }
-.compact-device-cards .dev-card-icon .ui-icon {
+.device-card-btn.active .dev-card-icon {
+  background: var(--q-blue, #0284c7) !important;
+  color: #ffffff !important;
+}
+.device-card-btn .dev-card-icon .ui-icon {
   width: 14px !important;
   height: 14px !important;
 }
-.compact-device-cards .dev-card-info strong {
+.device-card-btn strong {
   font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  white-space: nowrap !important;
 }
-.compact-device-cards .dev-card-info small {
+.device-card-btn.active strong {
+  color: var(--q-blue, #0284c7) !important;
+}
+.device-card-btn small {
   font-size: 9.5px !important;
-  margin-top: 1px !important;
+  color: #64748b !important;
+  white-space: nowrap !important;
+}
+.device-preset-banner {
+  font-size: 11px;
+  padding: 5px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  color: #15803d;
+  margin-top: 5px;
+  text-align: center;
+  line-height: 1.3;
 }
 
 /* 3. Compact Filter Modal */

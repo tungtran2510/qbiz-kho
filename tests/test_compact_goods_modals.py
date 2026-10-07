@@ -21,7 +21,7 @@ with sync_playwright() as p:
     page.goto("http://localhost:4180/?page=products", wait_until="networkidle")
     page.wait_for_timeout(1000)
 
-    # 1. TEST SORT MODAL
+    # 1. TEST SORT MODAL (Auto-dismiss, 2-column, no sub descriptions, no close button)
     print("\n[2] Testing Sắp xếp (Sort Modal)...")
     sort_btn = page.query_selector("[data-product-sort]")
     assert sort_btn is not None, "Sort button [data-product-sort] not found"
@@ -34,20 +34,30 @@ with sync_playwright() as p:
     print(f"Sort options found: {len(sort_options)}")
     assert len(sort_options) >= 6, f"Expected at least 6 sort options, got {len(sort_options)}"
     
+    # Check that there is no close button in footer
+    foot_close = page.query_selector(".modal-foot .secondary-btn")
+    assert foot_close is None, "Sort modal should NOT have redundant [Đóng] button in footer"
+
     ss_sort = os.path.join(artifact_dir, "evidence_sort_modal_compact.png")
     page.screenshot(path=ss_sort)
     print(f"Captured: {ss_sort} ✅")
 
-    # Pick a sort option: 'topSales' (Bán chạy nhất)
-    top_sales_btn = page.query_selector('[data-sort-pick="topSales"]')
-    if top_sales_btn:
-        top_sales_btn.click()
-        page.wait_for_timeout(500)
-        current_sort_label = page.query_selector(".btn-tool-sort-label")
-        print("Updated sort label:", current_sort_label.text_content().strip() if current_sort_label else "None")
+    # Pick a sort option: 'stockHigh' (Tồn nhiều nhất) - must auto-close immediately!
+    stock_high_btn = page.query_selector('[data-sort-pick="stockHigh"]')
+    assert stock_high_btn is not None, "Button [data-sort-pick='stockHigh'] not found"
+    print("Clicking [📦 Tồn nhiều] - should auto-dismiss modal immediately...")
+    stock_high_btn.click()
+    page.wait_for_timeout(500)
 
-    # 2. TEST DISPLAY SETTINGS MODAL
-    print("\n[3] Testing Hiển thị (Display Settings Modal)...")
+    # Modal must be auto-closed!
+    modal_after = page.query_selector("#modalRoot .modal")
+    assert modal_after is None, "Sort modal must close automatically after selection without needing [Đóng] button"
+    current_sort_label = page.query_selector(".btn-tool-sort-label")
+    print("Updated sort label:", current_sort_label.text_content().strip() if current_sort_label else "None")
+    assert "Tồn nhiều" in current_sort_label.text_content().strip(), "Sort label should be 'Tồn nhiều'"
+
+    # 2. TEST DISPLAY SETTINGS MODAL (Interactive Device Presets & 2-column view mode)
+    print("\n[3] Testing Hiển thị & Bố cục (Display Settings Modal)...")
     disp_btn = page.query_selector("[data-display-settings]")
     assert disp_btn is not None, "Display button [data-display-settings] not found"
     disp_btn.click()
@@ -56,20 +66,43 @@ with sync_playwright() as p:
     disp_modal = page.query_selector(".compact-display-modal")
     assert disp_modal is not None, "Compact display modal not found"
     
-    # Check 3 device cards
-    dev_cards = page.query_selector_all(".compact-device-cards .device-card")
-    print(f"Device cards found: {len(dev_cards)}")
-    assert len(dev_cards) == 3, f"Expected 3 device cards, got {len(dev_cards)}"
+    # Check 3 interactive device preset buttons
+    dev_btns = page.query_selector_all(".compact-device-cards .device-card-btn")
+    print(f"Device buttons found: {len(dev_btns)}")
+    assert len(dev_btns) == 3, f"Expected 3 device buttons, got {len(dev_btns)}"
     
-    dev_texts = [d.query_selector("strong").text_content().strip() for d in dev_cards]
-    print(f"Device cards titles: {dev_texts}")
+    dev_texts = [d.query_selector("strong").text_content().strip() for d in dev_btns]
+    print(f"Device preset button titles: {dev_texts}")
     assert "Điện thoại" in dev_texts and "Máy tính bảng" in dev_texts and "Máy tính" in dev_texts, "Device names must be strictly 'Điện thoại', 'Máy tính bảng', 'Máy tính'"
+
+    # Test clicking 'Máy tính bảng' preset button
+    tablet_btn = page.query_selector('[data-device-preset="tablet"]')
+    assert tablet_btn is not None, "Tablet preset button not found"
+    print("Clicking [Máy tính bảng] preset button...")
+    tablet_btn.click()
+    page.wait_for_timeout(400)
+    assert "active" in tablet_btn.get_attribute("class"), "Tablet button should become active"
+
+    # Verify radio updated to 'grid2'
+    grid2_checked = page.evaluate("() => document.querySelector('input[name=\"goodsView\"][value=\"grid2\"]').checked")
+    print("Goods view radio checked after tablet preset:", grid2_checked)
+    assert grid2_checked == True, "Preset tablet must set goodsView to grid2"
+
+    # Switch back to 'Điện thoại' preset
+    phone_btn = page.query_selector('[data-device-preset="phone"]')
+    print("Clicking [Điện thoại] preset button...")
+    phone_btn.click()
+    page.wait_for_timeout(400)
+    assert "active" in phone_btn.get_attribute("class"), "Phone button should become active"
+    compact_checked = page.evaluate("() => document.querySelector('input[name=\"goodsView\"][value=\"compact\"]').checked")
+    print("Goods view radio checked after phone preset:", compact_checked)
+    assert compact_checked == True, "Preset phone must set goodsView to compact"
 
     ss_disp = os.path.join(artifact_dir, "evidence_display_settings_compact.png")
     page.screenshot(path=ss_disp)
     print(f"Captured: {ss_disp} ✅")
 
-    # Close modal
+    # Close display modal
     close_btn = page.query_selector("[data-close]")
     if close_btn:
         close_btn.click()

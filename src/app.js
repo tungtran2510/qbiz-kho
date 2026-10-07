@@ -2005,29 +2005,24 @@ function openProductSortModal(){
   const current=state.productSort||'newest';
   const isProduct=state.productType==='PRODUCT';
   const sortOptions=[
-    {id:'newest',title:'Mới nhất',sub:'Hàng mới tạo hoặc mới cập nhật',icon:'sparkles'},
-    {id:'topSales',title:'🔥 Bán chạy nhất',sub:'Theo doanh số xuất bán thực tế',icon:'flame'},
+    {id:'newest',title:'Mới nhất',icon:'sparkles'},
+    {id:'topSales',title:'🔥 Bán chạy',icon:'flame'},
     ...(isProduct?[
-      {id:'stockHigh',title:'📦 Tồn nhiều nhất',sub:'Tồn kho khả dụng dồi dào',icon:'package-check'},
-      {id:'stock',title:'⚠️ Tồn thấp / Sắp hết',sub:'Cần lưu ý bổ sung kho kịp thời',icon:'alert-triangle'},
+      {id:'stockHigh',title:'📦 Tồn nhiều',icon:'package-check'},
+      {id:'stock',title:'⚠️ Tồn thấp',icon:'alert-triangle'},
     ]:[]),
-    {id:'priceAsc',title:'Giá tăng dần',sub:'Từ giá thấp đến giá cao',icon:'trending-up'},
-    {id:'price',title:'Giá giảm dần',sub:'Từ giá cao đến giá thấp',icon:'trending-down'},
-    {id:'name',title:'Tên A → Z',sub:'Theo thứ tự bảng chữ cái',icon:'sort-asc'},
-    {id:'oldest',title:'Cũ nhất',sub:'Hàng tạo từ những ngày đầu',icon:'clock'},
+    {id:'priceAsc',title:'Giá tăng dần',icon:'trending-up'},
+    {id:'price',title:'Giá giảm dần',icon:'trending-down'},
+    {id:'name',title:'Tên A → Z',icon:'sort-asc'},
+    {id:'oldest',title:'Cũ nhất',icon:'clock'},
   ];
 
   const body=`
     <div class="sort-modal-grid">
       ${sortOptions.map(opt=>`
         <button type="button" class="sort-option-btn ${current===opt.id?'active':''}" data-sort-pick="${opt.id}">
-          <div class="sort-opt-left">
-            <span class="sort-opt-icon">${icon(opt.icon||'arrow-up-down')}</span>
-            <div class="sort-opt-text">
-              <strong>${opt.title}</strong>
-              <small>${opt.sub}</small>
-            </div>
-          </div>
+          <span class="sort-opt-icon">${icon(opt.icon||'arrow-up-down')}</span>
+          <span class="sort-opt-title">${opt.title}</span>
           ${current===opt.id?`<span class="sort-opt-check">${icon('check')}</span>`:''}
         </button>
       `).join('')}
@@ -2036,8 +2031,8 @@ function openProductSortModal(){
 
   openModal({
     title:'Sắp xếp danh sách',
-    sub:isProduct?'Sắp xếp theo doanh số, tồn kho, giá hoặc tên':'Sắp xếp theo doanh số, giá hoặc tên',
     hideSubmit:true,
+    footer:'<div style="display:none"></div>',
     body
   });
 
@@ -2154,19 +2149,53 @@ function renderProducts(){
 
 function openDisplaySettings(){
   const p=state.displayPrefs;
+  const currentPreset = p.devicePreset || (window.innerWidth <= 640 ? 'phone' : window.innerWidth <= 920 ? 'tablet' : 'pc');
+
   openModal({
     title:'Hiển thị & Bố cục',
-    sub:'Tùy chỉnh riêng cho thiết bị này',
     submitText:'Áp dụng',
     body:`
       <div class="compact-display-modal">
         <div>
+          <div class="device-section-head">
+            <h4>Chế độ hiển thị theo thiết bị</h4>
+            <span class="device-section-hint">Chạm để chọn nhanh</span>
+          </div>
+          <div class="compact-device-cards">
+            <button type="button" class="device-card-btn ${currentPreset==='phone'?'active':''}" data-device-preset="phone">
+              <span class="dev-card-icon">${icon('smartphone')}</span>
+              <strong>Điện thoại</strong>
+              <small>Gọn gàng · 1 chạm</small>
+            </button>
+            <button type="button" class="device-card-btn ${currentPreset==='tablet'?'active':''}" data-device-preset="tablet">
+              <span class="dev-card-icon">${icon('tablet')}</span>
+              <strong>Máy tính bảng</strong>
+              <small>Lưới 2 · POS quầy</small>
+            </button>
+            <button type="button" class="device-card-btn ${currentPreset==='pc'?'active':''}" data-device-preset="pc">
+              <span class="dev-card-icon">${icon('monitor')}</span>
+              <strong>Máy tính</strong>
+              <small>Màn rộng · Đầy đủ</small>
+            </button>
+          </div>
+          <div id="devicePresetBanner" class="device-preset-banner">
+            ${currentPreset==='phone'?'📱 Đang dùng chế độ: <b>Điện thoại</b> (Danh sách gọn, mật độ gọn)' : currentPreset==='tablet'?'📟 Đang dùng chế độ: <b>Máy tính bảng</b> (Lưới 2 cột, mật độ vừa)' : '💻 Đang dùng chế độ: <b>Máy tính</b> (Danh sách rộng, POS đa cột)'}
+          </div>
+        </div>
+
+        <div>
           <h4>Chế độ xem hàng hóa</h4>
           <div class="compact-options">
-            ${[['compact','Danh sách gọn'],['image','Có ảnh'],['grid2','Lưới 2'],['grid3','Lưới 3']].map(([v,l])=>`
-              <label class="${p.view===v?'is-checked':''}">
+            ${[
+              ['compact','Danh sách gọn','list'],
+              ['image','Danh sách có ảnh','image'],
+              ['grid2','Lưới 2 cột','layout-grid'],
+              ['grid3','Lưới 3 cột','grid']
+            ].map(([v,l,ic])=>`
+              <label class="view-opt-label ${p.view===v?'is-checked':''}">
                 <input type="radio" name="goodsView" value="${v}" ${p.view===v?'checked':''}/>
-                <span>${l}</span>
+                <span class="view-opt-ic">${icon(ic)}</span>
+                <span class="view-opt-txt">${l}</span>
               </label>
             `).join('')}
           </div>
@@ -2176,16 +2205,16 @@ function openDisplaySettings(){
           <div>
             <h4>Thông tin trên thẻ</h4>
             <div class="compact-check-list">
-              <label class="${p.showPrice?'is-checked':''}"><input id="showPrice" type="checkbox" ${p.showPrice?'checked':''}/> Giá</label>
-              <label class="${p.showStock?'is-checked':''}"><input id="showStock" type="checkbox" ${p.showStock?'checked':''}/> Tồn</label>
-              <label class="${p.showSku?'is-checked':''}"><input id="showSku" type="checkbox" ${p.showSku?'checked':''}/> SKU</label>
+              <label class="${p.showPrice?'is-checked':''}"><input id="showPrice" type="checkbox" ${p.showPrice?'checked':''}/> <span>Giá</span></label>
+              <label class="${p.showStock?'is-checked':''}"><input id="showStock" type="checkbox" ${p.showStock?'checked':''}/> <span>Tồn</span></label>
+              <label class="${p.showSku?'is-checked':''}"><input id="showSku" type="checkbox" ${p.showSku?'checked':''}/> <span>SKU</span></label>
             </div>
           </div>
           <div>
             <h4>Mật độ hàng</h4>
             <div class="compact-segment">
-              <label class="${p.density==='compact'?'is-checked':''}"><input type="radio" name="density" value="compact" ${p.density==='compact'?'checked':''}/> Gọn</label>
-              <label class="${p.density==='medium'?'is-checked':''}"><input type="radio" name="density" value="medium" ${p.density==='medium'?'checked':''}/> Vừa</label>
+              <label class="${p.density==='compact'?'is-checked':''}"><input type="radio" name="density" value="compact" ${p.density==='compact'?'checked':''}/> <span>Gọn</span></label>
+              <label class="${p.density==='medium'?'is-checked':''}"><input type="radio" name="density" value="medium" ${p.density==='medium'?'checked':''}/> <span>Vừa</span></label>
             </div>
           </div>
         </div>
@@ -2193,39 +2222,17 @@ function openDisplaySettings(){
         <div>
           <h4>Bán hàng / POS</h4>
           <div class="compact-pos-options">
-            ${[['grid2','Lưới 2'],['grid3','Lưới 3'],['list','Danh sách']].map(([v,l])=>`
+            ${[
+              ['grid2','Lưới 2 cột','layout-grid'],
+              ['grid3','Lưới 3 cột','grid'],
+              ['list','Danh sách','list']
+            ].map(([v,l,ic])=>`
               <label class="${p.posView===v?'is-checked':''}">
                 <input type="radio" name="posView" value="${v}" ${p.posView===v?'checked':''}/>
+                <span class="view-opt-ic">${icon(ic)}</span>
                 <span>${l}</span>
               </label>
             `).join('')}
-          </div>
-        </div>
-
-        <div>
-          <h4>Tối ưu theo thiết bị</h4>
-          <div class="compact-device-cards">
-            <div class="device-card ${window.innerWidth<=640?'active':''}">
-              <div class="dev-card-icon">${icon('smartphone')}</div>
-              <div class="dev-card-info">
-                <strong>Điện thoại</strong>
-                <small>1 chạm gọn</small>
-              </div>
-            </div>
-            <div class="device-card ${window.innerWidth>640&&window.innerWidth<=920?'active':''}">
-              <div class="dev-card-icon">${icon('tablet')}</div>
-              <div class="dev-card-info">
-                <strong>Máy tính bảng</strong>
-                <small>Quầy thu ngân</small>
-              </div>
-            </div>
-            <div class="device-card ${window.innerWidth>920?'active':''}">
-              <div class="dev-card-icon">${icon('monitor')}</div>
-              <div class="dev-card-info">
-                <strong>Máy tính</strong>
-                <small>Màn hình rộng</small>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -2233,15 +2240,81 @@ function openDisplaySettings(){
     onSubmit:r=>{
       state.displayPrefs={
         version:2,
-        view:$('input[name="goodsView"]:checked',r)?.value||'image',
+        view:$('input[name="goodsView"]:checked',r)?.value||'compact',
         showPrice:$('#showPrice',r).checked,
         showStock:$('#showStock',r).checked,
         showSku:$('#showSku',r).checked,
-        density:$('input[name="density"]:checked',r)?.value||'medium',
-        posView:$('input[name="posView"]:checked',r)?.value||'grid3'
+        density:$('input[name="density"]:checked',r)?.value||'compact',
+        posView:$('input[name="posView"]:checked',r)?.value||'grid2',
+        devicePreset:state.displayPrefs.devicePreset||'phone'
       };
       saveDisplayPrefs();
     }
+  });
+
+  const root=$('#modalRoot');
+  const presets = {
+    phone: { view: 'compact', density: 'compact', posView: 'grid2', label: 'Điện thoại', desc: 'Danh sách gọn, mật độ gọn', icon: '📱' },
+    tablet: { view: 'grid2', density: 'medium', posView: 'grid3', label: 'Máy tính bảng', desc: 'Lưới 2 cột, mật độ vừa', icon: '📟' },
+    pc: { view: 'compact', density: 'medium', posView: 'list', label: 'Máy tính', desc: 'Danh sách rộng, POS đa cột', icon: '💻' }
+  };
+
+  const applyPreset = (key) => {
+    const cfg = presets[key];
+    if(!cfg) return;
+
+    // Update active state on device buttons
+    $$('[data-device-preset]', root).forEach(b => b.classList.toggle('active', b.dataset.devicePreset === key));
+
+    // Update radios and is-checked classes
+    $$('input[name="goodsView"]', root).forEach(r => {
+      r.checked = (r.value === cfg.view);
+      r.closest('label')?.classList.toggle('is-checked', r.checked);
+    });
+    $$('input[name="density"]', root).forEach(r => {
+      r.checked = (r.value === cfg.density);
+      r.closest('label')?.classList.toggle('is-checked', r.checked);
+    });
+    $$('input[name="posView"]', root).forEach(r => {
+      r.checked = (r.value === cfg.posView);
+      r.closest('label')?.classList.toggle('is-checked', r.checked);
+    });
+
+    const banner = $('#devicePresetBanner', root);
+    if(banner){
+      banner.innerHTML = `${cfg.icon} Đang dùng chế độ: <b>${cfg.label}</b> (${cfg.desc})`;
+    }
+
+    state.displayPrefs = {
+      version: 2,
+      view: cfg.view,
+      showPrice: true,
+      showStock: true,
+      showSku: true,
+      density: cfg.density,
+      posView: cfg.posView,
+      devicePreset: key
+    };
+    saveDisplayPrefs();
+    renderProducts();
+    toast(`Đã chọn chế độ hiển thị: ${cfg.label}`, 'ok');
+  };
+
+  $$('[data-device-preset]', root).forEach(btn => {
+    btn.onclick = () => applyPreset(btn.dataset.devicePreset);
+  });
+
+  $$('input[type="radio"]', root).forEach(r => {
+    r.addEventListener('change', () => {
+      $$(`input[name="${r.name}"]`, root).forEach(other => {
+        other.closest('label')?.classList.toggle('is-checked', other.checked);
+      });
+    });
+  });
+  $$('input[type="checkbox"]', root).forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.closest('label')?.classList.toggle('is-checked', cb.checked);
+    });
   });
 }
 function openProductFilter(){
@@ -2447,6 +2520,7 @@ function openBatchActions(){
     title:`Thao tác hàng loạt (${items.length})`,
     sub:'Chọn thao tác xử lý cho các mặt hàng đang chọn',
     hideSubmit:true,
+    footer:'<div style="display:none"></div>',
     body
   });
 
