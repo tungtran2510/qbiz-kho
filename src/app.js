@@ -1189,39 +1189,10 @@ function openCheckoutExtrasModal(){
           <input id="modalSaleNote" placeholder="VD: Khách dặn giao buổi sáng, đóng hộp cẩn thận..." value="${esc(state.saleDraft.note || '')}" style="height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;width:100%"/>
         </div>
 
-        <!-- 3. Thuế VAT (Điền trực tiếp % + 4 nút chọn nhanh 1 dòng chuẩn đẹp) -->
-        <div class="field" style="margin:0;background:#f8fafc;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <label style="font-weight:750;font-size:13px;color:#0f172a;margin:0">
-              3. Thuế GTGT / VAT
-            </label>
-            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:2px 8px;display:inline-flex;align-items:center">
-              <span style="font-size:11.5px;font-weight:600;color:#0369a1;margin-right:4px">Tiền thuế:</span>
-              <span id="modalVatAmountPreview" style="font-size:13px;font-weight:800;color:#0284c7">
-                ${totals.vat ? `+${fmt(totals.vat)} ₫` : '0 ₫'}
-              </span>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <div style="position:relative;flex:1;display:flex;align-items:center">
-              <span style="position:absolute;left:10px;font-size:12.5px;font-weight:700;color:#64748b">Mức thuế:</span>
-              <input id="modalVatRateInput" type="number" inputmode="decimal" min="0" max="100" step="any" placeholder="0" value="${curVatRate !== undefined && curVatRate !== null ? curVatRate : ''}" style="width:100%;height:38px;padding:0 26px 0 72px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;font-weight:800;color:#0f172a;background:#ffffff;text-align:right" />
-              <span style="position:absolute;right:10px;font-size:13px;font-weight:800;color:#0284c7;pointer-events:none">%</span>
-            </div>
-          </div>
-          <div class="modal-vat-pill-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-            ${[0, 5, 8, 10].map(v => `
-              <button type="button" class="modal-vat-pill ${Number(curVatRate) === v ? 'active' : ''}" data-vat-val="${v}" style="height:36px;font-size:13px;font-weight:800;border-radius:7px;display:flex;align-items:center;justify-content:center;white-space:nowrap">
-                ${v}%
-              </button>
-            `).join('')}
-          </div>
-        </div>
-
-        <!-- 4. Hẹn trả khách & Chính sách in bill (Thu gọn 1 hàng, bấm sổ ra sau) -->
-        <details class="extras-sub-accordion" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0;overflow:hidden" ${curPolicy || curAppt ? 'open' : ''}>
+        <!-- 3. Hẹn trả khách & Chính sách in bill (Thu gọn 1 hàng, bấm sổ ra sau) -->
+        <details class="extras-sub-accordion warranty-accordion" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0;overflow:hidden" ${curPolicy || curAppt ? 'open' : ''}>
           <summary class="extras-accordion-summary" style="padding:10px 12px;font-weight:700;font-size:12.5px;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none;list-style:none">
-            <span class="extras-accordion-title" style="font-weight:750;font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">4. Hẹn trả & Chính sách in bill</span>
+            <span class="extras-accordion-title" style="font-weight:750;font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">3. Hẹn trả & Chính sách in bill</span>
             <span id="modalAccordionToggleBadge" class="extras-accordion-badge" style="font-size:11.5px;color:#0284c7;font-weight:700;white-space:nowrap;word-break:keep-all;flex-shrink:0;display:inline-flex;align-items:center;gap:3px">
               ${(curPolicy || curAppt) ? 'Đang mở ▴' : '+ Mở rộng ▾'}
             </span>
@@ -1258,17 +1229,54 @@ function openCheckoutExtrasModal(){
           </div>
         </details>
 
-        <!-- 5. Hóa đơn điện tử (VAT) -->
-        <div class="field" style="margin:0;background:#f8fafc;padding:10px;border-radius:10px;border:1px solid #e2e8f0">
-          <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin:0">
-            <span style="font-weight:750;font-size:13px;color:#0f172a">5. Yêu cầu xuất hóa đơn điện tử</span>
-            <input type="checkbox" id="modalReqInvoice" ${reqInv ? 'checked' : ''} style="width:18px;height:18px;accent-color:#2563eb"/>
-          </label>
-          <div id="modalInvoiceFields" style="display:${reqInv ? 'grid' : 'none'};gap:6px;margin-top:8px">
-            <input id="modalInvTaxCode" placeholder="Mã số thuế doanh nghiệp / hộ KD" value="${esc(buyer.taxCode || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
-            <input id="modalInvCompany" placeholder="Tên công ty / tổ chức" value="${esc(buyer.companyName || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
-            <input id="modalInvEmail" placeholder="Email nhận hóa đơn" value="${esc(buyer.email || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
-            <input id="modalInvAddress" placeholder="Địa chỉ xuất HĐ" value="${esc(buyer.address || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+        <!-- 4. Hóa đơn điện tử (Thu gọn 1 hàng, bấm sổ ra để cấu hình thông tin) -->
+        <details class="extras-sub-accordion invoice-accordion" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0;overflow:hidden" ${reqInv ? 'open' : ''}>
+          <summary class="extras-accordion-summary" style="padding:10px 12px;font-weight:700;font-size:12.5px;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none;list-style:none">
+            <span class="extras-accordion-title" style="font-weight:750;font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">4. Yêu cầu xuất hóa đơn điện tử</span>
+            <span id="modalInvoiceAccordionToggleBadge" class="extras-accordion-badge" style="font-size:11.5px;color:#0284c7;font-weight:700;white-space:nowrap;word-break:keep-all;flex-shrink:0;display:inline-flex;align-items:center;gap:3px">
+              ${reqInv ? 'Đang mở ▴' : '+ Mở rộng ▾'}
+            </span>
+          </summary>
+          <div style="padding:10px 12px;border-top:1px dashed #e2e8f0;display:grid;gap:8px;background:#ffffff">
+            <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin:0;padding:2px 0">
+              <span style="font-weight:650;font-size:12.5px;color:#0f172a">Bật xuất HĐĐT cho đơn này</span>
+              <input type="checkbox" id="modalReqInvoice" ${reqInv ? 'checked' : ''} style="width:18px;height:18px;accent-color:#2563eb"/>
+            </label>
+            <div id="modalInvoiceFields" style="display:${reqInv ? 'grid' : 'none'};gap:6px;margin-top:4px">
+              <input id="modalInvTaxCode" placeholder="Mã số thuế doanh nghiệp / hộ KD" value="${esc(buyer.taxCode || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+              <input id="modalInvCompany" placeholder="Tên công ty / tổ chức" value="${esc(buyer.companyName || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+              <input id="modalInvEmail" placeholder="Email nhận hóa đơn" value="${esc(buyer.email || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+              <input id="modalInvAddress" placeholder="Địa chỉ xuất HĐ" value="${esc(buyer.address || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+            </div>
+          </div>
+        </details>
+
+        <!-- 5. Thuế VAT & Phí (Nằm ngay dưới phần hóa đơn) -->
+        <div class="field" style="margin:0;background:#f8fafc;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <label style="font-weight:750;font-size:13px;color:#0f172a;margin:0">
+              5. Thuế GTGT / VAT
+            </label>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:2px 8px;display:inline-flex;align-items:center">
+              <span style="font-size:11.5px;font-weight:600;color:#0369a1;margin-right:4px">Tiền thuế:</span>
+              <span id="modalVatAmountPreview" style="font-size:13px;font-weight:800;color:#0284c7">
+                ${totals.vat ? `+${fmt(totals.vat)} ₫` : '0 ₫'}
+              </span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="position:relative;flex:1;display:flex;align-items:center">
+              <span style="position:absolute;left:10px;font-size:12.5px;font-weight:700;color:#64748b">Mức thuế:</span>
+              <input id="modalVatRateInput" type="number" inputmode="decimal" min="0" max="100" step="any" placeholder="0" value="${curVatRate !== undefined && curVatRate !== null ? curVatRate : ''}" style="width:100%;height:38px;padding:0 26px 0 72px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;font-weight:800;color:#0f172a;background:#ffffff;text-align:right" />
+              <span style="position:absolute;right:10px;font-size:13px;font-weight:800;color:#0284c7;pointer-events:none">%</span>
+            </div>
+          </div>
+          <div class="modal-vat-pill-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            ${[0, 5, 8, 10].map(v => `
+              <button type="button" class="modal-vat-pill ${Number(curVatRate) === v ? 'active' : ''}" data-vat-val="${v}" style="height:36px;font-size:13px;font-weight:800;border-radius:7px;display:flex;align-items:center;justify-content:center;white-space:nowrap">
+                ${v}%
+              </button>
+            `).join('')}
           </div>
         </div>
       </div>
@@ -1405,11 +1413,19 @@ function openCheckoutExtrasModal(){
     };
   }
 
-  const accordion = $('.extras-sub-accordion', root);
+  const accordion = $('.warranty-accordion', root) || $('.extras-sub-accordion', root);
   const badge = $('#modalAccordionToggleBadge', root);
   if (accordion && badge) {
     accordion.ontoggle = () => {
       badge.textContent = accordion.open ? 'Đang mở ▴' : '+ Mở rộng ▾';
+    };
+  }
+
+  const invAccordion = $('.invoice-accordion', root);
+  const invBadge = $('#modalInvoiceAccordionToggleBadge', root);
+  if (invAccordion && invBadge) {
+    invAccordion.ontoggle = () => {
+      invBadge.textContent = invAccordion.open ? 'Đang mở ▴' : '+ Mở rộng ▾';
     };
   }
 
@@ -6636,7 +6652,7 @@ function renderFeatureReports(){
     ['bang-ke-xuat-tt200','Bảng kê chứng từ xuất kho (Doanh nghiệp TT 200/133)','Tổng hợp xuất kho: Bán hàng, Chuyển kho, Hủy hỏng, Tiêu dùng','Doanh nghiệp / Công ty'],
     ['nhap-xuat-ton','Báo cáo Nhập - Xuất - Tồn tổng hợp','Tồn đầu, Nhập, Xuất, Tồn cuối và Giá trị tồn kho','Chuẩn kiểm toán A4/Excel']
   ];
-  const officialTaxBooksHtml=`<section class="card feature-panel" style="margin-top:14px"><div class="section-head"><div><h2 style="font-size:15px;font-weight:750;color:#0f172a;margin:0">Sổ sách kế toán & Báo cáo thuế chuẩn Quốc gia</h2><p style="font-size:11px;color:#64748b;margin:1px 0 0">Biểu mẫu chuẩn Bộ Tài chính phục vụ nộp thuế, kê khai định kỳ và đối soát.</p></div></div><div class="tax-official-books" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">${officialTaxReports.map(([key,label,desc,target])=>`<div class="mod-row" style="display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:180px"><strong style="font-size:12.5px;color:#0f172a;display:block">${esc(label)}</strong><small style="font-size:11px;color:#64748b;display:block;margin-top:2px">${esc(desc)} · <b style="color:#0284c7">${esc(target)}</b></small></div><div class="mod-right" style="display:inline-flex;gap:5px;flex-shrink:0"><button type="button" class="primary-btn compact" data-action="preview-report" data-key="${key}" style="font-size:11.5px;padding:3.5px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">${icon('eye')} In A4</button><button type="button" class="btn-excel compact" data-action="quick-export-report" data-key="${key}" style="font-size:11.5px;padding:3.5px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px">${icon('file-spreadsheet')} Excel</button></div></div>`).join('')}</div></section>`;
+  const officialTaxBooksHtml=`<section class="card feature-panel" style="margin-top:14px"><div class="section-head"><div><h2 style="font-size:15px;font-weight:750;color:#0f172a;margin:0">Sổ sách kế toán & Báo cáo thuế chuẩn Quốc gia</h2><p style="font-size:11px;color:#64748b;margin:1px 0 0">Biểu mẫu chuẩn Bộ Tài chính phục vụ nộp thuế, kê khai định kỳ và đối soát.</p></div></div><div class="tax-official-books" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">${officialTaxReports.map(([key,label,desc,target])=>`<div class="mod-report-card"><div class="mod-report-info"><strong style="font-size:12.5px;color:#0f172a;display:block">${esc(label)}</strong><small style="font-size:11px;color:#64748b;display:block;margin-top:2px">${esc(desc)} · <b style="color:#0284c7">${esc(target)}</b></small></div><div class="mod-report-btns"><button type="button" class="primary-btn compact" data-action="preview-report" data-key="${key}">${icon('eye')} In A4</button><button type="button" class="btn-excel compact" data-action="quick-export-csv" data-key="${key}">${icon('file-spreadsheet')} Sheets (CSV)</button><button type="button" class="secondary-btn compact" data-action="quick-export-report" data-key="${key}">${icon('download')} Excel (.xls)</button></div></div>`).join('')}</div></section>`;
   let body='';
   if(['overview','revenue'].includes(state.reportTab))body=`<section class="report-metrics"><div><span>Doanh thu trước giảm</span><b>${fmt(r.gross)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(r.discount)} ₫</b></div><div><span>Doanh thu thuần</span><b>${fmt(r.net)} ₫</b></div><div><span>Thuế</span><b>${fmt(r.tax)} ₫</b></div><div><span>Đã thu</span><b>${fmt(r.collected)} ₫</b></div><div><span>Còn phải thu theo payment</span><b>${fmt(r.receivable)} ₫</b></div></section><section class="card feature-panel"><div class="section-head" style="display:flex;justify-content:space-between;align-items:center"><div><h2>Giao dịch nguồn</h2><p>${r.sales.length>5?`Hiển thị 5 / ${r.sales.length} phiếu hoàn tất gần nhất.`:`${r.sales.length} phiếu hoàn tất trong bộ lọc.`}</p></div>${r.sales.length>5?`<button type="button" class="secondary-btn tiny" data-action="open-all-source-sales" style="font-size:11.5px;padding:3px 8px;border-radius:6px">Tất cả (${r.sales.length})</button>`:''}</div>${sourceRows}${r.sales.length>5?`<div style="padding:6px 0 2px 0;text-align:center"><button type="button" class="secondary-btn small full" data-action="open-all-source-sales" style="justify-content:center;font-size:12px;font-weight:600;color:var(--q-blue,#0f56d9);background:#f0f7ff;border:1px solid #bfdbfe;border-radius:7px;padding:6px 12px;gap:5px">Xem tất cả ${r.sales.length} giao dịch nguồn →</button></div>`:''}</section>${state.reportTab==='overview'?(userCan('VIEW_COST') && r.hasCost?`<section class="card feature-panel"><div class="section-head"><div><h2>Lợi nhuận gộp</h2><p>Tính toán tự động từ doanh thu thuần trừ giá vốn và hoàn tiền.</p></div></div><div class="report-metrics" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:0"><div><span>Tổng giá vốn</span><b>${fmt(r.cost)} ₫</b></div><div><span>Lợi nhuận gộp</span><b style="color:#16a34a">${fmt(r.profit)} ₫</b></div><div><span>Tỷ suất lợi nhuận</span><b>${r.net>0?((r.profit/r.net)*100).toFixed(1):0}%</b></div></div></section>`:(userCan('VIEW_COST')?preparedReport('Lợi nhuận','Phiếu bán chưa có cost snapshot/expense ledger đủ để tính lợi nhuận an toàn.'):'')):''}${taxProfitSection}`;
   else if(state.reportTab==='tax')body=`${taxProfitSection}${officialTaxBooksHtml}`;
@@ -6648,6 +6664,7 @@ function renderFeatureReports(){
   $('#content').innerHTML=`<section class="report-center"><div class="report-filter"><label class="report-field"><span>Thời gian</span><select id="reportRange">${ranges.map(([v,l])=>`<option value="${v}" ${state.reportRange===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="report-field report-warehouse"><span>Kho</span><select id="reportWarehouse"><option value="all">Tất cả kho</option>${state.data.warehouses.map(w=>`<option value="${w.id}" ${state.reportWarehouse===w.id?'selected':''}>${esc(w.name)}</option>`).join('')}</select></label>${state.reportRange==='custom'?`<div class="report-custom-range"><label>Từ<input id="reportCustomStart" type="date" value="${esc(state.reportCustomStart)}"/></label><label>Đến<input id="reportCustomEnd" type="date" value="${esc(state.reportCustomEnd)}"/></label><button class="secondary-btn" data-report-custom-apply>Áp dụng</button></div>`:''}</div><div class="report-tabs">${tabs.map(([v,l])=>`<button class="${state.reportTab===v?'active':''}" data-report-tab="${v}">${l}</button>`).join('')}</div>${body}</section>`;
   $('#reportRange')?.addEventListener('change',e=>{state.reportRange=e.target.value;renderFeatureReports()});$('#reportWarehouse')?.addEventListener('change',e=>{state.reportWarehouse=e.target.value;renderFeatureReports()});$$('[data-report-tab]').forEach(b=>b.onclick=()=>{state.reportTab=b.dataset.reportTab;renderFeatureReports()});$('[data-report-custom-apply]')?.addEventListener('click',()=>{state.reportCustomStart=$('#reportCustomStart').value;state.reportCustomEnd=$('#reportCustomEnd').value;renderFeatureReports()});$$('[data-sale-id]').forEach(b=>b.onclick=()=>openTransaction(state.data.sales.find(s=>s.id===b.dataset.saleId)));$$('[data-order-open]').forEach(b=>b.onclick=()=>openOrderDetail(b.dataset.orderOpen));$$('[data-action="open-all-source-sales"]').forEach(b=>b.onclick=()=>openAllSourceSalesModal(r.sales));
   $$('[data-action="preview-report"]').forEach(b=>b.onclick=()=>openExportReportModal(b.dataset.key));
+  $$('[data-action="quick-export-csv"]').forEach(b=>b.onclick=()=>{const data=getOfficialReportData(b.dataset.key);exportReportCsv(data);});
   $$('[data-action="quick-export-report"]').forEach(b=>b.onclick=()=>{const data=getOfficialReportData(b.dataset.key);exportReportToExcel(data);});
   $$('[data-action="tax-preferences"]').forEach(b=>b.onclick=()=>openTaxPreferencesModal());
 }
@@ -8314,14 +8331,100 @@ function exportReportToExcel(data){
 
 function exportReportCsv(data){
   if(!data||!data.header)return;
-  const {key,header,rawRows}=data;
-  const csvContent=[
-    header.map(csvCell).join(','),
-    ...rawRows.map(r=>r.map(csvCell).join(','))
-  ].join('\n');
+  const {
+    key,
+    title,
+    subtitle,
+    standardText,
+    compName,
+    compAddr,
+    compTax,
+    dateStr,
+    approvalDateStr,
+    header,
+    rawRows=[],
+    totalRowRaw,
+    totalRowDisplay,
+    wordsText,
+    signers
+  }=data;
+
+  const colCount=header.length;
+  const padRow=(first,rest=[])=>{
+    const r=[first,...rest];
+    while(r.length<colCount) r.push('');
+    return r.map(csvCell).join(',');
+  };
+
+  const lines=[];
+  // 1. Enterprise / Organization header
+  if(compName) lines.push(padRow(`ĐƠN VỊ: ${compName}`));
+  if(compAddr) lines.push(padRow(`Địa chỉ: ${compAddr}`));
+  if(compTax) lines.push(padRow(`Mã số thuế: ${compTax}`));
+  if(standardText) lines.push(padRow(`Quy định: ${standardText}`));
+  if(compName||compAddr||compTax||standardText) lines.push('');
+
+  // 2. Title & subtitle
+  if(title) lines.push(padRow(title));
+  if(subtitle) lines.push(padRow(subtitle));
+  if(dateStr) lines.push(padRow(dateStr));
+  if(title||subtitle||dateStr) lines.push('');
+
+  // 3. Table Header
+  lines.push(header.map(csvCell).join(','));
+
+  // 4. Data Rows
+  for(const r of rawRows){
+    lines.push(r.map(csvCell).join(','));
+  }
+
+  // 5. Total Row
+  if(totalRowRaw&&totalRowRaw.length){
+    lines.push(totalRowRaw.map(csvCell).join(','));
+  }else if(totalRowDisplay&&totalRowDisplay.length){
+    lines.push(totalRowDisplay.map(csvCell).join(','));
+  }
+
+  // 6. Words summary
+  if(wordsText){
+    lines.push('');
+    lines.push(padRow(`Số tiền bằng chữ: ${wordsText}`));
+  }
+
+  // 7. Approval date & Signatures
+  if(signers){
+    lines.push('');
+    if(approvalDateStr) lines.push(padRow('',Array(colCount-2).fill('').concat([approvalDateStr])));
+    const quarter=Math.max(1,Math.floor(colCount/4));
+    const sigHeaders=Array(colCount).fill('');
+    sigHeaders[0]='Người lập biểu';
+    if(colCount>1) sigHeaders[Math.min(quarter,colCount-1)]='Thủ kho';
+    if(colCount>2) sigHeaders[Math.min(quarter*2,colCount-1)]='Kế toán trưởng';
+    if(colCount>3) sigHeaders[colCount-1]='Giám đốc / Chủ hộ';
+    lines.push(sigHeaders.map(csvCell).join(','));
+
+    const sigSubs=Array(colCount).fill('');
+    sigSubs[0]='(Ký, họ tên)';
+    if(colCount>1) sigSubs[Math.min(quarter,colCount-1)]='(Ký, họ tên)';
+    if(colCount>2) sigSubs[Math.min(quarter*2,colCount-1)]='(Ký, họ tên)';
+    if(colCount>3) sigSubs[colCount-1]='(Ký, đóng dấu)';
+    lines.push(sigSubs.map(csvCell).join(','));
+
+    lines.push(Array(colCount).fill('').join(','));
+    lines.push(Array(colCount).fill('').join(','));
+
+    const sigNames=Array(colCount).fill('');
+    sigNames[0]=signers.creator||'';
+    if(colCount>1) sigNames[Math.min(quarter,colCount-1)]=signers.stockKeeper||'';
+    if(colCount>2) sigNames[Math.min(quarter*2,colCount-1)]=signers.accountant||'';
+    if(colCount>3) sigNames[colCount-1]=signers.director||'';
+    lines.push(sigNames.map(csvCell).join(','));
+  }
+
+  const csvContent=lines.join('\r\n');
   const fileName=`qbiz-${key}-${new Date().toISOString().slice(0,10)}.csv`;
   downloadText(fileName,csvContent,'text/csv;charset=utf-8');
-  toast(`Đã xuất ${rawRows.length} dòng dữ liệu CSV (chuẩn UTF-8 mở Excel không lỗi font).`,'ok');
+  toast(`Đã xuất file bảng tính CSV (${rawRows.length} dòng) mở Google Sheets / Excel 100% không lỗi!`,'ok');
 }
 
 function openExportReportModal(key){
@@ -8411,11 +8514,11 @@ function openExportReportModal(key){
     body: `
       <div class="voucher-modal-wrap" style="max-width:960px">
         <div class="voucher-toolbar">
-          <div style="font-size:13px;font-weight:600;color:#0f172a">Chuẩn kế toán & thuế Việt Nam (A4 in ấn · Excel .xls)</div>
+          <div style="font-size:13px;font-weight:600;color:#0f172a">Chuẩn kế toán & thuế Việt Nam (In A4 · Sheets / Excel UTF-8)</div>
           <div class="voucher-actions" style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="primary-btn compact" id="btnPrintReportAction">${icon('printer')} In báo cáo A4</button>
-            <button type="button" class="btn-excel compact" id="btnExportReportExcelAction">${icon('file-spreadsheet')} Xuất Excel (.xls)</button>
-            <button type="button" class="secondary-btn compact" id="btnExportReportCsvAction">${icon('download')} Xuất CSV</button>
+            <button type="button" class="primary-btn compact" id="btnPrintReportAction">${icon('printer')} In A4</button>
+            <button type="button" class="btn-excel compact" id="btnExportReportCsvAction">${icon('file-spreadsheet')} Sheets (CSV)</button>
+            <button type="button" class="secondary-btn compact" id="btnExportReportExcelAction">${icon('download')} Excel (.xls)</button>
           </div>
         </div>
         <div id="reportSheetContainer">${voucherSheetHtml}</div>
@@ -8436,11 +8539,11 @@ function openExportReportModal(key){
     toast('Đang mở hộp thoại in báo cáo...','ok');
     requestAnimationFrame(()=>window.print());
   });
-  $('#btnExportReportExcelAction',root)?.addEventListener('click',()=>{
-    exportReportToExcel(rep);
-  });
   $('#btnExportReportCsvAction',root)?.addEventListener('click',()=>{
     exportReportCsv(rep);
+  });
+  $('#btnExportReportExcelAction',root)?.addEventListener('click',()=>{
+    exportReportToExcel(rep);
   });
 }
 
@@ -8468,14 +8571,15 @@ async function renderExports(){
       <label class="mod-label" style="font-weight:700;color:var(--primary,#1a73e8);font-size:13.5px">📊 Báo cáo nghiệp vụ chuẩn Quốc gia (A4 / Excel UTF-8)</label>
       <div class="mod-list">
         ${officialReports.map(([key,label,desc,target])=>`
-          <div class="mod-row" style="align-items:center">
-            <div>
+          <div class="mod-report-card">
+            <div class="mod-report-info">
               <strong style="font-size:13.5px">${esc(label)}</strong>
               <small>${esc(desc)} · <b style="color:#0284c7">${esc(target)}</b></small>
             </div>
-            <div class="mod-right" style="display:flex;gap:6px">
-              <button class="primary-btn compact" data-action="preview-report" data-key="${key}">${icon('eye')} Xem & In A4</button>
-              <button class="btn-excel compact" data-action="quick-export-report" data-key="${key}">${icon('file-spreadsheet')} Excel (.xls)</button>
+            <div class="mod-report-btns">
+              <button class="primary-btn compact" data-action="preview-report" data-key="${key}">${icon('eye')} In A4</button>
+              <button class="btn-excel compact" data-action="quick-export-csv" data-key="${key}">${icon('file-spreadsheet')} Sheets (CSV)</button>
+              <button class="secondary-btn compact" data-action="quick-export-report" data-key="${key}">${icon('download')} Excel (.xls)</button>
             </div>
           </div>
         `).join('')}
@@ -8497,6 +8601,12 @@ ${modNote('Tất cả file xuất Excel (.xls) và CSV đều được nhúng <b
 
   $$('[data-action="preview-report"]').forEach(b=>{
     b.onclick=()=>openExportReportModal(b.dataset.key);
+  });
+  $$('[data-action="quick-export-csv"]').forEach(b=>{
+    b.onclick=()=>{
+      const data=getOfficialReportData(b.dataset.key);
+      exportReportCsv(data);
+    };
   });
   $$('[data-action="quick-export-report"]').forEach(b=>{
     b.onclick=()=>{
@@ -13158,7 +13268,16 @@ async function boot(){
   window.renderSales = renderSales;
   window.saleLines = saleLines;
   window.saleTotals = saleTotals;
-  window.submitSale = submitSale;
+  window.openCheckoutExtrasModal = openCheckoutExtrasModal;
+  window.openSaleExtrasModal = openCheckoutExtrasModal;
+  window.openExportReportModal = openExportReportModal;
+  window.getOfficialReportData = getOfficialReportData;
+  window.exportReportCsv = exportReportCsv;
+  window.exportReportToExcel = exportReportToExcel;
+  window.renderExports = renderExports;
+  window.renderFeatureReports = renderFeatureReports;
+  const closeModal = () => { if($('#modalRoot')) $('#modalRoot').innerHTML = ''; state.currentProductId = null; state.currentOrderId = null; state.currentSaleId = null; };
+  window.closeModal = closeModal;
   if('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').then(reg => {
       reg.update().catch(() => {});

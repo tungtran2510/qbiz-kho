@@ -3604,6 +3604,265 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
     };
   }
 
+  // 2.96 Tier 0 Deterministic Fast-Paths (Daily Orders, Shipping, Contextual Stock, Invoices, Customer Debt, Accounting)
+  if (isClarificationQuery(pNorm) || isClarificationQuery(rawPrompt)) {
+    return {
+      text: `Dạ, em là **Trợ lý AI QBiz**! Em có thể hỗ trợ bạn xem nhanh số liệu hoặc thao tác trực tiếp:\n\n` +
+        `• 📊 **Doanh thu & Lãi lỗ:** *"Hôm nay bán được bao nhiêu"*, *"Tháng này lời bao nhiêu"*\n` +
+        `• 📦 **Tồn kho & Bán chạy:** *"Món nào bán chạy"*, *"Hàng nào sắp hết"*, *"Kiểm tra tồn kho"*\n` +
+        `• 📄 **Hóa đơn & In ấn:** *"Tìm lấy hóa đơn gần nhất"*, *"In hóa đơn gần nhất"*\n` +
+        `• ⚡ **Thao tác nhanh:** *"Bán 2 váy linen"*, *"Nhập 5 áo thun"*, *"Tắt giọng đọc"*\n\n` +
+        `Bạn muốn em kiểm tra hoặc hỗ trợ công việc gì ạ?`,
+      status: 'SUCCESS',
+      intent: 'HELP_CLARIFICATION',
+      skillId: 'help-clarification',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  if (isPaymentBreakdownQuery(pNorm) || isPaymentBreakdownQuery(rawPrompt)) {
+    const period = extractRelativePeriod(pNorm) || extractRelativePeriod(rawPrompt) || (pNorm.includes('hom qua') ? 'yesterday' : (pNorm.includes('thang') ? 'month' : 'today'));
+    const revData = executeTool('get_sales_summary', { period }, state, context);
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const cash = revData.paymentMethods?.cash || 0;
+    const transfer = revData.paymentMethods?.transfer || 0;
+    const qr = revData.paymentMethods?.qr || 0;
+    const total = revData.totalRevenue || 0;
+    const count = revData.completedCount || 0;
+
+    let periodName = revData.periodLabel || 'Hôm nay';
+    let msg = `💰 **Báo cáo tiền mặt & phương thức thanh toán (${periodName}):**\n\n` +
+      `- 💵 **Tiền mặt (Thu ngân / Két):** **${fmt.format(cash)} ₫**\n` +
+      `- 💳 **Chuyển khoản ngân hàng:** **${fmt.format(transfer)} ₫**\n` +
+      `- 📱 **Quét mã QR Code:** **${fmt.format(qr)} ₫**\n` +
+      `----------------------------------------\n` +
+      `- 📈 **Tổng tiền thu về:** **${fmt.format(total)} ₫** (${count} lượt giao dịch đã hoàn tất)`;
+
+    if (revData.unpaidCount > 0) {
+      msg += `\n- ⏳ *Đang chờ thanh toán:* ${revData.unpaidCount} đơn (${fmt.format(revData.unpaidTotal)} ₫)`;
+    }
+
+    return {
+      text: msg,
+      status: 'SUCCESS',
+      intent: 'PAYMENT_BREAKDOWN',
+      skillId: 'sales-summary',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  if (isDailyOrdersCountQuery(pNorm) || isDailyOrdersCountQuery(rawPrompt)) {
+    const orders = state?.data?.orders || [];
+    const sales = state?.data?.sales || [];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayOrders = orders.filter(o => {
+      const dt = o.created_at || o.createdAt || o.date || '';
+      return dt.startsWith(todayStr);
+    });
+    const todaySales = sales.filter(s => {
+      const dt = s.created_at || s.createdAt || '';
+      return dt.startsWith(todayStr);
+    });
+
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const recentOrders = todayOrders.length > 0 ? todayOrders : orders.slice(-3).reverse();
+
+    if (todayOrders.length === 0 && todaySales.length === 0) {
+      let text = `Hôm nay chưa có đơn hàng mới nào phát sinh.`;
+      if (recentOrders.length > 0) {
+        const top = recentOrders[0];
+        text += ` Đơn gần nhất là **${top.code || top.id}** (${top.customer || 'Khách lẻ'}, ${fmt.format(top.total || 0)} ₫ - ${top.status || 'Chờ xử lý'}).`;
+      }
+      return {
+        text,
+        status: 'SUCCESS',
+        intent: 'DAILY_ORDERS_COUNT',
+        skillId: 'sales-summary',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    }
+
+    let text = `📦 **Đơn hàng mới (${todayOrders.length > 0 ? 'Hôm nay' : 'Gần nhất'}):**\n`;
+    recentOrders.forEach(o => {
+      text += `• **${o.code || o.id}**: ${o.customer || 'Khách lẻ'} · ${fmt.format(o.total || 0)} ₫ (${o.status || 'Đã tạo'})\n`;
+    });
+    if (todaySales.length > 0) {
+      const totalSale = todaySales.reduce((s, x) => s + Number(x.total || 0), 0);
+      text += `• Bán lẻ tại quầy: **${todaySales.length} hóa đơn** (tổng ${fmt.format(totalSale)} ₫).`;
+    }
+    return {
+      text: text.trim(),
+      status: 'SUCCESS',
+      intent: 'DAILY_ORDERS_COUNT',
+      skillId: 'sales-summary',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  if (isShippingQuery(pNorm) || isShippingQuery(rawPrompt)) {
+    if (typeof window !== 'undefined' && window.__qbiz_app__?.navigate) {
+      window.__qbiz_app__.navigate('orders');
+    }
+    return {
+      text: `🚚 **Kết nối đơn vị vận chuyển:**\nQBiz Kho hỗ trợ liên kết các đơn vị giao hàng như **GHTK, GHN, Viettel Post, v.v.** để đẩy đơn và in vận đơn trực tiếp trong chi tiết đơn hàng. Đã mở trang Đơn hàng cho bạn.`,
+      status: 'SUCCESS',
+      intent: 'SHIPPING_INQUIRY',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  if (isContextualProductQuery(pNorm) || isContextualProductQuery(rawPrompt)) {
+    let boundId = context?.current_product_id || state?.currentProductId;
+    if (!boundId && typeof document !== 'undefined') {
+      const modalEl = document.getElementById('modalRoot')?.querySelector('[data-product-id]');
+      boundId = modalEl?.dataset?.productId;
+    }
+    if (!boundId && state?.data?.products?.length > 0) {
+      boundId = state.data.products[0].id;
+    }
+    if (boundId) {
+      const prod = (state?.data?.products || []).find(p => p.id === boundId);
+      if (prod) {
+        const stockData = totalFor(state?.data, prod.id) || { available: prod.stock || 0, onHand: prod.stock || 0 };
+        const avail = Number(stockData.available ?? stockData.onHand ?? prod.stock ?? 0);
+        const onHand = Number(stockData.onHand ?? prod.stock ?? 0);
+        const minStock = Number(prod.lowStock || prod.min_stock || 2);
+        const fmt = new Intl.NumberFormat('vi-VN');
+        const priceStr = prod.price != null ? `${fmt.format(prod.price)} ₫` : 'Chưa đặt giá';
+
+        let msg = '';
+        if (avail <= 0) {
+          msg = `🔴 **${prod.name}** (${prod.sku || ''}) hiện **ĐÃ HẾT HÀNG** (tồn thực: ${onHand} ${prod.unit || 'cái'}). Bạn có muốn nhập thêm hàng vào kho không?`;
+        } else {
+          msg = `🟢 **${prod.name}** (${prod.sku || ''}) hiện **CÒN HÀNG**:\n- Có thể bán: **${avail} ${prod.unit || 'cái'}** (tồn thực: ${onHand}, định mức tối thiểu: ${minStock})\n- Giá bán: **${priceStr}**. Sẵn sàng bán!`;
+        }
+        return {
+          text: msg,
+          product: prod,
+          status: 'SUCCESS',
+          intent: 'CONTEXTUAL_STOCK',
+          tier: 0,
+          provider: PROVIDER_MODES.DETERMINISTIC,
+          compactTrace: 'Rule exact'
+        };
+      }
+    }
+  }
+
+  if (isInvoiceReportQuery(pNorm) || isInvoiceReportQuery(rawPrompt)) {
+    const sales = state?.data?.sales || [];
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todaySales = sales.filter(s => (s.created_at || s.createdAt || '').startsWith(todayStr));
+    const targetSales = todaySales.length > 0 ? todaySales : sales.slice(-5);
+    const totalRev = targetSales.reduce((sum, s) => sum + Number(s.total || s.total_amount || 0), 0);
+
+    if (typeof window !== 'undefined' && window.__qbiz_app__?.navigate) {
+      window.__qbiz_app__.navigate('sales');
+    }
+
+    let msg = `🧾 **Báo cáo hóa đơn bán hàng:**\n`;
+    if (todaySales.length > 0) {
+      msg += `Hôm nay đã phát hành **${todaySales.length} hóa đơn**, tổng doanh thu: **${fmt.format(totalRev)} ₫**.\n`;
+    } else {
+      msg += `Hôm nay chưa phát sinh hóa đơn mới (toàn thời gian: ${sales.length} hóa đơn).\n`;
+    }
+    msg += `Đã mở danh sách hóa đơn & giao dịch bán hàng cho bạn.`;
+    return {
+      text: msg,
+      status: 'SUCCESS',
+      intent: 'INVOICE_REPORT',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  if (isCustomerQuery(pNorm) || isCustomerQuery(rawPrompt)) {
+    const customers = state?.data?.customers || [];
+    const fmt = new Intl.NumberFormat('vi-VN');
+
+    if (pNorm.includes('no') || pNorm.includes('cong no')) {
+      const debtCusts = customers.filter(c => Number(c.debt || 0) > 0);
+      let text = `👥 **Công nợ khách hàng:**\n`;
+      if (debtCusts.length === 0) {
+        text += `Hiện không có khách hàng nào nợ tiền.`;
+      } else {
+        text += `Có ${debtCusts.length} khách còn công nợ:\n`;
+        debtCusts.slice(0, 4).forEach(c => {
+          text += `• **${c.name}**: Còn nợ ${fmt.format(c.debt)} ₫\n`;
+        });
+      }
+      return {
+        text: text.trim(),
+        status: 'SUCCESS',
+        intent: 'CUSTOMER_DEBT',
+        tier: 0,
+        provider: PROVIDER_MODES.DETERMINISTIC,
+        compactTrace: 'Rule exact'
+      };
+    }
+
+    if (typeof window !== 'undefined' && window.__qbiz_app__?.navigate) {
+      window.__qbiz_app__.navigate('customers');
+    }
+    return {
+      text: `👥 **Khách hàng:** Hiện có **${customers.length} khách hàng** trong hệ thống. Đã mở danh sách khách hàng cho bạn.`,
+      status: 'SUCCESS',
+      intent: 'CUSTOMER_LIST',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
+  if (isAccountingFinanceQuery(pNorm) || isAccountingFinanceQuery(rawPrompt)) {
+    const sales = state?.data?.sales || [];
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todaySales = sales.filter(s => (s.created_at || s.createdAt || '').startsWith(todayStr));
+    const targetSales = todaySales.length > 0 ? todaySales : sales;
+
+    let cash = 0, transfer = 0, total = 0;
+    for (const s of targetSales) {
+      const t = Number(s.total || s.total_amount || 0);
+      total += t;
+      const m = String(s.payment_method || s.paymentMethod || '').toLowerCase();
+      if (m.includes('transfer') || m.includes('chuyen') || m.includes('qr') || m.includes('bank')) {
+        transfer += t;
+      } else {
+        cash += t;
+      }
+    }
+
+    const prefix = todaySales.length > 0 ? 'Hôm nay' : 'Toàn thời gian';
+    const msg = `💰 **Sổ quỹ & Thu chi (${prefix}):**\n` +
+      `- Tiền mặt thu được (két): **${fmt.format(cash)} ₫**\n` +
+      `- Tiền chuyển khoản / QR: **${fmt.format(transfer)} ₫**\n` +
+      `- Tổng doanh thu: **${fmt.format(total)} ₫**`;
+    return {
+      text: msg,
+      status: 'SUCCESS',
+      intent: 'ACCOUNTING_CASHFLOW',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      compactTrace: 'Rule exact'
+    };
+  }
+
   // 3. Semantic Planner (For business, advice, inquiry, financial and compound queries)
   try {
     const planResult = await createSemanticPlan(rawPrompt, context, state, options);

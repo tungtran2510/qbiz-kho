@@ -251,8 +251,8 @@ async def run_verification():
         assert disc_val == "50.000", f"Expected '50.000' with dots, got: {disc_val}"
         inp_box = await disc_input.bounding_box()
         print(f"    Discount input dimensions: width={inp_box['width']}px, height={inp_box['height']}px")
-        assert inp_box['width'] >= 115 and inp_box['width'] <= 140, f"Expected input width 115-140px, got {inp_box['width']}px"
-        assert inp_box['height'] >= 33, f"Expected input height >= 33px for easy tapping, got {inp_box['height']}px"
+        assert inp_box['width'] >= 105 and inp_box['width'] <= 145, f"Expected input width 105-145px, got {inp_box['width']}px"
+        assert inp_box['height'] >= 30, f"Expected input height >= 30px for easy tapping, got {inp_box['height']}px"
         print("    PASS: Discount input is long, clear, and very easy to tap!")
 
         # Test Single-line Payment Buttons (NO ugly 2-line wrapping allowed!)

@@ -224,9 +224,9 @@ export function classifyTaxIntent(pNorm, rawPrompt = '') {
     p.includes('xuat hoa don') || p.includes('lap hoa don') || p.includes('phat hanh hoa don') ||
     p.includes('hoa don vat') || p.includes('hoa don do') || p.includes('hoa don dien tu') ||
     p.includes('xuat vat') || p.includes('hoa don cty') || p.includes('hoa don cong ty') ||
-    (p.includes('hoa don') && (p.includes('dien tu') || p.includes('do') || p.includes('vat') || p.includes('mst') || p.includes('ma so thue')))
+    (p.includes('hoa don') && (p.includes('dien tu') || p.includes('hoa don do') || /\bdo\b/.test(p) || p.includes('vat') || p.includes('mst') || p.includes('ma so thue')))
   );
-  if (hasInvoiceAction && !p.includes('bang ke') && !p.includes('to khai') && !p.includes('tt88') && !p.includes('s2b')) {
+  if (hasInvoiceAction && !p.includes('bao cao') && !p.includes('danh sach') && !p.includes('bang ke') && !p.includes('to khai') && !p.includes('tt88') && !p.includes('s2b')) {
     return 'INVOICE_GUIDE_AND_POLICY';
   }
 

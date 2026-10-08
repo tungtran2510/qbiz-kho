@@ -606,7 +606,7 @@ export const SKILL_REGISTRY = {
         };
       }
       return {
-        text: question || 'Tôi chưa hiểu rõ yêu cầu này. Bạn có thể diễn đạt cụ thể hơn về sản phẩm, kho hoặc thao tác bạn muốn thực hiện không?',
+        text: question || 'Em chưa hiểu rõ câu này. Bạn có thể diễn đạt cụ thể hơn về sản phẩm, kho hoặc thao tác bạn muốn thực hiện không?',
         status: 'NEEDS_CLARIFICATION',
         intent: 'clarify_ambiguity',
         tier: 0,
