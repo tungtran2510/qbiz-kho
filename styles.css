@@ -5999,8 +5999,8 @@ body:has(.pos-cart-bar) .qbiz-ai-trigger {
 .cart-row {
   display: grid !important;
   grid-template-columns: 50px minmax(0, 1fr) !important;
-  gap: 10px !important;
-  padding: 8px 0 !important;
+  gap: 8px !important;
+  padding: 6px 0 !important;
   border-bottom: 1px solid var(--q-line, #e2e8f0);
   align-items: center;
 }
@@ -6021,7 +6021,7 @@ body:has(.pos-cart-bar) .qbiz-ai-trigger {
   min-width: 0;
   display: flex !important;
   flex-direction: column !important;
-  gap: 5px !important;
+  gap: 3px !important;
 }
 .cart-row-title {
   display: flex !important;
@@ -6029,52 +6029,60 @@ body:has(.pos-cart-bar) .qbiz-ai-trigger {
   justify-content: space-between !important;
   gap: 6px !important;
   margin-bottom: 0 !important;
+  min-width: 0 !important;
 }
 .checkout-screen {
   padding-bottom: 96px !important;
 }
-.cart-name-group {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-  overflow: hidden !important;
-}
-.cart-name-group strong {
+.cart-item-name,
+.cart-row-title strong {
   font-size: 13.5px !important;
   font-weight: 700 !important;
   color: #0f172a !important;
   line-height: 1.25 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
+  flex: 1 1 auto !important;
   min-width: 0 !important;
-  flex: 0 1 auto !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+}
+.cart-row-subline {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  min-width: 0 !important;
+  margin: 1px 0 2px !important;
+}
+.cart-row-subline::-webkit-scrollbar {
+  display: none !important;
 }
 .cart-sku-badge {
   display: inline-block !important;
-  padding: 1px 6px !important;
+  padding: 1px 5px !important;
   border-radius: 4px !important;
   background: #f1f5f9 !important;
   color: #64748b !important;
-  font-size: 11px !important;
+  font-size: 10.5px !important;
   font-weight: 600 !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
+  line-height: 1.2 !important;
 }
 .cart-remove-btn,
 .cart-row-title .cart-remove-btn {
-  width: 28px !important;
-  height: 28px !important;
-  min-width: 28px !important;
-  min-height: 28px !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
   border: 0 !important;
   background: transparent !important;
   color: #94a3b8 !important;
-  font-size: 20px !important;
+  font-size: 18px !important;
   line-height: 1 !important;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -6082,6 +6090,7 @@ body:has(.pos-cart-bar) .qbiz-ai-trigger {
   padding: 0 !important;
   transition: all .12s ease;
   margin-left: auto;
+  flex-shrink: 0 !important;
 }
 .cart-remove-btn:hover,
 .cart-row-title .cart-remove-btn:hover {
@@ -6162,28 +6171,28 @@ body:has(.pos-cart-bar) .qbiz-ai-trigger {
   margin: 0;
 }
 .line-discount-trigger {
-  min-height: 26px !important;
-  height: 26px !important;
-  padding: 0 7px !important;
-  margin-left: 6px !important;
-  border-radius: 6px !important;
-  border: 1px solid #e2e8f0 !important;
-  background: #f8fafc !important;
-  color: #64748b !important;
+  min-height: 24px !important;
+  height: 24px !important;
+  padding: 0 4px !important;
+  margin-left: 4px !important;
+  border-radius: 4px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--q-blue, #0284c7) !important;
   font-size: 11px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 3px !important;
+  gap: 2px !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
+  text-decoration: none !important;
   transition: all .12s ease;
 }
 .line-discount-trigger:hover {
-  background: #eff6ff !important;
-  border-color: #93c5fd !important;
-  color: #1d4ed8 !important;
+  background: #f1f5f9 !important;
+  color: #0369a1 !important;
 }
 .cart-price-group {
   display: flex;
@@ -9894,118 +9903,115 @@ body.topbar-hidden .install-subtle-tip {
    Ultra-compact, mobile-first 390x844 optimized
    ========================================================================== */
 
-/* Đơn vị quy đổi trên dòng giỏ hàng POS */
+/* Đơn vị quy đổi trên dòng giỏ hàng POS - Ultra Compact */
 .cart-unit-selector {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin: 3px 0 5px;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  flex-wrap: wrap !important;
+  margin: 0 !important;
 }
 .unit-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 24px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 700;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 20px !important;
+  height: 20px !important;
+  padding: 0 6px !important;
+  border-radius: 10px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+  transition: all 0.15s ease !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 .unit-pill:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
 }
 .unit-pill.active {
-  background: var(--q-blue, #0284c7);
-  border-color: var(--q-blue, #0284c7);
-  color: #ffffff;
-  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.25);
+  background: var(--q-blue, #0284c7) !important;
+  border-color: var(--q-blue, #0284c7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25) !important;
 }
 
 /* Badge chiết khấu bảng giá sỉ trên dòng giỏ hàng */
 .cart-badge-pricelist {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 10.5px;
-  font-weight: 750;
-  background: #fef3c7;
-  color: #b45309;
-  border: 1px solid #fde68a;
-  margin-left: 4px;
-  vertical-align: middle;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 750 !important;
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+  border: 1px solid #fde68a !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  vertical-align: middle !important;
 }
 
-/* Thẻ cấn trừ điểm tích lũy trong màn hình thanh toán POS */
+/* Thẻ cấn trừ điểm tích lũy trong màn hình thanh toán POS - Single-row Ultra-Compact */
 .checkout-loyalty-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 9px 11px;
-  margin: 6px 0 10px;
-  background: linear-gradient(135deg, #fffdf5 0%, #fef9c3 100%);
-  border: 1px solid #fef08a;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(234, 179, 8, 0.08);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 6px 10px !important;
+  margin: 4px 0 8px !important;
+  background: linear-gradient(135deg, #fffdf5 0%, #fef9c3 100%) !important;
+  border: 1px solid #fde047 !important;
+  border-radius: 8px !important;
+  min-height: 34px !important;
 }
 .loyalty-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  flex: 1;
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
 }
 .loyalty-icon {
-  font-size: 18px;
-  line-height: 1;
-  flex-shrink: 0;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
 }
-.loyalty-info strong {
-  display: block;
-  font-size: 12.5px;
-  font-weight: 800;
-  color: #854d0e;
-  line-height: 1.25;
+.loyalty-text {
+  font-size: 12px !important;
+  color: #854d0e !important;
+  white-space: nowrap !important;
 }
-.loyalty-info small {
-  display: block;
-  font-size: 10.5px;
-  color: #a16207;
-  line-height: 1.3;
-  margin-top: 1px;
+.loyalty-text b {
+  font-weight: 800 !important;
 }
 .loyalty-toggle-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 750;
-  color: #854d0e;
-  cursor: pointer;
-  background: #ffffff;
-  padding: 6px 9px;
-  border-radius: 8px;
-  border: 1px solid #fde047;
-  flex-shrink: 0;
-  user-select: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  color: #854d0e !important;
+  cursor: pointer !important;
+  background: #ffffff !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  border: 1px solid #fde047 !important;
+  flex-shrink: 0 !important;
+  user-select: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 .loyalty-toggle-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: #d97706;
-  cursor: pointer;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  accent-color: #d97706 !important;
+  cursor: pointer !important;
 }
 
 
