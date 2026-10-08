@@ -99,7 +99,7 @@ async def run_verification():
         assert card_styles['borderRightWidth'] == '0px', "Expected 0px border-right (Unboxed!)"
         assert card_styles['borderBottomWidth'] == '0px', "Expected 0px border-bottom (Unboxed!)"
         assert card_styles['flexDirection'] == 'column', "Expected column layout (Label on top, Amount below)"
-        assert card_styles['alignItems'] == 'flex-end', "Expected flex-end alignment (Right-aligned total amount)"
+        assert card_styles['alignItems'] == 'center', "Expected center alignment (Centered total amount)"
 
         # Inspect Label & Strong Amount
         label_text = await page.locator('.billing-grand-total span').text_content()

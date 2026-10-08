@@ -10397,13 +10397,15 @@ body.topbar-hidden .install-subtle-tip {
 }
 
 
-/* Grand Total Streamlined - Hien dai, khong khung chong khung, khong mau me */
+/* Grand Total Streamlined - Hien dai, can giua, khong khung chong khung, gia to noi bat */
 .billing-grand-total {
   display: flex !important;
   flex-direction: column !important;
-  align-items: flex-end !important;
-  padding-top: 7px !important;
-  margin-top: 5px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding-top: 8px !important;
+  margin-top: 6px !important;
   border-top: 1px dashed #cbd5e1 !important;
   border-left: none !important;
   border-right: none !important;
@@ -10416,28 +10418,31 @@ body.topbar-hidden .install-subtle-tip {
 .billing-grand-total .grand-total-label-row {
   width: 100% !important;
   display: flex !important;
-  justify-content: space-between !important;
+  justify-content: center !important;
   align-items: center !important;
-  margin-bottom: 1px !important;
+  gap: 6px !important;
+  margin-bottom: 2px !important;
+  text-align: center !important;
 }
 .billing-grand-total span {
-  font-size: 13px !important;
-  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  font-weight: 750 !important;
   color: #64748b !important;
   text-transform: none !important;
   letter-spacing: normal !important;
   white-space: nowrap !important;
   word-break: keep-all !important;
+  text-align: center !important;
 }
 .billing-grand-total strong {
-  font-size: 28px !important;
+  font-size: 33px !important;
   font-weight: 950 !important;
   color: #0284c7 !important;
   line-height: 1.15 !important;
   letter-spacing: -0.02em !important;
   white-space: nowrap !important;
   word-break: keep-all !important;
-  text-align: right !important;
+  text-align: center !important;
   text-shadow: none !important;
 }
 
@@ -10692,6 +10697,30 @@ body.topbar-hidden .install-subtle-tip {
   border-color: #0284c7 !important;
   box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35) !important;
 }
-.extras-sub-accordion summary::-webkit-details-marker {
+.extras-sub-accordion summary {
+  list-style: none !important;
+}
+.extras-sub-accordion summary::-webkit-details-marker,
+.extras-sub-accordion summary::marker {
   display: none !important;
+  content: "" !important;
+}
+.extras-accordion-title {
+  font-weight: 750 !important;
+  font-size: 13px !important;
+  color: #0f172a !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.extras-accordion-badge {
+  font-size: 11.5px !important;
+  color: #0284c7 !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
 }

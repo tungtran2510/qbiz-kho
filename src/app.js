@@ -1220,10 +1220,10 @@ function openCheckoutExtrasModal(){
 
         <!-- 4. Hẹn trả khách & Chính sách in bill (Thu gọn 1 hàng, bấm sổ ra sau) -->
         <details class="extras-sub-accordion" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0;overflow:hidden" ${curPolicy || curAppt ? 'open' : ''}>
-          <summary style="padding:9px 12px;font-weight:700;font-size:12.5px;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
-            <span>⚙️ Hẹn trả khách & Chính sách in bill (Tùy chọn)</span>
-            <span style="font-size:11.5px;color:#0284c7;font-weight:600">
-              ${(curPolicy || curAppt) ? 'Đang mở ▾' : '+ Mở rộng ▾'}
+          <summary class="extras-accordion-summary" style="padding:10px 12px;font-weight:700;font-size:12.5px;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;user-select:none;list-style:none">
+            <span class="extras-accordion-title" style="font-weight:750;font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">4. Hẹn trả & Chính sách in bill</span>
+            <span id="modalAccordionToggleBadge" class="extras-accordion-badge" style="font-size:11.5px;color:#0284c7;font-weight:700;white-space:nowrap;word-break:keep-all;flex-shrink:0;display:inline-flex;align-items:center;gap:3px">
+              ${(curPolicy || curAppt) ? 'Đang mở ▴' : '+ Mở rộng ▾'}
             </span>
           </summary>
           <div style="padding:10px 12px;border-top:1px dashed #e2e8f0;display:grid;gap:8px;background:#ffffff">
@@ -1402,6 +1402,14 @@ function openCheckoutExtrasModal(){
       } else {
         if (apptCustomInp) apptCustomInp.style.display = 'none';
       }
+    };
+  }
+
+  const accordion = $('.extras-sub-accordion', root);
+  const badge = $('#modalAccordionToggleBadge', root);
+  if (accordion && badge) {
+    accordion.ontoggle = () => {
+      badge.textContent = accordion.open ? 'Đang mở ▴' : '+ Mở rộng ▾';
     };
   }
 
@@ -1871,7 +1879,7 @@ function renderSales(){
           <div class="billing-grand-total">
             <div class="grand-total-label-row">
               <span>Tổng thanh toán</span>
-              ${totals.vat || totals.discount ? `<small style="font-size:11.5px;color:#94a3b8;font-weight:600">Đã tính giảm giá & VAT</small>` : ''}
+              ${totals.vat || totals.discount ? `<small style="font-size:11.5px;color:#94a3b8;font-weight:600">· Đã tính giảm giá & VAT</small>` : ''}
             </div>
             <strong>${fmt(totals.total)} ₫</strong>
           </div>
