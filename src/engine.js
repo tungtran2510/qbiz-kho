@@ -1176,7 +1176,7 @@ export async function release({productId,warehouseId,qty,reference='',operationI
   qty=Number(qty); if(!(qty>0)) throw new Error('Số lượng phải lớn hơn 0.');
   return changeLevel({productId,warehouseId,reservedDelta:-qty,type:'release',qty:-qty,reason:'Trả giữ hàng',reference,operationId,validate:cur=>{if((cur?.reserved||0)<qty)throw new Error('Số cần trả giữ lớn hơn số đang giữ.');}});
 }
-export async function createSale({items,warehouseId,paymentMethod='cash',payments=null,discount=0,note='',customerLabel='Khách lẻ',customerId='',saleId='',operationId:requestedOperationId='',overrideCreditLimit=false,warranty_policy='',appointment_date='',loyaltyPointsUsed=0,loyaltyPointsEarned=0,shippingFee=0}){
+export async function createSale({items,warehouseId,paymentMethod='cash',payments=null,discount=0,note='',customerLabel='Khách lẻ',customerId='',saleId='',operationId:requestedOperationId='',overrideCreditLimit=false,warranty_policy='',appointment_date='',loyaltyPointsUsed=0,loyaltyPointsEarned=0,shippingFee=0,fulfillment='counter',recipient='',phone='',address='',cod=false,vat_rate=0,allow_negative_stock=null}){
   if(!Array.isArray(items)||!items.length) throw new Error('Giỏ hàng đang trống.');
   if(!warehouseId) throw new Error('Hãy chọn kho bán hàng.');
   const saleUuid=saleId||uuid(); const id=saleUuid;
@@ -1383,6 +1383,14 @@ export async function createSale({items,warehouseId,paymentMethod='cash',payment
     debt_amount:totalDebtAmount,
     warranty_policy: warranty_policy || '',
     appointment_date: appointment_date || '',
+    fulfillment: fulfillment || 'counter',
+    recipient: recipient || '',
+    phone: phone || '',
+    delivery_phone: phone || '',
+    address: address || '',
+    delivery_address: address || '',
+    cod: Boolean(cod),
+    vat_rate: Number(vat_rate) || 0,
     loyalty_points_earned: Math.max(0, Number(loyaltyPointsEarned) || (matchedCustomer ? Math.floor(grandTotal / 100000) : 0)),
     loyalty_points_used: Math.max(0, Number(loyaltyPointsUsed) || 0),
     loyalty_discount: loyaltyPointsDiscount,
@@ -1443,7 +1451,7 @@ export async function createSale({items,warehouseId,paymentMethod='cash',payment
           (sale.payments||[]).forEach(p=>{ p.shift_id = shiftId; });
           const levelsReq=stores.levels.getAll(); levelsReq.onerror=()=>context.abort(levelsReq.error); levelsReq.onsuccess=()=>{try{
           const levelMap=new Map((levelsReq.result||[]).map(x=>[x.id,x]));
-          for(const [productId,quantity] of entries){const levelId=`${productId}:${warehouseId}`;const cur=levelMap.get(levelId)||{id:levelId,productId,warehouseId,onHand:0,reserved:0,damaged:0,version:0};if(available(cur)<quantity)throw new Error(`Không đủ tồn để bán ${source.get(productId).name}.`);const next={...cur,onHand:cur.onHand-quantity,version:Number(cur.version||0)+1,updatedAt:now()};if(next.reserved+next.damaged>next.onHand)throw new Error('Số đã giữ/hỏng vượt quá tồn thực tế.');const movement={id:`${operationId}:movement:${productId}`,groupId:id,type:'sale',productId,warehouseId,qty:-quantity,reason:'Bán hàng',reference:id,reference_type:'sale',reference_id:id,sale_uuid:saleUuid,operation_id:operationId,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:now(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};levelOps.push(next);movementOps.push(movement);}
+          for(const [productId,quantity] of entries){const levelId=`${productId}:${warehouseId}`;const cur=levelMap.get(levelId)||{id:levelId,productId,warehouseId,onHand:0,reserved:0,damaged:0,version:0};const canSellNeg=allow_negative_stock===true||CONFIG.ALLOW_NEGATIVE_STOCK===true;if(!canSellNeg&&available(cur)<quantity)throw new Error(`Không đủ tồn để bán ${source.get(productId).name}.`);const next={...cur,onHand:cur.onHand-quantity,version:Number(cur.version||0)+1,updatedAt:now()};if(!canSellNeg&&(next.reserved+next.damaged>next.onHand))throw new Error('Số đã giữ/hỏng vượt quá tồn thực tế.');const movement={id:`${operationId}:movement:${productId}`,groupId:id,type:'sale',productId,warehouseId,qty:-quantity,reason:'Bán hàng',reference:id,reference_type:'sale',reference_id:id,sale_uuid:saleUuid,operation_id:operationId,event_id:eventId,source_event_id:eventId,source:SYNC_SOURCE,version:next.version,createdAt:now(),after:{onHand:next.onHand,reserved:next.reserved,damaged:next.damaged}};levelOps.push(next);movementOps.push(movement);}
           finish();
         }catch(error){context.abort(error);}};};
       };

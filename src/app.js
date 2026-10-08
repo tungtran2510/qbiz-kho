@@ -998,7 +998,7 @@ function saleTotals(){
     total
   };
 }
-function paymentLabel(method){return ({cash:'Tiền mặt',transfer:'Chuyển khoản',qr:'QR'})[method]||'Chưa xác định'}
+function paymentLabel(method){return ({cash:'Tiền mặt',transfer:'Chuyển khoản',qr:'QR',debt:'Ghi nợ'})[method]||'Chưa xác định'}
 function currentCustomer(){return state.saleCustomer||{name:'Khách lẻ',phone:'',code:'',id:''};}
 function normalizePhone(v){return String(v||'').replace(/\D/g,'');}
 function customerLabel(c=currentCustomer()){return [c.name,c.phone].filter(Boolean).join(' · ')||'Khách lẻ';}
@@ -1757,12 +1757,15 @@ function renderSales(){
 
     let payBtnText = '';
     if (payment === 'qr') {
-      payBtnText = `✓ Xác thực đã nhận tiền (Xác thực QR) · ${fmt(totals.total)} ₫`;
+      payBtnText = `Thu tiền VietQR · ${fmt(totals.total)} ₫`;
     } else if (payment === 'transfer') {
-      payBtnText = `✓ Xác thực đã nhận chuyển khoản · ${fmt(totals.total)} ₫`;
+      payBtnText = `Thu chuyển khoản · ${fmt(totals.total)} ₫`;
+    } else if (payment === 'debt') {
+      payBtnText = `Xác nhận ghi nợ · ${fmt(totals.total)} ₫`;
     } else {
       payBtnText = `Thu tiền mặt · ${fmt(totals.total)} ₫`;
     }
+
 
     const isAgent = customer && (customer.customer_type==='agent'||customer.group==='agent'||customer.customer_group==='agent');
     const hasPoints = Boolean(customer.id && totals.custPoints > 0);
@@ -1877,12 +1880,27 @@ function renderSales(){
         <!-- 4. Phương thức thanh toán (Chuẩn 1 dòng tuyệt đối, cấm rớt 2 dòng) -->
         <div class="choice-section payment-methods-section">
           <h3>Phương thức thanh toán</h3>
-          ${[['cash','Tiền mặt'],['transfer','Chuyển khoản'],['qr','QR']].map(([v,l])=>`
+          ${[['cash','Tiền mặt'],['transfer','Chuyển khoản'],['qr','QR'],['debt','Ghi nợ']].map(([v,l])=>`
             <button type="button" class="choice-row payment-tab-btn ${state.saleDraft.payment===v?'active':''}" data-payment-choice="${v}">
               <span>${l}</span>
             </button>
           `).join('')}
         </div>
+
+        ${state.saleDraft.payment==='debt' ? `
+          <div class="debt-panel">
+            ${state.saleCustomer?.id && state.saleCustomer.id !== 'retail_walkin' ? `
+              <div class="debt-info-row">
+                <span class="debt-tag">Ghi nợ: <b>${esc(state.saleCustomer.name)}</b></span>
+                <span class="debt-limit">Hạn mức: <b>${fmt(state.saleCustomer.creditLimit || state.saleCustomer.credit_limit || 0)} ₫</b></span>
+              </div>
+            ` : `
+              <div class="debt-warn-row">
+                ⚠️ Khách lẻ chưa có hồ sơ nợ. Bấm vào <b>Khách hàng</b> ở trên để chọn khách.
+              </div>
+            `}
+          </div>
+        ` : ''}
 
         <!-- 5. Tiền mặt Panel hoặc QR Panel -->
         ${state.saleDraft.payment==='cash' ? `
@@ -2162,6 +2180,13 @@ async function submitSale(){
   if(state.saleBusy)return;
   const totals=saleTotals();
   const method=state.saleDraft.payment;
+  if(method==='debt'){
+    const custId = state.saleCustomer?.id;
+    if(!custId || custId === 'retail_walkin'){
+      toast('Vui lòng bấm chọn khách hàng cụ thể ở trên để ghi nợ.','error');
+      return;
+    }
+  }
   if(method==='cash'){
     const cashRec=Number(state.saleDraft.cashReceived);
     if(cashRec>0 && cashRec<totals.total){
@@ -2186,11 +2211,12 @@ async function submitSale(){
       });
     })();
 
+    const isDebt = method === 'debt';
     const payments=[{
       method,
       amount:totals.total,
-      status:'PAID',
-      reference:method==='qr'?'VIETQR_VERIFIED':(method==='transfer'?'TRANSFER_VERIFIED':'CASH')
+      status:isDebt ? 'PENDING' : 'PAID',
+      reference:isDebt ? 'GHI_NO' : (method==='qr'?'VIETQR_VERIFIED':(method==='transfer'?'TRANSFER_VERIFIED':'CASH'))
     }];
 
     const sale=await createSale({
@@ -2209,7 +2235,14 @@ async function submitSale(){
       appointment_date:state.saleDraft.appointmentDate||'',
       loyaltyPointsUsed: totals.pointsToUse || 0,
       loyaltyPointsEarned: Math.floor(totals.total / 100000),
-      shippingFee: totals.shippingFee || 0
+      shippingFee: totals.shippingFee || 0,
+      fulfillment: state.saleDraft.fulfillment || 'counter',
+      recipient: state.saleDraft.recipient || '',
+      phone: state.saleDraft.phone || '',
+      address: state.saleDraft.address || '',
+      cod: Boolean(state.saleDraft.cod),
+      vat_rate: state.saleDraft.vatRate || 0,
+      allow_negative_stock: true
     });
 
     if(method==='cash'&&state.saleDraft.cashReceived){
@@ -13065,6 +13098,7 @@ async function boot(){
     generateEscPosReceipt,
     buildDrawerKickCommand
   };
+  window.qbiz = window.__qbiz_app__;
   window.openQuick = openQuick;
   window.openSalePreferences = openSalePreferences;
   window.openChannelPicker = openChannelPicker;

@@ -10444,25 +10444,25 @@ body.topbar-hidden .install-subtle-tip {
 /* Payment Methods Segmented (1 dong duy nhat, cam gay 2 dong) */
 .choice-section.payment-methods-section {
   display: grid !important;
-  grid-template-columns: 1fr 1.25fr 0.75fr !important;
-  gap: 6px !important;
-  margin: 6px 0 !important;
+  grid-template-columns: 1fr 1.25fr 0.75fr 1fr !important;
+  gap: 4px !important;
+  margin: 5px 0 !important;
 }
 .choice-section.payment-methods-section h3 {
   grid-column: 1 / -1 !important;
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   font-weight: 750 !important;
   color: #475569 !important;
   margin: 0 0 2px !important;
 }
 .choice-section.payment-methods-section .choice-row.payment-tab-btn {
-  height: 42px !important;
-  min-height: 42px !important;
-  border: 1.5px solid #cbd5e1 !important;
-  border-radius: 9px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
   background: #ffffff !important;
-  font-size: 13.5px !important;
-  font-weight: 750 !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
   color: #1e293b !important;
   display: flex !important;
   align-items: center !important;
@@ -10472,7 +10472,7 @@ body.topbar-hidden .install-subtle-tip {
   word-break: keep-all !important;
   overflow: hidden !important;
   text-overflow: clip !important;
-  padding: 0 4px !important;
+  padding: 0 2px !important;
   transition: all 0.15s ease !important;
 }
 .choice-section.payment-methods-section .choice-row.payment-tab-btn span {
@@ -10489,6 +10489,35 @@ body.topbar-hidden .install-subtle-tip {
 }
 .choice-section.payment-methods-section .choice-row.payment-tab-btn i {
   display: none !important;
+}
+
+/* Debt Panel - Tinh gon 1 dong, khong lang phi dien tich */
+.debt-panel {
+  margin: 4px 0 5px !important;
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  font-size: 12px !important;
+}
+.debt-info-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+}
+.debt-tag {
+  color: #92400e !important;
+  font-weight: 600 !important;
+}
+.debt-limit {
+  color: #b45309 !important;
+  font-size: 11px !important;
+}
+.debt-warn-row {
+  color: #b45309 !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
 }
 
 /* Service Technical Note in Cart */
