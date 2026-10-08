@@ -5917,7 +5917,7 @@ function renderReceiptVoucherHtml(doc, t, { reprint=false, isTest=false }={}) {
         ${d.warranty_policy ? `<div class="pv-policy" style="font-weight:700;color:#000">Chính sách: ${esc(d.warranty_policy)}</div>` : ''}
         ${d.appointment_date ? `<div class="pv-policy" style="font-weight:700;color:#000">Hẹn trả hàng/khách: ${esc(d.appointment_date)}</div>` : ''}
         ${returnPolicy ? `<div class="pv-policy">${esc(returnPolicy)}</div>` : ''}
-        <div class="pv-branding">HỆ THỐNG QUẢN LÝ KHO & BÁN HÀNG QBIZ · KHO.QBIZ.VN</div>
+        <div class="pv-branding">HỆ THỐNG QUẢN LÝ KHO & BÁN HÀNG QBIZ · QBIZ.VN</div>
       </div>
     </div>
   `;
@@ -9551,7 +9551,7 @@ function getWebsiteConfig() {
     if (raw) return JSON.parse(raw);
   } catch(e) {}
   return {
-    website_url: 'https://kho.qbiz.vn',
+    website_url: 'https://qbiz-kho.vercel.app',
     api_key: 'qbiz_sk_live_vn8492048',
     sync_mode: '2_WAY',
     auto_sync: true,
@@ -9654,7 +9654,7 @@ function openWebsiteConfigModal() {
       <div class="website-config-form" style="display:flex;flex-direction:column;gap:12px">
         <div class="field">
           <label>Địa chỉ Website (Domain)</label>
-          <input id="cfgWebUrl" value="${esc(cfg.website_url)}" placeholder="https://kho.qbiz.vn"/>
+          <input id="cfgWebUrl" value="${esc(cfg.website_url)}" placeholder="https://qbiz-kho.vercel.app"/>
           <small class="muted">Website bán hàng của shop trên nền tảng QBiz hoặc custom domain.</small>
         </div>
         <div class="field">
@@ -9680,7 +9680,7 @@ function openWebsiteConfigModal() {
     submitText: 'Lưu cấu hình Website',
     onSubmit: () => {
       const updated = {
-        website_url: $('#cfgWebUrl')?.value.trim() || 'https://kho.qbiz.vn',
+        website_url: $('#cfgWebUrl')?.value.trim() || 'https://qbiz-kho.vercel.app',
         api_key: $('#cfgWebKey')?.value.trim() || '',
         sync_mode: $('#cfgWebMode')?.value || '2_WAY',
         auto_sync: Boolean($('#cfgWebAutoSync')?.checked),

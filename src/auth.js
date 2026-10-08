@@ -416,7 +416,7 @@ export async function signIn({ email, password }) {
  * SECURITY INVARIANT: NEVER request Google Drive scope during normal sign-in!
  */
 export async function signInWithGoogle({ redirectTo } = {}) {
-  const targetRedirect = redirectTo || (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://kho.qbiz.vn');
+  const targetRedirect = redirectTo || (typeof window !== 'undefined' && window.location ? window.location.origin : 'https://qbiz-kho.vercel.app');
   const { url, anonKey } = getSupabaseConfig();
   const isMock = !url || !anonKey || localStorage.getItem('qbiz_mock_env') === 'true';
 

@@ -96,5 +96,4 @@ Write-Host "          HOAN TAT TRIEN KHAI DUAL-HOST THANG CONG!      " -Foregrou
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "Host A (Primary - Vercel):   https://qbiz-kho.vercel.app" -ForegroundColor White
 Write-Host "Host B (Backup - Netlify):   https://qbiz-kho.netlify.app" -ForegroundColor White
-Write-Host "Tên miền dự phòng Netlify:   https://kho-backup.qbiz.vn" -ForegroundColor White
 Write-Host "========================================================`n" -ForegroundColor Cyan
