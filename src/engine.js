@@ -47,7 +47,7 @@ export async function closeShift({shiftId,countedCash=0,operationId=''}={}){
   if(!shiftId) throw new Error('Thiếu ca cần đóng.');
   const counted=Number(countedCash); if(!Number.isFinite(counted)||counted<0) throw new Error('Tiền thực đếm không hợp lệ.');
   const identity=await localIdentity(); const operation=operationId||uuid(); let result;
-  await runTransaction(['shifts','sales','refunds','settings','outbox'],(stores,tx,context)=>{
+  await runTransaction(['shifts','sales','orders','refunds','settings','outbox'],(stores,tx,context)=>{
     const existingReq=stores.outbox.get(operation);
     existingReq.onerror=()=>context.abort(existingReq.error);
     existingReq.onsuccess=()=>{
@@ -58,64 +58,94 @@ export async function closeShift({shiftId,countedCash=0,operationId=''}={}){
         const salesReq=stores.sales.getAll();
         salesReq.onerror=()=>context.abort(salesReq.error);
         salesReq.onsuccess=()=>{
-          const refundsReq=stores.refunds.getAll();
-          refundsReq.onerror=()=>context.abort(refundsReq.error);
-          refundsReq.onsuccess=()=>{
-            const expReq=stores.settings.get('operating_expenses');
-            expReq.onerror=()=>context.abort(expReq.error);
-            expReq.onsuccess=()=>{
-              const cashInReq=stores.settings.get('module:cash_entries');
-              cashInReq.onerror=()=>context.abort(cashInReq.error);
-              cashInReq.onsuccess=()=>{
-                try{
-                  const shift=shiftReq.result;
-                  if(!shift) throw new Error('Không tìm thấy ca.');
-                  if(shift.device_id!==identity.device_id||shift.register_id!==identity.register_id) throw new Error('Ca này thuộc thiết bị hoặc quầy khác.');
-                  if(shift.status!=='OPEN'){result=shift;return;}
-                  const allSales=salesReq.result||[];
-                  const shiftSales=allSales.filter(s=>s.shift_id===shiftId||(s.payments||[]).some(p=>p.shift_id===shiftId));
-                  const saleById=new Map(allSales.map(s=>[s.id,s]));
-                  const summary={sales_count:allSales.filter(s=>s.shift_id===shiftId).length,sales_total:0,cash_sales:0,transfer_sales:0,qr_sales:0,refund_total:0,cash_refunds:0,cash_expenses:0,expense_total:0,manual_cash_in:0,manual_cash_out:0};
-                  for(const sale of shiftSales){
-                    const payments=Array.isArray(sale.payments)&&sale.payments.length?sale.payments:[{method:sale.payment_method||'cash',amount:sale.grand_total??sale.total??0,status:sale.payment_status||'PAID',shift_id:sale.shift_id}];
-                    for(const payment of payments){
-                      const pShift=payment.shift_id||sale.shift_id;
-                      if(pShift!==shiftId) continue;
-                      if(payment.status!=='PAID') continue;
-                      const amount=Math.max(0,Number(payment.amount)||0); summary.sales_total+=amount;
-                      if(payment.method==='cash')summary.cash_sales+=amount;
-                      else if(payment.method==='transfer')summary.transfer_sales+=amount;
-                      else if(payment.method==='qr')summary.qr_sales+=amount;
+          const ordersReq=stores.orders.getAll();
+          ordersReq.onerror=()=>context.abort(ordersReq.error);
+          ordersReq.onsuccess=()=>{
+            const refundsReq=stores.refunds.getAll();
+            refundsReq.onerror=()=>context.abort(refundsReq.error);
+            refundsReq.onsuccess=()=>{
+              const expReq=stores.settings.get('operating_expenses');
+              expReq.onerror=()=>context.abort(expReq.error);
+              expReq.onsuccess=()=>{
+                const cashInReq=stores.settings.get('module:cash_entries');
+                cashInReq.onerror=()=>context.abort(cashInReq.error);
+                cashInReq.onsuccess=()=>{
+                  try{
+                    const shift=shiftReq.result;
+                    if(!shift) throw new Error('Không tìm thấy ca.');
+                    if(shift.device_id!==identity.device_id||shift.register_id!==identity.register_id) throw new Error('Ca này thuộc thiết bị hoặc quầy khác.');
+                    if(shift.status!=='OPEN'){result=shift;return;}
+                    const allSales=salesReq.result||[];
+                    const allOrders=ordersReq.result||[];
+                    const shiftSales=allSales.filter(s=>s.shift_id===shiftId||(s.payments||[]).some(p=>p.shift_id===shiftId));
+                    const shiftOrders=allOrders.filter(o=>{
+                      if(o.status==='CANCELLED') return false;
+                      if(o.payment_status!=='PAID') return false;
+                      return o.shift_id===shiftId||(!o.shift_id&&o.created_at&&o.created_at>=shift.opened_at&&(!shift.closed_at||o.created_at<=shift.closed_at));
+                    });
+                    const saleById=new Map(allSales.map(s=>[s.id,s]));
+                    const summary={
+                      sales_count:shiftSales.length+shiftOrders.length,
+                      sales_total:0,
+                      cash_sales:0,
+                      transfer_sales:0,
+                      qr_sales:0,
+                      refund_total:0,
+                      cash_refunds:0,
+                      cash_expenses:0,
+                      expense_total:0,
+                      manual_cash_in:0,
+                      manual_cash_out:0
+                    };
+                    for(const sale of shiftSales){
+                      const payments=Array.isArray(sale.payments)&&sale.payments.length?sale.payments:[{method:sale.payment_method||'cash',amount:sale.grand_total??sale.total??0,status:sale.payment_status||'PAID',shift_id:sale.shift_id}];
+                      for(const payment of payments){
+                        const pShift=payment.shift_id||sale.shift_id;
+                        if(pShift!==shiftId) continue;
+                        if(payment.status!=='PAID') continue;
+                        const amount=Math.max(0,Number(payment.amount)||0); summary.sales_total+=amount;
+                        if(payment.method==='cash')summary.cash_sales+=amount;
+                        else if(payment.method==='transfer')summary.transfer_sales+=amount;
+                        else if(payment.method==='qr')summary.qr_sales+=amount;
+                      }
                     }
-                  }
-                  for(const refund of (refundsReq.result||[]).filter(r=>r.shift_id===shiftId)){
-                    const amount=Math.max(0,Number(refund.amount)||0);summary.refund_total+=amount;
-                    const original=saleById.get(refund.sale_id);const method=refund.method==='original'?(original?.payment_method||'cash'):refund.method;
-                    if(method==='cash')summary.cash_refunds+=amount;
-                  }
-                  const allExpenses=Array.isArray(expReq.result?.value)?expReq.result.value:[];
-                  for(const exp of allExpenses.filter(e=>e.shift_id===shiftId)){
-                    const amount=Math.max(0,Number(exp.amount)||0); summary.expense_total+=amount;
-                    if(exp.payment_method==='cash') summary.cash_expenses+=amount;
-                  }
-                  const allCashEntries=Array.isArray(cashInReq.result?.value)?cashInReq.result.value:[];
-                  for(const entry of allCashEntries){
-                    const isMatchShift=entry.shift_id===shiftId||(!entry.shift_id&&entry.created_at&&entry.created_at>=shift.opened_at&&(!shift.closed_at||entry.created_at<=shift.closed_at));
-                    const isCash=String(entry.method||'').toLowerCase().includes('tiền mặt')||entry.method==='cash'||!entry.method;
-                    if(entry.kind==='in'&&isMatchShift&&isCash){
-                      const amount=Math.max(0,Number(entry.amount)||0);
-                      summary.manual_cash_in+=amount;
-                    } else if(entry.kind==='out'&&isMatchShift&&isCash){
-                      const amount=Math.max(0,Number(entry.amount)||0);
-                      summary.manual_cash_out+=amount;
+                    for(const order of shiftOrders){
+                      const pMethod=order.payment_method||'cash';
+                      const pAmount=Math.max(0,Number(order.paid_amount??order.grand_total??order.total??0));
+                      summary.sales_total+=pAmount;
+                      if(pMethod==='cash') summary.cash_sales+=pAmount;
+                      else if(pMethod==='transfer') summary.transfer_sales+=pAmount;
+                      else if(pMethod==='qr') summary.qr_sales+=pAmount;
                     }
-                  }
-                  const expected=Math.max(0,Number(shift.opening_cash||0)+summary.cash_sales+summary.manual_cash_in-summary.cash_refunds-summary.cash_expenses-summary.manual_cash_out);
-                  const stamp=now();
-                  const closed={...shift,status:'CLOSED',closed_at:stamp,expected_cash:expected,counted_cash:counted,difference:counted-expected,summary,version:Number(shift.version||1)+1,operation_id:operation,updated_at:stamp};
-                  const outbox=makeOutbox({operationId:operation,entityType:'shift',entityId:shiftId,action:'close',version:closed.version,deviceId:identity.device_id,registerId:identity.register_id,type:'shift.close',createdAt:stamp,payload:{shift:closed}});
-                  stores.shifts.put(closed);stores.outbox.put(outbox);result=closed;
-                }catch(error){context.abort(error);}
+                    for(const refund of (refundsReq.result||[]).filter(r=>r.shift_id===shiftId)){
+                      const amount=Math.max(0,Number(refund.amount)||0);summary.refund_total+=amount;
+                      const original=saleById.get(refund.sale_id);const method=refund.method==='original'?(original?.payment_method||'cash'):refund.method;
+                      if(method==='cash')summary.cash_refunds+=amount;
+                    }
+                    const allExpenses=Array.isArray(expReq.result?.value)?expReq.result.value:[];
+                    for(const exp of allExpenses.filter(e=>e.shift_id===shiftId)){
+                      const amount=Math.max(0,Number(exp.amount)||0); summary.expense_total+=amount;
+                      if(exp.payment_method==='cash') summary.cash_expenses+=amount;
+                    }
+                    const allCashEntries=Array.isArray(cashInReq.result?.value)?cashInReq.result.value:[];
+                    for(const entry of allCashEntries){
+                      const isMatchShift=entry.shift_id===shiftId||(!entry.shift_id&&entry.created_at&&entry.created_at>=shift.opened_at&&(!shift.closed_at||entry.created_at<=shift.closed_at));
+                      const isCash=String(entry.method||'').toLowerCase().includes('tiền mặt')||entry.method==='cash'||!entry.method;
+                      if(entry.kind==='in'&&isMatchShift&&isCash){
+                        const amount=Math.max(0,Number(entry.amount)||0);
+                        summary.manual_cash_in+=amount;
+                      } else if(entry.kind==='out'&&isMatchShift&&isCash){
+                        const amount=Math.max(0,Number(entry.amount)||0);
+                        summary.manual_cash_out+=amount;
+                      }
+                    }
+                    const expected=Math.max(0,Number(shift.opening_cash||0)+summary.cash_sales+summary.manual_cash_in-summary.cash_refunds-summary.cash_expenses-summary.manual_cash_out);
+                    const stamp=now();
+                    const closed={...shift,status:'CLOSED',closed_at:stamp,expected_cash:expected,counted_cash:counted,difference:counted-expected,summary,version:Number(shift.version||1)+1,operation_id:operation,updated_at:stamp};
+                    const outbox=makeOutbox({operationId:operation,entityType:'shift',entityId:shiftId,action:'close',version:closed.version,deviceId:identity.device_id,registerId:identity.register_id,type:'shift.close',createdAt:stamp,payload:{shift:closed}});
+                    stores.shifts.put(closed);stores.outbox.put(outbox);result=closed;
+                  }catch(error){context.abort(error);}
+                };
               };
             };
           };
@@ -848,7 +878,7 @@ export async function createPurchaseReturn({
   const identity = await localIdentity();
   let result;
 
-  await runTransaction(['products', 'levels', 'movements', 'outbox', 'purchase_receipts'], (stores, tx, context) => {
+  await runTransaction(['products', 'levels', 'movements', 'outbox', 'purchase_receipts', 'suppliers'], (stores, tx, context) => {
     const existingReq = stores.outbox.get(op);
     existingReq.onerror = () => context.abort(existingReq.error);
     existingReq.onsuccess = () => {
@@ -979,6 +1009,22 @@ export async function createPurchaseReturn({
             movements.forEach(row => stores.movements.put(row));
             stores.purchase_receipts.put(document);
             stores.outbox.put(outbox);
+            if (supplierId && stores.suppliers && totalRefund > 0 && (refundMethod === 'debt' || refundMethod === 'supplier_debt')) {
+              const supReq = stores.suppliers.get(supplierId);
+              supReq.onsuccess = () => {
+                const sup = supReq.result;
+                if (sup) {
+                  const curDebt = Number(sup.debt || 0);
+                  const nextDebt = Math.max(0, curDebt - totalRefund);
+                  stores.suppliers.put({
+                    ...sup,
+                    debt: nextDebt,
+                    version: Number(sup.version || 1) + 1,
+                    updated_at: stamp
+                  });
+                }
+              };
+            }
             result = document;
           } catch (error) {
             context.abort(error);
@@ -1130,17 +1176,80 @@ export async function release({productId,warehouseId,qty,reference='',operationI
   qty=Number(qty); if(!(qty>0)) throw new Error('Số lượng phải lớn hơn 0.');
   return changeLevel({productId,warehouseId,reservedDelta:-qty,type:'release',qty:-qty,reason:'Trả giữ hàng',reference,operationId,validate:cur=>{if((cur?.reserved||0)<qty)throw new Error('Số cần trả giữ lớn hơn số đang giữ.');}});
 }
-export async function createSale({items,warehouseId,paymentMethod='cash',payments=null,discount=0,note='',customerLabel='Khách lẻ',customerId='',saleId='',operationId:requestedOperationId='',overrideCreditLimit=false,warranty_policy='',appointment_date=''}){
+export async function createSale({items,warehouseId,paymentMethod='cash',payments=null,discount=0,note='',customerLabel='Khách lẻ',customerId='',saleId='',operationId:requestedOperationId='',overrideCreditLimit=false,warranty_policy='',appointment_date='',loyaltyPointsUsed=0,loyaltyPointsEarned=0}){
   if(!Array.isArray(items)||!items.length) throw new Error('Giỏ hàng đang trống.');
   if(!warehouseId) throw new Error('Hãy chọn kho bán hàng.');
   const saleUuid=saleId||uuid(); const id=saleUuid;
   const products=await getAll('products'); const source=new Map(products.map(p=>[p.id,p]));
   const mergedItems=new Map();
-  for(const raw of items){const itemId=raw?.itemId||raw?.productId;if(!itemId)throw new Error('Không tìm thấy mặt hàng trong giỏ.');const quantity=Math.floor(Number(raw.quantity));if(!(quantity>0))throw new Error('Số lượng phải là số nguyên lớn hơn 0.');const previous=mergedItems.get(itemId);if(previous){previous.quantity+=quantity;previous.discount=(Number(previous.discount)||0)+(Number(raw.discount)||0);previous.tax_amount=(Number(previous.tax_amount)||0)+(Number(raw.tax_amount)||0);if(raw.warrantyMonths!=null)previous.warrantyMonths=raw.warrantyMonths;if(raw.warrantyExchange!=null)previous.warrantyExchange=raw.warrantyExchange;if(raw.imei)previous.imei=raw.imei;if(raw.serviceNote)previous.serviceNote=raw.serviceNote;}else mergedItems.set(itemId,{...raw,itemId,unitPrice:Number(raw.unitPrice??raw.price??0),quantity});}
-  const saleItems=[...mergedItems.values()].map(line=>{const p=source.get(line.itemId); if(!p) throw new Error('Không tìm thấy mặt hàng trong giỏ.'); const quantity=Math.floor(Number(line.quantity)); const unitPrice=Math.max(0,Number(line.unitPrice)||0); const costPrice=Math.max(0,Number(line.costPrice??line.cost_price??p.cost_price??p.cost??p.purchase_price??0)); const lineDiscount=Math.max(0,Number(line.discount)||0); const lineSubtotal=Math.max(0,quantity*unitPrice-lineDiscount); const taxAmount=Math.max(0,Number(line.tax_amount)||0); const taxInclusive=Boolean(line.tax_inclusive); return {item_id:p.id,type:p.type||'PRODUCT',name:p.name,sku:p.sku||'',quantity,unit_price:unitPrice,cost_price:costPrice,discount:lineDiscount,tax_code:line.tax_code||'',tax_category:line.tax_category||'',tax_rate:line.tax_rate===''||line.tax_rate==null?null:Number(line.tax_rate),tax_amount:taxAmount,tax_inclusive:taxInclusive,line_subtotal:lineSubtotal,line_total:taxInclusive?lineSubtotal:lineSubtotal+taxAmount,warranty_months:line.warranty_months??line.warrantyMonths??null,warranty_exchange:Boolean(line.warranty_exchange??line.warrantyExchange),imei:line.imei||line.serial_number||'',service_note:line.service_note||line.serviceNote||line.note||''};});
+  for(const raw of items){
+    const itemId=raw?.itemId||raw?.productId;
+    if(!itemId)throw new Error('Không tìm thấy mặt hàng trong giỏ.');
+    const quantity=Math.floor(Number(raw.quantity));
+    if(!(quantity>0))throw new Error('Số lượng phải là số nguyên lớn hơn 0.');
+    const unitFactor=Math.max(1,Number(raw.unitFactor??raw.unit_factor??1));
+    const unitName=raw.unitName||raw.unit_name||'';
+    const previous=mergedItems.get(itemId);
+    if(previous){
+      previous.quantity+=quantity;
+      previous.discount=(Number(previous.discount)||0)+(Number(raw.discount)||0);
+      previous.tax_amount=(Number(previous.tax_amount)||0)+(Number(raw.tax_amount)||0);
+      if(raw.warrantyMonths!=null)previous.warrantyMonths=raw.warrantyMonths;
+      if(raw.warrantyExchange!=null)previous.warrantyExchange=raw.warrantyExchange;
+      if(raw.imei)previous.imei=raw.imei;
+      if(raw.serviceNote)previous.serviceNote=raw.serviceNote;
+      if(unitFactor>1){previous.unitFactor=unitFactor;previous.unitName=unitName;}
+    }else mergedItems.set(itemId,{...raw,itemId,unitPrice:Number(raw.unitPrice??raw.price??0),quantity,unitFactor,unitName});
+  }
+  const saleItems=[...mergedItems.values()].map(line=>{
+    const p=source.get(line.itemId);
+    if(!p) throw new Error('Không tìm thấy mặt hàng trong giỏ.');
+    const quantity=Math.floor(Number(line.quantity));
+    const unitFactor=Math.max(1,Number(line.unitFactor??line.unit_factor??1));
+    const unitName=line.unitName||line.unit_name||'';
+    const unitPrice=Math.max(0,Number(line.unitPrice)||0);
+    const costPrice=Math.max(0,Number(line.costPrice??line.cost_price??p.cost_price??p.cost??p.purchase_price??0));
+    const lineDiscount=Math.max(0,Number(line.discount)||0);
+    const lineSubtotal=Math.max(0,quantity*unitPrice-lineDiscount);
+    const taxAmount=Math.max(0,Number(line.tax_amount)||0);
+    const taxInclusive=Boolean(line.tax_inclusive);
+    return {
+      item_id:p.id,
+      type:p.type||'PRODUCT',
+      name:p.name,
+      sku:p.sku||'',
+      quantity,
+      unit_factor:unitFactor,
+      unit_name:unitName,
+      unit_price:unitPrice,
+      cost_price:costPrice,
+      discount:lineDiscount,
+      tax_code:line.tax_code||'',
+      tax_category:line.tax_category||'',
+      tax_rate:line.tax_rate===''||line.tax_rate==null?null:Number(line.tax_rate),
+      tax_amount:taxAmount,
+      tax_inclusive:taxInclusive,
+      line_subtotal:lineSubtotal,
+      line_total:taxInclusive?lineSubtotal:lineSubtotal+taxAmount,
+      warranty_months:line.warranty_months??line.warrantyMonths??null,
+      warranty_exchange:Boolean(line.warranty_exchange??line.warrantyExchange),
+      imei:line.imei||line.serial_number||'',
+      service_note:line.service_note||line.serviceNote||line.note||''
+    };
+  });
   const totals=new Map();
-  for(const line of saleItems){ if(line.type==='PRODUCT' && source.get(line.item_id).trackInventory!==false) totals.set(line.item_id,(totals.get(line.item_id)||0)+line.quantity); }
-  const operationId=requestedOperationId||uuid(); const eventId=uuid(); const subtotal=Math.round(saleItems.reduce((sum,line)=>sum+line.line_subtotal,0)); const discountTotal=Math.round(Math.max(0,Math.min(subtotal,Number(discount)||0))); const taxTotal=Math.round(saleItems.reduce((sum,line)=>sum+line.tax_amount,0)); const grandTotal=Math.round(Math.max(0,subtotal-discountTotal+taxTotal));
+  for(const line of saleItems){
+    if(line.type==='PRODUCT' && source.get(line.item_id).trackInventory!==false){
+      const physicalQty = line.quantity * (line.unit_factor || 1);
+      totals.set(line.item_id,(totals.get(line.item_id)||0)+physicalQty);
+    }
+  }
+  const operationId=requestedOperationId||uuid(); const eventId=uuid(); const subtotal=Math.round(saleItems.reduce((sum,line)=>sum+line.line_subtotal,0));
+  const loyaltyPointsDiscount = Math.max(0, Math.round(Number(loyaltyPointsUsed || 0) * 1000));
+  const orderDiscount = Math.round(Math.max(0, Number(discount) || 0));
+  const discountTotal = Math.round(Math.max(0, Math.min(subtotal, orderDiscount + loyaltyPointsDiscount)));
+  const taxTotal = Math.round(saleItems.reduce((sum,line)=>sum+line.tax_amount,0));
+  const grandTotal = Math.round(Math.max(0, subtotal - discountTotal + taxTotal));
 
   const identity=await localIdentity(); const deviceId=identity.device_id; const registerId=identity.register_id;
   const isShiftRequired = CONFIG.FEATURE_FLAGS?.shift !== false;
@@ -1272,6 +1381,9 @@ export async function createSale({items,warehouseId,paymentMethod='cash',payment
     debt_amount:totalDebtAmount,
     warranty_policy: warranty_policy || '',
     appointment_date: appointment_date || '',
+    loyalty_points_earned: Math.max(0, Number(loyaltyPointsEarned) || (matchedCustomer ? Math.floor(grandTotal / 100000) : 0)),
+    loyalty_points_used: Math.max(0, Number(loyaltyPointsUsed) || 0),
+    loyalty_discount: loyaltyPointsDiscount,
     items:saleItems
   };
   let result;
@@ -1295,11 +1407,22 @@ export async function createSale({items,warehouseId,paymentMethod='cash',payment
             if(stores.customers && matchedCustomer){
               const nextTotalSpent = Number(matchedCustomer.totalSpent || matchedCustomer.total_spent || 0) + grandTotal;
               const nextDebt = Number(matchedCustomer.debt || 0) + totalDebtAmount;
+              const currentPoints = Number(matchedCustomer.loyalty_points || matchedCustomer.points || 0);
+              const pointsUsed = Math.min(currentPoints, Math.max(0, Number(loyaltyPointsUsed) || 0));
+              const pointsEarned = Math.max(0, Number(loyaltyPointsEarned) || Math.floor(grandTotal / 100000));
+              const nextPoints = Math.max(0, currentPoints - pointsUsed + pointsEarned);
+
+              sale.loyalty_points_earned = pointsEarned;
+              sale.loyalty_points_used = pointsUsed;
+              sale.loyalty_balance = nextPoints;
+
               stores.customers.put({
                 ...matchedCustomer,
                 totalSpent: nextTotalSpent,
                 total_spent: nextTotalSpent,
                 debt: nextDebt,
+                loyalty_points: nextPoints,
+                points: nextPoints,
                 version: Number(matchedCustomer.version || 1) + 1,
                 updated_at: stamp
               });
@@ -1793,6 +1916,59 @@ export async function deleteItem(id,requestedOperationId=''){
   const identity=await localIdentity();
   const operationId=requestedOperationId||uuid();
   const stamp=now();
+
+  const [movements, sales, orders, receipts] = await Promise.all([
+    getAll('movements'),
+    getAll('sales'),
+    getAll('orders'),
+    getAll('purchase_receipts')
+  ]);
+  const hasMovements = (movements || []).some(m => m.productId === id || m.product_id === id);
+  const hasSales = (sales || []).some(s => (s.items || []).some(i => i.item_id === id || i.product_id === id || i.productId === id || i.id === id));
+  const hasOrders = (orders || []).some(o => (o.items || []).some(i => i.item_id === id || i.product_id === id || i.productId === id || i.id === id));
+  const hasReceipts = (receipts || []).some(r => (r.lines || []).some(l => l.productId === id || l.product_id === id || l.itemId === id));
+  const hasHistory = hasMovements || hasSales || hasOrders || hasReceipts;
+
+  if(hasHistory){
+    const updated = {
+      ...item,
+      active: false,
+      status: 'inactive',
+      version: Number(item.version || 0) + 1,
+      operation_id: operationId,
+      updated_at: stamp
+    };
+    const outbox = makeOutbox({
+      operationId,
+      entityType: 'item',
+      entityId: id,
+      action: 'deactivate',
+      version: updated.version,
+      deviceId: identity.device_id,
+      registerId: identity.register_id,
+      type: 'item.deactivate',
+      createdAt: stamp,
+      payload: { item: updated, reason: 'protected_has_transactions' }
+    });
+    await runTransaction(['products', 'outbox'], stores => {
+      stores.products.put(updated);
+      stores.outbox.put(outbox);
+    });
+    if(typeof window !== 'undefined' && window.__qbiz_app__?.state?.data){
+      const appData = window.__qbiz_app__.state.data;
+      if(Array.isArray(appData.products)){
+        const idx = appData.products.findIndex(p => p.id === id);
+        if(idx >= 0) appData.products[idx] = updated;
+      }
+    }
+    return {
+      success: true,
+      softDeleted: true,
+      item: updated,
+      message: `Sản phẩm "${item.name}" đã phát sinh lịch sử giao dịch nên được chuyển sang "Ngừng kinh doanh" để bảo vệ toàn vẹn dữ liệu sổ sách.`
+    };
+  }
+
   const outbox=makeOutbox({operationId,entityType:'item',entityId:id,action:'delete',version:Number(item.version||0)+1,deviceId:identity.device_id,registerId:identity.register_id,type:'item.delete',createdAt:stamp,payload:{id,name:item.name,sku:item.sku}});
   await runTransaction(['products','levels','outbox'],(stores)=>{
     stores.products.delete(id);
@@ -1812,7 +1988,11 @@ export async function deleteItem(id,requestedOperationId=''){
       appData.levels=appData.levels.filter(l=>l.productId!==id&&!String(l.id||'').startsWith(`${id}:`));
     }
   }
-  return true;
+  return {
+    success: true,
+    softDeleted: false,
+    message: `Đã xóa vĩnh viễn sản phẩm "${item.name}".`
+  };
 }
 export async function createWarehouse(name){ if(!name?.trim()) throw new Error('Tên kho là bắt buộc.');const identity=await localIdentity();const operationId=uuid();const w={id:uid('wh'),name:name.trim(),operation_id:operationId,version:1,source:SYNC_SOURCE};const outbox=makeOutbox({operationId,entityType:'warehouse',entityId:w.id,action:'create',version:1,deviceId:identity.device_id,registerId:identity.register_id,type:'warehouse.create',payload:{warehouse:w}});await runTransaction(['warehouses','outbox'],stores=>{stores.warehouses.put(w);stores.outbox.put(outbox);});return w; }
 
@@ -1887,6 +2067,109 @@ export async function updateSupplier(input={},requestedOperationId=''){
             const outbox=makeOutbox({operationId,entityType:'supplier',entityId:supplier.id,action:'update',version:supplier.version,deviceId:identity.device_id,registerId:identity.register_id,type:'supplier.update',payload:{supplier}});
             stores.suppliers.put(supplier);stores.outbox.put(outbox);result=supplier;
           }catch(error){context.abort(error);}
+        };
+      };
+    };
+  });
+  return result;
+}
+
+export async function paySupplierDebt({
+  supplierId,
+  amount,
+  paymentMethod = 'cash',
+  note = '',
+  reference = '',
+  shiftId = '',
+  operationId = ''
+} = {}) {
+  if (!supplierId) throw new Error('Thiếu thông tin nhà cung cấp.');
+  const numAmount = Number(amount);
+  if (!Number.isFinite(numAmount) || numAmount <= 0) throw new Error('Số tiền trả nợ phải lớn hơn 0.');
+  const op = operationId || uuid();
+  const identity = await localIdentity();
+  const stamp = now();
+  let result;
+
+  await runTransaction(['suppliers', 'shifts', 'settings', 'outbox'], (stores, tx, context) => {
+    const existingReq = stores.outbox.get(op);
+    existingReq.onerror = () => context.abort(existingReq.error);
+    existingReq.onsuccess = () => {
+      if (existingReq.result) {
+        result = existingReq.result.payload?.payment || null;
+        return;
+      }
+      const supReq = stores.suppliers.get(supplierId);
+      supReq.onerror = () => context.abort(supReq.error);
+      supReq.onsuccess = () => {
+        const sup = supReq.result;
+        if (!sup) { context.abort(new Error('Không tìm thấy nhà cung cấp.')); return; }
+        const shiftsReq = stores.shifts.getAll();
+        shiftsReq.onerror = () => context.abort(shiftsReq.error);
+        shiftsReq.onsuccess = () => {
+          const cashInReq = stores.settings.get('module:cash_entries');
+          cashInReq.onerror = () => context.abort(cashInReq.error);
+          cashInReq.onsuccess = () => {
+            try {
+              const activeShift = openShiftFor(shiftsReq.result || [], identity);
+              const assignedShiftId = shiftId || (paymentMethod === 'cash' ? (activeShift?.id || '') : '');
+              const curDebt = Number(sup.debt || 0);
+              const nextDebt = Math.max(0, curDebt - numAmount);
+              const updatedSup = {
+                ...sup,
+                debt: nextDebt,
+                version: Number(sup.version || 1) + 1,
+                updated_at: stamp,
+                operation_id: op
+              };
+
+              const entryId = uid('cash');
+              const paymentEntry = {
+                id: entryId,
+                date: stamp.slice(0, 10),
+                created_at: stamp,
+                kind: 'out',
+                category: 'Trả nợ nhà cung cấp',
+                amount: numAmount,
+                method: paymentMethod || 'cash',
+                note: note || `Trả nợ NCC: ${sup.name}${reference ? ` (${reference})` : ''}`,
+                shift_id: assignedShiftId,
+                supplier_id: supplierId,
+                reference: reference || '',
+                source: SYNC_SOURCE
+              };
+
+              const currentEntries = Array.isArray(cashInReq.result?.value) ? cashInReq.result.value : [];
+              const nextEntries = [paymentEntry, ...currentEntries];
+
+              const outbox = makeOutbox({
+                operationId: op,
+                eventId: uuid(),
+                entityType: 'supplier_payment',
+                entityId: entryId,
+                action: 'pay_debt',
+                version: updatedSup.version,
+                deviceId: identity.device_id,
+                registerId: identity.register_id,
+                type: 'supplier.pay_debt',
+                createdAt: stamp,
+                payload: {
+                  supplier: updatedSup,
+                  payment: paymentEntry,
+                  amount: numAmount,
+                  previous_debt: curDebt,
+                  remaining_debt: nextDebt
+                }
+              });
+
+              stores.suppliers.put(updatedSup);
+              stores.settings.put({ id: 'module:cash_entries', value: nextEntries });
+              stores.outbox.put(outbox);
+              result = { supplier: updatedSup, payment: paymentEntry };
+            } catch (err) {
+              context.abort(err);
+            }
+          };
         };
       };
     };
@@ -2108,7 +2391,7 @@ export async function markOrderPaid(orderId,{operationId='',paymentMethod='trans
   const op=operationId||uuid();
   const identity=await localIdentity();
   let result;
-  await runTransaction(['orders','outbox'],(stores,tx,context)=>{
+  await runTransaction(['orders','shifts','outbox'],(stores,tx,context)=>{
     const existingReq=stores.outbox.get(op);
     existingReq.onerror=()=>context.abort(existingReq.error);
     existingReq.onsuccess=()=>{
@@ -2116,35 +2399,41 @@ export async function markOrderPaid(orderId,{operationId='',paymentMethod='trans
       const orderReq=stores.orders.get(orderId);
       orderReq.onerror=()=>context.abort(orderReq.error);
       orderReq.onsuccess=()=>{
-        try{
-          const order=orderReq.result;
-          if(!order) throw new Error('Không tìm thấy đơn hàng.');
-          const stamp=now();
-          const updated={
-            ...order,
-            payment_status:'PAID',
-            payment_method:paymentMethod||order.payment_method||'transfer',
-            version:Number(order.version||1)+1,
-            updated_at:stamp,
-            operation_id:op
-          };
-          const outbox=makeOutbox({
-            operationId:op,
-            eventId:uuid(),
-            entityType:'order',
-            entityId:order.id,
-            action:'mark_paid',
-            version:updated.version,
-            deviceId:identity.device_id,
-            registerId:identity.register_id,
-            type:'order.mark_paid',
-            createdAt:stamp,
-            payload:{order:updated}
-          });
-          stores.orders.put(updated);
-          stores.outbox.put(outbox);
-          result=updated;
-        }catch(error){context.abort(error);}
+        const shiftsReq=stores.shifts.getAll();
+        shiftsReq.onerror=()=>context.abort(shiftsReq.error);
+        shiftsReq.onsuccess=()=>{
+          try{
+            const order=orderReq.result;
+            if(!order) throw new Error('Không tìm thấy đơn hàng.');
+            const stamp=now();
+            const activeShift=openShiftFor(shiftsReq.result||[],identity);
+            const updated={
+              ...order,
+              payment_status:'PAID',
+              payment_method:paymentMethod||order.payment_method||'transfer',
+              shift_id:order.shift_id||activeShift?.id||'',
+              version:Number(order.version||1)+1,
+              updated_at:stamp,
+              operation_id:op
+            };
+            const outbox=makeOutbox({
+              operationId:op,
+              eventId:uuid(),
+              entityType:'order',
+              entityId:order.id,
+              action:'mark_paid',
+              version:updated.version,
+              deviceId:identity.device_id,
+              registerId:identity.register_id,
+              type:'order.mark_paid',
+              createdAt:stamp,
+              payload:{order:updated}
+            });
+            stores.orders.put(updated);
+            stores.outbox.put(outbox);
+            result=updated;
+          }catch(error){context.abort(error);}
+        };
       };
     };
   });
