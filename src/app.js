@@ -3132,6 +3132,11 @@ function renderDashboard(){
     state.dashAnalyticsTab=b.dataset.dashTab;
     renderDashboard();
   });
+  $$('[data-action="open-tax-hub"]',$('#content')).forEach(b=>b.onclick=()=>{
+    state.page='reports';
+    state.reportTab='tax';
+    render();
+  });
   $$('[data-product]',$('#content')).forEach(b=>b.onclick=()=>openProduct(b.dataset.product));
   if ($('#quickLoginBtn', $('#content'))) {
     $('#quickLoginBtn', $('#content')).onclick = async () => {
@@ -3348,6 +3353,108 @@ function renderDashboardAnalytics(){
     `;
   }
 
+  // Financial metrics for selected period:
+  const periodDateSet = new Set(dailyData.map(d=>d.date));
+  const periodSales = (state.data.sales||[]).filter(s=>{
+    const sDate = (s.created_at||s.createdAt||'').slice(0,10);
+    return periodDateSet.has(sDate) && ['COMPLETED','PAID'].includes(s.status);
+  });
+  const periodOrders = (state.data.orders||[]).filter(o=>{
+    const oDate = (o.updated_at||o.created_at||o.createdAt||'').slice(0,10);
+    return periodDateSet.has(oDate) && o.status==='COMPLETED' && !o.sale_id;
+  });
+  const allPeriodSales = [...periodSales, ...periodOrders];
+
+  const prodMap = new Map((state.data.products || []).map(p => [p.id, p]));
+  let periodCost = 0;
+  for (const s of allPeriodSales) {
+    for (const item of (s.items || [])) {
+      const pId = item.item_id || item.itemId || item.productId || item.product_id;
+      const p = prodMap.get(pId);
+      const itemCost = Number(item.cost_price ?? item.cost ?? p?.cost_price ?? p?.cost ?? p?.purchase_price ?? 0);
+      const qty = Number(item.quantity || 1);
+      periodCost += (Number(item.cost_total) > 0 ? Number(item.cost_total) : (itemCost * qty));
+    }
+  }
+
+  const grossProfit = Math.max(0, totalPeriodRevenue - periodCost);
+  const taxSettings = (typeof getTaxSettings === 'function') ? getTaxSettings() : DEFAULT_TAX_SETTINGS;
+  const isEcomSale = (s) => {
+    const ch = String(s.channel || s.source || s.channel_name || '').toLowerCase();
+    return ch === 'shopee' || ch === 'tiktok' || ch === 'lazada' || ch.includes('shopee') || ch.includes('tiktok') || ch.includes('lazada');
+  };
+
+  let taxableRevenue = totalPeriodRevenue;
+  if (taxSettings.ecommerce_auto_deduct) {
+    const ecomRev = allPeriodSales.filter(isEcomSale).reduce((sum, s) => sum + (Number(s.grand_total ?? s.total) || 0), 0);
+    taxableRevenue = Math.max(0, totalPeriodRevenue - ecomRev);
+  }
+
+  let periodEstTax = 0;
+  let taxBasisLabel = 'Thông tư 40/2021/TT-BTC';
+  let taxRatePercentLabel = '1.5%';
+
+  if (taxSettings.business_type === 'exempt') {
+    periodEstTax = 0;
+    taxBasisLabel = 'Miễn thuế (≤100tr/năm)';
+    taxRatePercentLabel = '0%';
+  } else if (taxSettings.business_type === 'company_deduct') {
+    const citRate = Number(taxSettings.cit_rate || 20) / 100;
+    periodEstTax = Math.round(grossProfit * citRate);
+    taxBasisLabel = 'Luật thuế TNDN (20%)';
+    taxRatePercentLabel = `${taxSettings.cit_rate || 20}% TNDN`;
+  } else {
+    const vatRate = Number(taxSettings.vat_rate || 1.0) / 100;
+    const pitRate = Number(taxSettings.pit_rate || 0.5) / 100;
+    const totalRate = vatRate + pitRate;
+    periodEstTax = Math.round(taxableRevenue * totalRate);
+    taxBasisLabel = 'Thông tư 40/2021/TT-BTC (Hộ KD)';
+    taxRatePercentLabel = `${((vatRate + pitRate) * 100).toFixed(1)}%`;
+  }
+
+  const periodNetProfit = Math.max(0, grossProfit - periodEstTax);
+  const periodMargin = totalPeriodRevenue > 0 ? ((periodNetProfit / totalPeriodRevenue) * 100).toFixed(1) : '0';
+  const canViewCost = typeof userCan === 'function' ? userCan('VIEW_COST') : true;
+
+  const dashTaxProfitHtml = `
+    <div class="dash-tax-profit-strip">
+      <div class="dtp-hero-row">
+        <div class="dtp-hero-left">
+          <span class="dtp-tag">Lợi nhuận thực sau thuế (${range === '7d' ? '7 ngày' : '30 ngày'})</span>
+          <strong class="dtp-amount">${canViewCost ? `${fmt(periodNetProfit)} ₫` : '***'}</strong>
+        </div>
+        <div class="dtp-hero-right">
+          <span class="dtp-badge-rate">${canViewCost ? `Tỷ suất ${periodMargin}%` : 'Đã ẩn'}</span>
+          <span class="dtp-sub-gross">Lãi gộp: <b>${canViewCost ? `${fmt(grossProfit)} ₫` : '***'}</b></span>
+        </div>
+      </div>
+
+      <div class="dtp-cols-row">
+        <div class="dtp-col">
+          <span>Doanh thu kỳ</span>
+          <b>${fmt(totalPeriodRevenue)} ₫</b>
+        </div>
+        <div class="dtp-col">
+          <span>Tiền vốn hàng</span>
+          <b>${canViewCost ? `${fmt(periodCost)} ₫` : '***'}</b>
+        </div>
+        <div class="dtp-col">
+          <span>Thuế (${taxRatePercentLabel})</span>
+          <b style="color:#b45309">− ${fmt(periodEstTax)} ₫</b>
+        </div>
+      </div>
+
+      <div class="dtp-legal-row">
+        <div class="dtp-legal-text">
+          ⚖️ Căn cứ: <b>${taxBasisLabel}</b>
+        </div>
+        <button type="button" class="dtp-link-btn" data-action="open-tax-hub">
+          Sổ thuế & Báo cáo →
+        </button>
+      </div>
+    </div>
+  `;
+
   return `
     <section class="card section-card dash-analytics-card">
       <div class="dash-analytics-head">
@@ -3388,6 +3495,8 @@ function renderDashboardAnalytics(){
             ${barsMarkup}
           </div>
         </div>
+
+        ${dashTaxProfitHtml}
       </div>
 
       <div class="dash-subtabs">
@@ -12808,6 +12917,7 @@ document.addEventListener('click', async e=>{
   if(action==='ui-profile-selector') return openUiProfileModal();
   if(action==='sale-preferences') return openSalePreferences();
   if(action==='tax-preferences') return openTaxPreferencesModal();
+  if(action==='open-tax-hub'){state.page='reports';state.reportTab='tax';return render();}
   if(action==='connections-settings') return openConnectionSettings();
   if(action==='data-settings') return openDataSettings();
   if(action==='storage-status') return openStorageStatusModal();
