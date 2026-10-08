@@ -1249,11 +1249,7 @@ export function updateContextAndChips() {
     } else if (cfg.mode === PROVIDER_MODES.AUTO) {
       providerBadge.textContent = 'DeepSeek V3 (Kiểm tra...)';
       if (typeof fetch !== 'undefined') {
-        const isOfficial = typeof window !== 'undefined' && (
-          window.location.hostname === 'kho.qbiz.vn' ||
-          window.location.hostname.endsWith('.vercel.app')
-        );
-        const checkUrl = isOfficial ? 'https://qbiz-kho.netlify.app/api/ai-deepseek' : '/api/ai-deepseek';
+        const checkUrl = '/api/ai-deepseek';
         fetch(checkUrl, { method: 'GET' })
           .then(r => r.ok ? r.json() : null)
           .then(data => {
@@ -1276,11 +1272,7 @@ export function updateContextAndChips() {
     } else if (cfg.mode === PROVIDER_MODES.LOCAL_AI) {
       providerBadge.textContent = 'Local AI: qwen2.5:1.5b (Kiểm tra...)';
       if (typeof fetch !== 'undefined') {
-        const isOfficial = typeof window !== 'undefined' && (
-          window.location.hostname === 'kho.qbiz.vn' ||
-          window.location.hostname.endsWith('.vercel.app')
-        );
-        const checkUrl = isOfficial ? 'https://qbiz-kho.netlify.app/api/ai-gateway' : '/api/ai-gateway';
+        const checkUrl = '/api/ai-gateway';
         fetch(checkUrl, { method: 'GET' })
           .then(r => r.ok ? r.json() : null)
           .then(data => {

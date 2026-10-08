@@ -530,11 +530,8 @@ export async function callLocalAIChat({ promptText, config = {}, timeoutMs = 600
         window.location.hostname === 'kho.qbiz.vn' ||
         window.location.hostname.endsWith('.vercel.app')
       );
-      // Netlify hosts the live serverless AI gateway with full CORS support
-      const primaryEndpoint = isOfficialDomain
-        ? 'https://qbiz-kho.netlify.app/api/ai-gateway'
-        : '/api/ai-gateway';
-      const fallbackEndpoint = primaryEndpoint === '/api/ai-gateway'
+      const primaryEndpoint = '/api/ai-gateway';
+      const fallbackEndpoint = typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app')
         ? 'https://qbiz-kho.netlify.app/api/ai-gateway'
         : '/api/ai-gateway';
 
@@ -705,13 +702,10 @@ export async function dispatchDeepSeekPrimary({
   let failureReason = null;
   let retryAttempted = false;
 
-  // Determine server-side proxy URL
-  const isOfficialDomain = typeof window !== 'undefined' &&
-    (window.location?.hostname === 'kho.qbiz.vn' ||
-     window.location?.hostname?.endsWith('.vercel.app'));
-  const proxyUrl = isOfficialDomain
-    ? 'https://qbiz-kho.netlify.app/api/ai-deepseek'
-    : (typeof window !== 'undefined' ? '/api/ai-deepseek' : 'http://127.0.0.1:4180/api/ai-deepseek');
+  // Determine server-side proxy URL (same-origin in browser)
+  const proxyUrl = typeof window !== 'undefined'
+    ? '/api/ai-deepseek'
+    : 'http://127.0.0.1:4180/api/ai-deepseek';
 
   const _callDeepSeek = async (isRetry = false) => {
     const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -1022,13 +1016,9 @@ export async function dispatchCloudEscalation({
         window.innerWidth <= 768 ||
         /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent || '')
       );
-      const isOfficialDomain = typeof window !== 'undefined' && (
-        window.location.hostname === 'kho.qbiz.vn' ||
-        window.location.hostname.endsWith('.vercel.app')
-      );
-      const escalationEndpoint = isOfficialDomain
-        ? 'https://qbiz-kho.netlify.app/api/ai-cloud-escalation'
-        : (typeof window !== 'undefined' ? '/api/ai-cloud-escalation' : 'http://127.0.0.1:4180/api/ai-cloud-escalation');
+      const escalationEndpoint = typeof window !== 'undefined'
+        ? '/api/ai-cloud-escalation'
+        : 'http://127.0.0.1:4180/api/ai-cloud-escalation';
 
       const c = typeof AbortController !== 'undefined' ? new AbortController() : null;
       const t = c ? setTimeout(() => c.abort(), timeoutMs) : null;
