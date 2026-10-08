@@ -7864,7 +7864,7 @@ async function renderDiagnostics(){
   let dbs=[]; try{ dbs=indexedDB.databases?await indexedDB.databases():[]; }catch{}
   const dbRow=dbs.find(x=>x.name===CONFIG.DB_NAME)||{};
   const rows=[
-    ['Phiên bản app','local preview (app.js 2026-09-21)'],
+    ['Phiên bản app','QBiz Kho v25 (2026-10-08) · Dual-Host Live'],
     ['Phiên bản DB',`${CONFIG.DB_NAME} · v${dbRow.version||CONFIG.DB_VERSION}`],
     ['Chế độ',CONFIG.SYNC_MODE==='api'?'Kết nối QBiz':'Local trên thiết bị'],
     ['Mã thiết bị',identity.device_id||'—'],
