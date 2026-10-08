@@ -10014,5 +10014,240 @@ body.topbar-hidden .install-subtle-tip {
   cursor: pointer !important;
 }
 
+/* ==========================================================================
+   HYPER-COMPACT MOBILE POS LAYOUT (Viewport 390x844 Zero-Waste Optimization)
+   ========================================================================== */
+
+/* Cart Row Hyper-Compact: Zero wasted space */
+.cart-row.no-img {
+  display: block !important;
+  padding: 4px 0 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+.cart-row.has-img {
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  padding: 4px 0 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+.cart-row .pos-product-image {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+}
+.cart-row-main {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+.cart-row-title {
+  margin-bottom: 1px !important;
+}
+.cart-item-name {
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+}
+.cart-row-subline {
+  margin: 0 0 2px !important;
+  gap: 3px !important;
+}
+.cart-row-bottom {
+  margin-top: 1px !important;
+}
+.cart-row-bottom .quantity-control {
+  width: 72px !important;
+  min-width: 72px !important;
+  max-width: 72px !important;
+  height: 24px !important;
+  grid-template-columns: 22px 28px 22px !important;
+}
+.cart-row-bottom .quantity-control button {
+  height: 22px !important;
+  min-height: 22px !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  font-size: 13px !important;
+}
+.cart-row-bottom .quantity-control input {
+  height: 22px !important;
+  font-size: 12px !important;
+}
+.line-discount-trigger {
+  min-height: 22px !important;
+  height: 22px !important;
+  font-size: 10.5px !important;
+}
+.cart-line-total {
+  font-size: 13.5px !important;
+}
+
+/* Customer Chip Mini */
+.customer-chip {
+  min-height: 38px !important;
+  height: 38px !important;
+  padding: 0 10px !important;
+  margin: 0 0 4px !important;
+  border-radius: 8px !important;
+}
+.customer-chip small {
+  font-size: 10px !important;
+}
+.customer-chip b,
+.customer-chip span {
+  font-size: 12.5px !important;
+}
+.customer-discount-hint {
+  min-height: 22px !important;
+  height: 22px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  margin: 0 0 6px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Order Discount Collapsible */
+.order-discount-collapse {
+  margin: 6px 0 !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #f8fafc !important;
+  overflow: hidden !important;
+}
+.order-discount-summary {
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 0 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #475569 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  cursor: pointer !important;
+}
+.order-discount-summary .discount-val-hint {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #d97706 !important;
+}
+.order-discount-collapse .discount-box {
+  margin-top: 0 !important;
+  padding: 6px 8px !important;
+}
+.order-discount-collapse .discount-control input {
+  min-height: 32px !important;
+  height: 32px !important;
+  font-size: 14px !important;
+  padding: 4px 8px !important;
+}
+.order-discount-collapse .discount-control button {
+  min-height: 32px !important;
+  height: 32px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  font-size: 13px !important;
+}
+
+/* Cart Totals Compact */
+.cart-totals {
+  margin-top: 6px !important;
+  gap: 3px !important;
+  padding-top: 6px !important;
+  border-top: 1px dashed #e2e8f0 !important;
+}
+.cart-totals > div {
+  font-size: 12.5px !important;
+}
+.cart-totals .grand {
+  padding-top: 4px !important;
+  font-size: 14px !important;
+}
+.cart-totals .grand b {
+  font-size: 17px !important;
+}
+.flow-primary {
+  min-height: 44px !important;
+  height: 44px !important;
+  margin-top: 8px !important;
+  font-size: 15px !important;
+  font-weight: 750 !important;
+  border-radius: 10px !important;
+}
+
+/* Checkout Screen Hyper-Compact */
+.checkout-screen {
+  padding: 10px 12px 70px !important;
+}
+.checkout-total {
+  padding: 4px 0 !important;
+  margin: 2px 0 6px !important;
+}
+.checkout-total span {
+  font-size: 12px !important;
+}
+.checkout-total strong {
+  font-size: 20px !important;
+  line-height: 1.1 !important;
+}
+.checkout-more {
+  margin: 6px 0 !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #f8fafc !important;
+  overflow: hidden !important;
+}
+.checkout-more summary {
+  min-height: 30px !important;
+  height: 30px !important;
+  padding: 0 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: var(--q-blue, #0284c7) !important;
+  display: flex !important;
+  align-items: center !important;
+  cursor: pointer !important;
+}
+.choice-section:has([data-payment-choice]) {
+  gap: 5px !important;
+  margin-top: 6px !important;
+}
+.choice-section:has([data-payment-choice]) h3 {
+  font-size: 12.5px !important;
+  margin-bottom: 4px !important;
+}
+.choice-section:has([data-payment-choice]) .choice-row {
+  min-height: 34px !important;
+  height: 34px !important;
+  font-size: 12.5px !important;
+  border-radius: 8px !important;
+  padding: 0 4px !important;
+}
+.cash-panel {
+  margin-top: 6px !important;
+  gap: 4px !important;
+}
+.cash-panel input {
+  min-height: 36px !important;
+  height: 36px !important;
+  font-size: 15px !important;
+  padding: 4px 8px !important;
+  border-radius: 8px !important;
+}
+.cash-quick-pills {
+  gap: 4px !important;
+  margin: 4px 0 !important;
+}
+.cash-quick-pills .cash-pill {
+  min-height: 28px !important;
+  height: 28px !important;
+  padding: 0 6px !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+}
+
 
 
