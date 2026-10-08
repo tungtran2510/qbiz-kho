@@ -767,6 +767,24 @@ export function generateDeterministicSemanticPlan(capsule) {
         entities: {},
         confidence: 0.95,
       });
+    } else if (p.includes('dich vu') || (capsule.context?.is_service_tab && (p.includes('them') || p.includes('tao')))) {
+      intents.push({
+        intent_name: 'create_service_proposal',
+        mode: 'WRITE',
+        domain: 'INVENTORY',
+        required_capability: 'create_service',
+        entities: { query: capsule.raw_prompt },
+        confidence: 0.90,
+      });
+    } else if ((p.includes('them') || p.includes('tao')) && (p.includes('san pham') || p.includes('hang hoa') || p.includes('mat hang') || p.includes('hang'))) {
+      intents.push({
+        intent_name: 'create_product_proposal',
+        mode: 'WRITE',
+        domain: 'INVENTORY',
+        required_capability: 'create_product',
+        entities: { query: capsule.raw_prompt },
+        confidence: 0.90,
+      });
     } else if (p.includes('nhap')) {
       intents.push({
         intent_name: 'receipt_proposal',
@@ -802,6 +820,16 @@ export function generateDeterministicSemanticPlan(capsule) {
         required_capability: 'electronic_invoice_proposal',
         entities: { query: capsule.raw_prompt },
         confidence: 0.85,
+      });
+    } else if (p.includes('them') || p.includes('tao') || p.includes('sua') || p.includes('xoa') || p.includes('lap') || p.includes('chuyen') || p.includes('doi')) {
+      // Khi câu lệnh có từ hành động nhưng chưa đủ tham số: hỏi lại làm rõ, TUYỆT ĐỐI KHÔNG rơi vào check_stock_overview!
+      intents.push({
+        intent_name: 'clarify_ambiguity',
+        mode: 'READ',
+        domain: 'GENERIC',
+        required_capability: 'clarify_ambiguity',
+        entities: { query: capsule.raw_prompt },
+        confidence: 0.95,
       });
     } else {
       // Default exploratory stock overview ONLY for truly generic inquiry

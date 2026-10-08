@@ -1634,7 +1634,11 @@ function renderMessages() {
     const isBoilerplateProposal = m.proposal && m.text && (
       m.text.trim() === '📝 **Đề xuất đơn bán hàng:**' ||
       m.text.trim() === '📝 **Đã lập đề xuất đơn hàng**. Bạn vui lòng kiểm tra và bấm xác nhận:' ||
-      m.text.trim() === '📝 **Đề xuất đơn bán hàng**'
+      m.text.trim() === '📝 **Đề xuất đơn bán hàng**' ||
+      m.text.trim().startsWith('Tôi đã lập đề xuất') ||
+      m.text.trim().startsWith('Đã lập đề xuất') ||
+      m.text.trim().startsWith('Tôi đã tạo đề xuất') ||
+      m.text.trim().startsWith('Đã tạo đề xuất')
     );
     const formattedBody = isBoilerplateProposal ? '' : fmtMarkdown(m.text);
 
@@ -1874,14 +1878,22 @@ function renderMessages() {
           create_invoice_proposal: 'Đề xuất Hóa đơn điện tử (NĐ 123 / TT 78)',
           create_cart_draft: 'Đề xuất giỏ hàng',
           propose_memory_save: 'Ghi nhớ thông tin shop',
-          create_stocktake_proposal: 'Đề xuất kiểm kê kho'
+          create_stocktake_proposal: 'Đề xuất kiểm kê kho',
+          create_service_proposal: 'Đề xuất thêm dịch vụ',
+          create_service: 'Đề xuất thêm dịch vụ',
+          create_product_proposal: 'Đề xuất thêm sản phẩm',
+          create_product: 'Đề xuất thêm sản phẩm'
         };
         const PARAM_LABELS = {
           productName: 'Sản phẩm',
+          name: 'Tên',
+          type: 'Phân loại',
           quantity: 'Số lượng',
           qty: 'Số lượng',
           costPrice: 'Giá nhập',
-          price: 'Đơn giá',
+          price: 'Giá niêm yết',
+          sku: 'Mã SKU',
+          lowStock: 'Cảnh báo tồn tối thiểu',
           unit: 'Đơn vị',
           warehouseName: 'Kho',
           supplierName: 'Nhà cung cấp',
@@ -1904,7 +1916,7 @@ function renderMessages() {
           notes: 'Ghi chú',
           reason: 'Lý do'
         };
-        const HIDE_KEYS = new Set(['productId', 'warehouseId', 'variantId', 'variantName']);
+        const HIDE_KEYS = new Set(['productId', 'warehouseId', 'variantId', 'variantName', 'query', 'trackInventory']);
         const title = INTENT_NAMES[p.intent] || (p.intent ? p.intent.replace(/_/g, ' ') : 'Đề xuất thao tác');
         const badgeLabel = p.risk_level === 'HIGH_RISK_WRITE' ? 'Cần duyệt' : (p.risk_level === 'READ_ONLY' ? 'Thông tin' : 'Đề xuất');
         const badgeClass = p.risk_level === 'HIGH_RISK_WRITE' ? 'danger' : (p.risk_level === 'READ_ONLY' ? 'info' : 'brand');
@@ -1943,12 +1955,6 @@ function renderMessages() {
 
         proposalHtml = `
           <div class="ai-proposal-card ${isConfirmed ? 'is-confirmed' : ''} ${isCancelled ? 'is-cancelled' : ''}">
-            ${effectivePrompt ? `
-              <div class="ai-prop-cmd-bar" title="${esc(effectivePrompt)}">
-                <span class="ai-prop-cmd-text">“${esc(effectivePrompt)}”</span>
-              </div>
-            ` : ''}
-
             <div class="ai-prop-header-v2">
               <div class="ai-prop-header-left">
                 <span class="ai-prop-tag ${badgeClass}">${esc(badgeLabel)}</span>
@@ -1993,7 +1999,6 @@ function renderMessages() {
               </div>
             ` : `
               <div class="ai-prop-body">
-                <p class="ai-prop-summary-visible" style="font-size:12px;font-weight:600;color:#1e293b;margin:2px 0 6px 0;">${esc(p.human_summary)}</p>
                 ${displayParams.length ? `
                   <div class="ai-prop-params">
                     ${displayParams.map(([k, v]) => `
@@ -2012,11 +2017,32 @@ function renderMessages() {
             `}
             <div class="ai-prop-actions" id="propActions_${p.id}">
               ${p.status === PROPOSAL_STATUS.SUCCEEDED ? `
-                <div class="ai-prop-status-ok">✓ ${p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' : (p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' : (p.intent === 'create_order_proposal' || p.intent === 'order_proposal' ? 'Đã tạo đơn bán hàng thành công (Đã ghi Sổ bán hàng theo TT88)' : (p.intent === 'electronic_invoice_proposal' || p.intent === 'create_invoice_proposal' ? 'Đã lưu bản nháp HĐĐT theo NĐ 123 / TT 78' : 'Đã thực thi thành công vào sổ kho')))}</div>
-                ${p.intent !== 'propose_memory_save' && p.intent !== 'create_cart_draft' ? `
-                <div style="margin-top:8px;">
-                  <button class="secondary-btn ai-btn-nav" data-action-id="${p.intent === 'create_order_proposal' || p.intent === 'order_proposal' ? 'open_orders' : 'open_warehouse'}">${p.intent === 'create_order_proposal' || p.intent === 'order_proposal' ? 'Xem đơn hàng' : 'Xem tồn kho'}</button>
-                </div>` : ''}
+                <div class="ai-prop-success-box">
+                  <div class="ai-prop-status-ok">✓ ${
+                    p.intent === 'propose_memory_save' ? 'Đã lưu vào Trí nhớ Shop thành công' :
+                    p.intent === 'create_cart_draft' ? 'Đã cập nhật giỏ hàng POS thành công' :
+                    (p.intent === 'create_service_proposal' || p.intent === 'create_service') ? 'Đã tạo dịch vụ thành công' :
+                    (p.intent === 'create_product_proposal' || p.intent === 'create_product') ? 'Đã tạo sản phẩm thành công' :
+                    (p.intent === 'create_order_proposal' || p.intent === 'order_proposal') ? 'Đã tạo đơn bán hàng thành công (Đã ghi Sổ bán hàng theo TT88)' :
+                    (p.intent === 'electronic_invoice_proposal' || p.intent === 'create_invoice_proposal') ? 'Đã lưu bản nháp HĐĐT theo NĐ 123 / TT 78' :
+                    'Đã thực thi thành công vào sổ kho'
+                  }</div>
+                  ${p.intent !== 'propose_memory_save' && p.intent !== 'create_cart_draft' ? `
+                    <button class="ai-btn-success-nav" data-action-id="${
+                      (p.intent === 'create_order_proposal' || p.intent === 'order_proposal') ? 'open_orders' :
+                      (p.intent === 'create_service_proposal' || p.intent === 'create_service' || p.intent === 'create_product_proposal' || p.intent === 'create_product') ? 'open_products' :
+                      'open_warehouse'
+                    }">
+                      <span>${
+                        (p.intent === 'create_order_proposal' || p.intent === 'order_proposal') ? 'Xem đơn hàng' :
+                        (p.intent === 'create_service_proposal' || p.intent === 'create_service') ? 'Xem danh sách dịch vụ' :
+                        (p.intent === 'create_product_proposal' || p.intent === 'create_product') ? 'Xem danh sách sản phẩm' :
+                        'Xem tồn kho'
+                      }</span>
+                      <span class="ai-nav-arrow">→</span>
+                    </button>
+                  ` : ''}
+                </div>
               ` : p.status === PROPOSAL_STATUS.CONFIRMED ? `
                 <button class="primary-btn ai-btn-confirm" data-execute-proposal="${p.id}">Thực thi thao tác</button>
                 <button class="secondary-btn ai-btn-cancel" data-cancel-proposal="${p.id}">${p.intent === 'propose_memory_save' ? 'Không' : 'Hủy'}</button>
@@ -2129,11 +2155,12 @@ function renderMessages() {
       `;
     }
 
-    const hasProposalOnly = !formattedBody && Boolean(proposalHtml);
+    const hasProposal = Boolean(proposalHtml);
+    const hasProposalOnly = !formattedBody && hasProposal;
 
     return `
-      <div class="ai-msg assistant">
-        <div class="ai-bubble assistant-bubble ${hasProposalOnly ? 'has-proposal-only' : ''}">
+      <div class="ai-msg assistant ${hasProposal ? 'has-proposal' : ''}">
+        <div class="ai-bubble assistant-bubble ${hasProposal ? 'has-proposal' : ''} ${hasProposalOnly ? 'has-proposal-only' : ''}">
           ${formattedBody ? `<div class="ai-bubble-content">${formattedBody}</div>` : ''}
           ${candidatesHtml}
           ${warehouseCandidatesHtml}
@@ -2434,7 +2461,6 @@ function renderMessages() {
       const execRes = await executeProposal(prop, appStateRef, null, getCurrentActor());
       renderMessages();
       if (execRes.success) {
-        addAssistantMessage(`✓ ${execRes.message || 'Thao tác đã được thực thi và đối soát thành công.'}`);
         try {
           if (typeof window !== 'undefined' && window.__qbiz_app__?.refresh) {
             await window.__qbiz_app__.refresh();
@@ -2461,7 +2487,6 @@ function renderMessages() {
       const res = await executeProposal(prop, appStateRef, null, getCurrentActor());
       renderMessages();
       if (res.success) {
-        addAssistantMessage(res.message);
         try {
           if (typeof window !== 'undefined' && window.__qbiz_app__?.refresh) {
             await window.__qbiz_app__.refresh();

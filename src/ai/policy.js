@@ -105,6 +105,12 @@ export const ALLOWED_WRITE_ACTIONS = new Set([
   'UPDATE_PRODUCT_PRICE',
   'create_warehouse',
   'CREATE_WAREHOUSE',
+  'create_service_proposal',
+  'create_service',
+  'CREATE_SERVICE_PROPOSAL',
+  'create_product_proposal',
+  'create_product',
+  'CREATE_PRODUCT_PROPOSAL',
   'propose_memory_save',
   'saveMemory',
 ]);
@@ -157,6 +163,8 @@ const DRAFT_ACTIONS = new Set([
   'create_update_product_status_proposal',
   'create_update_product_price_proposal',
   'create_warehouse_proposal',
+  'create_service_proposal',
+  'create_product_proposal',
   'create_replenishment_draft',
   'propose_memory_save',
 ]);

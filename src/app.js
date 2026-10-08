@@ -205,7 +205,20 @@ function showPaymentSuccessPopup(sale,grandTotal){
   }
 }
 
-let state={page:'dashboard',data:null,search:'',warehouse:'all',warehouseTab:'operations',warehouseSearch:'',warehouseFilter:'all',warehouseSort:'name',warehouseStockWarehouse:'all',orderSearch:'',orderFilter:'active',orderRange:'all',txSearch:'',customerSearch:'',customerType:'all',supplierSearch:'',productView:'compact',productType:'PRODUCT',productCategory:'all',productSort:'default',productLimit:40,productSelecting:false,productSelected:new Set(),currentProductId:null,currentOrderId:null,currentSaleId:null,displayPrefs:loadDisplayPrefs(),paymentPrefs:loadPaymentPrefs(),installPrompt:null,printTab:'templates',reportTab:'overview',reportRange:'month',reportWarehouse:'all',reportCustomStart:'',reportCustomEnd:'',notificationFilter:'all',notificationRead:new Set(),importStep:1,importType:'products',importSource:'file',saleCart:[],saleSearch:'',saleType:'all',saleShowAll:false,saleStep:'browse',saleTrail:[],saleBusy:false,saleReceipt:null,saleCustomer:null,saleDiscountOpen:new Set(),saleOptionsOpen:false,saleDraft:{discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:'',channel:'pos'}};
+function loadNotificationReadState(){
+  try {
+    const raw = localStorage.getItem('qbiz_notification_read');
+    if(raw) return new Set(JSON.parse(raw));
+  } catch(e){}
+  return new Set();
+}
+function saveNotificationReadState(){
+  try {
+    localStorage.setItem('qbiz_notification_read', JSON.stringify(Array.from(state.notificationRead || [])));
+  } catch(e){}
+}
+
+let state={page:'dashboard',data:null,search:'',warehouse:'all',warehouseTab:'operations',warehouseSearch:'',warehouseFilter:'all',warehouseSort:'name',warehouseStockWarehouse:'all',orderSearch:'',orderFilter:'active',orderRange:'all',txSearch:'',customerSearch:'',customerType:'all',supplierSearch:'',productView:'compact',productType:'PRODUCT',productCategory:'all',productSort:'default',productLimit:40,productSelecting:false,productSelected:new Set(),currentProductId:null,currentOrderId:null,currentSaleId:null,displayPrefs:loadDisplayPrefs(),paymentPrefs:loadPaymentPrefs(),installPrompt:null,printTab:'templates',reportTab:'overview',reportRange:'month',reportWarehouse:'all',reportCustomStart:'',reportCustomEnd:'',notificationFilter:'all',notificationRead:loadNotificationReadState(),importStep:1,importType:'products',importSource:'file',saleCart:[],saleSearch:'',saleType:'all',saleShowAll:false,saleStep:'browse',saleTrail:[],saleBusy:false,saleReceipt:null,saleCustomer:null,saleDiscountOpen:new Set(),saleOptionsOpen:false,saleDraft:{discount:0,discountMode:'amount',cashReceived:'',note:'',payment:'cash',warehouseId:'',fulfillment:'counter',recipient:'',phone:'',address:'',shippingFee:0,cod:false,vatRate:0,vatCustom:'',channel:'pos'}};
 
 const product=id=>state.data.products.find(x=>x.id===id);
 const warehouse=id=>state.data.warehouses.find(x=>x.id===id);
@@ -234,6 +247,7 @@ function categoryMatches(p,selected){
   return ids.has(raw)||names.has(raw);
 }
 const ICONS={
+  'alert-circle':'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
   'camera':'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
   'layout-dashboard':'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   'package-search':'<path d="m16.5 9.4 2.1 2.1 3.4-3.4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8"/><path d="m3 7 9 5 9-5M12 22V12"/><circle cx="17" cy="7" r="3"/>',
@@ -378,7 +392,7 @@ function headerActions(){
   if(state.page === 'platform-admin') return;
   const showScan=state.page==='sales'?state.saleStep==='browse':['products','transfers'].includes(state.page);
   const scan=showScan?`<button class="icon-btn scan-trigger" data-action="scan" title="Quét mã" aria-label="Quét mã">${icon('scan-line')}</button>`:'';
-  const alerts=notificationItems();
+  const unreadAlerts=getUnreadNotificationCount();
   const auth=getAuthState();
   let userBadge='';
   if(auth.isSuperAdmin){
@@ -395,7 +409,7 @@ function headerActions(){
   const backMgmtBtn = (state.page==='sales' && window.innerWidth > 920)
     ? `<a href="./" class="header-shortcut pos-back-mgmt-btn" style="text-decoration:none;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe" title="Trở về trang Quản lý kho">${icon('undo-2')}<span>Quản lý kho</span></a>`
     : '';
-  top.innerHTML=`${backMgmtBtn}${userBadge}${installShortcut}<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${alerts.length?`<b>${alerts.length}</b>`:''}</button>${scan}`;
+  top.innerHTML=`${backMgmtBtn}${userBadge}${installShortcut}<button class="header-shortcut" data-page="orders">${icon('file-text')}<span>Đơn hàng</span></button><button class="icon-btn header-bell" data-action="notifications" aria-label="Thông báo" title="Thông báo">${icon('bell')}${unreadAlerts>0?`<b>${unreadAlerts>99?'99+':unreadAlerts}</b>`:''}</button>${scan}`;
 }
 function injectInstallBanner(){
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -476,6 +490,206 @@ function injectLocalNotice(){
     }
   }
 }
+function formatNotificationTime(timeStr){
+  if(!timeStr) return 'Vừa xong';
+  try {
+    const d = new Date(timeStr);
+    if(isNaN(d.getTime())) return 'Gần đây';
+    const now = new Date();
+    const diffMs = now - d;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    if(diffSec < 60) return 'Vừa xong';
+    if(diffMin < 60) return `${diffMin} phút trước`;
+    const isToday = d.toDateString() === now.toDateString();
+    const pad = n => String(n).padStart(2, '0');
+    const hhmm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    if(isToday) return `Hôm nay · ${hhmm}`;
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if(d.toDateString() === yesterday.toDateString()) return `Hôm qua · ${hhmm}`;
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)} · ${hhmm}`;
+  } catch(e){
+    return 'Gần đây';
+  }
+}
+
+function getDetailedNotifications(){
+  if(!state.data) return [];
+  const list = [];
+
+  // 1. Đơn hàng cần xử lý
+  const orders = (state.data.orders || [])
+    .filter(x => ['NEW', 'CONFIRMED', 'PROCESSING'].includes(x.status))
+    .slice()
+    .sort((a,b) => String(b.created_at || b.date || '').localeCompare(String(a.created_at || a.date || '')));
+
+  orders.forEach(o => {
+    const id = `order-${o.id}`;
+    const cust = o.customer_label || o.customer_name || o.customer?.name || 'Khách lẻ';
+    const totalVal = Number(o.grand_total ?? o.total_amount ?? o.total ?? 0);
+    const statusText = o.status === 'NEW' ? 'Chờ xác nhận' : (o.status === 'CONFIRMED' ? 'Đã xác nhận' : 'Đang xử lý');
+    const itemsCount = (o.items || []).reduce((sum, it) => sum + Number(it.qty || it.quantity || 1), 0);
+    list.push({
+      id,
+      category: 'orders',
+      type: 'order',
+      icon: 'shopping-bag',
+      tag: 'ĐƠN HÀNG',
+      tagClass: 'noti-tag-order',
+      iconClass: 'noti-ico-order',
+      title: `Đơn cần xử lý: ${o.code || o.id}`,
+      desc: `Khách: ${cust} · ${fmt(totalVal)} ₫`,
+      subDesc: `${itemsCount ? itemsCount + ' món · ' : ''}Trạng thái: ${statusText} · Chạm để xem`,
+      time: o.created_at || o.date || new Date().toISOString(),
+      timeText: formatNotificationTime(o.created_at || o.date),
+      action: 'open-order',
+      targetId: o.id,
+      read: state.notificationRead.has(id),
+      severity: 'info'
+    });
+  });
+
+  // 2. Tồn kho: Hết hàng & Sắp hết hàng
+  const prods = state.data.products || [];
+  prods.forEach(p => {
+    if(p.type === 'SERVICE' || p.trackInventory === false) return;
+    const totals = productTotals(p);
+    const avail = totals.available;
+    const low = p.lowStock || 5;
+
+    if(avail <= 0){
+      const id = `stock-out-${p.id}`;
+      list.push({
+        id,
+        category: 'inventory',
+        type: 'stock-out',
+        icon: 'alert-circle',
+        tag: 'HẾT HÀNG',
+        tagClass: 'noti-tag-danger',
+        iconClass: 'noti-ico-danger',
+        title: `Hết hàng: ${p.name}`,
+        desc: `Tồn khả dụng: 0 ${p.unit || 'cái'} · Đã hết sạch hàng trong kho`,
+        subDesc: `Mã SKU: ${p.sku || p.id} · Cần tạo đơn nhập hàng ngay`,
+        time: p.updated_at || new Date().toISOString(),
+        timeText: 'Khẩn cấp',
+        action: 'open-product',
+        targetId: p.id,
+        read: state.notificationRead.has(id),
+        severity: 'critical'
+      });
+    } else if(avail <= low){
+      const id = `stock-low-${p.id}`;
+      list.push({
+        id,
+        category: 'inventory',
+        type: 'stock-low',
+        icon: 'alert-triangle',
+        tag: 'SẮP HẾT HÀNG',
+        tagClass: 'noti-tag-warning',
+        iconClass: 'noti-ico-warning',
+        title: `Sắp hết hàng: ${p.name}`,
+        desc: `Còn lại ${avail} ${p.unit || 'cái'} (Mức tối thiểu: ${low})`,
+        subDesc: `Mã SKU: ${p.sku || p.id} · Chú ý nhập hàng thêm`,
+        time: p.updated_at || new Date().toISOString(),
+        timeText: 'Cần chú ý',
+        action: 'open-product',
+        targetId: p.id,
+        read: state.notificationRead.has(id),
+        severity: 'warning'
+      });
+    }
+  });
+
+  // 3. Chuyển kho đang vận chuyển
+  const transfers = (state.data.transfers || []).filter(x => x.status === 'in_transit');
+  transfers.forEach(t => {
+    const id = `transfer-${t.id}`;
+    const fromW = warehouse(t.from_warehouse_id)?.name || 'Kho xuất';
+    const toW = warehouse(t.to_warehouse_id)?.name || 'Kho nhận';
+    list.push({
+      id,
+      category: 'transfers',
+      type: 'transfer',
+      icon: 'arrow-left-right',
+      tag: 'CHUYỂN KHO',
+      tagClass: 'noti-tag-purple',
+      iconClass: 'noti-ico-purple',
+      title: `Phiếu chuyển kho: ${t.code || t.id}`,
+      desc: `Chuyển từ "${fromW}" sang "${toW}"`,
+      subDesc: `${(t.items||[]).length} sản phẩm đang trên đường giao nhận`,
+      time: t.created_at || new Date().toISOString(),
+      timeText: formatNotificationTime(t.created_at),
+      action: 'open-transfer',
+      targetId: t.id,
+      read: state.notificationRead.has(id),
+      severity: 'info'
+    });
+  });
+
+  // 4. Giao dịch bán hàng gần nhất (3 giao dịch gần nhất)
+  const sales = (state.data.sales || [])
+    .slice()
+    .sort((a,b) => String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || '')))
+    .slice(0, 3);
+
+  sales.forEach(s => {
+    const id = `sale-${s.id}`;
+    const cust = s.customer_label || s.customer_name || 'Khách lẻ';
+    const totalVal = Number(s.grand_total ?? s.total ?? 0);
+    const payText = paymentLabel(s.payment_method || 'cash');
+    list.push({
+      id,
+      category: 'sales',
+      type: 'sale',
+      icon: 'check-circle',
+      tag: 'BÁN HÀNG',
+      tagClass: 'noti-tag-success',
+      iconClass: 'noti-ico-success',
+      title: `Đã bán hàng: ${s.code || s.sale_uuid || 'Hóa đơn'}`,
+      desc: `Khách: ${cust} · ${fmt(totalVal)} ₫`,
+      subDesc: `Thanh toán: ${payText} · Đã trừ kho an toàn`,
+      time: s.created_at || s.createdAt || new Date().toISOString(),
+      timeText: formatNotificationTime(s.created_at || s.createdAt),
+      action: 'open-sale',
+      targetId: s.id,
+      read: state.notificationRead.has(id),
+      severity: 'info'
+    });
+  });
+
+  // 5. Lỗi đồng bộ ngoại tuyến (nếu có)
+  const syncErrors = (state.data.outbox || []).filter(x => x.sync_status === 'ERROR');
+  if(syncErrors.length > 0){
+    const id = 'outbox-sync-error';
+    list.push({
+      id,
+      category: 'system',
+      type: 'system',
+      icon: 'settings-2',
+      tag: 'HỆ THỐNG',
+      tagClass: 'noti-tag-danger',
+      iconClass: 'noti-ico-danger',
+      title: 'Lỗi đồng bộ ngoại tuyến',
+      desc: `Có ${syncErrors.length} thao tác chưa thể đồng bộ lên máy chủ`,
+      subDesc: 'Bấm vào để kiểm tra hàng đợi outbox',
+      time: new Date().toISOString(),
+      timeText: 'Vừa xong',
+      action: 'open-sync',
+      targetId: null,
+      read: state.notificationRead.has(id),
+      severity: 'critical'
+    });
+  }
+
+  return list;
+}
+
+function getUnreadNotificationCount(){
+  const notis = getDetailedNotifications();
+  return notis.filter(n => !n.read).length;
+}
+
 function notificationItems(){
   if(!state.data)return [];
   const low=state.data.products.filter(p=>p.type!=='SERVICE'&&p.trackInventory!==false&&productTotals(p).available<=p.lowStock).length;
@@ -486,10 +700,144 @@ function notificationItems(){
   const syncErrors=(state.data.outbox||[]).filter(x=>x.sync_status==='ERROR').length;
   return [['Sắp hết hàng',low,'products'],['Hết hàng',out,'products'],['Tồn âm',negative,'transfers'],['Chuyển kho chờ nhận',transfers,'transfers'],['Đơn cần xử lý',orders,'orders'],['Lỗi đồng bộ',syncErrors,'settings']].filter(x=>x[1]>0);
 }
-function openNotifications(){
-  const items=notificationItems();
-  openModal({title:'Thông báo',sub:'Việc cần chú ý trên thiết bị này.',hideSubmit:true,body:items.length?`<div class="notification-list">${items.map(([label,count,page])=>{const meta={'Sắp hết hàng':['package-search','Sản phẩm sắp hết'],'Chuyển kho chờ nhận':['arrow-left-right','Phiếu chuyển đang vận chuyển'],'Đơn cần xử lý':['shopping-cart','Đơn hàng chờ xử lý'],'Lỗi đồng bộ':['settings-2','Mục chờ đồng bộ bị lỗi']};const [ico,sub]=meta[label]||['bell',''];return `<button class="notification-row" data-page="${page}"><i class="notification-ico">${icon(ico)}</i><span><b>${esc(label)}</b><small>${esc(sub)}</small></span><strong>${fmt(count)}</strong>${icon('chevron-right')}</button>`}).join('')}</div>`:'<div class="empty notification-empty"><strong>Không có việc cần xử lý.</strong></div>'});
-  $$('[data-page]', $('#modalRoot')).forEach(b=>b.onclick=()=>{$('#modalRoot').innerHTML='';state.page=b.dataset.page;render();});
+
+function openNotificationsModal(filter = 'all'){
+  const allNotis = getDetailedNotifications();
+  const unreadCount = allNotis.filter(n => !n.read).length;
+  const ordersCount = allNotis.filter(n => n.category === 'orders').length;
+  const invCount = allNotis.filter(n => n.category === 'inventory').length;
+  const salesCount = allNotis.filter(n => n.category === 'sales').length;
+
+  let displayList = allNotis;
+  if(filter === 'unread') displayList = allNotis.filter(n => !n.read);
+  else if(filter === 'orders') displayList = allNotis.filter(n => n.category === 'orders');
+  else if(filter === 'inventory') displayList = allNotis.filter(n => n.category === 'inventory');
+  else if(filter === 'sales') displayList = allNotis.filter(n => n.category === 'sales');
+
+  const filterTabs = [
+    { key: 'all', label: `Tất cả (${allNotis.length})` },
+    { key: 'unread', label: `Chưa đọc (${unreadCount})` },
+    ...(ordersCount > 0 ? [{ key: 'orders', label: `Đơn hàng (${ordersCount})` }] : []),
+    ...(invCount > 0 ? [{ key: 'inventory', label: `Tồn kho (${invCount})` }] : []),
+    ...(salesCount > 0 ? [{ key: 'sales', label: `Bán hàng (${salesCount})` }] : [])
+  ];
+
+  const bodyHtml = `
+    <div class="noti-modal-wrapper">
+      <div class="noti-modal-toolbar">
+        <div class="noti-status-pill">
+          ${unreadCount > 0 
+            ? `<span class="noti-pill-unread"><span class="noti-live-dot"></span>${unreadCount} việc cần xử lý</span>` 
+            : `<span class="noti-pill-all-read">${icon('check')} Đã đọc tất cả</span>`}
+        </div>
+        ${unreadCount > 0 ? `
+          <button type="button" class="noti-btn-mark-all" id="btnMarkAllNotiRead" title="Đánh dấu tất cả là đã đọc">
+            ${icon('clipboard-check')}
+            <span>Đọc tất cả</span>
+          </button>
+        ` : ''}
+      </div>
+
+      <div class="noti-filter-strip">
+        ${filterTabs.map(t => `
+          <button type="button" class="noti-tab-btn ${filter === t.key ? 'active' : ''}" data-noti-filter="${t.key}">
+            ${esc(t.label)}
+          </button>
+        `).join('')}
+      </div>
+
+      <div class="noti-items-stream">
+        ${displayList.length ? displayList.map(n => `
+          <div class="noti-card-item ${n.read ? 'is-read' : 'is-unread'}" data-noti-id="${esc(n.id)}" data-action="${n.action}" data-target-id="${esc(n.targetId || '')}">
+            <div class="noti-icon-box ${n.iconClass}">
+              ${icon(n.icon)}
+            </div>
+            <div class="noti-card-body">
+              <div class="noti-card-header">
+                <span class="noti-tag ${n.tagClass}">${esc(n.tag)}</span>
+                <span class="noti-time">${esc(n.timeText)}</span>
+                ${!n.read ? `<span class="noti-dot" title="Chưa đọc"></span>` : ''}
+              </div>
+              <strong class="noti-title">${esc(n.title)}</strong>
+              <div class="noti-desc">${esc(n.desc)}</div>
+              ${n.subDesc ? `<div class="noti-subdesc">${esc(n.subDesc)}</div>` : ''}
+            </div>
+            <div class="noti-card-arrow">
+              ${icon('chevron-right')}
+            </div>
+          </div>
+        `).join('') : `
+          <div class="noti-empty-box">
+            <div class="noti-empty-ico">${icon('bell')}</div>
+            <strong>${filter === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo mới'}</strong>
+            <p>Mọi cập nhật về đơn hàng, biến động tồn kho và giao dịch sẽ hiển thị tại đây.</p>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+
+  openModal({
+    title: 'Thông báo',
+    sub: 'Trung tâm thông báo & việc cần xử lý',
+    body: bodyHtml,
+    hideSubmit: true
+  });
+
+  const root = $('#modalRoot');
+  if(!root) return;
+
+  $$('[data-noti-filter]', root).forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      openNotificationsModal(btn.dataset.notiFilter);
+    };
+  });
+
+  const markAllBtn = $('#btnMarkAllNotiRead', root);
+  if(markAllBtn){
+    markAllBtn.onclick = (e) => {
+      e.stopPropagation();
+      allNotis.forEach(n => state.notificationRead.add(n.id));
+      saveNotificationReadState();
+      headerActions();
+      toast('Đã đánh dấu đã đọc tất cả.', 'ok');
+      openNotificationsModal(filter);
+    };
+  }
+
+  $$('.noti-card-item', root).forEach(card => {
+    card.onclick = (e) => {
+      const notiId = card.dataset.notiId;
+      const act = card.dataset.action;
+      const targetId = card.dataset.targetId;
+
+      if(notiId){
+        state.notificationRead.add(notiId);
+        saveNotificationReadState();
+        headerActions();
+      }
+
+      root.innerHTML = '';
+
+      if(act === 'open-order' && targetId){
+        openOrderDetail(targetId);
+      } else if(act === 'open-product' && targetId){
+        openProduct(targetId);
+      } else if(act === 'open-sale' && targetId){
+        const s = (state.data?.sales || []).find(x => x.id === targetId);
+        if(s) openTransaction(s);
+      } else if(act === 'open-transfer'){
+        navigate('transfers');
+      } else if(act === 'open-sync'){
+        openSyncInfoModal();
+      }
+    };
+  });
+}
+
+function openNotifications(filter = 'all'){
+  return openNotificationsModal(filter);
 }
 function isServiceMode(){
   if(sessionStorage.getItem('qbiz_preview_demo') === '1'){
@@ -5717,7 +6065,22 @@ function featureReportSales(){
     profitAfterTaxMargin
   };
 }
-function preparedReport(title,reason){return `<section class="card feature-panel report-prepared"><div class="section-head"><div><h2>${title}</h2><p>${reason}</p></div>${surfaceStatus('prepared','Chưa đủ dữ liệu')}</div><div class="empty"><strong>Không tạo số liệu giả</strong><span>Khi contract và nguồn dữ liệu thật sẵn sàng, báo cáo này sẽ dùng cùng bộ lọc hiện tại.</span></div></section>`}
+function openAllSourceSalesModal(sales){
+  const rows=(sales||[]).map(s=>`<button class="transaction-row" data-modal-sale-id="${s.id}" style="width:100%;text-align:left"><span><strong>${esc(s.code||'Phiếu bán')}</strong><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at||s.createdAt)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Không có giao dịch nào trong bộ lọc.</div>';
+  openModal({
+    title:'Giao dịch nguồn',
+    sub:`${sales.length} phiếu hoàn tất trong bộ lọc hiện tại.`,
+    hideSubmit:true,
+    cancelText:'Đóng',
+    body:`<div class="source-sales-modal-list" style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:2px 0">${rows}</div>`
+  });
+  $$('#modalRoot [data-modal-sale-id]').forEach(b=>{
+    b.onclick=()=>{
+      const s=state.data.sales.find(x=>x.id===b.dataset.modalSaleId);
+      if(s)openTransaction(s);
+    };
+  });
+}
 function renderFeatureReports(){
   setTitle('Báo cáo','QBiz');
   if(!userCan('VIEW_REPORT')){
@@ -5729,17 +6092,19 @@ function renderFeatureReports(){
   const products=[...productMap.values()].sort((a,b)=>b.revenue-a.revenue).slice(0,20),inventory=state.data.products.filter(p=>p.type!=='SERVICE').map(p=>({p,t:stockView(p,state.reportWarehouse)})),low=inventory.filter(x=>x.t.available<=Number(x.p.lowStock||0));
   const tabs=[['overview','Tổng quan'],['revenue','Doanh thu'],['orders','Đơn hàng'],['products','Sản phẩm'],['inventory','Kho'],['payments','Thanh toán'],['returns','Trả hàng'],['debt','Công nợ'],['customers','Khách hàng'],['staff','Nhân viên / Ca'],['shipping','Vận chuyển']];
   const ranges=[['today','Hôm nay'],['yesterday','Hôm qua'],['7d','7 ngày'],['month','Tháng này'],['lastmonth','Tháng trước'],['custom','Tùy chọn']];
-  const sourceRows=r.sales.map(s=>`<button class="transaction-row" data-sale-id="${s.id}"><span><strong>${esc(s.code||'Phiếu bán')}</strong><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at||s.createdAt)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch trong khoảng đã chọn.</div>';
-  const taxProfitSection=`<section class="card feature-panel tax-profit-panel" style="margin-top:16px"><div class="section-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><div><h2>Nghĩa vụ thuế & Lợi nhuận sau thuế</h2><p>${esc(r.taxModeLabel)} · ${esc(r.taxRateLabel)}${r.taxSettings?.ecommerce_auto_deduct?' · Miễn tính thuế đơn sàn TMĐT':''}</p></div><button type="button" class="secondary-btn tiny" data-action="tax-preferences" style="font-size:11.5px;padding:4px 10px;border-radius:6px;gap:4px">${icon('shield-check')} Cài đặt thuế</button></div><div class="tax-hero-card" style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border:1.5px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div style="font-size:11.5px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:6px"><span>🌿 Lợi nhuận thực sau thuế</span><span style="font-size:10px;background:#bbf7d0;color:#14532d;padding:1px 6px;border-radius:4px;font-weight:700">Tỷ suất ${r.profitAfterTaxMargin}%</span></div><div style="font-size:22px;font-weight:900;color:#15803d;margin-top:2px;line-height:1.2">${r.hasCost?`${fmt(r.netProfitAfterTax)} ₫`:'Chưa có giá vốn'}</div></div>${r.hasCost?`<div style="text-align:right"><small style="font-size:11px;color:#166534;display:block">Lợi nhuận gộp ban đầu</small><strong style="font-size:13.5px;color:#166534">${fmt(r.profit)} ₫</strong></div>`:''}</div><div class="tax-statement-list" style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:10px"><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:12.5px"><div><strong style="color:#0f172a;display:block">1. Doanh thu ngoài sàn</strong><small style="color:#64748b;font-size:11px">Tại quầy, Website, FB/Zalo (Chịu thuế)</small></div><b style="font-size:13.5px;color:#0f172a">${fmt(r.directNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #f1f5f9;font-size:12.5px;background:#f8fafc"><div><div style="display:flex;align-items:center;gap:6px"><strong style="color:#0f172a">2. Doanh thu Sàn TMĐT</strong><span style="font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:4px;background:#e0f2fe;color:#0369a1">${r.taxSettings?.ecommerce_auto_deduct?'Đã khấu trừ tại sàn':'Chưa trừ'}</span></div><small style="color:#64748b;font-size:11px">Shopee, TikTok Shop, Lazada</small></div><b style="font-size:13.5px;color:#0284c7">${fmt(r.ecommerceNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;font-size:12.5px;background:#fff"><div><strong style="color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};display:block">3. Thuế ước tính phải nộp</strong><small style="color:#64748b;font-size:11px">${esc(r.taxRateLabel)}</small></div><b style="font-size:14.5px;font-weight:800;color:${r.estimatedTax>0?'#b91c1c':'#0f172a'}">− ${fmt(r.estimatedTax)} ₫</b></div></div><div style="font-size:11px;color:#64748b;background:#f8fafc;padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;display:flex;align-items:flex-start;gap:6px;line-height:1.4"><span style="font-size:13px;flex-shrink:0;margin-top:1px">⚖️</span><span>${r.taxSettings?.business_type==='exempt'?'Chế độ miễn thuế hoặc quản lý nội bộ. Không phát sinh nghĩa vụ thuế ước tính.':r.taxSettings?.business_type==='company_deduct'?`Doanh nghiệp phương pháp khấu trừ: TNDN ước tính ${r.taxSettings.cit_rate||20}% trên Lợi nhuận gộp (${fmt(r.profit)} ₫). GTGT kê khai theo hóa đơn VAT đầu ra/đầu vào riêng.`:`Căn cứ Thông tư 40/2021/TT-BTC: Hộ KD nộp ${r.taxSettings.vat_rate}% thuế GTGT (${fmt(r.estimatedVat)} ₫) và ${r.taxSettings.pit_rate}% thuế TNCN (${fmt(r.estimatedPit)} ₫) trên doanh thu ngoài sàn chịu thuế (${fmt(r.taxableRevenue)} ₫). Đơn hàng Shopee, TikTok Shop, Lazada đã được sàn khấu trừ thuế tự động.`}</span></div></section>`;
+  const recentSales=r.sales.slice(0,5);
+  const sourceRows=recentSales.map(s=>`<button class="transaction-row" data-sale-id="${s.id}"><span><strong>${esc(s.code||'Phiếu bán')}</strong><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at||s.createdAt)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch trong khoảng đã chọn.</div>';
+  const legalNoteText=r.taxSettings?.business_type==='exempt'?'Chế độ miễn thuế hoặc quản lý nội bộ. Không phát sinh nghĩa vụ thuế ước tính.':r.taxSettings?.business_type==='company_deduct'?`Doanh nghiệp phương pháp khấu trừ: TNDN ước tính ${r.taxSettings.cit_rate||20}% trên Lợi nhuận gộp (${fmt(r.profit)} ₫). GTGT kê khai theo hóa đơn VAT đầu ra/đầu vào riêng.`:`Căn cứ Thông tư 40/2021/TT-BTC: Hộ KD nộp ${r.taxSettings.vat_rate}% thuế GTGT (${fmt(r.estimatedVat)} ₫) và ${r.taxSettings.pit_rate}% thuế TNCN (${fmt(r.estimatedPit)} ₫) trên doanh thu ngoài sàn chịu thuế (${fmt(r.taxableRevenue)} ₫). Đơn hàng Shopee, TikTok Shop, Lazada đã được sàn khấu trừ thuế tự động.`;
+  const taxProfitSection=`<section class="card feature-panel tax-profit-panel" style="margin-top:14px"><div class="section-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="min-width:0;flex:1"><h2 style="font-size:15px;font-weight:750;color:#0f172a;margin:0">Nghĩa vụ thuế & Lợi nhuận</h2><p style="font-size:11px;color:#64748b;margin:1px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.taxModeLabel)} · ${esc(r.taxRateLabel)}</p></div><button type="button" class="secondary-btn tiny tax-setup-btn" data-action="tax-preferences" style="min-height:28px;height:28px;display:inline-flex;flex-direction:row;align-items:center;padding:0 9px;border-radius:6px;gap:4px;flex-shrink:0;border-color:#cbd5e1;color:#334155;font-size:11px;font-weight:600">${icon('shield-check')} Cài đặt thuế</button></div><div class="tax-hero-card" style="background:#f8fafc;border:1px solid #e2e8f0;border-left:3.5px solid #16a34a;border-radius:8px;padding:8px 10px;margin-bottom:7px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-size:10.5px;font-weight:700;color:#15803d;letter-spacing:0.3px;text-transform:uppercase">Lợi nhuận thực sau thuế</span><span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px">Tỷ suất ${r.profitAfterTaxMargin}%</span></div><div style="display:flex;justify-content:space-between;align-items:flex-end"><div><strong style="font-size:18px;font-weight:850;color:#15803d;font-variant-numeric:tabular-nums;line-height:1.1">${r.hasCost?`${fmt(r.netProfitAfterTax)} ₫`:'Chưa có giá vốn'}</strong></div>${r.hasCost?`<div style="text-align:right;font-size:11px;color:#64748b">Lợi nhuận gộp: <b style="color:#0f172a;font-weight:650">${fmt(r.profit)} ₫</b></div>`:''}</div></div><div class="tax-statement-list" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:7px"><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:6.5px 10px;border-bottom:1px solid #f1f5f9;font-size:12px"><div><strong style="color:#0f172a;font-weight:600">1. Doanh thu ngoài sàn</strong><small style="color:#64748b;font-size:10.5px;margin-left:4px">(Quầy, Web, FB)</small></div><b style="font-size:12.5px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums">${fmt(r.directNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:6.5px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;background:#fbfcfd"><div style="display:inline-flex;align-items:center;gap:5px"><strong style="color:#0f172a;font-weight:600">2. Doanh thu sàn TMĐT</strong><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#e0f2fe;color:#0369a1">${r.taxSettings?.ecommerce_auto_deduct?'Đã trừ sàn':'Chưa trừ'}</span></div><b style="font-size:12.5px;font-weight:700;color:#0284c7;font-variant-numeric:tabular-nums">${fmt(r.ecommerceNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:6.5px 10px;font-size:12px"><div><strong style="color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};font-weight:700">3. Thuế ước tính phải nộp</strong><small style="color:#64748b;font-size:10.5px;margin-left:4px">(${r.taxSettings?.business_type==='hkd'?'1.5% TT 40':esc(r.taxRateLabel)})</small></div><b style="font-size:13px;font-weight:800;color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};font-variant-numeric:tabular-nums;white-space:nowrap">− ${fmt(r.estimatedTax)} ₫</b></div></div><details class="tax-legal-details" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:4.5px 8px;font-size:10.5px;color:#64748b"><summary style="font-weight:600;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;outline:none"><span style="display:inline-flex;align-items:center;gap:4px"><span style="font-size:11px">⚖️</span><span>Căn cứ tính thuế: ${r.taxSettings?.business_type==='exempt'?'Miễn thuế/Nội bộ':r.taxSettings?.business_type==='company_deduct'?'DN khấu trừ':'Thông tư 40/2021/TT-BTC'}</span></span><span class="tax-toggle-arrow" style="font-size:10px;color:#94a3b8;font-weight:600">Chi tiết ▾</span></summary><div style="margin-top:5px;padding-top:5px;border-top:1px dashed #e2e8f0;color:#64748b;line-height:1.4">${legalNoteText}</div></details></section>`;
   let body='';
-  if(['overview','revenue'].includes(state.reportTab))body=`<section class="report-metrics"><div><span>Doanh thu trước giảm</span><b>${fmt(r.gross)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(r.discount)} ₫</b></div><div><span>Doanh thu thuần</span><b>${fmt(r.net)} ₫</b></div><div><span>Thuế</span><b>${fmt(r.tax)} ₫</b></div><div><span>Đã thu</span><b>${fmt(r.collected)} ₫</b></div><div><span>Còn phải thu theo payment</span><b>${fmt(r.receivable)} ₫</b></div></section><section class="card feature-panel"><div class="section-head"><div><h2>Giao dịch nguồn</h2><p>${r.sales.length} phiếu hoàn tất trong bộ lọc.</p></div></div>${sourceRows}</section>${state.reportTab==='overview'?(userCan('VIEW_COST') && r.hasCost?`<section class="card feature-panel"><div class="section-head"><div><h2>Lợi nhuận gộp</h2><p>Tính toán tự động từ doanh thu thuần trừ giá vốn và hoàn tiền.</p></div></div><div class="report-metrics" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:0"><div><span>Tổng giá vốn</span><b>${fmt(r.cost)} ₫</b></div><div><span>Lợi nhuận gộp</span><b style="color:#16a34a">${fmt(r.profit)} ₫</b></div><div><span>Tỷ suất lợi nhuận</span><b>${r.net>0?((r.profit/r.net)*100).toFixed(1):0}%</b></div></div></section>`:(userCan('VIEW_COST')?preparedReport('Lợi nhuận','Phiếu bán chưa có cost snapshot/expense ledger đủ để tính lợi nhuận an toàn.'):'')):''}${taxProfitSection}`;
+  if(['overview','revenue'].includes(state.reportTab))body=`<section class="report-metrics"><div><span>Doanh thu trước giảm</span><b>${fmt(r.gross)} ₫</b></div><div><span>Giảm giá</span><b>− ${fmt(r.discount)} ₫</b></div><div><span>Doanh thu thuần</span><b>${fmt(r.net)} ₫</b></div><div><span>Thuế</span><b>${fmt(r.tax)} ₫</b></div><div><span>Đã thu</span><b>${fmt(r.collected)} ₫</b></div><div><span>Còn phải thu theo payment</span><b>${fmt(r.receivable)} ₫</b></div></section><section class="card feature-panel"><div class="section-head" style="display:flex;justify-content:space-between;align-items:center"><div><h2>Giao dịch nguồn</h2><p>${r.sales.length>5?`Hiển thị 5 / ${r.sales.length} phiếu hoàn tất gần nhất.`:`${r.sales.length} phiếu hoàn tất trong bộ lọc.`}</p></div>${r.sales.length>5?`<button type="button" class="secondary-btn tiny" data-action="open-all-source-sales" style="font-size:11.5px;padding:3px 8px;border-radius:6px">Tất cả (${r.sales.length})</button>`:''}</div>${sourceRows}${r.sales.length>5?`<div style="padding:6px 0 2px 0;text-align:center"><button type="button" class="secondary-btn small full" data-action="open-all-source-sales" style="justify-content:center;font-size:12px;font-weight:600;color:var(--q-blue,#0f56d9);background:#f0f7ff;border:1px solid #bfdbfe;border-radius:7px;padding:6px 12px;gap:5px">Xem tất cả ${r.sales.length} giao dịch nguồn →</button></div>`:''}</section>${state.reportTab==='overview'?(userCan('VIEW_COST') && r.hasCost?`<section class="card feature-panel"><div class="section-head"><div><h2>Lợi nhuận gộp</h2><p>Tính toán tự động từ doanh thu thuần trừ giá vốn và hoàn tiền.</p></div></div><div class="report-metrics" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:0"><div><span>Tổng giá vốn</span><b>${fmt(r.cost)} ₫</b></div><div><span>Lợi nhuận gộp</span><b style="color:#16a34a">${fmt(r.profit)} ₫</b></div><div><span>Tỷ suất lợi nhuận</span><b>${r.net>0?((r.profit/r.net)*100).toFixed(1):0}%</b></div></div></section>`:(userCan('VIEW_COST')?preparedReport('Lợi nhuận','Phiếu bán chưa có cost snapshot/expense ledger đủ để tính lợi nhuận an toàn.'):'')):''}${taxProfitSection}`;
   else if(state.reportTab==='orders')body=`<section class="card feature-panel"><div class="section-head"><div><h2>Đơn hàng</h2><p>Dữ liệu đơn hiện có; tap để xem chi tiết.</p></div></div>${(state.data.orders||[]).map(o=>`<button class="transaction-row" data-order-open="${o.id}"><span><strong>${esc(o.code||'Đơn hàng')}</strong><small>${esc(o.customer_label||'Khách lẻ')} · ${orderStatusLabel(o.status)}</small></span><b>${fmt(o.grand_total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có đơn hàng.</div>'}</section>`;
   else if(state.reportTab==='products')body=`<section class="card feature-panel"><div class="section-head"><div><h2>Top sản phẩm theo doanh thu</h2><p>Từ item snapshot của phiếu bán.</p></div></div>${products.map(x=>`<button class="transaction-row" ${x.id?`data-product="${x.id}"`:''}><span><strong>${esc(x.name)}</strong><small>${fmt(x.qty)} đã bán</small></span><b>${fmt(x.revenue)} ₫</b>${x.id?icon('chevron-right'):''}</button>`).join('')||'<div class="empty">Chưa có dữ liệu bán hàng.</div>'}</section>`;
   else if(state.reportTab==='inventory')body=`<section class="report-metrics"><div><span>Sản phẩm theo dõi tồn</span><b>${fmt(inventory.length)}</b></div><div><span>Sắp hết / hết</span><b>${fmt(low.length)}</b></div><div><span>Kho đang lọc</span><b>${esc(warehouse(state.reportWarehouse)?.name||'Tất cả')}</b></div></section><section class="card feature-panel">${inventory.map(({p,t})=>`<button class="transaction-row" data-product="${p.id}"><span><strong>${esc(p.name)}</strong><small>Thực ${fmt(t.onHand)} · Giữ ${fmt(t.reserved)}</small></span><b>Có thể bán ${fmt(t.available)}</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có dữ liệu tồn.</div>'}</section>`;
   else if(state.reportTab==='payments')body=`<section class="card feature-panel"><div class="section-head"><div><h2>Thanh toán</h2><p>Đọc trực tiếp từ payments[].</p></div></div>${r.payments.map(p=>`<button class="transaction-row" data-sale-id="${p.sale.id}"><span><strong>${paymentLabel(p.method)}</strong><small>${esc(p.sale.code||'Phiếu bán')} · ${p.status==='PAID'?'Đã thu':'Chờ xác nhận'}</small></span><b>${fmt(p.amount)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có payment trong khoảng đã chọn.</div>'}</section>`;
   else body=preparedReport(({returns:'Trả hàng',debt:'Công nợ',customers:'Khách hàng',staff:'Nhân viên / Ca',shipping:'Vận chuyển'})[state.reportTab]||'Báo cáo','Chưa có ledger/contract đủ để tổng hợp chính xác module này.');
   $('#content').innerHTML=`<section class="report-center"><div class="report-filter"><label class="report-field"><span>Thời gian</span><select id="reportRange">${ranges.map(([v,l])=>`<option value="${v}" ${state.reportRange===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="report-field report-warehouse"><span>Kho</span><select id="reportWarehouse"><option value="all">Tất cả kho</option>${state.data.warehouses.map(w=>`<option value="${w.id}" ${state.reportWarehouse===w.id?'selected':''}>${esc(w.name)}</option>`).join('')}</select></label>${state.reportRange==='custom'?`<div class="report-custom-range"><label>Từ<input id="reportCustomStart" type="date" value="${esc(state.reportCustomStart)}"/></label><label>Đến<input id="reportCustomEnd" type="date" value="${esc(state.reportCustomEnd)}"/></label><button class="secondary-btn" data-report-custom-apply>Áp dụng</button></div>`:''}</div><div class="report-tabs">${tabs.map(([v,l])=>`<button class="${state.reportTab===v?'active':''}" data-report-tab="${v}">${l}</button>`).join('')}</div>${body}</section>`;
-  $('#reportRange')?.addEventListener('change',e=>{state.reportRange=e.target.value;renderFeatureReports()});$('#reportWarehouse')?.addEventListener('change',e=>{state.reportWarehouse=e.target.value;renderFeatureReports()});$$('[data-report-tab]').forEach(b=>b.onclick=()=>{state.reportTab=b.dataset.reportTab;renderFeatureReports()});$('[data-report-custom-apply]')?.addEventListener('click',()=>{state.reportCustomStart=$('#reportCustomStart').value;state.reportCustomEnd=$('#reportCustomEnd').value;renderFeatureReports()});$$('[data-sale-id]').forEach(b=>b.onclick=()=>openTransaction(state.data.sales.find(s=>s.id===b.dataset.saleId)));$$('[data-order-open]').forEach(b=>b.onclick=()=>openOrderDetail(b.dataset.orderOpen));
+  $('#reportRange')?.addEventListener('change',e=>{state.reportRange=e.target.value;renderFeatureReports()});$('#reportWarehouse')?.addEventListener('change',e=>{state.reportWarehouse=e.target.value;renderFeatureReports()});$$('[data-report-tab]').forEach(b=>b.onclick=()=>{state.reportTab=b.dataset.reportTab;renderFeatureReports()});$('[data-report-custom-apply]')?.addEventListener('click',()=>{state.reportCustomStart=$('#reportCustomStart').value;state.reportCustomEnd=$('#reportCustomEnd').value;renderFeatureReports()});$$('[data-sale-id]').forEach(b=>b.onclick=()=>openTransaction(state.data.sales.find(s=>s.id===b.dataset.saleId)));$$('[data-order-open]').forEach(b=>b.onclick=()=>openOrderDetail(b.dataset.orderOpen));$$('[data-action="open-all-source-sales"]').forEach(b=>b.onclick=()=>openAllSourceSalesModal(r.sales));
 }
 
 async function renderCustomers(){
@@ -7931,10 +8296,138 @@ function renderShiftCenter(){
   $('[data-shift-open]')?.addEventListener('click',async()=>{const cash=Number($('#shiftOpeningCash')?.value||0);if(!Number.isFinite(cash)||cash<0)return toast('Tiền đầu ca không hợp lệ.','error');try{await openShift({openingCash:cash});await refresh();toast('Đã mở ca.','ok')}catch(err){toast(err.message,'error')}});
 }
 
-function buildNotifications(){const now=new Date().toISOString();return notificationItems().map(([label,count,page],i)=>({id:`${page}-${label}`,label,count,page,time:now,severity:i===3?'critical':i===0?'warning':'info',read:state.notificationRead.has(`${page}-${label}`)}));}
+function buildNotifications(){
+  return getDetailedNotifications();
+}
 function renderNotificationCenter(){
-  setTitle('Thông báo','QBiz');const all=buildNotifications(),rows=all.filter(x=>state.notificationFilter==='all'||state.notificationFilter==='unread'&&!x.read||state.notificationFilter==='important'&&['critical','warning'].includes(x.severity));
-  $('#content').innerHTML=`<section class="feature-center"><div class="feature-toolbar"><div class="segment">${[['all','Tất cả'],['unread','Chưa đọc'],['important','Quan trọng']].map(([v,l])=>`<button class="${state.notificationFilter===v?'active':''}" data-notification-filter="${v}">${l}</button>`).join('')}</div><button class="secondary-btn" data-action="mark-all-read">Đọc tất cả</button></div><section class="card feature-panel notification-center-list">${rows.map(n=>`<button class="${n.read?'read':''}" data-notification-id="${esc(n.id)}" data-page="${n.page}"><i class="severity ${n.severity}"></i><span><b>${esc(n.label)}</b><small>${fmt(n.count)} mục cần xử lý · ${dt(n.time)}</small></span>${icon('chevron-right')}</button>`).join('')||'<div class="empty"><strong>Không có thông báo phù hợp.</strong></div>'}</section></section>`;$$('[data-notification-filter]').forEach(b=>b.onclick=()=>{state.notificationFilter=b.dataset.notificationFilter;renderNotificationCenter()});
+  setTitle('Thông báo','QBiz');
+  const allNotis = getDetailedNotifications();
+  const unreadCount = allNotis.filter(n => !n.read).length;
+  const ordersCount = allNotis.filter(n => n.category === 'orders').length;
+  const invCount = allNotis.filter(n => n.category === 'inventory').length;
+  const salesCount = allNotis.filter(n => n.category === 'sales').length;
+
+  let displayList = allNotis;
+  if(state.notificationFilter === 'unread') displayList = allNotis.filter(n => !n.read);
+  else if(state.notificationFilter === 'orders') displayList = allNotis.filter(n => n.category === 'orders');
+  else if(state.notificationFilter === 'inventory') displayList = allNotis.filter(n => n.category === 'inventory');
+  else if(state.notificationFilter === 'sales') displayList = allNotis.filter(n => n.category === 'sales');
+
+  const filterTabs = [
+    { key: 'all', label: `Tất cả (${allNotis.length})` },
+    { key: 'unread', label: `Chưa đọc (${unreadCount})` },
+    ...(ordersCount > 0 ? [{ key: 'orders', label: `Đơn hàng (${ordersCount})` }] : []),
+    ...(invCount > 0 ? [{ key: 'inventory', label: `Tồn kho (${invCount})` }] : []),
+    ...(salesCount > 0 ? [{ key: 'sales', label: `Bán hàng (${salesCount})` }] : [])
+  ];
+
+  $('#content').innerHTML = `
+    <section class="card section-card noti-page-card">
+      <div class="section-head">
+        <div>
+          <h2>Trung tâm thông báo</h2>
+          <p>Cập nhật biến động đơn hàng, tồn kho và giao dịch trên thiết bị</p>
+        </div>
+      </div>
+      <div class="noti-modal-wrapper">
+        <div class="noti-modal-toolbar">
+          <div class="noti-status-pill">
+            ${unreadCount > 0 
+              ? `<span class="noti-pill-unread"><span class="noti-live-dot"></span>${unreadCount} việc cần xử lý</span>` 
+              : `<span class="noti-pill-all-read">${icon('check')} Đã đọc tất cả</span>`}
+          </div>
+          ${unreadCount > 0 ? `
+            <button type="button" class="noti-btn-mark-all" id="btnPageMarkAllNotiRead" title="Đánh dấu tất cả là đã đọc">
+              ${icon('clipboard-check')}
+              <span>Đọc tất cả</span>
+            </button>
+          ` : ''}
+        </div>
+
+        <div class="noti-filter-strip">
+          ${filterTabs.map(t => `
+            <button type="button" class="noti-tab-btn ${state.notificationFilter === t.key ? 'active' : ''}" data-notification-filter="${t.key}">
+              ${esc(t.label)}
+            </button>
+          `).join('')}
+        </div>
+
+        <div class="noti-items-stream">
+          ${displayList.length ? displayList.map(n => `
+            <div class="noti-card-item ${n.read ? 'is-read' : 'is-unread'}" data-noti-id="${esc(n.id)}" data-action="${n.action}" data-target-id="${esc(n.targetId || '')}">
+              <div class="noti-icon-box ${n.iconClass}">
+                ${icon(n.icon)}
+              </div>
+              <div class="noti-card-body">
+                <div class="noti-card-header">
+                  <span class="noti-tag ${n.tagClass}">${esc(n.tag)}</span>
+                  <span class="noti-time">${esc(n.timeText)}</span>
+                  ${!n.read ? `<span class="noti-dot" title="Chưa đọc"></span>` : ''}
+                </div>
+                <strong class="noti-title">${esc(n.title)}</strong>
+                <div class="noti-desc">${esc(n.desc)}</div>
+                ${n.subDesc ? `<div class="noti-subdesc">${esc(n.subDesc)}</div>` : ''}
+              </div>
+              <div class="noti-card-arrow">
+                ${icon('chevron-right')}
+              </div>
+            </div>
+          `).join('') : `
+            <div class="noti-empty-box">
+              <div class="noti-empty-ico">${icon('bell')}</div>
+              <strong>${state.notificationFilter === 'unread' ? 'Không có thông báo chưa đọc' : 'Chưa có thông báo mới'}</strong>
+              <p>Mọi cập nhật về đơn hàng, biến động tồn kho và giao dịch sẽ hiển thị tại đây.</p>
+            </div>
+          `}
+        </div>
+      </div>
+    </section>
+  `;
+
+  $$('[data-notification-filter]', $('#content')).forEach(b => {
+    b.onclick = () => {
+      state.notificationFilter = b.dataset.notificationFilter;
+      renderNotificationCenter();
+    };
+  });
+
+  const markBtn = $('#btnPageMarkAllNotiRead');
+  if(markBtn){
+    markBtn.onclick = () => {
+      allNotis.forEach(n => state.notificationRead.add(n.id));
+      saveNotificationReadState();
+      headerActions();
+      toast('Đã đánh dấu đã đọc tất cả.', 'ok');
+      renderNotificationCenter();
+    };
+  }
+
+  $$('.noti-card-item', $('#content')).forEach(card => {
+    card.onclick = () => {
+      const notiId = card.dataset.notiId;
+      const act = card.dataset.action;
+      const targetId = card.dataset.targetId;
+
+      if(notiId){
+        state.notificationRead.add(notiId);
+        saveNotificationReadState();
+        headerActions();
+      }
+
+      if(act === 'open-order' && targetId){
+        openOrderDetail(targetId);
+      } else if(act === 'open-product' && targetId){
+        openProduct(targetId);
+      } else if(act === 'open-sale' && targetId){
+        const s = (state.data?.sales || []).find(x => x.id === targetId);
+        if(s) openTransaction(s);
+      } else if(act === 'open-transfer'){
+        navigate('transfers');
+      } else if(act === 'open-sync'){
+        openSyncInfoModal();
+      }
+    };
+  });
 }
 
 const VN_CARRIERS = {
@@ -11623,7 +12116,7 @@ document.addEventListener('click', async e=>{
   if(action==='return-center') return navigate('returns');
   if(action==='stocktake' || action==='count' || (action==='quick-action' && kind==='count')) return openQuick('count');
   if(action==='quick-action') return openQuick(kind||'receive');
-  if(action==='notifications') return navigate('notifications');
+  if(action==='notifications') return openNotificationsModal();
   if(action==='customer-picker') return openCustomerPicker();
   if(action==='channel-picker') return openChannelPicker();
   if(action==='new-customer') return openNewCustomer();

@@ -73,7 +73,8 @@ import {
   parsePrintActionQuery,
   parseOwnerEmotionOrAdviceQuery,
   parseSystemOrDataQuery,
-  parseVietnameseCurrency
+  parseVietnameseCurrency,
+  parseCreateServiceOrProductCommand
 } from './vietnamese-nlp.js';
 import {
   classifyTaxIntent,
@@ -2372,6 +2373,54 @@ export async function routeIntent(prompt, context = {}, state = {}, options = {}
         final_answer_source: 'POLICY_GUARD',
       };
     }
+  }
+
+  // 1.A) Create Service or Product Fast-Path (Tier 0 Deterministic <20ms)
+  const createCmd = parseCreateServiceOrProductCommand(rawPrompt, context, state);
+  if (createCmd) {
+    const isService = createCmd.type === 'SERVICE';
+    const fmt = new Intl.NumberFormat('vi-VN');
+    const priceDisplay = createCmd.price != null ? `${fmt.format(createCmd.price)} ₫` : 'Chưa đặt giá';
+    const propParams = {
+      name: createCmd.name,
+      price: createCmd.price,
+      type: isService ? 'Dịch vụ (Không theo dõi tồn kho)' : 'Sản phẩm vật lý (Theo dõi tồn kho)',
+      trackInventory: !isService,
+      query: rawPrompt,
+    };
+    if (!isService) {
+      propParams.sku = `SP-${Date.now().toString().slice(-4)}`;
+      propParams.lowStock = 5;
+    }
+
+    const proposal = createProposal({
+      intent: isService ? 'create_service_proposal' : 'create_product_proposal',
+      parameters: propParams,
+      contextSnapshot: context,
+      humanSummary: isService 
+        ? `Tạo dịch vụ: ${createCmd.name}${createCmd.price != null ? ` · Giá: ${priceDisplay}` : ''}`
+        : `Tạo sản phẩm: ${createCmd.name}${createCmd.price != null ? ` · Giá: ${priceDisplay}` : ''}`,
+      actor: { role: currentRole }
+    });
+
+    const replyText = isService
+      ? `Tôi đã lập đề xuất thêm dịch vụ:`
+      : `Tôi đã lập đề xuất thêm sản phẩm:`;
+
+    return {
+      text: replyText,
+      proposal,
+      intent: isService ? 'CREATE_SERVICE_PROPOSAL' : 'CREATE_PRODUCT_PROPOSAL',
+      status: 'SUCCESS',
+      tier: 0,
+      provider: PROVIDER_MODES.DETERMINISTIC,
+      requires_confirmation: true,
+      human_summary: proposal.human_summary,
+      parameters: propParams,
+      created_item_type: createCmd.type,
+      authority_path: 'TIER_0_FAST_PATH',
+      final_answer_source: 'DETERMINISTIC_FAST_PATH'
+    };
   }
 
   // 1.B) Bank / QR / payOS Payment Setup Fast-Path
