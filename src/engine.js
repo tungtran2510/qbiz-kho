@@ -1176,7 +1176,7 @@ export async function release({productId,warehouseId,qty,reference='',operationI
   qty=Number(qty); if(!(qty>0)) throw new Error('Số lượng phải lớn hơn 0.');
   return changeLevel({productId,warehouseId,reservedDelta:-qty,type:'release',qty:-qty,reason:'Trả giữ hàng',reference,operationId,validate:cur=>{if((cur?.reserved||0)<qty)throw new Error('Số cần trả giữ lớn hơn số đang giữ.');}});
 }
-export async function createSale({items,warehouseId,paymentMethod='cash',payments=null,discount=0,note='',customerLabel='Khách lẻ',customerId='',saleId='',operationId:requestedOperationId='',overrideCreditLimit=false,warranty_policy='',appointment_date='',loyaltyPointsUsed=0,loyaltyPointsEarned=0}){
+export async function createSale({items,warehouseId,paymentMethod='cash',payments=null,discount=0,note='',customerLabel='Khách lẻ',customerId='',saleId='',operationId:requestedOperationId='',overrideCreditLimit=false,warranty_policy='',appointment_date='',loyaltyPointsUsed=0,loyaltyPointsEarned=0,shippingFee=0}){
   if(!Array.isArray(items)||!items.length) throw new Error('Giỏ hàng đang trống.');
   if(!warehouseId) throw new Error('Hãy chọn kho bán hàng.');
   const saleUuid=saleId||uuid(); const id=saleUuid;
@@ -1249,7 +1249,8 @@ export async function createSale({items,warehouseId,paymentMethod='cash',payment
   const orderDiscount = Math.round(Math.max(0, Number(discount) || 0));
   const discountTotal = Math.round(Math.max(0, Math.min(subtotal, orderDiscount + loyaltyPointsDiscount)));
   const taxTotal = Math.round(saleItems.reduce((sum,line)=>sum+line.tax_amount,0));
-  const grandTotal = Math.round(Math.max(0, subtotal - discountTotal + taxTotal));
+  const shippingTotal = Math.max(0, Math.round(Number(shippingFee) || 0));
+  const grandTotal = Math.round(Math.max(0, subtotal - discountTotal + taxTotal + shippingTotal));
 
   const identity=await localIdentity(); const deviceId=identity.device_id; const registerId=identity.register_id;
   const isShiftRequired = CONFIG.FEATURE_FLAGS?.shift !== false;
@@ -1372,6 +1373,7 @@ export async function createSale({items,warehouseId,paymentMethod='cash',payment
     discount_total:discountTotal,
     tax_total:taxTotal,
     grand_total:grandTotal,
+    shipping_fee:shippingTotal,
     discount:discountTotal,
     total:grandTotal,
     payments:finalPayments,

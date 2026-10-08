@@ -10287,6 +10287,382 @@ body.topbar-hidden .install-subtle-tip {
   font-size: 11px !important;
   border-radius: 6px !important;
 }
+/* --- Stage 4 Mobile Optimized Checkout & Extras (Zero-waste & Standout Total) --- */
+.checkout-billing-card, .checkout-summary-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 8px 12px !important;
+  margin: 3px 0 6px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.billing-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  font-size: 13px !important;
+  color: #475569 !important;
+  padding: 1px 0 !important;
+}
+.billing-row span {
+  font-weight: 500 !important;
+}
+.billing-row b {
+  font-weight: 750 !important;
+  color: #0f172a !important;
+}
+
+/* Direct Outside Order Discount Row */
+.billing-discount-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 4px 0 !important;
+  border-top: 1px dashed #e2e8f0 !important;
+  border-bottom: 1px dashed #e2e8f0 !important;
+  margin: 2px 0 !important;
+}
+.discount-row-label {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 1.5px !important;
+  white-space: nowrap !important;
+}
+.discount-row-label .discount-title {
+  font-weight: 750 !important;
+  font-size: 13px !important;
+  color: #0f172a !important;
+  line-height: 1.2 !important;
+}
+.discount-sub-amount {
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  line-height: 1.2 !important;
+}
+.discount-row-input-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+.discount-row-input-group input {
+  width: 112px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 8px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 7px !important;
+  text-align: right !important;
+  color: #1e293b !important;
+  background: #ffffff !important;
+  outline: none !important;
+  transition: all 0.15s ease !important;
+}
+.discount-row-input-group input:focus {
+  border-color: #64748b !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(100, 116, 139, 0.15) !important;
+}
+.discount-row-input-group .discount-mode {
+  height: 32px !important;
+  min-height: 32px !important;
+  min-width: 29px !important;
+  width: 29px !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 7px !important;
+  background: #f8fafc !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+}
+.discount-row-input-group .discount-mode.active {
+  background: #f1f5f9 !important;
+  border-color: #64748b !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
 
 
+/* Grand Total Streamlined - Hien dai, khong khung chong khung, khong mau me */
+.billing-grand-total {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  padding-top: 7px !important;
+  margin-top: 5px !important;
+  border-top: 1px dashed #cbd5e1 !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+.billing-grand-total .grand-total-label-row {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 1px !important;
+}
+.billing-grand-total span {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #64748b !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+.billing-grand-total strong {
+  font-size: 28px !important;
+  font-weight: 950 !important;
+  color: #0284c7 !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.02em !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  text-align: right !important;
+  text-shadow: none !important;
+}
 
+/* Payment Methods Segmented (1 dong duy nhat, cam gay 2 dong) */
+.choice-section.payment-methods-section {
+  display: grid !important;
+  grid-template-columns: 1fr 1.25fr 0.75fr !important;
+  gap: 6px !important;
+  margin: 6px 0 !important;
+}
+.choice-section.payment-methods-section h3 {
+  grid-column: 1 / -1 !important;
+  font-size: 12.5px !important;
+  font-weight: 750 !important;
+  color: #475569 !important;
+  margin: 0 0 2px !important;
+}
+.choice-section.payment-methods-section .choice-row.payment-tab-btn {
+  height: 42px !important;
+  min-height: 42px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 9px !important;
+  background: #ffffff !important;
+  font-size: 13.5px !important;
+  font-weight: 750 !important;
+  color: #1e293b !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  padding: 0 4px !important;
+  transition: all 0.15s ease !important;
+}
+.choice-section.payment-methods-section .choice-row.payment-tab-btn span {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  display: inline-block !important;
+}
+.choice-section.payment-methods-section .choice-row.payment-tab-btn.active {
+  background: #f0f9ff !important;
+  border-color: #0284c7 !important;
+  color: #0369a1 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 0 1px #0284c7 !important;
+}
+.choice-section.payment-methods-section .choice-row.payment-tab-btn i {
+  display: none !important;
+}
+
+/* Service Technical Note in Cart */
+.cart-row-note {
+  font-size: 11px !important;
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+  padding: 2px 7px !important;
+  border-radius: 5px !important;
+  margin: 2px 0 !important;
+  display: inline-block !important;
+  max-width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Cash Panel Compact */
+.cash-panel {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 11px !important;
+  padding: 8px 10px !important;
+  margin: 6px 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+.cash-received-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+.cash-received-row label {
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  color: #0f172a !important;
+  white-space: nowrap !important;
+  margin: 0 !important;
+}
+.cash-received-row input {
+  flex: 1 !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  text-align: right !important;
+  color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+}
+.cash-quick-pills {
+  display: flex !important;
+  gap: 5px !important;
+  overflow-x: auto !important;
+  padding: 2px 0 !important;
+  scrollbar-width: none !important;
+}
+.cash-pill {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 8px !important;
+  font-size: 11.5px !important;
+  font-weight: 750 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 7px !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.cash-pill.active,
+.cash-pill-exact.active {
+  background: #0284c7 !important;
+  border-color: #0284c7 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+.cash-change-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  padding-top: 4px !important;
+  border-top: 1px dashed #e2e8f0 !important;
+}
+.cash-change-row strong {
+  font-size: 17px !important;
+  font-weight: 900 !important;
+  color: #16a34a !important;
+}
+
+/* Extras Trigger Button (Replaces Accordion with Modal) */
+.checkout-extras-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-height: 40px !important;
+  padding: 6px 12px !important;
+  margin: 5px 0 !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+}
+.checkout-extras-btn:hover {
+  border-color: #94a3b8 !important;
+  background: #f8fafc !important;
+}
+.extras-btn-content {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+.extras-btn-title {
+  font-size: 12.5px !important;
+  font-weight: 750 !important;
+  color: #0f172a !important;
+}
+.extras-btn-sub {
+  font-size: 11px !important;
+  color: #64748b !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+.extras-btn-sub.has-active-tag {
+  color: #0284c7 !important;
+  font-weight: 700 !important;
+}
+.extras-btn-caret {
+  font-size: 16px !important;
+  color: #94a3b8 !important;
+  font-weight: 750 !important;
+  margin-left: 8px !important;
+}
+
+/* Modal VAT Pills & Collapsible Sub-section */
+.modal-vat-pill {
+  border: 1.5px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  font-weight: 800 !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+}
+.modal-vat-pill:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+.modal-vat-pill.active {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35) !important;
+}
+.extras-sub-accordion summary::-webkit-details-marker {
+  display: none !important;
+}

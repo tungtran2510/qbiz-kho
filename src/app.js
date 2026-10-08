@@ -95,8 +95,8 @@ const dt=s=>new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'2-digit',hour:
 const saleUuid=()=>globalThis.crypto?.randomUUID?globalThis.crypto.randomUUID():'';
 const NAV=[['dashboard','Tổng quan','layout-dashboard'],['products','Hàng hóa','package-search'],['sales','Bán hàng','shopping-cart'],['transactions','Hóa đơn','receipt'],['more','Thêm','menu']];
 const MOVE_LABEL={receive:['Nhập','↓'],issue:['Xuất','↑'],sale:['Bán hàng','↗'],count:['Kiểm kho','✓'],transfer_out:['Chuyển đi','⇄'],transfer_in:['Nhận chuyển','⇄'],reserve:['Giữ hàng','◌'],release:['Trả giữ','◌'],return:['Khách trả','↩']};
-const DEFAULT_DISPLAY={version:2,view:'image',showPrice:true,showStock:true,showSku:true,density:'medium',posView:'grid3'};
-function loadDisplayPrefs(){try{const saved=JSON.parse(localStorage.getItem('qbiz_display_preferences')||'{}');return saved.version?{...DEFAULT_DISPLAY,...saved}:{...DEFAULT_DISPLAY}}catch{return {...DEFAULT_DISPLAY}}}
+const DEFAULT_DISPLAY={version:3,view:'image',showPrice:true,showStock:true,showSku:true,density:'medium',posView:'grid3'};
+function loadDisplayPrefs(){try{const saved=JSON.parse(localStorage.getItem('qbiz_display_preferences')||'{}');if(!saved.version||saved.version<3){const merged={...DEFAULT_DISPLAY,...saved,version:3,posView:'grid3'};try{localStorage.setItem('qbiz_display_preferences',JSON.stringify(merged));}catch(_){}return merged;}return {...DEFAULT_DISPLAY,...saved,posView:saved.posView||'grid3'};}catch{return {...DEFAULT_DISPLAY};}}
 function saveDisplayPrefs(){localStorage.setItem('qbiz_display_preferences',JSON.stringify(state.displayPrefs))}
 
 const DEFAULT_PAYMENT_PREFS={version:1,soundEnabled:true,ttsEnabled:true,popupEnabled:true,popupDuration:10,cashRounding:'none'};
@@ -971,7 +971,8 @@ function saleTotals(){
     loyaltyDiscount=pointsToUse*1000;
   }
 
-  let total=Math.max(0,Math.round(subtotal-discount+tax+vat-loyaltyDiscount));
+  const shippingFee = state.saleDraft.fulfillment === 'delivery' ? (Number(state.saleDraft.shippingFee) || 0) : 0;
+  let total=Math.max(0,Math.round(subtotal-discount+tax+vat+shippingFee-loyaltyDiscount));
   let roundingDiff=0;
   const rounding=state.paymentPrefs?.cashRounding;
   if(state.saleDraft.payment==='cash'&&rounding&&rounding!=='none'){
@@ -989,6 +990,7 @@ function saleTotals(){
     loyaltyDiscount,
     pointsToUse,
     custPoints,
+    shippingFee,
     tax,
     vatRate,
     vat,
@@ -1139,6 +1141,284 @@ function docTienMoNgoac(val, mode = 'amount', gross = 0) {
   return `(Giảm ${fmt(n)} ₫)`;
 }
 
+function openCheckoutExtrasModal(){
+  const totals = saleTotals();
+  const delivery = state.saleDraft.fulfillment === 'delivery';
+  const curVatRate = state.saleDraft.vatRate !== undefined ? Number(state.saleDraft.vatRate) : 0;
+  const isCustomVat = state.saleDraft.vatCustom !== undefined && state.saleDraft.vatCustom !== '';
+  const curPolicy = state.saleDraft.warrantyPolicy || '';
+  const isCustomPolicy = state.saleDraft.warrantyPolicyCustom !== undefined && state.saleDraft.warrantyPolicyCustom !== '';
+  const curAppt = state.saleDraft.appointmentDate || '';
+  const isCustomAppt = state.saleDraft.appointmentDateCustom !== undefined && state.saleDraft.appointmentDateCustom !== '';
+  const reqInv = Boolean(state.saleDraft.requestInvoice);
+  const buyer = state.saleDraft.invoiceBuyer || {};
+
+  openModal({
+    title: 'Tùy chọn đơn hàng',
+    sub: 'Giao hàng, VAT, In bill, Hóa đơn & Ghi chú',
+    submitText: '✓ Lưu tùy chọn',
+    body: `
+      <div class="checkout-extras-modal-body" style="display:flex;flex-direction:column;gap:13px;padding:2px 0">
+        <!-- 1. Hình thức nhận hàng -->
+        <div class="field" style="margin:0">
+          <label style="font-weight:750;font-size:13px;color:#0f172a;display:block;margin-bottom:6px">
+            1. Hình thức nhận hàng
+          </label>
+          <div class="segment" style="margin-bottom:8px">
+            <button type="button" class="${!delivery ? 'active' : ''}" id="modalFulfillmentCounter">Tại quầy</button>
+            <button type="button" class="${delivery ? 'active' : ''}" id="modalFulfillmentDelivery">Giao hàng tận nơi</button>
+          </div>
+          <div id="modalDeliverySection" style="display:${delivery ? 'grid' : 'none'};gap:8px;background:#f8fafc;padding:10px;border-radius:10px;border:1px solid #e2e8f0">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <input id="modalRecipient" placeholder="Tên người nhận" value="${esc(state.saleDraft.recipient || '')}" style="height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px"/>
+              <input id="modalDeliveryPhone" inputmode="tel" placeholder="Số điện thoại" value="${esc(state.saleDraft.phone || '')}" style="height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px"/>
+            </div>
+            <input id="modalDeliveryAddress" placeholder="Địa chỉ giao hàng" value="${esc(state.saleDraft.address || '')}" style="height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px"/>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12.5px;color:#475569;font-weight:600">Phí giao hàng:</span>
+              <input id="modalShippingFee" type="text" inputmode="numeric" placeholder="0 ₫" value="${state.saleDraft.shippingFee ? fmt(state.saleDraft.shippingFee) : ''}" style="height:36px;width:130px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:700;color:#0284c7"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Ghi chú đơn hàng -->
+        <div class="field" style="margin:0">
+          <label style="font-weight:750;font-size:13px;color:#0f172a;display:block;margin-bottom:4px">
+            2. Ghi chú đơn hàng
+          </label>
+          <input id="modalSaleNote" placeholder="VD: Khách dặn giao buổi sáng, đóng hộp cẩn thận..." value="${esc(state.saleDraft.note || '')}" style="height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;width:100%"/>
+        </div>
+
+        <!-- 3. Thuế VAT (Điền trực tiếp % + 4 nút chọn nhanh 1 dòng chuẩn đẹp) -->
+        <div class="field" style="margin:0;background:#f8fafc;padding:10px 12px;border-radius:10px;border:1px solid #e2e8f0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <label style="font-weight:750;font-size:13px;color:#0f172a;margin:0">
+              3. Thuế GTGT / VAT
+            </label>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:2px 8px;display:inline-flex;align-items:center">
+              <span style="font-size:11.5px;font-weight:600;color:#0369a1;margin-right:4px">Tiền thuế:</span>
+              <span id="modalVatAmountPreview" style="font-size:13px;font-weight:800;color:#0284c7">
+                ${totals.vat ? `+${fmt(totals.vat)} ₫` : '0 ₫'}
+              </span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div style="position:relative;flex:1;display:flex;align-items:center">
+              <span style="position:absolute;left:10px;font-size:12.5px;font-weight:700;color:#64748b">Mức thuế:</span>
+              <input id="modalVatRateInput" type="number" inputmode="decimal" min="0" max="100" step="any" placeholder="0" value="${curVatRate !== undefined && curVatRate !== null ? curVatRate : ''}" style="width:100%;height:38px;padding:0 26px 0 72px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;font-weight:800;color:#0f172a;background:#ffffff;text-align:right" />
+              <span style="position:absolute;right:10px;font-size:13px;font-weight:800;color:#0284c7;pointer-events:none">%</span>
+            </div>
+          </div>
+          <div class="modal-vat-pill-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+            ${[0, 5, 8, 10].map(v => `
+              <button type="button" class="modal-vat-pill ${Number(curVatRate) === v ? 'active' : ''}" data-vat-val="${v}" style="height:36px;font-size:13px;font-weight:800;border-radius:7px;display:flex;align-items:center;justify-content:center;white-space:nowrap">
+                ${v}%
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 4. Hẹn trả khách & Chính sách in bill (Thu gọn 1 hàng, bấm sổ ra sau) -->
+        <details class="extras-sub-accordion" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0;overflow:hidden" ${curPolicy || curAppt ? 'open' : ''}>
+          <summary style="padding:9px 12px;font-weight:700;font-size:12.5px;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">
+            <span>⚙️ Hẹn trả khách & Chính sách in bill (Tùy chọn)</span>
+            <span style="font-size:11.5px;color:#0284c7;font-weight:600">
+              ${(curPolicy || curAppt) ? 'Đang mở ▾' : '+ Mở rộng ▾'}
+            </span>
+          </summary>
+          <div style="padding:10px 12px;border-top:1px dashed #e2e8f0;display:grid;gap:8px;background:#ffffff">
+            <div class="field" style="margin:0">
+              <label style="font-size:11.5px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">
+                Chính sách in bill (bảo hành, đổi size...)
+              </label>
+              <select id="modalWarrantyPolicy" style="height:36px;border:1px solid #cbd5e1;border-radius:6px;font-size:12.5px;padding:0 8px;width:100%">
+                <option value="" ${!curPolicy ? 'selected' : ''}>— Mặc định của cửa hàng —</option>
+                <option value="Đổi size trong 7 ngày" ${curPolicy === 'Đổi size trong 7 ngày' ? 'selected' : ''}>✓ Đổi size trong 7 ngày</option>
+                <option value="BH keo chỉ 6 tháng" ${curPolicy === 'BH keo chỉ 6 tháng' ? 'selected' : ''}>✓ BH keo chỉ 6 tháng</option>
+                <option value="BH chính hãng 12 tháng" ${curPolicy === 'BH chính hãng 12 tháng' ? 'selected' : ''}>✓ BH chính hãng 12 tháng</option>
+                <option value="BH 1 đổi 1 trong 30 ngày" ${curPolicy === 'BH 1 đổi 1 trong 30 ngày' ? 'selected' : ''}>✓ BH 1 đổi 1 trong 30 ngày</option>
+                <option value="custom" ${isCustomPolicy ? 'selected' : ''}>Tùy chỉnh nội dung...</option>
+              </select>
+              <input id="modalWarrantyPolicyCustom" placeholder="Nhập chính sách in bill tùy chỉnh..." value="${esc(state.saleDraft.warrantyPolicyCustom || '')}" style="display:${isCustomPolicy ? 'block' : 'none'};height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 8px;font-size:12px;margin-top:4px"/>
+            </div>
+
+            <div class="field" style="margin:0">
+              <label style="font-size:11.5px;font-weight:700;color:#64748b;display:block;margin-bottom:3px">
+                Hẹn trả đồ / trả khách
+              </label>
+              <select id="modalAppointment" style="height:36px;border:1px solid #cbd5e1;border-radius:6px;font-size:12.5px;padding:0 8px;width:100%">
+                <option value="" ${!curAppt ? 'selected' : ''}>— Lấy ngay tại quầy —</option>
+                <option value="Chiều nay 17:00" ${curAppt === 'Chiều nay 17:00' ? 'selected' : ''}>Chiều nay 17:00</option>
+                <option value="Ngày mai 10:00" ${curAppt === 'Ngày mai 10:00' ? 'selected' : ''}>Ngày mai 10:00</option>
+                <option value="Sau 3 ngày" ${curAppt === 'Sau 3 ngày' ? 'selected' : ''}>Sau 3 ngày</option>
+                <option value="custom" ${isCustomAppt ? 'selected' : ''}>Hẹn ngày giờ khác...</option>
+              </select>
+              <input id="modalAppointmentCustom" placeholder="Nhập thời gian hẹn (VD: 15h thứ 6)..." value="${esc(state.saleDraft.appointmentDateCustom || '')}" style="display:${isCustomAppt ? 'block' : 'none'};height:34px;border:1px solid #cbd5e1;border-radius:6px;padding:0 8px;font-size:12px;margin-top:4px"/>
+            </div>
+          </div>
+        </details>
+
+        <!-- 5. Hóa đơn điện tử (VAT) -->
+        <div class="field" style="margin:0;background:#f8fafc;padding:10px;border-radius:10px;border:1px solid #e2e8f0">
+          <label style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin:0">
+            <span style="font-weight:750;font-size:13px;color:#0f172a">5. Yêu cầu xuất hóa đơn điện tử</span>
+            <input type="checkbox" id="modalReqInvoice" ${reqInv ? 'checked' : ''} style="width:18px;height:18px;accent-color:#2563eb"/>
+          </label>
+          <div id="modalInvoiceFields" style="display:${reqInv ? 'grid' : 'none'};gap:6px;margin-top:8px">
+            <input id="modalInvTaxCode" placeholder="Mã số thuế doanh nghiệp / hộ KD" value="${esc(buyer.taxCode || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+            <input id="modalInvCompany" placeholder="Tên công ty / tổ chức" value="${esc(buyer.companyName || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+            <input id="modalInvEmail" placeholder="Email nhận hóa đơn" value="${esc(buyer.email || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+            <input id="modalInvAddress" placeholder="Địa chỉ xuất HĐ" value="${esc(buyer.address || '')}" style="height:36px;padding:0 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12.5px"/>
+          </div>
+        </div>
+      </div>
+    `,
+    onSubmit: async root => {
+      const isDel = $('#modalFulfillmentDelivery', root)?.classList.contains('active');
+      state.saleDraft.fulfillment = isDel ? 'delivery' : 'counter';
+      if (isDel) {
+        state.saleDraft.recipient = $('#modalRecipient', root)?.value.trim() || '';
+        state.saleDraft.phone = $('#modalDeliveryPhone', root)?.value.trim() || '';
+        state.saleDraft.address = $('#modalDeliveryAddress', root)?.value.trim() || '';
+        state.saleDraft.shippingFee = Number(String($('#modalShippingFee', root)?.value || '').replace(/\D/g, '')) || 0;
+      } else {
+        state.saleDraft.shippingFee = 0;
+      }
+
+      state.saleDraft.note = $('#modalSaleNote', root)?.value.trim() || '';
+
+      const vatInpVal = $('#modalVatRateInput', root)?.value;
+      const numVat = Math.max(0, Math.min(100, Number(vatInpVal) || 0));
+      state.saleDraft.vatRate = numVat;
+      state.saleDraft.vatCustom = '';
+
+      const policyVal = $('#modalWarrantyPolicy', root)?.value || '';
+      if (policyVal === 'custom') {
+        state.saleDraft.warrantyPolicyCustom = $('#modalWarrantyPolicyCustom', root)?.value.trim() || '';
+        state.saleDraft.warrantyPolicy = state.saleDraft.warrantyPolicyCustom;
+      } else {
+        state.saleDraft.warrantyPolicyCustom = '';
+        state.saleDraft.warrantyPolicy = policyVal;
+      }
+
+      const apptVal = $('#modalAppointment', root)?.value || '';
+      if (apptVal === 'custom') {
+        state.saleDraft.appointmentDateCustom = $('#modalAppointmentCustom', root)?.value.trim() || '';
+        state.saleDraft.appointmentDate = state.saleDraft.appointmentDateCustom;
+      } else {
+        state.saleDraft.appointmentDateCustom = '';
+        state.saleDraft.appointmentDate = apptVal;
+      }
+
+      const reqInvCheck = Boolean($('#modalReqInvoice', root)?.checked);
+      state.saleDraft.requestInvoice = reqInvCheck;
+      if (reqInvCheck) {
+        state.saleDraft.invoiceBuyer = {
+          taxCode: $('#modalInvTaxCode', root)?.value.trim() || '',
+          companyName: $('#modalInvCompany', root)?.value.trim() || '',
+          email: $('#modalInvEmail', root)?.value.trim() || '',
+          address: $('#modalInvAddress', root)?.value.trim() || ''
+        };
+      }
+
+      renderSales();
+      toast('Đã cập nhật tùy chọn đơn hàng', 'ok');
+      return { customToast: true };
+    }
+  });
+
+  const root = $('#modalRoot');
+  if (!root) return;
+
+  const btnCounter = $('#modalFulfillmentCounter', root);
+  const btnDelivery = $('#modalFulfillmentDelivery', root);
+  const deliverySection = $('#modalDeliverySection', root);
+
+  if (btnCounter && btnDelivery) {
+    btnCounter.onclick = () => {
+      btnCounter.classList.add('active');
+      btnDelivery.classList.remove('active');
+      if (deliverySection) deliverySection.style.display = 'none';
+    };
+    btnDelivery.onclick = () => {
+      btnDelivery.classList.add('active');
+      btnCounter.classList.remove('active');
+      if (deliverySection) deliverySection.style.display = 'grid';
+    };
+  }
+
+  const vatInp = $('#modalVatRateInput', root);
+  const vatPreview = $('#modalVatAmountPreview', root);
+  const vatPills = $$('.modal-vat-pill', root);
+  const baseSubtotal = Math.max(0, totals.subtotal - totals.discount);
+
+  const updateVatPreview = (rate) => {
+    const r = Math.max(0, Math.min(100, Number(rate) || 0));
+    const calcVat = Math.round(baseSubtotal * r / 100);
+    if (vatPreview) vatPreview.textContent = calcVat ? `+${fmt(calcVat)} ₫` : '0 ₫';
+    vatPills.forEach(p => {
+      p.classList.toggle('active', Number(p.dataset.vatVal) === r);
+    });
+  };
+
+  if (vatInp) {
+    vatInp.addEventListener('input', e => {
+      updateVatPreview(e.target.value);
+    });
+  }
+
+  vatPills.forEach(pill => {
+    pill.onclick = () => {
+      const v = pill.dataset.vatVal;
+      if (vatInp) vatInp.value = v;
+      updateVatPreview(v);
+    };
+  });
+
+  const policySelect = $('#modalWarrantyPolicy', root);
+  const policyCustomInp = $('#modalWarrantyPolicyCustom', root);
+  if (policySelect) {
+    policySelect.onchange = () => {
+      if (policySelect.value === 'custom') {
+        if (policyCustomInp) {
+          policyCustomInp.style.display = 'block';
+          policyCustomInp.focus();
+        }
+      } else {
+        if (policyCustomInp) policyCustomInp.style.display = 'none';
+      }
+    };
+  }
+
+  const apptSelect = $('#modalAppointment', root);
+  const apptCustomInp = $('#modalAppointmentCustom', root);
+  if (apptSelect) {
+    apptSelect.onchange = () => {
+      if (apptSelect.value === 'custom') {
+        if (apptCustomInp) {
+          apptCustomInp.style.display = 'block';
+          apptCustomInp.focus();
+        }
+      } else {
+        if (apptCustomInp) apptCustomInp.style.display = 'none';
+      }
+    };
+  }
+
+  const reqInvCheck = $('#modalReqInvoice', root);
+  const invoiceFields = $('#modalInvoiceFields', root);
+  if (reqInvCheck) {
+    reqInvCheck.onchange = () => {
+      if (invoiceFields) invoiceFields.style.display = reqInvCheck.checked ? 'grid' : 'none';
+    };
+  }
+
+  $('#modalShippingFee', root)?.addEventListener('input', e => {
+    const raw = e.target.value.replace(/\D/g, '');
+    e.target.value = raw ? fmt(Number(raw)) : '';
+  });
+}
+
 function openCheckoutQRModal({ vietQrUrl, bankName, bankAcc, bankOwner, pendingCode, total }) {
   if (!vietQrUrl) return;
   openModal({
@@ -1199,18 +1479,27 @@ function saleCartRows(){
   return saleLines().map(x => {
     const open = state.saleDiscountOpen.has(x.itemId);
     const lineGross = (Number(x.quantity) || 1) * (Number(x.unitPrice) || 0);
-    const hasWarranty = Boolean(x.warrantyMonths);
-    const warrantyTagHtml = hasWarranty
-      ? `<button type="button" class="cart-badge-warranty-tag" data-action="edit-item-warranty" data-item-id="${x.itemId}" title="Sửa bảo hành / IMEI">BH: ${x.warrantyMonths}th${x.warrantyExchange ? ' 1đ1' : ''} ▾</button>`
-      : (x.imei
-        ? `<button type="button" class="cart-badge-warranty-tag" data-action="edit-item-warranty" data-item-id="${x.itemId}" title="Sửa IMEI">IMEI ▾</button>`
-        : `<button type="button" class="cart-badge-add-warranty" data-action="edit-item-warranty" data-item-id="${x.itemId}" title="Thêm bảo hành / IMEI">+ BH</button>`);
+    const hasWarranty = Boolean(x.warrantyMonths || x.p.warranty_months);
+    const effMonths = x.warrantyMonths || x.p.warranty_months;
+    const isService = Boolean(x.isQuickService || x.p.type === 'SERVICE');
+    let warrantyTagHtml = '';
+    if (hasWarranty) {
+      warrantyTagHtml = `<button type="button" class="cart-badge-warranty-tag" data-action="edit-item-warranty" data-item-id="${x.itemId}" title="Sửa bảo hành / IMEI">BH: ${effMonths}th${x.warrantyExchange ? ' 1đ1' : ''} ▾</button>`;
+    } else if (x.imei) {
+      warrantyTagHtml = `<button type="button" class="cart-badge-warranty-tag" data-action="edit-item-warranty" data-item-id="${x.itemId}" title="Sửa IMEI">IMEI: ${esc(x.imei)} ▾</button>`;
+    } else if (isService) {
+      warrantyTagHtml = `<button type="button" class="cart-badge-add-warranty" data-action="edit-item-warranty" data-item-id="${x.itemId}" title="Thêm bảo hành / IMEI">+ BH</button>`;
+    }
 
-    const serviceInfoHtml = (x.isQuickService || x.p.type === 'SERVICE' || x.imei || x.serviceNote) ? `
-      ${x.p.type === 'SERVICE' ? `<span class="cart-badge-service">Dịch vụ</span>` : ''}
-      ${x.imei ? `<span class="cart-badge-imei">IMEI: ${esc(x.imei)}</span>` : ''}
-      ${x.serviceNote ? `<span class="cart-badge-note">${esc(x.serviceNote)}</span>` : ''}
-    ` : '';
+    // Identifier badge: SKU if available; otherwise single 'Dịch vụ' badge if service; NEVER duplicate!
+    let idBadgeHtml = '';
+    if (x.p.sku) {
+      idBadgeHtml = `<small class="cart-sku-badge">${esc(x.p.sku)}</small>`;
+    } else if (isService) {
+      idBadgeHtml = `<span class="cart-badge-service">Dịch vụ</span>`;
+    }
+
+    const noteHtml = x.serviceNote ? `<div class="cart-row-note">📝 ${esc(x.serviceNote)}</div>` : '';
 
     const unitConfig = unitRows.find(u => u.productId === x.itemId);
     let unitSelectorHtml = '';
@@ -1227,12 +1516,10 @@ function saleCartRows(){
     }
 
     const imageHtml = x.p.image ? `<div class="pos-product-image"><img src="${x.p.image}" alt="${esc(x.p.name)}"/></div>` : '';
-    return `<article class="cart-row ${x.p.image ? 'has-img' : 'no-img'}">${imageHtml}<div class="cart-row-main"><div class="cart-row-title"><strong class="cart-item-name">${esc(x.p.name)}</strong><button data-sale-remove="${x.itemId}" class="cart-remove-btn" aria-label="Xóa ${esc(x.p.name)}" title="Xóa">×</button></div><div class="cart-row-subline"><small class="cart-sku-badge">${esc(x.p.sku || 'Dịch vụ')}</small>${unitSelectorHtml}${x.plDiscountPercent > 0 ? `<span class="cart-badge-pricelist">Sỉ -${x.plDiscountPercent}%</span>` : ''}${warrantyTagHtml}${serviceInfoHtml}</div><div class="cart-row-bottom"><div class="cart-controls-group"><div class="quantity-control"><button data-sale-adjust="-1" data-sale-id="${x.itemId}">−</button><input type="number" inputmode="numeric" min="1" value="${x.quantity}" data-sale-field="quantity" data-sale-id="${x.itemId}"/><button data-sale-adjust="1" data-sale-id="${x.itemId}">+</button></div><button class="line-discount-trigger" data-line-discount="${x.itemId}">Giảm giá <span>›</span></button></div>${salePriceGroupHtml(x)}</div>${open ? `<div class="line-discount-editor" data-editor-item="${x.itemId}"><div class="line-discount-input-row"><div class="discount-mode-group"><button type="button" class="discount-mode ${x.discountMode !== 'percent' ? 'active' : ''}" data-line-discount-mode="amount" data-item-id="${x.itemId}">₫</button><button type="button" class="discount-mode ${x.discountMode === 'percent' ? 'active' : ''}" data-line-discount-mode="percent" data-item-id="${x.itemId}">%</button></div><input aria-label="Giảm giá cho ${esc(x.p.name)}" type="number" inputmode="decimal" min="0" value="${x.discount || ''}" placeholder="Nhập số tiền..." data-sale-field="discount" data-sale-id="${x.itemId}"/></div><div class="line-discount-hint-row" id="discHint_${x.itemId}"><span class="disc-words-badge">${x.discount ? docTienMoNgoac(x.discount, x.discountMode, lineGross) : ''}</span></div></div>` : ''}</div></article>`;
+    return `<article class="cart-row ${x.p.image ? 'has-img' : 'no-img'}">${imageHtml}<div class="cart-row-main"><div class="cart-row-title"><strong class="cart-item-name">${esc(x.p.name)}</strong><button data-sale-remove="${x.itemId}" class="cart-remove-btn" aria-label="Xóa ${esc(x.p.name)}" title="Xóa">×</button></div><div class="cart-row-subline">${idBadgeHtml}${unitSelectorHtml}${x.plDiscountPercent > 0 ? `<span class="cart-badge-pricelist">Sỉ -${x.plDiscountPercent}%</span>` : ''}${warrantyTagHtml}</div>${noteHtml}<div class="cart-row-bottom"><div class="cart-controls-group"><div class="quantity-control"><button data-sale-adjust="-1" data-sale-id="${x.itemId}">−</button><input type="number" inputmode="numeric" min="1" value="${x.quantity}" data-sale-field="quantity" data-sale-id="${x.itemId}"/><button data-sale-adjust="1" data-sale-id="${x.itemId}">+</button></div><button class="line-discount-trigger" data-line-discount="${x.itemId}">Giảm giá <span>›</span></button></div>${salePriceGroupHtml(x)}</div>${open ? `<div class="line-discount-editor" data-editor-item="${x.itemId}"><div class="line-discount-input-row"><div class="discount-mode-group"><button type="button" class="discount-mode ${x.discountMode !== 'percent' ? 'active' : ''}" data-line-discount-mode="amount" data-item-id="${x.itemId}">₫</button><button type="button" class="discount-mode ${x.discountMode === 'percent' ? 'active' : ''}" data-line-discount-mode="percent" data-item-id="${x.itemId}">%</button></div><input aria-label="Giảm giá cho ${esc(x.p.name)}" type="number" inputmode="decimal" min="0" value="${x.discount || ''}" placeholder="Nhập số tiền..." data-sale-field="discount" data-sale-id="${x.itemId}"/></div><div class="line-discount-hint-row" id="discHint_${x.itemId}"><span class="disc-words-badge">${x.discount ? docTienMoNgoac(x.discount, x.discountMode, lineGross) : ''}</span></div></div>` : ''}</div></article>`;
   }).join('');
 }
-function compactCheckoutExtras(){if(state.saleStep!=='checkout'||$('.checkout-more'))return;const extras=['.checkout-discount-card','.choice-section:has([data-fulfillment])','.cart-note','.vat-box','.sleek-checkout-policy','.sleek-checkout-appointment','#checkoutInvoiceToggle','.invoice-buyer-fields'].map(s=>$(s)).filter(Boolean);if(!extras.length)return;const details=document.createElement('details');details.className='checkout-more';details.innerHTML='<summary>Tùy chọn thêm (Giao hàng, VAT, In bill, Ghi chú...)</summary>';extras[0].before(details);extras.forEach(x=>details.append(x));}
 function bindSaleControls(){
-  compactCheckoutExtras();
   const customerChip=$('[data-action="customer-picker"]');
   if(customerChip&&Number(currentCustomer().default_discount)>0&&!customerChip.nextElementSibling?.classList.contains('customer-discount-hint'))customerChip.insertAdjacentHTML('afterend',customerDiscountHint());
   $$('[data-action="quick-service"]').forEach(b=>b.onclick=openQuickServiceModal);
@@ -1422,7 +1709,6 @@ function renderSales(){
   }
    if(state.saleStep==='checkout'){
     const change=(Number(state.saleDraft.cashReceived)||0)-totals.total,
-          delivery=state.saleDraft.fulfillment==='delivery',
           payment=state.saleDraft.payment,
           isQrOrTransfer=payment==='qr'||payment==='transfer';
 
@@ -1495,13 +1781,202 @@ function renderSales(){
       </div>
     ` : '';
 
-    $('#content').innerHTML=`<section class="pos-flow checkout-screen card">${saleStepHeader('Thanh toán','cart')}<div class="checkout-header-row" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin:4px 0 6px"><button type="button" class="customer-chip" data-action="customer-picker" style="margin:0;width:100%;text-align:left;overflow:hidden">${icon('user')}<span style="overflow:hidden;text-overflow:ellipsis"><small>Khách hàng</small><b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px">${esc(customer.name || customerLabel(customer))}</b></span>${icon('chevron-right')}</button><button type="button" class="customer-chip channel-chip" data-action="channel-picker" style="margin:0;width:auto;padding:0 9px;white-space:nowrap">${icon(channelIcon(state.saleDraft.channel || 'pos'))}<span><small>Kênh bán</small><b style="font-size:12px;display:block">${esc(channelLabel(state.saleDraft.channel || 'pos'))}</b></span>${icon('chevron-down')}</button></div>${loyaltyPanelHtml}<div class="checkout-total"><span>Tổng thanh toán</span><strong>${fmt(totals.total)} ₫</strong>${totals.loyaltyDiscount?`<small style="color:#0284c7;font-size:12px;display:block;margin-top:2px">Đã trừ ⭐ ${fmt(totals.pointsToUse)} điểm (−${fmt(totals.loyaltyDiscount)} ₫)</small>`:''}${totals.roundingDiff?`<small style="color:var(--q-muted);font-size:12px;display:block;margin-top:2px">Đã làm tròn +${fmt(totals.roundingDiff)} ₫ tiền mặt</small>`:''}</div><div class="checkout-discount-card"><div class="discount-box"><div class="discount-box-head"><strong>Giảm giá đơn hàng</strong>${totals.discount?`<span class="discount-val-hint">− ${fmt(totals.discount)} ₫</span>`:''}</div><div class="discount-control"><input id="checkoutDiscount" type="number" inputmode="decimal" min="0" value="${state.saleDraft.discount||''}" placeholder="0" aria-label="Giảm giá đơn hàng"/><button type="button" class="discount-mode ${state.saleDraft.discountMode==='amount'?'active':''}" data-discount-mode="amount">₫</button><button type="button" class="discount-mode ${state.saleDraft.discountMode==='percent'?'active':''}" data-discount-mode="percent">%</button></div></div></div><div class="choice-section"><h3>Phương thức thanh toán</h3>${[['cash','Tiền mặt'],['transfer','Chuyển khoản'],['qr','QR']].map(([v,l])=>`<button class="choice-row ${state.saleDraft.payment===v?'active':''}" data-payment-choice="${v}"><i></i><span>${l}</span></button>`).join('')}</div>${state.saleDraft.payment==='cash'?`<div class="cash-panel"><label>Khách đưa<input id="cashReceived" type="number" inputmode="decimal" value="${esc(state.saleDraft.cashReceived)}" placeholder="0"/></label><div class="cash-quick-pills"><button type="button" class="cash-pill cash-pill-exact ${Number(state.saleDraft.cashReceived)===totals.total?'active':''}" data-cash-amount="${totals.total}">Đủ tiền · ${fmt(totals.total)} ₫</button>${suggestCashAmounts(totals.total).map(amt=>`<button type="button" class="cash-pill ${Number(state.saleDraft.cashReceived)===amt?'active':''}" data-cash-amount="${amt}">${fmt(amt)} ₫</button>`).join('')}</div><div><span>Tiền thừa</span><strong id="cashChange">${fmt(Math.max(0,change))} ₫</strong></div></div>`:''}${qrPanelHtml}<div class="choice-section"><h3>Hình thức nhận hàng</h3><div class="segment"><button class="${!delivery?'active':''}" data-fulfillment="counter">Tại quầy</button><button class="${delivery?'active':''}" data-fulfillment="delivery">Giao hàng</button></div>${delivery?`<div class="delivery-fields"><input id="recipient" value="${esc(state.saleDraft.recipient)}" placeholder="Người nhận"/><input id="deliveryPhone" inputmode="tel" value="${esc(state.saleDraft.phone)}" placeholder="Số điện thoại"/><input id="deliveryAddress" value="${esc(state.saleDraft.address)}" placeholder="Địa chỉ"/><input id="shippingFee" type="number" inputmode="decimal" value="${state.saleDraft.shippingFee||''}" placeholder="Phí giao hàng"/><label class="cod-disabled"><input type="checkbox" disabled/> COD · chưa hỗ trợ lưu an toàn</label><small class="field-limit">Thông tin giao hàng chưa được ghi vào phiếu bán trong data contract hiện tại.</small></div>`:''}</div><label class="cart-note">Ghi chú đơn hàng<input id="saleNote" value="${esc(state.saleDraft.note)}" placeholder="Nhập ghi chú (nếu có)..."/></label><div class="vat-box"><span>Thuế/VAT</span><div class="vat-control"><select id="vatRate">${[[0,'Không VAT'],[5,'5%'],[8,'8%'],[10,'10%'],[-1,'Tùy chỉnh…']].map(([v,l])=>`<option value="${v}" ${(v===-1?state.saleDraft.vatCustom!=='':Number(state.saleDraft.vatRate)===v)?'selected':''}>${l}</option>`).join('')}</select>${state.saleDraft.vatCustom!==''?`<input id="vatCustom" type="number" inputmode="decimal" min="0" max="100" value="${esc(state.saleDraft.vatCustom)}" placeholder="%"/>`:''}<b id="vatAmount">${fmt(totals.vat)} ₫</b></div></div><div class="sleek-checkout-row sleek-checkout-policy"><span>Chính sách in bill</span><select id="checkoutWarrantyPolicy"><option value="" ${!state.saleDraft.warrantyPolicy ? 'selected' : ''}>— Mặc định của cửa hàng —</option><option value="Đổi size trong 7 ngày" ${state.saleDraft.warrantyPolicy === 'Đổi size trong 7 ngày' ? 'selected' : ''}>✓ Đổi size trong 7 ngày</option><option value="BH keo chỉ 6 tháng" ${state.saleDraft.warrantyPolicy === 'BH keo chỉ 6 tháng' ? 'selected' : ''}>✓ BH keo chỉ 6 tháng</option><option value="BH chính hãng 12 tháng" ${state.saleDraft.warrantyPolicy === 'BH chính hãng 12 tháng' ? 'selected' : ''}>✓ BH chính hãng 12 tháng</option><option value="BH 1 đổi 1 trong 30 ngày" ${state.saleDraft.warrantyPolicy === 'BH 1 đổi 1 trong 30 ngày' ? 'selected' : ''}>✓ BH 1 đổi 1 trong 30 ngày</option><option value="custom" ${state.saleDraft.warrantyPolicyCustom !== undefined && state.saleDraft.warrantyPolicyCustom !== '' ? 'selected' : ''}>Tùy chỉnh...</option></select></div>${state.saleDraft.warrantyPolicyCustom !== undefined && state.saleDraft.warrantyPolicyCustom !== '' ? `<div class="sleek-checkout-row custom-field sleek-checkout-policy"><input id="checkoutWarrantyPolicyCustom" placeholder="Nhập chính sách in bill tùy chỉnh..." value="${esc(state.saleDraft.warrantyPolicyCustom)}"/></div>` : ''}<div class="sleek-checkout-row sleek-checkout-appointment"><span>Hẹn trả đồ / khách</span><select id="checkoutAppointment"><option value="" ${!state.saleDraft.appointmentDate ? 'selected' : ''}>— Lấy ngay tại quầy —</option><option value="Chiều nay 17:00" ${state.saleDraft.appointmentDate === 'Chiều nay 17:00' ? 'selected' : ''}>Chiều nay 17:00</option><option value="Ngày mai 10:00" ${state.saleDraft.appointmentDate === 'Ngày mai 10:00' ? 'selected' : ''}>Ngày mai 10:00</option><option value="Sau 3 ngày" ${state.saleDraft.appointmentDate === 'Sau 3 ngày' ? 'selected' : ''}>Sau 3 ngày</option><option value="custom" ${state.saleDraft.appointmentDateCustom !== undefined && state.saleDraft.appointmentDateCustom !== '' ? 'selected' : ''}>Hẹn ngày giờ khác...</option></select></div>${state.saleDraft.appointmentDateCustom !== undefined && state.saleDraft.appointmentDateCustom !== '' ? `<div class="sleek-checkout-row custom-field sleek-checkout-appointment"><input id="checkoutAppointmentCustom" placeholder="Nhập thời gian hẹn (VD: 15h thứ 6)..." value="${esc(state.saleDraft.appointmentDateCustom)}"/></div>` : ''}<div class="invoice-box" id="checkoutInvoiceToggle" style="cursor:pointer"><div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span>Hóa đơn điện tử</span><b style="color:${state.saleDraft.requestInvoice?'#16a34a':'#64748b'}">${state.saleDraft.requestInvoice ? '✓ Yêu cầu xuất HĐ' : 'Chưa chọn xuất HĐ'}</b></div></div>${state.saleDraft.requestInvoice ? `<div class="invoice-buyer-fields" style="background:#f8fafc;padding:10px;border-radius:6px;margin:8px 0 12px;border:1px solid #e2e8f0;display:grid;gap:6px"><input id="invTaxCode" placeholder="Mã số thuế doanh nghiệp / hộ KD" value="${esc(state.saleDraft.invoiceBuyer?.taxCode || '')}"/><input id="invCompanyName" placeholder="Tên công ty / tổ chức" value="${esc(state.saleDraft.invoiceBuyer?.companyName || '')}"/><input id="invBuyerEmail" placeholder="Email nhận hóa đơn" value="${esc(state.saleDraft.invoiceBuyer?.email || '')}"/><input id="invBuyerAddress" placeholder="Địa chỉ xuất HĐ" value="${esc(state.saleDraft.invoiceBuyer?.address || '')}"/></div>` : ''}<button class="primary-btn flow-primary ${isQrOrTransfer ? 'qr-verify-pay-btn' : ''}" data-sale-pay ${state.saleBusy?'disabled':''}>${state.saleBusy?'Đang xử lý…':payBtnText}</button></section>`;
-    $('#checkoutDiscount')?.addEventListener('input',e=>{state.saleDraft.discount=e.target.value;renderSales()});
-    $('#cashReceived')?.addEventListener('input',e=>{state.saleDraft.cashReceived=e.target.value;const val=Number(e.target.value)||0;const next=Math.max(0,val-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',Number(b.dataset.cashAmount)===val));});
-    $$('[data-cash-amount]').forEach(btn=>{btn.onclick=()=>{const amt=Number(btn.dataset.cashAmount)||0;state.saleDraft.cashReceived=amt;const inp=$('#cashReceived');if(inp)inp.value=amt;const next=Math.max(0,amt-totals.total);if($('#cashChange'))$('#cashChange').textContent=`${fmt(next)} ₫`;$$('[data-cash-amount]').forEach(b=>b.classList.toggle('active',b===btn));};});
-    $('[data-cash-exact]')?.addEventListener('click',()=>{state.saleDraft.cashReceived=totals.total;$('#cashReceived').value=totals.total;$('#cashChange').textContent='0 ₫'});
-    $('#checkoutQrImgWrap')?.addEventListener('click',()=>{
-      if(vietQrUrl){
+    const extrasTags = [];
+    if (state.saleDraft.fulfillment === 'delivery') extrasTags.push('Giao hàng' + (totals.shippingFee ? ` (+${fmt(totals.shippingFee)}₫)` : ''));
+    if (Number(state.saleDraft.vatRate) > 0) extrasTags.push(`VAT ${state.saleDraft.vatRate}% (+${fmt(totals.vat)}₫)`);
+    if (state.saleDraft.note) extrasTags.push('Có ghi chú');
+    if (state.saleDraft.warrantyPolicy) extrasTags.push('In bill');
+    if (state.saleDraft.appointmentDate) extrasTags.push('Hẹn trả');
+    if (state.saleDraft.requestInvoice) extrasTags.push('Xuất HĐ');
+    const extrasSummaryText = extrasTags.length ? extrasTags.join(' · ') : 'Giao hàng, VAT, Ghi chú, In bill...';
+
+    $('#content').innerHTML=`
+      <section class="pos-flow checkout-screen card">
+        ${saleStepHeader('Thanh toán','cart')}
+
+        <!-- 1. Header Khách hàng & Kênh bán -->
+        <div class="checkout-header-row" style="display:grid;grid-template-columns:minmax(0,1.2fr) auto;gap:6px;margin:4px 0 6px">
+          <button type="button" class="customer-chip" data-action="customer-picker" style="margin:0;width:100%;text-align:left;overflow:hidden">
+            ${icon('user')}
+            <span style="overflow:hidden;text-overflow:ellipsis">
+              <small>Khách hàng</small>
+              <b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px">${esc(customer.name || customerLabel(customer))}</b>
+            </span>
+            ${icon('chevron-right')}
+          </button>
+          <button type="button" class="customer-chip channel-chip" data-action="channel-picker" style="margin:0;width:auto;padding:0 9px;white-space:nowrap">
+            ${icon(channelIcon(state.saleDraft.channel || 'pos'))}
+            <span>
+              <small>Kênh bán</small>
+              <b style="font-size:12px;display:block">${esc(channelLabel(state.saleDraft.channel || 'pos'))}</b>
+            </span>
+            ${icon('chevron-down')}
+          </button>
+        </div>
+
+        <!-- 2. Quyền lợi / Loyalty -->
+        ${loyaltyPanelHtml}
+
+        <!-- 3. KHỐI TỔNG KẾT TIỀN & GIẢM GIÁ (RÕ RÀNG Ở BÊN NGOÀI) -->
+        <div class="checkout-billing-card">
+          <div class="billing-row subtotal-row">
+            <span>Tiền hàng</span>
+            <b>${fmt(totals.subtotal)} ₫</b>
+          </div>
+
+          <!-- Nút & Ô giảm giá đơn hàng trực tiếp ở ngoài -->
+          <div class="billing-discount-row">
+            <div class="discount-row-label">
+              <span class="discount-title">Giảm giá đơn</span>
+              ${totals.discount ? `<span class="discount-sub-amount">−${fmt(totals.discount)} ₫</span>` : ''}
+            </div>
+            <div class="discount-row-input-group">
+              <input id="checkoutDiscount" type="text" inputmode="numeric" value="${state.saleDraft.discountMode === 'percent' ? (state.saleDraft.discount || '') : (state.saleDraft.discount ? fmt(state.saleDraft.discount) : '')}" placeholder="0" aria-label="Giảm giá đơn hàng"/>
+              <button type="button" class="discount-mode ${state.saleDraft.discountMode!=='percent'?'active':''}" data-discount-mode="amount">₫</button>
+              <button type="button" class="discount-mode ${state.saleDraft.discountMode==='percent'?'active':''}" data-discount-mode="percent">%</button>
+            </div>
+          </div>
+
+          ${totals.loyaltyDiscount ? `
+            <div class="billing-row perk-row">
+              <span>Trừ điểm thưởng (⭐ ${fmt(totals.pointsToUse)}đ)</span>
+              <b style="color:#0284c7">−${fmt(totals.loyaltyDiscount)} ₫</b>
+            </div>
+          ` : ''}
+
+          ${totals.shippingFee ? `
+            <div class="billing-row">
+              <span>Phí giao hàng</span>
+              <b>+${fmt(totals.shippingFee)} ₫</b>
+            </div>
+          ` : ''}
+
+          ${totals.vat ? `
+            <div class="billing-row">
+              <span>Thuế VAT (${state.saleDraft.vatRate}%)</span>
+              <b>+${fmt(totals.vat)} ₫</b>
+            </div>
+          ` : ''}
+
+          ${totals.roundingDiff ? `
+            <div class="billing-row">
+              <span>Làm tròn tiền mặt</span>
+              <b>+${fmt(totals.roundingDiff)} ₫</b>
+            </div>
+          ` : ''}
+
+          <div class="billing-grand-total">
+            <div class="grand-total-label-row">
+              <span>Tổng thanh toán</span>
+              ${totals.vat || totals.discount ? `<small style="font-size:11.5px;color:#94a3b8;font-weight:600">Đã tính giảm giá & VAT</small>` : ''}
+            </div>
+            <strong>${fmt(totals.total)} ₫</strong>
+          </div>
+        </div>
+
+        <!-- 4. Phương thức thanh toán (Chuẩn 1 dòng tuyệt đối, cấm rớt 2 dòng) -->
+        <div class="choice-section payment-methods-section">
+          <h3>Phương thức thanh toán</h3>
+          ${[['cash','Tiền mặt'],['transfer','Chuyển khoản'],['qr','QR']].map(([v,l])=>`
+            <button type="button" class="choice-row payment-tab-btn ${state.saleDraft.payment===v?'active':''}" data-payment-choice="${v}">
+              <span>${l}</span>
+            </button>
+          `).join('')}
+        </div>
+
+        <!-- 5. Tiền mặt Panel hoặc QR Panel -->
+        ${state.saleDraft.payment==='cash' ? `
+          <div class="cash-panel">
+            <div class="cash-received-row">
+              <label for="cashReceived">Khách đưa</label>
+              <input id="cashReceived" type="text" inputmode="numeric" value="${state.saleDraft.cashReceived ? fmt(Number(state.saleDraft.cashReceived)) : ''}" placeholder="0"/>
+            </div>
+            <div class="cash-quick-pills">
+              <button type="button" class="cash-pill cash-pill-exact ${Number(state.saleDraft.cashReceived)===totals.total?'active':''}" data-cash-amount="${totals.total}">
+                Đủ tiền · ${fmt(totals.total)} ₫
+              </button>
+              ${suggestCashAmounts(totals.total).map(amt=>`
+                <button type="button" class="cash-pill ${Number(state.saleDraft.cashReceived)===amt?'active':''}" data-cash-amount="${amt}">
+                  ${fmt(amt)} ₫
+                </button>
+              `).join('')}
+            </div>
+            <div class="cash-change-row">
+              <span>Tiền thừa trả khách</span>
+              <strong id="cashChange">${fmt(Math.max(0,change))} ₫</strong>
+            </div>
+          </div>
+        ` : ''}
+
+        ${qrPanelHtml}
+
+        <!-- 6. Nút Popup Tùy chọn đơn hàng (Không dùng accordion) -->
+        <button type="button" class="checkout-extras-btn" id="openCheckoutExtrasBtn">
+          <div class="extras-btn-content">
+            <span class="extras-btn-title">⚙️ Tùy chọn thêm</span>
+            <span class="extras-btn-sub ${extrasTags.length ? 'has-active-tag' : ''}">${esc(extrasSummaryText)}</span>
+          </div>
+          <span class="extras-btn-caret">›</span>
+        </button>
+
+        <!-- 7. Nút Thu tiền mặt / Hoàn tất đơn hàng -->
+        <button class="primary-btn flow-primary ${isQrOrTransfer ? 'qr-verify-pay-btn' : ''}" data-sale-pay ${state.saleBusy?'disabled':''}>
+          ${state.saleBusy?'Đang xử lý…':payBtnText}
+        </button>
+      </section>
+    `;
+
+    $('#checkoutDiscount')?.addEventListener('input', e => {
+      if (state.saleDraft.discountMode === 'percent') {
+        const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+        state.saleDraft.discount = val;
+      } else {
+        const raw = e.target.value.replace(/\D/g, '');
+        state.saleDraft.discount = Number(raw) || 0;
+        e.target.value = raw ? fmt(state.saleDraft.discount) : '';
+      }
+      keepFocus('#checkoutDiscount', renderSales);
+    });
+    $$('[data-discount-mode]').forEach(b => {
+      b.onclick = () => {
+        state.saleDraft.discountMode = b.dataset.discountMode;
+        renderSales();
+      };
+    });
+    $$('[data-payment-choice]').forEach(b => {
+      b.onclick = () => {
+        state.saleDraft.payment = b.dataset.paymentChoice;
+        renderSales();
+      };
+    });
+    $('#cashReceived')?.addEventListener('input', e => {
+      const raw = e.target.value.replace(/\D/g, '');
+      state.saleDraft.cashReceived = raw ? Number(raw) : '';
+      e.target.value = raw ? fmt(Number(raw)) : '';
+      const val = Number(raw) || 0;
+      const next = Math.max(0, val - totals.total);
+      if ($('#cashChange')) $('#cashChange').textContent = `${fmt(next)} ₫`;
+      $$('[data-cash-amount]').forEach(b => b.classList.toggle('active', Number(b.dataset.cashAmount) === val));
+    });
+    $$('[data-cash-amount]').forEach(btn => {
+      btn.onclick = () => {
+        const amt = Number(btn.dataset.cashAmount) || 0;
+        state.saleDraft.cashReceived = amt;
+        const inp = $('#cashReceived');
+        if (inp) inp.value = fmt(amt);
+        const next = Math.max(0, amt - totals.total);
+        if ($('#cashChange')) $('#cashChange').textContent = `${fmt(next)} ₫`;
+        $$('[data-cash-amount]').forEach(b => b.classList.toggle('active', b === btn));
+      };
+    });
+    $('[data-cash-exact]')?.addEventListener('click', () => {
+      state.saleDraft.cashReceived = totals.total;
+      if ($('#cashReceived')) $('#cashReceived').value = fmt(totals.total);
+      if ($('#cashChange')) $('#cashChange').textContent = '0 ₫';
+    });
+    $('#openCheckoutExtrasBtn')?.addEventListener('click', openCheckoutExtrasModal);
+    $('#checkoutQrImgWrap')?.addEventListener('click', () => {
+      if (vietQrUrl) {
         openCheckoutQRModal({
           vietQrUrl,
           bankName,
@@ -1512,62 +1987,47 @@ function renderSales(){
         });
       }
     });
-    $('#qrCheckBtn')?.addEventListener('click',()=>{const btn=$('#qrCheckBtn');const statusBox=$('#qrWaitingStatus');if(!btn||btn.disabled)return;btn.disabled=true;const orig=btn.innerHTML;btn.innerHTML=`<span class="qr-spin">⏳</span> Đang kiểm tra giao dịch...`;setTimeout(()=>{btn.disabled=false;btn.innerHTML=orig;if(statusBox){statusBox.className='qr-waiting-status verified';statusBox.innerHTML=`<span class="qr-verified-check">✓</span><div class="qr-status-desc"><strong style="color:#16a34a">Đã phát hiện giao dịch khớp ${fmt(totals.total)} ₫!</strong><small>Vui lòng bấm nút 'Xác thực đã nhận tiền' bên dưới để hoàn tất.</small></div>`;}toast(`Đã phát hiện giao dịch chuyển khoản ${fmt(totals.total)} ₫.`,'ok');if(isAutoMode){setTimeout(()=>submitSale(),600);}},900);});
-    if(isAutoMode&&typeof window!=='undefined'){
-      const pendingCodeUpper=pendingCode.toUpperCase();
-      const autoPaymentListener=(e)=>{
-        if(state.saleStep!=='checkout')return;
-        const det=e?.detail||{};
-        const amt=Number(det.amount||0);
-        const code=String(det.orderCode||det.content||'').toUpperCase();
-        if(amt>=totals.total&&(!code||code.includes(pendingCodeUpper)||pendingCodeUpper.includes(code))){
-          window.removeEventListener('qbiz:payment_received',autoPaymentListener);
-          toast(`Đã nhận thanh toán ${fmt(amt)} ₫ tự động!`,'ok');
+    $('#qrCheckBtn')?.addEventListener('click', () => {
+      const btn = $('#qrCheckBtn');
+      const statusBox = $('#qrWaitingStatus');
+      if (!btn || btn.disabled) return;
+      btn.disabled = true;
+      const orig = btn.innerHTML;
+      btn.innerHTML = `<span class="qr-spin">⏳</span> Đang kiểm tra giao dịch...`;
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+        if (statusBox) {
+          statusBox.className = 'qr-waiting-status verified';
+          statusBox.innerHTML = `<span class="qr-verified-check">✓</span><div class="qr-status-desc"><strong style="color:#16a34a">Đã phát hiện giao dịch khớp ${fmt(totals.total)} ₫!</strong><small>Vui lòng bấm nút 'Xác thực đã nhận tiền' bên dưới để hoàn tất.</small></div>`;
+        }
+        toast(`Đã phát hiện giao dịch chuyển khoản ${fmt(totals.total)} ₫.`, 'ok');
+        if (isAutoMode) {
+          setTimeout(() => submitSale(), 600);
+        }
+      }, 900);
+    });
+    if (isAutoMode && typeof window !== 'undefined') {
+      const pendingCodeUpper = pendingCode.toUpperCase();
+      const autoPaymentListener = e => {
+        if (state.saleStep !== 'checkout') return;
+        const det = e?.detail || {};
+        const amt = Number(det.amount || 0);
+        const code = String(det.orderCode || det.content || '').toUpperCase();
+        if (amt >= totals.total && (!code || code.includes(pendingCodeUpper) || pendingCodeUpper.includes(code))) {
+          window.removeEventListener('qbiz:payment_received', autoPaymentListener);
+          toast(`Đã nhận thanh toán ${fmt(amt)} ₫ tự động!`, 'ok');
           submitSale();
         }
       };
-      window.addEventListener('qbiz:payment_received',autoPaymentListener,{once:true});
+      window.addEventListener('qbiz:payment_received', autoPaymentListener, { once: true });
     }
-    $$('.copyable-account').forEach(el=>{el.onclick=()=>{const val=el.dataset.copy||el.textContent.trim();navigator.clipboard?.writeText(val).then(()=>{toast('Đã sao chép số tài khoản: '+val,'ok')}).catch(()=>{});};});
-    $('#saleNote')?.addEventListener('input',e=>state.saleDraft.note=e.target.value);
-    $('#checkoutWarrantyPolicy')?.addEventListener('change', e => {
-      const v = e.target.value;
-      if (v === 'custom') {
-        state.saleDraft.warrantyPolicyCustom = state.saleDraft.warrantyPolicyCustom || 'Bảo hành đặc biệt';
-        state.saleDraft.warrantyPolicy = state.saleDraft.warrantyPolicyCustom;
-      } else {
-        state.saleDraft.warrantyPolicyCustom = '';
-        state.saleDraft.warrantyPolicy = v;
-      }
-      renderSales();
+    $$('.copyable-account').forEach(el => {
+      el.onclick = () => {
+        const val = el.dataset.copy || el.textContent.trim();
+        navigator.clipboard?.writeText(val).then(() => { toast('Đã sao chép số tài khoản: ' + val, 'ok'); }).catch(() => {});
+      };
     });
-    $('#checkoutWarrantyPolicyCustom')?.addEventListener('input', e => {
-      state.saleDraft.warrantyPolicyCustom = e.target.value;
-      state.saleDraft.warrantyPolicy = e.target.value;
-    });
-    $('#checkoutAppointment')?.addEventListener('change', e => {
-      const v = e.target.value;
-      if (v === 'custom') {
-        state.saleDraft.appointmentDateCustom = state.saleDraft.appointmentDateCustom || 'Hẹn lúc ';
-        state.saleDraft.appointmentDate = state.saleDraft.appointmentDateCustom;
-      } else {
-        state.saleDraft.appointmentDateCustom = '';
-        state.saleDraft.appointmentDate = v;
-      }
-      renderSales();
-    });
-    $('#checkoutAppointmentCustom')?.addEventListener('input', e => {
-      state.saleDraft.appointmentDateCustom = e.target.value;
-      state.saleDraft.appointmentDate = e.target.value;
-    });
-    [['recipient','recipient'],['deliveryPhone','phone'],['deliveryAddress','address'],['shippingFee','shippingFee']].forEach(([id,key])=>$('#'+id)?.addEventListener('input',e=>state.saleDraft[key]=e.target.value));
-    $('#vatRate')?.addEventListener('change',e=>{const v=e.target.value;if(v==='-1'){state.saleDraft.vatCustom=state.saleDraft.vatCustom||'5';state.saleDraft.vatRate=Math.max(0,Math.min(100,Number(state.saleDraft.vatCustom)||0));}else{state.saleDraft.vatCustom='';state.saleDraft.vatRate=Number(v)||0;}renderSales();});
-    $('#vatCustom')?.addEventListener('input',e=>{state.saleDraft.vatCustom=e.target.value;state.saleDraft.vatRate=Math.max(0,Math.min(100,Number(e.target.value)||0));const t=saleTotals();const va=$('#vatAmount');if(va)va.textContent=fmt(t.vat)+' ₫';const tt=document.querySelector('.checkout-total strong');if(tt)tt.textContent=fmt(t.total)+' ₫';});
-    $('#checkoutInvoiceToggle')?.addEventListener('click',()=>{state.saleDraft.requestInvoice=!state.saleDraft.requestInvoice;if(state.saleDraft.requestInvoice&&!state.saleDraft.invoiceBuyer){const cust=customer;state.saleDraft.invoiceBuyer={taxCode:cust?.tax_code||'',companyName:cust?.company_name||'',email:cust?.email||'',address:cust?.address||'',name:cust?.name||''};}renderSales();});
-    $('#invTaxCode')?.addEventListener('input',e=>{state.saleDraft.invoiceBuyer=state.saleDraft.invoiceBuyer||{};state.saleDraft.invoiceBuyer.taxCode=e.target.value;});
-    $('#invCompanyName')?.addEventListener('input',e=>{state.saleDraft.invoiceBuyer=state.saleDraft.invoiceBuyer||{};state.saleDraft.invoiceBuyer.companyName=e.target.value;});
-    $('#invBuyerEmail')?.addEventListener('input',e=>{state.saleDraft.invoiceBuyer=state.saleDraft.invoiceBuyer||{};state.saleDraft.invoiceBuyer.email=e.target.value;});
-    $('#invBuyerAddress')?.addEventListener('input',e=>{state.saleDraft.invoiceBuyer=state.saleDraft.invoiceBuyer||{};state.saleDraft.invoiceBuyer.address=e.target.value;});
     bindSaleControls();
     return;
   }
@@ -1748,7 +2208,8 @@ async function submitSale(){
       warranty_policy:state.saleDraft.warrantyPolicy||'',
       appointment_date:state.saleDraft.appointmentDate||'',
       loyaltyPointsUsed: totals.pointsToUse || 0,
-      loyaltyPointsEarned: Math.floor(totals.total / 100000)
+      loyaltyPointsEarned: Math.floor(totals.total / 100000),
+      shippingFee: totals.shippingFee || 0
     });
 
     if(method==='cash'&&state.saleDraft.cashReceived){
@@ -1886,6 +2347,7 @@ function openItemWarrantyModal(itemId){
       </div>
     `,
     onSubmit: async root => {
+      const activeBtn = $('.item-warranty-opt.active', root);
       line.warrantyMonths = activeBtn ? Number(activeBtn.dataset.warrantyVal || 0) : currentMonths;
       line.warranty_months = line.warrantyMonths;
       line.warrantyExchange = Boolean($('#itemWarrantyExchange', root)?.checked);
@@ -1945,7 +2407,7 @@ function openQuickServiceModal(){
             Tiền công / Giá thu (₫) <b style="color:#ef4444">*</b>
           </label>
           <div style="position:relative">
-            <input id="qsPrice" type="number" inputmode="numeric" min="0" step="1000" placeholder="0" required style="height:44px;font-size:18px;font-weight:800;color:#0284c7;padding:0 40px 0 12px;border:1.5px solid #cbd5e1;border-radius:10px;width:100%"/>
+            <input id="qsPrice" type="text" inputmode="numeric" placeholder="0" required style="height:44px;font-size:18px;font-weight:800;color:#0284c7;padding:0 40px 0 12px;border:1.5px solid #cbd5e1;border-radius:10px;width:100%"/>
             <span style="position:absolute;right:12px;top:12px;font-weight:700;color:#64748b;font-size:14px">₫</span>
           </div>
           <div class="qs-price-pills" style="display:flex;gap:5px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none">
@@ -1997,8 +2459,8 @@ function openQuickServiceModal(){
       if (!name) {
         throw new Error('Vui lòng nhập tên dịch vụ / sửa chữa.');
       }
-      const price = Number(priceRaw);
-      if (isNaN(price) || price < 0) {
+      const price = Number(String(priceRaw || '').replace(/\D/g, '')) || 0;
+      if (price < 0) {
         throw new Error('Vui lòng nhập giá dịch vụ hợp lệ (>= 0 ₫).');
       }
 
@@ -2073,25 +2535,32 @@ function openQuickServiceModal(){
 
   $$('.qs-chip-btn', root).forEach(btn => {
     btn.onclick = () => {
+      $$('.qs-chip-btn', root).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
       const input = $('#qsName', root);
-      if (!input) return;
-      const chipText = btn.dataset.qsChip;
-      if (!input.value.trim()) {
-        input.value = chipText + ' ';
-      } else if (!input.value.includes(chipText)) {
-        input.value = chipText + ' ' + input.value;
+      if (input) {
+        input.value = btn.dataset.qsChip;
+        input.focus();
       }
-      input.focus();
     };
   });
 
+  const priceInput = $('#qsPrice', root);
+  if (priceInput) {
+    priceInput.addEventListener('input', e => {
+      const raw = e.target.value.replace(/\D/g, '');
+      e.target.value = raw ? fmt(Number(raw)) : '';
+    });
+  }
+
   $$('.qs-price-pill-btn', root).forEach(btn => {
     btn.onclick = () => {
-      const p = btn.dataset.qsPrice;
-      const input = $('#qsPrice', root);
-      if (input) {
-        input.value = p;
-        input.focus();
+      $$('.qs-price-pill-btn', root).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const p = Number(btn.dataset.qsPrice) || 0;
+      if (priceInput) {
+        priceInput.value = fmt(p);
+        priceInput.focus();
       }
     };
   });
@@ -3160,13 +3629,13 @@ function openDisplaySettings(){
     `,
     onSubmit:r=>{
       state.displayPrefs={
-        version:2,
+        version:3,
         view:$('input[name="goodsView"]:checked',r)?.value||'compact',
         showPrice:$('#showPrice',r).checked,
         showStock:$('#showStock',r).checked,
         showSku:$('#showSku',r).checked,
         density:$('input[name="density"]:checked',r)?.value||'compact',
-        posView:$('input[name="posView"]:checked',r)?.value||'grid2',
+        posView:$('input[name="posView"]:checked',r)?.value||'grid3',
         devicePreset:activePreviewDevice
       };
       saveDisplayPrefs();
