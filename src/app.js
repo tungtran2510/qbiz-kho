@@ -6755,7 +6755,168 @@ function renderFeatureReports(){
   const recentSales=r.sales.slice(0,5);
   const sourceRows=recentSales.map(s=>`<button class="transaction-row" data-sale-id="${s.id}"><span><strong>${esc(s.code||'Phiếu bán')}</strong><small>${esc(s.customer_label||'Khách lẻ')} · ${dt(s.created_at||s.createdAt)}</small></span><b>${fmt(s.grand_total??s.total)} ₫</b>${icon('chevron-right')}</button>`).join('')||'<div class="empty">Chưa có giao dịch trong khoảng đã chọn.</div>';
   const legalNoteText=r.taxSettings?.business_type==='exempt'?'Chế độ miễn thuế hoặc quản lý nội bộ. Không phát sinh nghĩa vụ thuế ước tính.':r.taxSettings?.business_type==='company_deduct'?`Doanh nghiệp phương pháp khấu trừ: TNDN ước tính ${r.taxSettings.cit_rate||20}% trên Lợi nhuận gộp (${fmt(r.profit)} ₫). GTGT kê khai theo hóa đơn VAT đầu ra/đầu vào riêng.`:`Căn cứ Thông tư 40/2021/TT-BTC: Hộ KD nộp ${r.taxSettings.vat_rate}% thuế GTGT (${fmt(r.estimatedVat)} ₫) và ${r.taxSettings.pit_rate}% thuế TNCN (${fmt(r.estimatedPit)} ₫) trên doanh thu ngoài sàn chịu thuế (${fmt(r.taxableRevenue)} ₫). Đơn hàng Shopee, TikTok Shop, Lazada đã được sàn khấu trừ thuế tự động.`;
-  const taxProfitSection=`<section class="card feature-panel tax-profit-panel" style="margin-top:14px"><div class="section-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="min-width:0;flex:1"><h2 style="font-size:15px;font-weight:750;color:#0f172a;margin:0">Nghĩa vụ thuế & Lợi nhuận</h2><p style="font-size:11px;color:#64748b;margin:1px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.taxModeLabel)} · ${esc(r.taxRateLabel)}</p></div><button type="button" class="secondary-btn tiny tax-setup-btn" data-action="tax-preferences" style="min-height:28px;height:28px;display:inline-flex;flex-direction:row;align-items:center;padding:0 9px;border-radius:6px;gap:4px;flex-shrink:0;border-color:#cbd5e1;color:#334155;font-size:11px;font-weight:600">${icon('shield-check')} Cài đặt thuế</button></div><div class="tax-hero-card" style="background:#f8fafc;border:1px solid #e2e8f0;border-left:3.5px solid #16a34a;border-radius:8px;padding:8px 10px;margin-bottom:7px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-size:10.5px;font-weight:700;color:#15803d;letter-spacing:0.3px;text-transform:uppercase">Lợi nhuận thực sau thuế</span><span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px">Tỷ suất ${r.profitAfterTaxMargin}%</span></div><div style="display:flex;justify-content:space-between;align-items:flex-end"><div><strong style="font-size:18px;font-weight:850;color:#15803d;font-variant-numeric:tabular-nums;line-height:1.1">${r.hasCost?`${fmt(r.netProfitAfterTax)} ₫`:'Chưa có giá vốn'}</strong></div>${r.hasCost?`<div style="text-align:right;font-size:11px;color:#64748b">Lợi nhuận gộp: <b style="color:#0f172a;font-weight:650">${fmt(r.profit)} ₫</b></div>`:''}</div></div><div class="tax-statement-list" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:7px"><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:6.5px 10px;border-bottom:1px solid #f1f5f9;font-size:12px"><div><strong style="color:#0f172a;font-weight:600">1. Doanh thu ngoài sàn</strong><small style="color:#64748b;font-size:10.5px;margin-left:4px">(Quầy, Web, FB)</small></div><b style="font-size:12.5px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums">${fmt(r.directNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:6.5px 10px;border-bottom:1px solid #f1f5f9;font-size:12px;background:#fbfcfd"><div style="display:inline-flex;align-items:center;gap:5px"><strong style="color:#0f172a;font-weight:600">2. Doanh thu sàn TMĐT</strong><span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#e0f2fe;color:#0369a1">${r.taxSettings?.ecommerce_auto_deduct?'Đã trừ sàn':'Chưa trừ'}</span></div><b style="font-size:12.5px;font-weight:700;color:#0284c7;font-variant-numeric:tabular-nums">${fmt(r.ecommerceNet)} ₫</b></div><div class="tax-statement-row" style="display:flex;justify-content:space-between;align-items:center;padding:6.5px 10px;font-size:12px"><div><strong style="color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};font-weight:700">3. Thuế ước tính phải nộp</strong><small style="color:#64748b;font-size:10.5px;margin-left:4px">(${r.taxSettings?.business_type==='hkd'?'1.5% TT 40':esc(r.taxRateLabel)})</small></div><b style="font-size:13px;font-weight:800;color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};font-variant-numeric:tabular-nums;white-space:nowrap">− ${fmt(r.estimatedTax)} ₫</b></div></div><details class="tax-legal-details" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:4.5px 8px;font-size:10.5px;color:#64748b"><summary style="font-weight:600;color:#475569;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;outline:none"><span style="display:inline-flex;align-items:center;gap:4px"><span style="font-size:11px">⚖️</span><span>Căn cứ tính thuế: ${r.taxSettings?.business_type==='exempt'?'Miễn thuế/Nội bộ':r.taxSettings?.business_type==='company_deduct'?'DN khấu trừ':'Thông tư 40/2021/TT-BTC'}</span></span><span class="tax-toggle-arrow" style="font-size:10px;color:#94a3b8;font-weight:600">Chi tiết ▾</span></summary><div style="margin-top:5px;padding-top:5px;border-top:1px dashed #e2e8f0;color:#64748b;line-height:1.4">${legalNoteText}</div></details></section>`;
+  const taxProfitSection=`
+    <section class="card feature-panel tax-profit-panel" style="margin-top:14px">
+      <div class="section-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <h2 style="font-size:15px;font-weight:750;color:#0f172a;margin:0;letter-spacing:-0.2px">Nghĩa vụ thuế & Lợi nhuận</h2>
+            <span class="tax-regime-pill" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#0284c7;background:#f0f9ff;border:1px solid #bae6fd;padding:1px 6px;border-radius:12px;white-space:nowrap !important;word-break:keep-all !important">${esc(r.taxModeLabel)}</span>
+          </div>
+          <p style="font-size:11px;color:#64748b;margin:2px 0 0">Thuế suất: <b style="color:#0f172a">${esc(r.taxRateLabel)}</b></p>
+        </div>
+        <button type="button" class="secondary-btn tiny tax-setup-btn" data-action="tax-preferences" style="min-height:28px;height:28px;display:inline-flex;flex-direction:row;align-items:center;padding:0 9px;border-radius:6px;gap:4px;flex-shrink:0;border-color:#cbd5e1;color:#334155;font-size:11px;font-weight:600;white-space:nowrap !important;word-break:keep-all !important">${icon('shield-check')} Cài đặt thuế</button>
+      </div>
+
+      <!-- Hero Card: Lợi nhuận thực sau thuế -->
+      <div class="tax-hero-card" style="background:linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);border:1.5px solid #86efac;border-radius:10px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 3px rgba(22,163,74,0.06)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:750;color:#15803d;letter-spacing:0.3px;text-transform:uppercase">
+            <span style="font-size:13px">💰</span>
+            <span style="white-space:nowrap !important">Lợi nhuận thực sau thuế</span>
+          </span>
+          <span style="font-size:10.5px;font-weight:700;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;padding:1px 7px;border-radius:12px;white-space:nowrap !important">Tỷ suất ${r.profitAfterTaxMargin}%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:6px">
+          <div>
+            <strong style="font-size:20px;font-weight:850;color:#15803d;font-variant-numeric:tabular-nums;line-height:1.15">${r.hasCost?`${fmt(r.netProfitAfterTax)} ₫`:'Chưa có giá vốn'}</strong>
+          </div>
+          ${r.hasCost?`
+            <div style="text-align:right;font-size:11px;color:#64748b;line-height:1.3">
+              <span>Lãi gộp: <b style="color:#0f172a;font-weight:650">${fmt(r.profit)} ₫</b></span>
+              <span style="color:#cbd5e1;margin:0 4px">|</span>
+              <span>Trừ thuế: <b style="color:#dc2626;font-weight:650">− ${fmt(r.estimatedTax)} ₫</b></span>
+            </div>
+          `:''}
+        </div>
+      </div>
+
+      <!-- Khung bảng kê nghĩa vụ doanh thu & thuế -->
+      <div class="tax-breakdown-card" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:8px;box-shadow:0 1px 2px rgba(15,23,42,0.02)">
+        <div class="tax-breakdown-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px">
+          <div style="min-width:0;flex:1;padding-right:8px">
+            <div style="display:inline-flex;align-items:center;gap:5px">
+              <span style="font-size:13px">🏪</span>
+              <strong style="color:#0f172a;font-weight:650">1. Doanh thu tính thuế</strong>
+              <small style="color:#64748b;font-size:10.5px">(ngoài sàn)</small>
+            </div>
+            <div style="color:#64748b;font-size:10.5px;padding-left:18px">Bán lẻ tại quầy, Web, Facebook, Zalo</div>
+          </div>
+          <b style="font-size:13px;font-weight:750;color:#0f172a;font-variant-numeric:tabular-nums;white-space:nowrap !important">${fmt(r.directNet)} ₫</b>
+        </div>
+        <div class="tax-breakdown-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;background:#fbfcfd">
+          <div style="min-width:0;flex:1;padding-right:8px">
+            <div style="display:inline-flex;align-items:center;gap:5px">
+              <span style="font-size:13px">📦</span>
+              <strong style="color:#0f172a;font-weight:650">2. Doanh thu sàn TMĐT</strong>
+              <span style="font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:4px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;white-space:nowrap !important">${r.taxSettings?.ecommerce_auto_deduct?'Sàn nộp thay':'Chưa trừ sàn'}</span>
+            </div>
+            <div style="color:#64748b;font-size:10.5px;padding-left:18px">Shopee, TikTok, Lazada (đã nộp tại nguồn)</div>
+          </div>
+          <b style="font-size:13px;font-weight:750;color:#0284c7;font-variant-numeric:tabular-nums;white-space:nowrap !important">${fmt(r.ecommerceNet)} ₫</b>
+        </div>
+        <div class="tax-breakdown-row" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:12px;background:${r.estimatedTax>0?'#fffbfb':'#ffffff'}">
+          <div style="min-width:0;flex:1;padding-right:8px">
+            <div style="display:inline-flex;align-items:center;gap:5px">
+              <span style="font-size:13px">🏛️</span>
+              <strong style="color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};font-weight:750">3. Thuế ước tính phải nộp</strong>
+              <span style="font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:4px;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;white-space:nowrap !important">${r.taxSettings?.business_type==='hkd'?'1.5% TT 40':esc(r.taxRateLabel)}</span>
+            </div>
+            <div style="color:#64748b;font-size:10.5px;padding-left:18px">${r.taxSettings?.business_type==='hkd'?`1% GTGT (${fmt(r.estimatedVat)} ₫) + 0.5% TNCN (${fmt(r.estimatedPit)} ₫)`:esc(legalNoteText)}</div>
+          </div>
+          <b style="font-size:14px;font-weight:850;color:${r.estimatedTax>0?'#b91c1c':'#0f172a'};font-variant-numeric:tabular-nums;white-space:nowrap !important">− ${fmt(r.estimatedTax)} ₫</b>
+        </div>
+      </div>
+
+      <!-- Accordion: Giải thích công thức & cách tính thuế (ở cuối, ấn vào mở xổ ra) -->
+      <details class="tax-formula-accordion" style="background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
+        <summary style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;cursor:pointer;user-select:none;font-size:12px;font-weight:700;color:#334155;background:#f8fafc;outline:none">
+          <span style="display:inline-flex;align-items:center;gap:6px">
+            <span style="font-size:13px">💡</span>
+            <span style="white-space:nowrap !important;word-break:keep-all !important">Giải thích công thức & cách tính thuế</span>
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#0284c7;white-space:nowrap !important">
+            <span>Chi tiết</span>
+            <span class="tax-accordion-arrow" style="font-size:10px">▾</span>
+          </span>
+        </summary>
+        <div class="tax-formula-body" style="padding:10px;display:flex;flex-direction:column;gap:8px;border-top:1px solid #e2e8f0;background:#ffffff">
+          
+          <div class="tax-step-card" style="border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;background:#f8fafc">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:11.5px;font-weight:750;color:#0f172a">Bước 1: Doanh thu chịu thuế</span>
+              <span style="font-size:9.5px;font-weight:700;color:#0284c7;background:#e0f2fe;padding:1px 5px;border-radius:4px;white-space:nowrap !important">Trừ thuế sàn TMĐT</span>
+            </div>
+            <div style="font-size:11.5px;color:#334155;line-height:1.4;margin-bottom:3px">
+              Công thức: <b>Doanh thu tính thuế = Doanh thu thuần − Doanh thu sàn TMĐT</b>
+            </div>
+            <div style="font-size:11.5px;color:#0284c7;font-weight:700;font-variant-numeric:tabular-nums;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;padding:4px 8px;margin-bottom:4px">
+              ${fmt(r.net)} ₫ − ${fmt(r.ecommerceNet)} ₫ = <b>${fmt(r.taxableRevenue)} ₫</b>
+            </div>
+            <div style="font-size:10.5px;color:#64748b;line-height:1.4">
+              📌 <i>Đơn sàn (Shopee, TikTok Shop, Lazada...) đã được sàn khấu trừ và nộp thuế thay (Nghị định 91/2022/NĐ-CP). Hệ thống tự động trừ doanh thu sàn để cửa hàng <b>không bị nộp trùng thuế 2 lần</b>.</i>
+            </div>
+          </div>
+
+          <div class="tax-step-card" style="border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;background:#f8fafc">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:11.5px;font-weight:750;color:#0f172a">Bước 2: Thuế ước tính phải nộp</span>
+              <span style="font-size:9.5px;font-weight:700;color:#b91c1c;background:#fee2e2;padding:1px 5px;border-radius:4px;white-space:nowrap !important">${r.taxSettings?.business_type==='hkd'?'TT 40/2021':esc(r.taxModeLabel)}</span>
+            </div>
+            ${r.taxSettings?.business_type==='hkd'?`
+              <div style="font-size:11.5px;color:#334155;line-height:1.4;margin-bottom:3px">
+                Công thức: <b>Thuế phải nộp = Doanh thu tính thuế × (1% GTGT + 0.5% TNCN)</b>
+              </div>
+              <div style="font-size:11px;color:#475569;margin-bottom:4px;line-height:1.4">
+                • Thuế GTGT (1%): ${fmt(r.taxableRevenue)} ₫ × 1% = <b style="color:#0f172a">${fmt(r.estimatedVat)} ₫</b><br/>
+                • Thuế TNCN (0.5%): ${fmt(r.taxableRevenue)} ₫ × 0.5% = <b style="color:#0f172a">${fmt(r.estimatedPit)} ₫</b>
+              </div>
+              <div style="font-size:11.5px;color:#b91c1c;font-weight:750;font-variant-numeric:tabular-nums;background:#ffffff;border:1px solid #fecaca;border-radius:6px;padding:4px 8px;margin-bottom:4px">
+                👉 Tổng thuế ước tính: ${fmt(r.estimatedVat)} ₫ + ${fmt(r.estimatedPit)} ₫ = <b>${fmt(r.estimatedTax)} ₫</b> (1.5%)
+              </div>
+              <div style="font-size:10.5px;color:#64748b;line-height:1.4">
+                📌 <i>Áp dụng cho Hộ kinh doanh phân phối, bán buôn bán lẻ hàng hóa theo Thông tư 40/2021/TT-BTC của Bộ Tài chính.</i>
+              </div>
+            `:r.taxSettings?.business_type==='company_deduct'?`
+              <div style="font-size:11.5px;color:#334155;line-height:1.4;margin-bottom:3px">
+                Công thức: <b>Thuế TNDN tạm tính = Lợi nhuận gộp × ${r.taxSettings.cit_rate||20}%</b>
+              </div>
+              <div style="font-size:11.5px;color:#b91c1c;font-weight:750;font-variant-numeric:tabular-nums;background:#ffffff;border:1px solid #fecaca;border-radius:6px;padding:4px 8px;margin-bottom:4px">
+                👉 Thuế TNDN: ${fmt(r.profit)} ₫ × ${r.taxSettings.cit_rate||20}% = <b>${fmt(r.estimatedTax)} ₫</b>
+              </div>
+              <div style="font-size:10.5px;color:#64748b;line-height:1.4">
+                📌 <i>Doanh nghiệp kê khai GTGT theo hóa đơn đầu vào/đầu ra và tạm nộp thuế TNDN theo quý.</i>
+              </div>
+            `:`
+              <div style="font-size:11.5px;color:#334155;line-height:1.4">
+                Cửa hàng chọn chế độ Miễn thuế hoặc Quản lý nội bộ: Số thuế ước tính = <b>0 ₫</b>.
+              </div>
+            `}
+          </div>
+
+          <div class="tax-step-card" style="border:1px solid #e2e8f0;border-radius:8px;padding:9px 10px;background:#f8fafc">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:11.5px;font-weight:750;color:#0f172a">Bước 3: Lợi nhuận thực sau thuế</span>
+              <span style="font-size:9.5px;font-weight:700;color:#166534;background:#dcfce7;padding:1px 5px;border-radius:4px;white-space:nowrap !important">Thực nhận</span>
+            </div>
+            <div style="font-size:11.5px;color:#334155;line-height:1.4;margin-bottom:3px">
+              Công thức: <b>Lợi nhuận thực = Lợi nhuận gộp − Thuế ước tính phải nộp</b>
+            </div>
+            <div style="font-size:11.5px;color:#15803d;font-weight:750;font-variant-numeric:tabular-nums;background:#ffffff;border:1px solid #bbf7d0;border-radius:6px;padding:4px 8px;margin-bottom:4px">
+              👉 ${fmt(r.profit)} ₫ − ${fmt(r.estimatedTax)} ₫ = <b>${fmt(r.netProfitAfterTax)} ₫</b>
+            </div>
+            <div style="font-size:11px;color:#475569;line-height:1.4">
+              • Tỷ suất lợi nhuận sau thuế: (${fmt(r.netProfitAfterTax)} ₫ ÷ ${fmt(r.net)} ₫) × 100 = <b style="color:#15803d">${r.profitAfterTaxMargin}%</b>
+            </div>
+            <div style="font-size:10.5px;color:#64748b;line-height:1.4;margin-top:3px">
+              📌 <i>Phản ánh chính xác số tiền thực tế chủ shop thu về túi sau khi đã trừ toàn bộ vốn nhập hàng và nghĩa vụ thuế với ngân sách nhà nước.</i>
+            </div>
+          </div>
+
+        </div>
+      </details>
+    </section>
+  `;
   const officialTaxReports=[
     ['doanh-thu-tt88','Sổ chi tiết doanh thu (Hộ KD TT 88)','Mẫu S2b-HKD','Hộ kinh doanh'],
     ['bang-ke-xuat-tt200','Bảng kê xuất kho (Doanh nghiệp TT 200)','Tổng hợp xuất kho','Doanh nghiệp'],

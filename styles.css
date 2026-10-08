@@ -1016,11 +1016,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .dtp-link-btn{background:none;border:none;padding:0;margin:0;font-size:11px;font-weight:700;color:var(--q-blue,#0f56d9);cursor:pointer;white-space:nowrap !important;word-break:keep-all !important;flex-shrink:0;text-decoration:none;display:inline-flex;align-items:center}
 .dtp-link-btn:hover{text-decoration:underline}
 
-.tax-official-accordion summary::-webkit-details-marker{display:none}
-.tax-official-accordion summary{list-style:none}
-.tax-official-accordion[open] summary{border-bottom:1px solid #e2e8f0;background:#ffffff}
-.tax-official-accordion summary .tax-accordion-arrow{transition:transform .2s ease}
-.tax-official-accordion[open] summary .tax-accordion-arrow{transform:rotate(180deg)}
+.tax-official-accordion summary::-webkit-details-marker,
+.tax-formula-accordion summary::-webkit-details-marker{display:none}
+.tax-official-accordion summary,
+.tax-formula-accordion summary{list-style:none}
+.tax-official-accordion[open] summary,
+.tax-formula-accordion[open] summary{border-bottom:1px solid #e2e8f0;background:#ffffff}
+.tax-official-accordion summary .tax-accordion-arrow,
+.tax-formula-accordion summary .tax-accordion-arrow{transition:transform .2s ease}
+.tax-official-accordion[open] summary .tax-accordion-arrow,
+.tax-formula-accordion[open] summary .tax-accordion-arrow{transform:rotate(180deg)}
 
 .dash-subtabs{display:flex;gap:6px;border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin-bottom:10px}
 .dash-subtabs button{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:4px 12px;border:0;border-radius:10px;background:transparent;color:#475569;font-size:13px;font-weight:700;cursor:pointer;transition:all .12s ease}
@@ -7647,11 +7652,19 @@ body.topbar-hidden .install-subtle-tip {
 .tax-hero-card {
   transition: transform 0.15s ease;
 }
+.tax-breakdown-row,
 .tax-statement-row {
   transition: background-color 0.15s ease;
 }
+.tax-breakdown-row:hover,
 .tax-statement-row:hover {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
+}
+.tax-step-card {
+  transition: border-color 0.15s ease;
+}
+.tax-step-card:hover {
+  border-color: #cbd5e1 !important;
 }
 .tax-legal-details summary::-webkit-details-marker {
   display: none;
@@ -7685,10 +7698,14 @@ body.topbar-hidden .install-subtle-tip {
     margin-top: 12px;
   }
   .tax-hero-card {
-    padding: 8px 10px !important;
+    padding: 9px 10px !important;
   }
+  .tax-breakdown-row,
   .tax-statement-row {
-    padding: 6.5px 10px !important;
+    padding: 7px 10px !important;
+  }
+  .tax-step-card {
+    padding: 8px 9px !important;
   }
 }
 
